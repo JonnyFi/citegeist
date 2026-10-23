@@ -12,6 +12,7 @@ import { type ItemFilters, ItemsScreen } from "./components/items-screen";
 import { ProjectsScreen, ProjectView } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
+import { type GraphDepth, GraphScreen } from "./graph";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SettingsScreen } from "./routes/settings";
 
@@ -119,6 +120,35 @@ const noteRoute = createRoute({
   },
 });
 
+const graphRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/graph",
+  validateSearch: (search: Record<string, unknown>): { node?: string; depth?: GraphDepth } => ({
+    ...(typeof search.node === "string" && search.node ? { node: search.node } : {}),
+    ...(search.depth === 2 || search.depth === 3 ? { depth: search.depth } : {}),
+  }),
+  component: function GraphRoute() {
+    const { node, depth } = graphRoute.useSearch();
+    const navigate = useNavigate();
+    return (
+      <GraphScreen
+        node={node}
+        depth={depth ?? 1}
+        onChange={(next) =>
+          void navigate({
+            to: "/graph",
+            search: {
+              ...(next.node ? { node: next.node } : {}),
+              ...(next.depth > 1 ? { depth: next.depth } : {}),
+            },
+            replace: true,
+          })
+        }
+      />
+    );
+  },
+});
+
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
@@ -144,6 +174,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   projectRoute,
   notesRoute.addChildren([notesIndexRoute, noteRoute]),
+  graphRoute,
   searchRoute,
   settingsRoute,
 ]);

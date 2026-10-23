@@ -31,6 +31,13 @@ export {
   MetadataFromFirstPageOutput,
 } from "./tasks/metadata-from-first-page/index.js";
 export {
+  type LinkProposal,
+  MAX_PROPOSALS,
+  NoteProposeLinksInput,
+  NoteProposeLinksOutput,
+  sanitizeProposals,
+} from "./tasks/note-propose-links/index.js";
+export {
   getTask,
   type RunTaskOptions,
   runTask,
