@@ -5,8 +5,8 @@ import type { CitegeistBridge } from "../bridge";
 import { Button } from "../components/ui/button";
 import { Segmented } from "../components/ui/segmented";
 import { ErrorState, Loading } from "../components/ui/states";
-import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { type Lang, useI18n } from "../i18n";
+import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { BackendRow, useBackendTests, WorkerPanel } from "./parts";
 
 const DONE_KEY = "citegeist.onboarding";

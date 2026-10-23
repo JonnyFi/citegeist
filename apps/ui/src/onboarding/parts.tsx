@@ -11,9 +11,9 @@ import type { z } from "zod";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { lookup, type MessageKey, type Translator, useI18n } from "../i18n";
 import { useCore } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
-import { lookup, type MessageKey, type Translator, useI18n } from "../i18n";
 
 type SettingsData = z.output<typeof settingsGet.output>;
 export type BackendInfo = SettingsData["backends"][number];

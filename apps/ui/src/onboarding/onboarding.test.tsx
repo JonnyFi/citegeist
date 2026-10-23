@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CitegeistBridge } from "../bridge";
 import { I18nProvider } from "../i18n";
 import { renderWithSettingsCore } from "../routes/settings-test-utils";
@@ -170,9 +170,7 @@ describe("OnboardingGate", () => {
     const backend = state.backends[0];
     if (backend) backend.available = true;
     await user.click(screen.getByRole("button", { name: "Erneut prüfen" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Aktiv" })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Aktiv" })).toBeEnabled());
     expect(screen.getByText("Schritt 2 von 3")).toBeVisible();
     expect(screen.queryByText("the app")).toBeNull();
   });

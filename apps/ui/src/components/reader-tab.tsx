@@ -1,11 +1,5 @@
 import { buildBlockStream } from "@citegeist/anchoring";
-import {
-  cardsCreate,
-  cardsList,
-  documentsAssets,
-  itemsUpdate,
-  projectsList,
-} from "@citegeist/ops";
+import { cardsCreate, cardsList, documentsAssets, itemsUpdate, projectsList } from "@citegeist/ops";
 import {
   type HighlightStatus,
   PdfView,

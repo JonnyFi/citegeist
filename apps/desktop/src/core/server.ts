@@ -47,8 +47,16 @@ export interface CoreServer {
   close(): Promise<void>;
 }
 
-/** Origins of the renderer: the packaged app (file://) and the Vite dev server. */
-export const DEFAULT_ORIGINS = ["null", "http://localhost:5173", "http://127.0.0.1:5173"] as const;
+/**
+ * Origins of the renderer: the packaged app and the Vite dev server. A page loaded from file://
+ * sends `Origin: null` with fetch but `Origin: file://` with a WebSocket upgrade.
+ */
+export const DEFAULT_ORIGINS = [
+  "null",
+  "file://",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+] as const;
 
 const NOT_FOUND_CODES = new Set(["ITEM_NOT_FOUND", "PROJECT_NOT_FOUND", "NOTE_NOT_FOUND"]);
 
