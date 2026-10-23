@@ -290,7 +290,7 @@ describe("settings operations", () => {
     await t.registry.call("settings.update", human, { patch: { mailto: "" } });
     expect(t.deps.store.load().mailto).toBeUndefined();
     await t.registry.call("settings.update", human, {
-      patch: { ai: { apiKeys: { openai: false } } },
+      patch: { ai: { routing: { "*": "claude-code-cli" }, apiKeys: { openai: false } } },
     });
     expect(await t.keychain.has("openai")).toBe(false);
     await t.queue.close();

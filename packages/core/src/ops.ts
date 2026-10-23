@@ -1,5 +1,6 @@
 import {
   cardsList,
+  documentsAssets,
   itemsGet,
   itemsList,
   libraryStatus,
@@ -13,6 +14,7 @@ import {
   Registry,
   searchQuery,
 } from "@citegeist/ops";
+import { documentAssets } from "./assets.js";
 import type { Library } from "./library.js";
 
 /**
@@ -24,6 +26,7 @@ export function bindCoreOperations(registry: Registry, lib: Library): Registry {
     .bind(libraryStatus, async () => lib.status())
     .bind(itemsGet, async (_ctx, input) => lib.getItem(input.citekey))
     .bind(itemsList, async (_ctx, input) => lib.listItems(input))
+    .bind(documentsAssets, async (_ctx, input) => documentAssets(lib, input))
     .bind(cardsList, async (_ctx, input) => lib.listCards(input))
     .bind(notesGet, async (_ctx, input) => lib.getNote(input.id))
     .bind(notesCreate, async (ctx, input) => lib.createNote(ctx.actor, input))
