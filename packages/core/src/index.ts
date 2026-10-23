@@ -26,6 +26,7 @@ export { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 export { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
 export { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.js";
 export { type HitKind, type SearchHit, type SearchInput, search } from "./search.js";
+export * from "./semantic/index.js";
 export * from "./settings/index.js";
 export { snippet, stemmedText, stems, words } from "./text.js";
 export { extractWikiLinks, type WikiLinkRef, wikiTarget } from "./wikilinks.js";

@@ -11,3 +11,4 @@ onlyBuiltDependencies:
   - "@parcel/watcher"
   - esbuild
   - electron
+  - onnxruntime-node

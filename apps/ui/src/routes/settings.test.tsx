@@ -139,4 +139,105 @@ describe("settings screen", () => {
     expect(await within(panel).findByRole("alert")).toHaveTextContent("uv fehlt");
     expect(within(panel).getByRole("button", { name: "Installieren" })).toBeEnabled();
   });
+  it("turns on semantic search, shows the download and then the ready state", async () => {
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />, { semanticPolls: 4 });
+    const toggle = await screen.findByRole("checkbox", { name: "Semantische Suche einschalten" });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { semantic: { enabled: true } },
+    });
+    expect(state.semantic.enabled).toBe(true);
+    expect(
+      await screen.findByRole("progressbar", { name: "Fortschritt des Downloads" }),
+    ).toBeVisible();
+    expect(await screen.findByText(/Das Modell wird geladen, \d+ %/)).toBeVisible();
+    expect(await screen.findByText(/Das Modell ist bereit/)).toBeVisible();
+    expect(screen.queryByRole("progressbar", { name: "Fortschritt des Downloads" })).toBeNull();
+
+    await user.click(screen.getByRole("checkbox", { name: "Semantische Suche einschalten" }));
+    await waitFor(() => expect(state.semantic.enabled).toBe(false));
+    expect(screen.queryByText(/Das Modell ist bereit/)).toBeNull();
+  });
+
+  it("shows why the model could not be loaded", async () => {
+    renderWithSettingsCore(<SettingsScreen />, {
+      semantic: { enabled: true, state: "error", progress: 0, detail: "no network" },
+    });
+    expect(
+      await screen.findByText("Das Modell konnte nicht geladen werden: no network"),
+    ).toBeVisible();
+  });
+
+  it("keeps the connector off by default and saves its port", async () => {
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />);
+    const toggle = await screen.findByRole("checkbox", { name: "Empfänger einschalten" });
+    expect(toggle).not.toBeChecked();
+    const port = screen.getByRole("textbox", { name: "Port" });
+    expect(port).toHaveValue("23119");
+
+    await user.clear(port);
+    await user.type(port, "23120");
+    await user.click(screen.getByRole("button", { name: "Port speichern" }));
+    await waitFor(() => expect(state.connector.port).toBe(23120));
+    await user.click(toggle);
+    await waitFor(() => expect(state.connector.enabled).toBe(true));
+    expect(await screen.findByText("Der Empfänger hört auf 127.0.0.1:23120 zu.")).toBeVisible();
+    expect(calls.filter((c) => c.name === "settings.update").map((c) => c.input)).toEqual([
+      { patch: { connector: { port: 23120 } } },
+      { patch: { connector: { enabled: true } } },
+    ]);
+  });
+
+  it("refuses a port outside the allowed range before asking the core", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWithSettingsCore(<SettingsScreen />);
+    const port = await screen.findByRole("textbox", { name: "Port" });
+    await user.clear(port);
+    await user.type(port, "80");
+    await user.click(screen.getByRole("button", { name: "Port speichern" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("zwischen 1024 und 65535");
+    expect(calls.some((c) => c.name === "settings.update")).toBe(false);
+  });
+
+  it("shows the hotkey only where the app has a palette, and reports a refused hotkey", async () => {
+    const user = userEvent.setup();
+    const saved: Array<Record<string, unknown>> = [];
+    window.citegeist = {
+      connection: null,
+      openLibrary: async () => false,
+      createLibrary: async () => false,
+      onNavigate: () => () => {},
+      platform: "darwin",
+      quickInsert: {
+        get: async () => ({ enabled: true, accelerator: "CommandOrControl+Shift+K" }),
+        set: async (patch) => {
+          saved.push(patch);
+          return patch.accelerator === "K"
+            ? { ok: false, error: "A hotkey needs at least one modifier and a key." }
+            : { ok: true };
+        },
+      },
+    };
+    try {
+      renderWithSettingsCore(<SettingsScreen />);
+      const field = await screen.findByRole("textbox", { name: "Tastenkürzel" });
+      expect(field).toHaveValue("CommandOrControl+Shift+K");
+      await user.clear(field);
+      await user.type(field, "K");
+      await user.click(screen.getByRole("button", { name: "Kürzel speichern" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("at least one modifier");
+      expect(saved).toEqual([{ accelerator: "K" }]);
+    } finally {
+      delete window.citegeist;
+    }
+  });
+
+  it("has no hotkey section in a plain browser", async () => {
+    renderWithSettingsCore(<SettingsScreen />);
+    await screen.findByRole("heading", { level: 1, name: "Einstellungen" });
+    expect(screen.queryByRole("textbox", { name: "Tastenkürzel" })).toBeNull();
+  });
 });

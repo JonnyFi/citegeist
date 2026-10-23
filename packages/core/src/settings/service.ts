@@ -2,7 +2,9 @@ import { existsSync } from "node:fs";
 import { type AiRoutingSettings, type ProcessRunner, runTask, TASK_NAMES } from "@citegeist/ai";
 import {
   aiTestBackend,
+  type ConnectorStatus as ConnectorStatusSchema,
   type Registry,
+  type SemanticStatus as SemanticStatusSchema,
   type Settings as SettingsSchema,
   settingsGet,
   settingsUpdate,
@@ -86,7 +88,18 @@ type WorkerStatus = {
   detail?: string;
 };
 
+type SemanticStatus = z.output<typeof SemanticStatusSchema>;
+type ConnectorStatus = z.output<typeof ConnectorStatusSchema>;
+
+/** Live state that other parts of the core report into `settings.get`. */
+export interface StatusProviders {
+  semantic?: () => SemanticStatus;
+  connector?: () => ConnectorStatus;
+}
+
 export class SettingsService {
+  /** Set by the runtime (semantic search) and by the app's core process (connector). */
+  readonly status: StatusProviders = {};
   private readonly kind: JobKind;
   private health: { at: number; value: WorkerStatus } | undefined;
 
@@ -124,6 +137,8 @@ export class SettingsService {
       ai: { routing: stored.ai.routing, apiKeys },
       ...(stored.mailto ? { mailto: stored.mailto } : {}),
       uiLanguage: stored.uiLanguage,
+      semantic: { ...stored.semantic },
+      connector: { ...stored.connector },
     };
   }
 
@@ -194,6 +209,13 @@ export class SettingsService {
       else delete stored.mailto;
     }
     if (patch.uiLanguage) stored.uiLanguage = patch.uiLanguage;
+    if (patch.semantic) stored.semantic = { enabled: patch.semantic.enabled };
+    if (patch.connector) {
+      stored.connector = {
+        enabled: patch.connector.enabled ?? stored.connector.enabled,
+        port: patch.connector.port ?? stored.connector.port,
+      };
+    }
 
     this.deps.store.save(stored);
     const settings = await this.settings();
@@ -276,6 +298,8 @@ export function bindSettingsOperations(registry: Registry, deps: SettingsDeps): 
       settings: await svc.settings(),
       backends: await deps.backends.status(),
       worker: await svc.workerStatus(),
+      ...(svc.status.semantic ? { semantic: svc.status.semantic() } : {}),
+      ...(svc.status.connector ? { connector: svc.status.connector() } : {}),
     }))
     .bind(settingsUpdate, async (_ctx, input) => ({ settings: await svc.update(input) }))
     .bind(aiTestBackend, async (_ctx, input) => svc.testBackend(input.backend))

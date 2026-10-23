@@ -16,6 +16,7 @@ export {
   type MachineSettings,
   type SettingsDeps,
   SettingsService,
+  type StatusProviders,
 } from "./service.js";
 export { DEFAULT_SETTINGS, SettingsStore, type StoredSettings } from "./store.js";
 export {

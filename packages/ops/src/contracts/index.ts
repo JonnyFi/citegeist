@@ -471,6 +471,9 @@ const BackendStatus = z.object({
   available: z.boolean(),
   detail: z.string().optional(),
 });
+/** Port of the Zotero Connector listener unless the user picks another one. */
+export const DEFAULT_CONNECTOR_PORT = 23119;
+const ConnectorPort = z.number().int().min(1024).max(65535);
 export const Settings = z.object({
   ai: z.object({
     routing: z.record(z.string(), z.string()),
@@ -478,6 +481,27 @@ export const Settings = z.object({
   }),
   mailto: z.string().optional(),
   uiLanguage: z.enum(["de", "en"]).default("de"),
+  /** Semantic search with a local embedding model. Off until the user turns it on. */
+  semantic: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
+  /** Listener on 127.0.0.1 that lets the Zotero Connector browser extension save into citegeist. */
+  connector: z
+    .object({
+      enabled: z.boolean().default(false),
+      port: ConnectorPort.default(DEFAULT_CONNECTOR_PORT),
+    })
+    .default({ enabled: false, port: DEFAULT_CONNECTOR_PORT }),
+});
+/** Where the embedding model stands. `progress` (0 to 1) is set while the files download. */
+export const SemanticStatus = z.object({
+  state: z.enum(["off", "downloading", "ready", "error"]),
+  model: z.string(),
+  progress: z.number().min(0).max(1).optional(),
+  detail: z.string().optional(),
+});
+export const ConnectorStatus = z.object({
+  state: z.enum(["off", "listening", "error"]),
+  port: z.number().optional(),
+  detail: z.string().optional(),
 });
 export const settingsGet = defineContract({
   name: "settings.get",
@@ -492,11 +516,14 @@ export const settingsGet = defineContract({
       engines: z.record(z.string(), z.string()),
       detail: z.string().optional(),
     }),
+    semantic: SemanticStatus.optional(),
+    connector: ConnectorStatus.optional(),
   }),
 });
 export const settingsUpdate = defineContract({
   name: "settings.update",
-  summary: "Change routing, contact address or UI language; API keys go to the Keychain",
+  summary:
+    "Change routing, contact address, UI language, semantic search or the connector; API keys go to the Keychain",
   access: "admin",
   input: z.object({
     // Explicit optional fields: Settings.partial() would re-apply defaults and reset uiLanguage.
@@ -509,6 +536,10 @@ export const settingsUpdate = defineContract({
         .optional(),
       mailto: z.string().optional(),
       uiLanguage: z.enum(["de", "en"]).optional(),
+      semantic: z.object({ enabled: z.boolean() }).optional(),
+      connector: z
+        .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })
+        .optional(),
     }),
     apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
   }),
