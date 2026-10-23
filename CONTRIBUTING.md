@@ -11,4 +11,4 @@ citegeist is built mostly by coding agents. These rules keep everyone's agents w
 3. **One workstream, one branch, one PR against `main`.** Plan with `/spec` or `/autoplan`, check with `/review` and `/qa`, open the PR with `/ship`.
 4. **Stay inside your workstream's paths.** Hotspots (schemas, contracts, root config, lockfile, CI) change only through a dedicated PR.
 5. **Agents default to Sonnet.** Opus is for architecture and contract work.
-6. **`pnpm verify` is the gate, and it runs locally.** `pnpm install` activates a pre-push hook that runs it before every push. GitHub Actions only runs when started by hand, so nobody spends Actions minutes. Put the last lines of the `pnpm verify` output into the PR body.
+6. **`pnpm verify` is the gate, and it runs locally.** `pnpm install` activates a pre-push hook that runs it before every push. CI runs on Linux runners while Actions minutes are available. When they are used up, the local run is the gate, and the PR body quotes the last lines of the `pnpm verify` output.

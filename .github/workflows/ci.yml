@@ -1,12 +1,16 @@
 name: CI
 
-# Manual only: the gate is the local pre-push hook (pnpm verify), so no Actions minutes are used.
+# Linux runners cost a tenth of macOS minutes. When the Actions minutes are used up,
+# the local pre-push hook (pnpm verify) is the gate.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   verify:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,7 +24,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: uv sync
         working-directory: workers/convert
-      - run: pnpm --filter @citegeist/reader exec playwright install chromium
+      - run: pnpm --filter @citegeist/reader exec playwright install --with-deps chromium
       - run: pnpm verify
         env:
           # Model downloads and full-corpus conversion stay out of CI; run them locally with -m ''.
