@@ -120,6 +120,61 @@ Abnahme der Welle: Die E2E-Tests laufen, und Jonny kann ab hier echte Literatur 
 | W3.4 Semantische Suche | lokale Embeddings, hybride Suche, `library.ask` mit belegten Antworten und Zitatprüfung | M |
 | W3.5 Agent-Zugang schreiben | MCP-Tools `add_item`, `create_card`, `create_note`, `link`, `jobs_get`; Skill fertig, Plugin-Paket, `.mcpb` | M |
 | W3.6 Backends und Quick-Insert | Codex, Cursor, API-Keys, lokale Modelle, Routing pro Aufgabe; globaler Hotkey mit Kartensuche; Zotero Connector | M |
+| W3.7 Einsichten und Pläne | Einsichten und Pläne mit festen Feldern, Suche in Feld- und Textstufe, Abgleich von Fließtext und Feldern, Verlauf mit Rückgängig pro Zug, Vorschläge für ungefragte Änderungen | L |
+| W3.8 Planansicht | Tab pro Plan mit Orten, Feldformular, Fließtext, Einsichten und Verlauf | M |
+| W3.9 Planungs-Chat | Festhalten von Einsichten im Chat, Zurückholen mit Zitat, direkte Änderungen mit Rückgängig | M |
+
+Die Forschungsplanung folgt `docs/spec/research-planning.md`. Vor W3.7 liefert die Lead-Session `insight.ts`, `plan.ts` und die Verträge aus Abschnitt 6 der Spec. Der erste Schnitt ist W3.7 zusammen mit dem Festhalten aus W3.9, das bis zum Ende von W3.3 über Claude Code und MCP läuft.
+
+```markdown
+## W3.7 Einsichten und Pläne
+
+Ziel: Einsichten und Pläne liegen als Dateien mit festen Feldern vor, der Agent schreibt sie über Operationen, und jede Änderung lässt sich zurücknehmen.
+Besitzt: packages/core/src/planning/**
+Liest: packages/schema (insight.ts, plan.ts), packages/ops (insights.*, plans.*, plan.*, history.*, proposals.*), docs/spec/research-planning.md Abschnitte 3 bis 6
+Darf nicht ändern: Hotspots, andere Pakete
+Abnahme:
+- [ ] Rundreise aller Felder von Einsicht, Plan, Kapitel und Abschnitt ohne Verlust
+- [ ] insights.relevant liefert auf einem Fixture-Projekt zuerst die Feldtreffer, dann die Texttreffer, jeweils mit why
+- [ ] Die Prüfung meldet Kapitel-Links außerhalb von outline, Überschriften ohne Abschnitt und Citekeys ohne Quelle
+- [ ] history.revertTurn stellt alle Dateien eines Zugs wieder her und führt eine Handänderung dazwischen per Drei-Wege-Merge zusammen
+- [ ] Schreibende Operationen eines Hintergrundjobs und im Prüfmodus erzeugen Vorschläge
+- [ ] capture_insight, find_insights, get_plan, update_plan_structure und edit_plan_doc bestehen den MCP-Client-Test
+- [ ] pnpm verify grün
+Modell: Sonnet. Größe: L.
+```
+
+```markdown
+## W3.8 Planansicht
+
+Ziel: Jonny liest und bearbeitet Pläne, Kapitel und Einsichten in der App.
+Besitzt: apps/ui/src/plan/**
+Liest: W3.1-Editor, packages/ops (plans.*, insights.*, history.*), docs/spec/research-planning.md Abschnitt 7
+Darf nicht ändern: Hotspots, apps/ui/src/chat/**
+Abnahme:
+- [ ] Tab pro Plan mit Allgemein, Kapiteln und Losen Gedanken samt Zähler
+- [ ] Feldformular schreibt über die Operationen, Fließtext über den Editor
+- [ ] Einsicht auf einen anderen Ort ziehen ändert space
+- [ ] Verlauf einer Datei zeigt Fassungen mit Herkunft und stellt eine wieder her
+- [ ] /qa gegen den Browser-Build mit Mock-Kern grün
+Modell: Sonnet. Größe: M.
+```
+
+```markdown
+## W3.9 Planungs-Chat
+
+Ziel: Jonny hält Einsichten im Chat fest, und der Agent holt sie beim Planen zurück.
+Besitzt: apps/ui/src/chat/planning/**, packages/ai/tasks/plan-chat/**
+Liest: W3.3, W3.7, docs/spec/research-planning.md Abschnitte 2, 3 und 5
+Darf nicht ändern: Hotspots, apps/ui/src/plan/**
+Abnahme:
+- [ ] Gegen das Mock-Backend legt „bitte einmal notieren“ eine Einsicht mit Verweisen und Ort an, und die Antwort nennt den Ort in einer Zeile
+- [ ] Vor jedem Zug stehen die fünf relevantesten Einsichten im Kontext, zitierte Einsichten erscheinen als Chip
+- [ ] Ein Verweis auf eine unbekannte Einsicht wird markiert
+- [ ] „Rückgängig“ an einem Zug nimmt alle seine Änderungen zurück
+- [ ] Ein manueller Lauf gegen das Abo hält drei Einsichten aus Fixture-Quellen fest und zitiert eine davon beim Umbau eines Kapitels
+Modell: Sonnet. Größe: M.
+```
 
 ## Welle 4: v0.3, Breite
 
