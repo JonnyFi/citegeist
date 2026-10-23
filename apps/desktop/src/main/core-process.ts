@@ -49,7 +49,7 @@ export async function ensureCore(opts: EnsureCoreOptions): Promise<RunningCore> 
       CITEGEIST_LIBRARY: opts.library,
       CITEGEIST_LOCAL_BASE: localBase,
       CITEGEIST_INIT: opts.init ? "1" : "0",
-      CITEGEIST_ORIGINS: ["null", ...(opts.origins ?? [])].join(","),
+      CITEGEIST_ORIGINS: ["null", "file://", ...(opts.origins ?? [])].join(","),
     } as Record<string, string>,
   });
 

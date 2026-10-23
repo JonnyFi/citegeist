@@ -56,6 +56,8 @@ export interface LibraryStatus {
   cards: number;
   notes: number;
   problems: ProblemEntry[];
+  /** Library defaults from citegeist.json. */
+  defaults: { ai_language: string; style: string; locale: string };
 }
 
 const DEBOUNCE_MS = 25;
@@ -319,6 +321,11 @@ export class Library extends EventEmitter {
         code: p.code,
         message: p.message,
       })),
+      defaults: {
+        ai_language: this.manifest.defaults.ai_language,
+        style: this.manifest.defaults.style,
+        locale: this.manifest.defaults.locale,
+      },
     };
   }
 
@@ -387,8 +394,13 @@ export class Library extends EventEmitter {
       type: string;
       status: string;
       inbox: number;
+      inbox_by: string | null;
+      inbox_why: string | null;
     }>(
-      `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox FROM items i
+      `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
+         json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
+         json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why
+       FROM items i
        ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY i.citekey LIMIT ?`,
       ...params,
       input.limit + 1,
@@ -402,6 +414,8 @@ export class Library extends EventEmitter {
       type: r.type,
       status: r.status,
       inbox: r.inbox === 1,
+      ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
+      ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
     }));
     const next = rows.length > input.limit ? page[page.length - 1]?.citekey : undefined;
     return { items, ...(next ? { next } : {}) };

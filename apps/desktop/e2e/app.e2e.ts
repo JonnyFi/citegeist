@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
@@ -14,6 +14,9 @@ test.beforeEach(() => {
   library = join(tmp, "library");
   localBase = join(tmp, "local");
   seedLibrary(library);
+  // English UI, taken from the machine settings the core reads at start
+  mkdirSync(localBase, { recursive: true });
+  writeFileSync(join(localBase, "settings.json"), JSON.stringify({ uiLanguage: "en" }));
 });
 
 test.afterEach(async () => {
@@ -32,6 +35,8 @@ async function launch(name: string, withLibrary = true): Promise<ElectronApplica
       ...(withLibrary ? { CITEGEIST_LIBRARY: library } : {}),
       CITEGEIST_LOCAL_BASE: localBase,
       CITEGEIST_USER_DATA: userData,
+      // a backend that always works, so the setup screens stay out of the way
+      CITEGEIST_AI_MOCK: "1",
     },
   });
   apps.push(app);
@@ -59,7 +64,7 @@ test("starts the core, shows the library table and opens an item", async () => {
 
   // Inbox and projects come from the same core.
   await page.getByRole("link", { name: /Inbox/ }).click();
-  await expect(page.getByTestId("item-row")).toHaveCount(1);
+  await expect(page.getByTestId("inbox-row")).toHaveCount(1);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { level: 2, name: "PhD proposal" })).toBeVisible();
 });
@@ -83,6 +88,11 @@ test("a second app attaches to the running core instead of starting another", as
 test("shows the welcome screen when no library is open", async () => {
   const app = await launch("a", false);
   const page = await app.firstWindow();
+  // first run: the setup starts with the library step, in the language of the machine setting
+  await page.evaluate(() => localStorage.setItem("citegeist.lang", "en"));
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Set up citegeist" })).toBeVisible();
+  await page.getByRole("button", { name: "Set up later" }).click();
   await expect(page.getByRole("heading", { name: "Open a library" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open library" })).toBeVisible();
 });

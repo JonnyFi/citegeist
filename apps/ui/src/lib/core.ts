@@ -24,6 +24,12 @@ export interface Core {
     input: z.input<C["input"]>,
   ): Promise<z.output<C["output"]>>;
   subscribe(listener: (event: CoreEvent) => void): () => void;
+  /**
+   * Full URL for a path the core serves, such as the `pdfUrl` of `documents.assets`
+   * (`/files/<citekey>/sources/<hash>.pdf`), with the session token attached. Values that are not
+   * core paths (the mock's data URLs) come back unchanged.
+   */
+  fileUrl(path: string): string;
   close(): void;
 }
 
@@ -36,6 +42,7 @@ export function coreFromLink(
     label: string;
     isMock: boolean;
     subscribe: Core["subscribe"];
+    fileUrl?: Core["fileUrl"];
     close?: () => void;
   },
 ): Core {
@@ -44,6 +51,7 @@ export function coreFromLink(
     label: extra.label,
     isMock: extra.isMock,
     subscribe: extra.subscribe,
+    fileUrl: extra.fileUrl ?? ((path) => path),
     close: extra.close ?? (() => {}),
     async call(contract, input) {
       let target: DynamicClient = client;
@@ -84,6 +92,10 @@ export function createRemoteCore(conn: CoreConnection): Core {
   return coreFromLink(link, {
     label: conn.library,
     isMock: false,
+    fileUrl(path) {
+      if (!path.startsWith("/files/")) return path;
+      return `${conn.url}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(conn.token)}`;
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

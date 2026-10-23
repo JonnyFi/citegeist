@@ -12,6 +12,7 @@ import { type ItemFilters, ItemsScreen } from "./components/items-screen";
 import { ProjectsScreen, ProjectView } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
+import { SettingsScreen } from "./routes/settings";
 
 const STATUSES = ["unread", "reading", "read"] as const;
 
@@ -108,6 +109,12 @@ const searchRoute = createRoute({
   },
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   libraryRoute,
   inboxRoute,
@@ -115,6 +122,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   projectRoute,
   searchRoute,
+  settingsRoute,
 ]);
 
 /**

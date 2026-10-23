@@ -1,6 +1,6 @@
 import { itemsList, projectsList, settingsUpdate } from "@citegeist/ops";
 import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FolderOpen, Inbox, Monitor, Moon, Search, Sun } from "lucide-react";
+import { BookOpen, FolderOpen, Inbox, Monitor, Moon, Search, Settings, Sun } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
@@ -183,6 +183,10 @@ export function Shell() {
           </div>
         </nav>
         <div className="flex flex-col gap-1.5 border-t border-line px-3 py-2">
+          <Link to="/settings" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
+            <Settings className="size-4" />
+            {t("nav.settings")}
+          </Link>
           <span className="min-w-0 truncate text-xs text-muted" title={core.label}>
             {core.isMock ? t("shell.mockLibrary") : core.label.split("/").pop()}
           </span>

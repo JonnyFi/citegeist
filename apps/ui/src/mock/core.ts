@@ -5,6 +5,7 @@ import {
   cardsRegenerate,
   cardsUpdate,
   citeFormat,
+  documentsAssets,
   documentsConfirmPages,
   inboxAccept,
   inboxReject,
@@ -21,7 +22,7 @@ import {
 } from "@citegeist/ops";
 import { CardFrontmatter, type ItemFrontmatter, ProjectFrontmatter } from "@citegeist/schema";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
-import { documentsAssets } from "../lib/reader-ops";
+import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
@@ -44,6 +45,8 @@ function summary(fm: ItemFrontmatter) {
     type: fm.type,
     status: fm.status,
     inbox: fm.inbox !== undefined,
+    ...(fm.inbox ? { inboxBy: fm.inbox.by } : {}),
+    ...(fm.inbox?.why ? { inboxWhy: fm.inbox.why } : {}),
   };
 }
 
@@ -166,13 +169,14 @@ export function createMockRegistry(
     return card;
   };
 
-  return new Registry()
+  const registry = new Registry()
     .bind(libraryStatus, async () => ({
       path: "/mock/library",
       items: data.items.size,
       cards: data.cards.length,
       notes: 0,
       problems: [],
+      defaults: { ai_language: "de", style: "apa", locale: "de-DE" },
     }))
     .bind(itemsList, async (_ctx, input) => {
       const all = [...data.items.values()]
@@ -265,6 +269,7 @@ export function createMockRegistry(
       }
       return {
         source: doc.source,
+        kind: doc.pdfUrl ? "pdf" : "web",
         ...(doc.pdfUrl ? { pdfUrl: doc.pdfUrl } : {}),
         html: doc.html,
         blocks: doc.blocks,
@@ -512,6 +517,9 @@ export function createMockRegistry(
       }
       return { hits: hits.sort((a, b) => b.score - a.score).slice(0, input.limit) };
     });
+  // The browser preview has a working backend and worker, so it never asks for the setup.
+  const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
+  return bindSettingsMock(registry, settings, emit, false);
 }
 
 /** A Core backed by fixture data, running entirely in the page. Used by `dev:mock` and by tests. */

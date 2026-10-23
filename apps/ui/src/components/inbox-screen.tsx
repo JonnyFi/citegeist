@@ -1,10 +1,9 @@
-import { inboxAccept, inboxReject, itemsGet, itemsList } from "@citegeist/ops";
-import { useQueries } from "@tanstack/react-query";
+import { inboxAccept, inboxReject, itemsList } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { Bot, Check, Inbox, User, X } from "lucide-react";
 import { useState } from "react";
 import { type Translator, useI18n } from "../i18n";
-import { useCore, useOp, useOpMutation } from "../lib/hooks";
+import { useOp, useOpMutation } from "../lib/hooks";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
@@ -20,21 +19,12 @@ export function actorLabel({ t }: Translator, by: string): string {
 export function InboxScreen() {
   const i18n = useI18n();
   const { t, tn } = i18n;
-  const core = useCore();
   const list = useOp(itemsList, { inbox: true, limit: 200 });
   const accept = useOpMutation(inboxAccept);
   const reject = useOpMutation(inboxReject);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   const items = list.data?.items ?? [];
-  // items.list carries only the inbox flag; who and why come from the item itself
-  const details = useQueries({
-    queries: items.map((item) => ({
-      queryKey: ["op", itemsGet.name, { citekey: item.citekey }],
-      queryFn: () => core.call(itemsGet, { citekey: item.citekey }),
-    })),
-  });
-
   const chosen = items.filter((i) => selected.has(i.citekey)).map((i) => i.citekey);
   const allChosen = items.length > 0 && chosen.length === items.length;
   const busy = accept.isPending || reject.isPending;
@@ -122,8 +112,8 @@ export function InboxScreen() {
             </p>
           ) : null}
           <ul className="flex flex-col divide-y divide-line/70">
-            {items.map((item, index) => {
-              const inbox = details[index]?.data?.frontmatter.inbox;
+            {items.map((item) => {
+              const inbox = item.inboxBy ? { by: item.inboxBy, why: item.inboxWhy } : undefined;
               return (
                 <li key={item.citekey} data-testid="inbox-row" className="flex gap-3 py-4">
                   <input
