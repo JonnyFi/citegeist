@@ -102,8 +102,12 @@ export function I18nProvider({ lang: initial, children }: { lang?: Lang; childre
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+/**
+ * Without a provider (shared widgets rendered on their own, such as the settings and onboarding
+ * screens, which bring their own language handling) the stored language applies, else German.
+ */
 export function useI18n(): I18n {
   const value = useContext(I18nContext);
-  if (!value) throw new Error("useI18n must be used inside <I18nProvider>");
-  return value;
+  if (value) return value;
+  return { ...translator(storedLang() ?? "de"), setLang: () => {}, explicit: false };
 }
