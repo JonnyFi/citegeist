@@ -62,6 +62,8 @@ def fixture_pdf(fid: str) -> Path:
 def models_ready() -> None:
     from citegeist_convert import models
 
+    if os.environ.get("CITEGEIST_SKIP_MODELS") == "1":
+        pytest.skip("CITEGEIST_SKIP_MODELS=1: model-backed tests run locally, not in CI")
     try:
         models.ensure_docling_models()
     except Exception as e:  # noqa: BLE001

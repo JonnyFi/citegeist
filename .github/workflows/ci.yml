@@ -26,3 +26,4 @@ jobs:
         env:
           # Model downloads and full-corpus conversion stay out of CI; run them locally with -m ''.
           PYTEST_ADDOPTS: "-m 'not slow and not network'"
+          CITEGEIST_SKIP_MODELS: "1"
