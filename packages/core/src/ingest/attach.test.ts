@@ -77,6 +77,23 @@ describe("items.attach", () => {
     expect(e.lib.status().problems).toEqual([]);
   });
 
+  it("shows the progress messages of the worker as the progress of the job", async () => {
+    const e = await env();
+    const citekey = await bareItem(e);
+    const seen: Array<{ kind: string; message?: string | undefined }> = [];
+    e.svc.queue.on("job", (job: { kind: string; message?: string | undefined }) => {
+      seen.push({ kind: job.kind, message: job.message });
+    });
+    const out = await e.call<AttachOut>("items.attach", {
+      citekey,
+      path: file("p.pdf", makePdf([["Text"]])),
+    });
+    await e.svc.queue.waitFor(out.job as string);
+    const messages = seen.filter((s) => s.kind === "convert").map((s) => s.message);
+    expect(messages).toContain("stub converting");
+    expect(messages).toContain("stub writing files");
+  });
+
   it("does not add the same file twice, by content or by origin URL", async () => {
     const e = await env();
     const citekey = await bareItem(e);

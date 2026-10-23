@@ -123,9 +123,13 @@ rl.on("line", (line) => {
     if (req.method === "health") {
       reply({ result: { version: "stub-1.0.0", engines: { stub: "1.0.0" }, ready: true } });
     } else if (req.method === "convert") {
-      process.stdout.write(
-        `${JSON.stringify({ jsonrpc: "2.0", method: "progress", params: { id: req.id, progress: 0.5, message: "stub converting" } })}\n`,
-      );
+      // Both shapes of the progress notification: a position, and a step without one.
+      for (const params of [
+        { id: req.id, message: "stub converting", fraction: 0.5 },
+        { id: req.id, message: "stub writing files", fraction: null },
+      ]) {
+        process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", method: "progress", params })}\n`);
+      }
       reply({ result: convert(req.params) });
     } else {
       reply({ error: { code: -32601, message: `unknown method ${req.method}` } });

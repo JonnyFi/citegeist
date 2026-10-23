@@ -8,6 +8,11 @@ export const PageInfo = z.object({
   index: z.number().int().nonnegative(),
   label: z.string().nullable(),
   labelSource: z.enum(["pdf-pagelabels", "header-footer", "crossref-offset", "user", "none"]),
+  /**
+   * How sure the worker is about `label` (0 to 1). The app asks the user to confirm the page
+   * mapping when it is below 0.5.
+   */
+  labelConfidence: z.number().min(0).max(1).optional(),
   width: z.number().positive(),
   height: z.number().positive(),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0),

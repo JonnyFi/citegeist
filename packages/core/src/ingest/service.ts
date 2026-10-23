@@ -731,8 +731,8 @@ export class IngestService {
       this.queue.cancel(child.id);
     };
     ctx.signal.addEventListener("abort", onAbort, { once: true });
-    const sub = (job: { id: string; progress: number }): void => {
-      if (job.id === child.id) ctx.progress(0.3 + 0.7 * job.progress);
+    const sub = (job: { id: string; progress: number; message?: string | undefined }): void => {
+      if (job.id === child.id) ctx.progress(0.3 + 0.7 * job.progress, job.message);
     };
     this.queue.on("job", sub);
     let done: Awaited<ReturnType<JobQueue["waitFor"]>>;
@@ -778,7 +778,12 @@ export class IngestService {
       n++;
       ctx.progress(base, `converting ${source.filename}`);
       try {
-        await this.convertSource(ctx, citekey, source, (p) => ctx.progress(base + span * p));
+        // A step without a position keeps the last one and only changes the message.
+        let at = base;
+        await this.convertSource(ctx, citekey, source, (p, message) => {
+          if (p !== undefined) at = base + span * p;
+          ctx.progress(at, message);
+        });
         converted.push(source.hash);
       } catch (err) {
         // The HTML of an arXiv paper may fail while the PDF works: keep going, fail at the end.
@@ -801,7 +806,7 @@ export class IngestService {
     ctx: JobContext,
     citekey: string,
     source: Source,
-    progress: (p: number) => void,
+    progress: (fraction: number | undefined, message?: string) => void,
   ): Promise<void> {
     const lib = this.lib;
     const finalDir = lib.paths.derivedDir(citekey, source.hash);
@@ -822,7 +827,7 @@ export class IngestService {
           kind: CONVERT_KINDS[source.kind],
           ...(existsSync(previous) ? { previousBlocks: previous } : {}),
         },
-        { signal: ctx.signal, onProgress: (p) => progress(p) },
+        { signal: ctx.signal, onProgress: progress },
       );
       if (!existsSync(join(tmpDir, "manifest.json"))) {
         writeFileAtomic(
