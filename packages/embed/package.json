@@ -1,0 +1,22 @@
+{
+  "name": "@citegeist/embed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "retrieval": "tsx scripts/retrieval.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
