@@ -1,0 +1,616 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "317",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 1,
+   "label": "318",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 2,
+   "label": "319",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 2
+  },
+  {
+   "index": 3,
+   "label": "320",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 4,
+   "label": "321",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 5,
+   "label": "322",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 16
+  },
+  {
+   "index": 6,
+   "label": "323",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 7,
+   "label": "324",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 8,
+   "label": "325",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 9,
+   "label": "326",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 10,
+   "label": "327",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 11,
+   "label": "328",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 19
+  },
+  {
+   "index": 12,
+   "label": "329",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 13,
+   "label": "330",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 14,
+   "label": "331",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 15,
+   "label": "332",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 16,
+   "label": "333",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 17,
+   "label": "334",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 18,
+   "label": "335",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 19,
+   "label": "336",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 20,
+   "label": "337",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 21,
+   "label": "338",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 22,
+   "label": "339",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 23,
+   "label": "340",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 24,
+   "label": "341",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 25,
+   "label": "342",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 1
+  },
+  {
+   "index": 26,
+   "label": "343",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 27,
+   "label": "344",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 14
+  },
+  {
+   "index": 28,
+   "label": "345",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 15
+  },
+  {
+   "index": 29,
+   "label": "346",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 16
+  },
+  {
+   "index": 30,
+   "label": "347",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 31,
+   "label": "348",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 16
+  },
+  {
+   "index": 32,
+   "label": "349",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 33,
+   "label": "350",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    481.89,
+    680.31
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 0
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": null,
+   "note": "no /PageLabels"
+  },
+  "detected": {
+   "labels": [
+    "317",
+    "318",
+    "319",
+    "320",
+    "321",
+    "322",
+    "323",
+    "324",
+    "325",
+    "326",
+    "327",
+    "328",
+    "329",
+    "330",
+    "331",
+    "332",
+    "333",
+    "334",
+    "335",
+    "336",
+    "337",
+    "338",
+    "339",
+    "340",
+    "341",
+    "342",
+    "343",
+    "344",
+    "345",
+    "346",
+    "347",
+    "348",
+    "349",
+    "350"
+   ],
+   "offset": 317,
+   "votes": 32,
+   "candidatesPerPage": {
+    "1": [
+     1,
+     318
+    ],
+    "2": [
+     13,
+     319
+    ],
+    "3": [
+     2,
+     320
+    ],
+    "4": [
+     13,
+     321
+    ],
+    "5": [
+     322
+    ],
+    "6": [
+     13,
+     323
+    ],
+    "7": [
+     324
+    ],
+    "8": [
+     13,
+     325
+    ],
+    "9": [
+     326
+    ],
+    "10": [
+     13,
+     327
+    ],
+    "11": [
+     328
+    ],
+    "12": [
+     13,
+     329
+    ],
+    "13": [
+     330
+    ],
+    "14": [
+     13,
+     331
+    ],
+    "15": [
+     332
+    ],
+    "16": [
+     13,
+     333
+    ],
+    "17": [
+     334
+    ],
+    "18": [
+     13,
+     335
+    ],
+    "19": [
+     336
+    ],
+    "20": [
+     13,
+     337
+    ],
+    "21": [
+     338
+    ],
+    "22": [
+     13,
+     339
+    ],
+    "23": [
+     340
+    ],
+    "24": [
+     13,
+     341
+    ],
+    "25": [
+     342
+    ],
+    "26": [
+     13,
+     343
+    ],
+    "27": [
+     344
+    ],
+    "28": [
+     13,
+     345
+    ],
+    "29": [
+     346
+    ],
+    "30": [
+     13,
+     347
+    ],
+    "31": [
+     348
+    ],
+    "32": [
+     13,
+     349
+    ]
+   }
+  },
+  "crossref": {
+   "labels": [
+    null,
+    "317",
+    "318",
+    "319",
+    "320",
+    "321",
+    "322",
+    "323",
+    "324",
+    "325",
+    "326",
+    "327",
+    "328",
+    "329",
+    "330",
+    "331",
+    "332",
+    "333",
+    "334",
+    "335",
+    "336",
+    "337",
+    "338",
+    "339",
+    "340",
+    "341",
+    "342",
+    "343",
+    "344",
+    "345",
+    "346",
+    "347",
+    "348",
+    "349"
+   ],
+   "note": "range 317-349, 1 injected page(s)"
+  }
+ },
+ "flags": [
+  "crossref disagrees with detected (0/33)"
+ ]
+}

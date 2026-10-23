@@ -1,0 +1,4 @@
+W1023 14:48:56.679000 51767 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 13171.67it/s]
+warm-up (OCR pipeline, 1 page, includes model load): 4.5 s
+birkmeyer-editio-princeps-1899            58 p     34.6 s    0.60 s/p   543 blocks  ConversionStatus.SUCCESS

@@ -233,7 +233,7 @@
       "expected": {
         "firstPrintedPage": 227,
         "labelSource": "detected",
-        "notes": "Scanned 1899 law article with a noisy OCR text layer (Internet Archive derivative). Dense footnotes below a rule on every page, words split into one token per line in the text layer, page number at the top. Printed page 227 is on PDF index 0 (index 10 shows 237). OCR garbles some page numbers (index 57 reads 354, expected 284), so a longest-increasing-run detector has to tolerate errors."
+        "notes": "Scanned 1899 law article set in Fraktur, with an embedded OCR text layer of mixed quality (Google Books / Internet Archive derivative, Google watermark on every page). Apple Vision OCR cannot read the Fraktur (long s becomes f), so the embedded layer is the better text source. Dense footnotes below a rule on every page, words split into one token per line in the text layer, page number at the top. Printed page 227 is on PDF index 0 (index 10 shows 237). OCR garbles some page numbers (index 57 reads 354, expected 284), so a longest-increasing-run detector has to tolerate errors."
       }
     },
     {

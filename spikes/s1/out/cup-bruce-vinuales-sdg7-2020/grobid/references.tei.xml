@@ -1,0 +1,417 @@
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:xlink="http://www.w3.org/1999/xlink" 
+ xmlns:mml="http://www.w3.org/1998/Math/MathML">
+	<teiHeader/>
+	<text>
+		<front/>
+		<body/>
+		<back>
+			<div>
+				<listBibl>
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">The implications of this statement have been explored in multiple decisions</title>
+		<author>
+			<orgName type="collaboration">International Covenant on Civil and Political Rights Committee</orgName>
+		</author>
+		<idno>para. 18</idno>
+		<ptr target="Doc.CCPR/C/GC/36" />
+	</analytic>
+	<monogr>
+		<title level="m">General Comment 36 on Article 6 and the Right to Life</title>
+		<imprint>
+			<date type="published" when="2019-09-03">3 September 2019. 3 December 2019</date>
+			<biblScope unit="volume">62</biblScope>
+		</imprint>
+	</monogr>
+	<note>See, e.g. Human Rights Committee</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Statement on Climate Change and the International Covenant on Economic, Social and Cultural Rights</title>
+		<author>
+			<persName><surname>Cescr</surname></persName>
+		</author>
+		<idno>para. 9</idno>
+		<imprint>
+			<date type="published" when="2018-10-31">31 October 2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Concluding Observations on the Combined Fifth and Sixth Periodic Reports of Spain</title>
+		<author>
+			<persName><surname>Crc</surname></persName>
+		</author>
+		<idno>para. 36</idno>
+		<ptr target="Doc.CRC/C/ESP/CO/5-6" />
+		<imprint>
+			<date type="published" when="2018-03-05">5 March 2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title level="m" type="main">CRC, Concluding Observations on the Combined Fifth and Sixth Periodic Reports of Australia</title>
+		<author>
+			<persName><surname>Crc</surname></persName>
+		</author>
+		<ptr target="Doc.CRC/C/AUS/CO/5-6" />
+		<imprint>
+			<date type="published" when="2019-03-05">4-5, 5 March 2019. 1 November 2019</date>
+			<biblScope unit="page">41</biblScope>
+		</imprint>
+	</monogr>
+	<note>para. 37(e) Concluding Observations on the Combined Fourth and Fifth Periodic Reports of Japan</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Concluding Observations on the Combined Seventh and Eighth Periodic Reports of Nigeria</title>
+		<author>
+			<persName><surname>Cedaw</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2017-07-14">14 July 2017</date>
+			<biblScope unit="page">40</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Concluding Observations on the Combined Seventh and Eighth Periodic Reports of Guyana</title>
+		<author>
+			<persName><surname>Cedaw</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1942">12 July 2019, para. 42</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Joint Statement on &apos;Human Rights and Climate Change</title>
+		<ptr target="paras.11-12,www.ohchr.org/EN/NewsEvents/Pages/DisplayNews.aspx?NewsID=24998" />
+		<imprint>
+			<date type="published" when="2019-09-16">16 September 2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Kyoto Protocol to the UNFCCC, Annex B. 61 2015 Paris Agreement on Climate Change, art</title>
+		<imprint>
+			<date type="published" when="1997">1997</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Preamble</forename><surname>Unfccc</surname></persName>
+		</author>
+		<idno>para. 22</idno>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">The Kyoto Protocol has generated over US$300 billion in climate and sustainable development investments and reduced global greenhouse gas emissions by almost 2 billion tonnes. UNFCCC, Achievements of the Clean Development Mechanism</title>
+		<imprint>
+			<date type="published" when="2001">2001-2018, 2019</date>
+			<biblScope unit="page" from="2" to="3" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">)(a) provides a non-exhaustive list of eight non-binding policy options, including &apos;enhancement of energy efficiency in relevant sectors of the national economy&apos; and &apos;promotion, development and increased use of, new and renewable forms of energy&apos;. 65 Adoption of the Paris Agreement, Draft Decision -/CP</title>
+		<idno>Doc. FCCC/CP/2015/L.P/Rev.1</idno>
+		<imprint>
+			<date type="published" when="2015-12-12">12 December 2015</date>
+			<publisher>Kyoto Protocol</publisher>
+			<biblScope unit="volume">21</biblScope>
+			<biblScope unit="page">14</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Chile Madrid Time for Action, Decision 1/ CP</title>
+	</analytic>
+	<monogr>
+		<title level="m">xx; Intergovernmental Panel on Climate Change, Special Report on the Impacts of Global Warming of 1.5 degrees Celsius</title>
+		<imprint>
+			<publisher>UNEP</publisher>
+			<date type="published" when="2008">2018. December 2019, paras. 6, 8</date>
+			<biblScope unit="volume">25</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Paris Agreement</surname></persName>
+		</author>
+		<imprint>
+			<biblScope unit="volume">2</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m">Draft Dutch Model International Investment Agreement</title>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Trade in Clean Energy Technologies: Sliding from Protection to Protectionism through Obligations for Technology Transfer in Climate Change Law or Vice Versa?</title>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">G</forename><surname>See</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthi</forename><surname>Koskina</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of World Energy Law and Business</title>
+		<imprint>
+			<biblScope unit="volume">13</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title/>
+	</analytic>
+	<monogr>
+		<title level="j">Kyoto Protocol, arts</title>
+		<imprint>
+			<biblScope unit="volume">10</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page">11</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">43, para. 41. Note that the UNGA also indicates that trade should be in accordance with its established rules and obligations. Id., para. 68; see also SDG 17, Partnerships for the Goals</title>
+	</analytic>
+	<monogr>
+		<title level="j">Transforming Our World</title>
+		<imprint/>
+	</monogr>
+	<note>target 10</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">The Road to Paris: Intellectual Property, Human Rights, and Climate Justice</title>
+		<author>
+			<persName><forename type="first">See</forename><surname>Matthew</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rimmer</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Intellectual Property and Clean Energy: The Paris Agreement and Climate Justice</title>
+		<editor>
+			<persName><forename type="first">Matthew</forename><surname>Rimmer</surname></persName>
+		</editor>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page">1</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Energy Subsidies and WTO Dispute Settlement: Why Only Renewable Energy Subsidies Are Challenged</title>
+		<author>
+			<persName><forename type="first">See</forename><surname>Henok</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Birhanu</forename><surname>Asmelash</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">JIEL</title>
+		<imprint>
+			<biblScope unit="volume">18</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Global Energy Governance and International Institutions</title>
+		<author>
+			<persName><forename type="first">Stuart</forename><surname>Bruce</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Encyclopedia of the UN Sustainable Development Goals: Affordable and Clean Energy</title>
+		<editor>
+			<persName><forename type="first">Walter</forename><surname>Leal</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Filho</forename></persName>
+		</editor>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">See</forename><forename type="middle">Id</forename></persName>
+		</author>
+		<imprint>
+			<biblScope unit="page" from="6" to="13" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">The Sustainable Energy Transition through International and EU Law</title>
+		<author>
+			<persName><forename type="first">Stuart</forename><surname>Bruce</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">EU Climate Diplomacy: Politics, Technology and Networks</title>
+		<editor>
+			<persName><forename type="first">Stephen</forename><surname>Minas</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">&amp;</forename><surname>Vassilis</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ntousas</forename></persName>
+		</editor>
+		<imprint>
+			<publisher>EE</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="74" to="76" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">International Institutional Arrangements in Support of Renewable Energy</title>
+		<author>
+			<persName><forename type="first">Achim</forename><surname>Steiner</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Renewable Energy: A Global Review of Technologies, Policies, and Markets</title>
+		<editor>
+			<persName><forename type="first">Dirk</forename><surname>Assmann</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ulrich</forename><surname>Laumanns</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Dieter</forename><surname>Uh</surname></persName>
+		</editor>
+		<imprint>
+			<publisher>Earthscan</publisher>
+			<date type="published" when="2016">2016</date>
+			<biblScope unit="page">152</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title level="m" type="main">EBRD Puts Decarbonisation at Centre of New Energy Sector Strategy (European Bank for Reconstruction and Development</title>
+		<author>
+			<persName><forename type="first">Vanora</forename><surname>Bennett</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2018-12">December 2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Access and Allocation: The Role of Large Shareholders and Investors in Leaving Fossil Fuels Underground</title>
+	</analytic>
+	<monogr>
+		<title level="j">International Environmental Agreements: Politics, Law and Economics</title>
+		<editor>
+			<persName><forename type="first">Joyeeta</forename><surname>Gupta</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Arthur</forename><surname>Rempel</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Hebe</forename><surname>Verrest</surname></persName>
+		</editor>
+		<imprint>
+			<biblScope unit="volume">20</biblScope>
+			<date type="published" when="2019">2020. March 2019</date>
+			<publisher>Mark Carney, A New Horizon (Bank of England</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Financing Renewable Energy: Who Is Financing What and Why It Matters</title>
+		<author>
+			<persName><forename type="first">Mariana</forename><surname>Mazzucato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gregor</forename><surname>Semieniuk</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Technological Forecasting and Social Change</title>
+		<imprint>
+			<biblScope unit="volume">127</biblScope>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>
