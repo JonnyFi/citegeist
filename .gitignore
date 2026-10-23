@@ -1,0 +1,9 @@
+node_modules
+dist
+.turbo
+.venv
+__pycache__
+.pytest_cache
+.DS_Store
+spikes/**/data
+fixtures/**/cache
