@@ -7,7 +7,6 @@
 import { fileURLToPath } from "node:url";
 import { cannedAiBackend, createRuntime, createStubWorker, Library } from "@citegeist/core";
 import { createReplayFetch, createResolver } from "@citegeist/metadata";
-import { bindLinkOperations } from "../links.js";
 import { serveMcpStdio } from "../transports.js";
 
 const root = process.env.CITEGEIST_TEST_LIBRARY;
@@ -28,7 +27,6 @@ const runtime = createRuntime(lib, {
   }),
   ai: { backends: [cannedAiBackend()] },
 });
-bindLinkOperations(runtime.registry, lib);
 const handle = serveMcpStdio(runtime.registry, {
   scope: process.env.CITEGEIST_MCP_SCOPE === "read" ? "read" : "write",
   onerror: (e) => process.stderr.write(`mcp error: ${e.message}\n`),

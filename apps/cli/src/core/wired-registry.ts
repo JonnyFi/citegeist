@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createRuntime, defaultLocalBase, Library, LocalPaths } from "@citegeist/core";
-import { bindLinkOperations } from "@citegeist/mcp/links";
+import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/desktop/core-server";
 import { CONTRACTS, defineContract, Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { z } from "zod";
@@ -36,16 +36,22 @@ interface OpenCore {
   lib: Library;
   runtime: ReturnType<typeof createRuntime>;
   registry: Registry;
+  /** Set when this process serves the library to others (`cg mcp`): it holds core.lock. */
+  server?: CoreServer;
 }
+
+/** How long a call waits for another process that has just taken the lock to publish its port. */
+const LOCK_WAIT_MS = 15_000;
 
 /** What a caller can do with the registry besides calling operations. */
 export interface RegistryControls {
   /**
-   * Opens the library in this process now, unless an app core serves it. `cg mcp` calls it at
-   * start, so the watcher indexes external edits from the first minute on.
+   * Opens the library in this process now, unless another core serves it. `cg mcp` calls it at
+   * start, so the watcher indexes external edits from the first minute on, and the lock is taken
+   * before anyone else opens a second writer.
    */
   warm(): Promise<void>;
-  /** Stops the watcher and the job queue of a library this process opened. */
+  /** Stops the watcher and the job queue of a library this process opened and releases its lock. */
   close(): Promise<void>;
 }
 
@@ -72,15 +78,19 @@ function libraryIdAt(path: string): string | undefined {
  * A Registry that lists every contract and opens the library in this process on first use. The
  * CLI builds its commands before any library is open, so opening has to be lazy.
  *
- * While an app core serves the library (core.lock names a live process, core.token and a health
- * call confirm it), every call is forwarded to it over HTTP on 127.0.0.1, so the app stays the
- * only writer. Without an app, the library opens in this process. If a core owns the lock but
+ * While a core serves the library (core.lock names a live process, core.token and a health call
+ * confirm it), every call is forwarded to it over HTTP on 127.0.0.1, so there is only one writer.
+ * Without one, the library opens in this process. A long-lived process (`cg mcp`) opens it as a
+ * core of its own: it takes core.lock and serves the same HTTP endpoint, so the desktop app that
+ * starts later attaches to it. One-shot commands do not take the lock. If a core owns the lock but
  * cannot be reached, writes are refused and reads run in this process.
  */
 export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOptions = {}): Registry {
   const localBase = env.CITEGEIST_LOCAL_BASE || undefined;
   const where = resolveLibraryPath(env, options.library);
   let opened: Promise<OpenCore> | undefined;
+  /** True after another process turned out to hold the lock without answering: read-only fallback. */
+  let degraded = false;
 
   /** A running app core for this library, if there is one. Checked on every call, because the app can start and quit at any time. */
   const runningCore = async (): Promise<RunningCore | undefined> => {
@@ -92,12 +102,24 @@ export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOption
   const open = (): Promise<OpenCore> => {
     opened ??= (async () => {
       try {
+        if (options.longLived && !degraded) {
+          const server = await startCoreServer({
+            library: where.path,
+            ...(localBase ? { localBase } : {}),
+          });
+          return {
+            lib: server.library,
+            runtime: server.runtime,
+            registry: server.registry,
+            server,
+          };
+        }
         const lib = await Library.open(where.path, {
-          watch: options.longLived ?? false,
+          watch: false,
           ...(localBase ? { localBase } : {}),
         });
-        const runtime = createRuntime(lib, { autoStart: options.longLived ?? false });
-        return { lib, runtime, registry: bindLinkOperations(runtime.registry, lib) };
+        const runtime = createRuntime(lib, { autoStart: false });
+        return { lib, runtime, registry: runtime.registry };
       } catch (err) {
         if (err instanceof CitegeistError && err.detail.code === "LIBRARY_NOT_FOUND") {
           const via =
@@ -122,17 +144,46 @@ export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOption
     return opened;
   };
 
+  /** Waits for the core that holds the lock to publish its port, or gives up. */
+  const waitForCore = async (): Promise<RunningCore | undefined> => {
+    const deadline = Date.now() + LOCK_WAIT_MS;
+    for (;;) {
+      const found = await runningCore();
+      if (found || Date.now() >= deadline) return found;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  };
+
+  /**
+   * This process as a core, or the core that won the race for the lock. A holder that has a port
+   * but does not answer is not waited for: the library opens here without the lock, and write
+   * operations are refused by the check in the handler below.
+   */
+  const openOrForward = async (): Promise<{ core?: OpenCore; app?: RunningCore }> => {
+    try {
+      return { core: await open() };
+    } catch (err) {
+      if (!(err instanceof LockHeldError)) throw err;
+      const app = err.holder.port === 0 ? await waitForCore() : await runningCore();
+      if (app) return { app };
+      degraded = true;
+      return { core: await open() };
+    }
+  };
+
   const registry = new Registry();
   for (const contract of CONTRACTS) {
     registry.bind(contract, async (ctx, input) => {
-      const app = await runningCore();
+      let app = await runningCore();
+      let core: OpenCore | undefined;
+      if (!app) ({ core, app } = await openOrForward());
       if (app) {
         if (contract.access !== "read" && ctx.actor !== "human" && !app.actors) {
           throw actorNotForwardable(contract.name, app);
         }
         return forwardCall(app, contract.name, ctx.actor, input);
       }
-      const core = await open();
+      if (!core) throw new Error("no library open");
       if (contract.access !== "read") {
         const lock = liveForeignLock(core.lib.local.lock);
         if (lock) throw ownedByApp(contract.name, lock, core.lib.local.lock);
@@ -154,12 +205,13 @@ export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOption
 
   controls.set(registry, {
     async warm() {
-      if (!(await runningCore())) await open();
+      if (!(await runningCore())) await openOrForward();
     },
     async close() {
       const core = await opened?.catch(() => undefined);
       opened = undefined;
       if (!core) return;
+      if (core.server) return core.server.close();
       await core.runtime.close();
       await core.lib.close();
     },

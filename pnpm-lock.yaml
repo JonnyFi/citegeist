@@ -32,6 +32,9 @@ importers:
       '@citegeist/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@citegeist/desktop':
+        specifier: workspace:*
+        version: link:../desktop
       '@citegeist/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
