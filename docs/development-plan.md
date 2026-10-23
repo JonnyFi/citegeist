@@ -178,6 +178,16 @@ Abnahme:
 Modell: Sonnet. Größe: M.
 ```
 
+### Design-Umsetzung
+
+Jonnys Design liegt in `docs/design/design-system.md`, `docs/design/boards/*.html` (acht Referenz-Mockups) und als Tailwind-Theme in `apps/ui/src/styles.css`. Bei Widerspruch gilt `styles.css`. Die Umsetzung läuft als eigener Workstream, weil sie fast jede Komponente in `apps/ui` berührt, und startet, sobald W3.2 und W3.3 gemergt sind, damit Chat und Graph gleich im neuen Look entstehen.
+
+| ID | Inhalt | Abnahme | Größe |
+|---|---|---|---|
+| W3.10a Grundlagen | Inter, Newsreader und JetBrains Mono über @fontsource, `rounded-*` aus `apps/ui/src/components` entfernen, Basiskomponenten (Buttons, Eingaben, Herkunftsmarke, Job-Slot, Markierungen) nach `design-system.md` | Komponententests grün, Screenshot-Vergleich der Basiskomponenten gegen die Boards | M |
+| W3.10b Shell | Kopfleiste 48 px, Icon-Leiste 56 oder 240 px, rechte Spalte 360 px mit Switcher (Karten, Chat, Verbindungen) | Playwright-Screenshots in 1280 × 820 gegen `bibliothek.html` und `bibliothek-spalte-offen.html` | M |
+| W3.10c Screens | in der Reihenfolge der Boards: Lesen hell und dunkel, Lesen mit Agent-Chat, Quelle Übersicht, Bibliothek, Inbox, Projekt; Zitatkarte mit allen Zuständen | je Board ein Screenshot-Vergleich, `/design-review` ohne offene Befunde | L |
+
 ## Welle 4: v0.3, Breite
 
 | ID | Inhalt | Größe |
