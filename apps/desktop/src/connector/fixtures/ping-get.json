@@ -1,0 +1,10 @@
+{
+  "note": "Browser Connector probing the desktop app (Chrome), as listed in the protocol notes.",
+  "method": "GET",
+  "path": "/connector/ping",
+  "headers": {
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  }
+}

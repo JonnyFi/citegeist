@@ -1,0 +1,10 @@
+{
+  "method": "POST",
+  "path": "/connector/getSelectedCollection",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {}
+}

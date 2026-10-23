@@ -1,0 +1,40 @@
+{
+  "note": "A book with an institutional editor, special characters in the title and a free-text date, as a catalog translator emits it. Firefox sends text/plain.",
+  "method": "POST",
+  "path": "/connector/saveItems",
+  "headers": {
+    "content-type": "text/plain;charset=UTF-8",
+    "origin": "moz-extension://5b9d3a0c-1b7e-4c3d-9f0a-2d6c1e8a7f10",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {
+    "sessionID": "session-book-0002",
+    "uri": "https://example.org/catalog/1234",
+    "items": [
+      {
+        "id": "bOoK0001",
+        "itemType": "book",
+        "title": "Soziale Systeme & ihre Grenzen: 100% Theorie_Praxis",
+        "creators": [
+          {
+            "firstName": "Niklas",
+            "lastName": "Luhmann",
+            "creatorType": "author"
+          },
+          {
+            "name": "Deutsche Gesellschaft für Soziologie",
+            "fieldMode": 1,
+            "creatorType": "editor"
+          }
+        ],
+        "date": "5. März 1984",
+        "publisher": "Suhrkamp",
+        "place": "Frankfurt am Main",
+        "ISBN": "978-3-518-28266-3",
+        "numPages": "674",
+        "language": "de",
+        "tags": []
+      }
+    ]
+  }
+}

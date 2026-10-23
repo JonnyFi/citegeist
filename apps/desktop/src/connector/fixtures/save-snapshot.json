@@ -1,0 +1,16 @@
+{
+  "note": "A page without translator: the Connector falls back to saveSnapshot.",
+  "method": "POST",
+  "path": "/connector/saveSnapshot",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {
+    "sessionID": "session-snapshot-0003",
+    "url": "https://example.org/blog/a-post",
+    "title": "A post",
+    "cookie": "session=abc"
+  }
+}
