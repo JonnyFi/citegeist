@@ -2,32 +2,54 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Calm reading palette: warm paper, ink, one rust accent. A later design pass refines it. */
+/*
+ * citegeist design tokens, system "I" (see docs/design/design-system.md).
+ * White ground, 1px ink rules, no radii, no shadows. Serif for reading,
+ * sans for UI, mono for citekeys, page numbers and counts.
+ */
 :root {
-  --bg: #f8f6f1;
-  --surface: #fffdf9;
-  --sunken: #f0ede5;
-  --ink: #26231e;
-  --muted: #706a5f;
-  --line: #e4dfd3;
-  --accent: #8a4b2a;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --sunken: #f3f3f1;
+  --ink: #141414;
+  --muted: #5c5c5c;
+  --line: #141414;
+  --line-soft: #e4e4e4;
+  --line-faint: #c4c4c4;
+  --accent: #141414;
   --accent-ink: #ffffff;
-  --accent-soft: #f1e4da;
-  --danger: #a43a2a;
+  --accent-soft: #f3f3f1;
+  --danger: #8a2130;
+  --card-quote: #2f5fa8;
+  --card-finding: #8a2130;
+  --card-definition: #5a6b12;
+  --card-method: #1f6f8b;
+  --card-critique: #141414;
+  --card-comment: #7a5c00;
+  --agent: #2f5fa8;
   color-scheme: light;
 }
 
 .dark {
-  --bg: #1a1917;
-  --surface: #211f1c;
-  --sunken: #161513;
-  --ink: #e9e5db;
-  --muted: #9b958a;
-  --line: #34312b;
-  --accent: #dba579;
-  --accent-ink: #1a1917;
-  --accent-soft: #3a2d23;
-  --danger: #e08a78;
+  --bg: #151517;
+  --surface: #1c1c1f;
+  --sunken: #0f0f11;
+  --ink: #ececea;
+  --muted: #a6a6ad;
+  --line: #5a5a60;
+  --line-soft: #3a3a3e;
+  --line-faint: #4a4a50;
+  --accent: #ececea;
+  --accent-ink: #151517;
+  --accent-soft: #242428;
+  --danger: #ff8a98;
+  --card-quote: #86b4ff;
+  --card-finding: #ff8a98;
+  --card-definition: #c9c25a;
+  --card-method: #6fc3dc;
+  --card-critique: #ececea;
+  --card-comment: #e0b84a;
+  --agent: #86b4ff;
   color-scheme: dark;
 }
 
@@ -38,12 +60,50 @@
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-faint: var(--line-faint);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-  --font-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --color-card-quote: var(--card-quote);
+  --color-card-finding: var(--card-finding);
+  --color-card-definition: var(--card-definition);
+  --color-card-method: var(--card-method);
+  --color-card-critique: var(--card-critique);
+  --color-card-comment: var(--card-comment);
+  --color-agent: var(--agent);
+
+  --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --spacing-rail: 56px;
+  --spacing-rail-open: 240px;
+  --spacing-aside: 360px;
+  --spacing-topbar: 48px;
+  --spacing-subbar: 44px;
+  --spacing-row: 40px;
+  --spacing-hit: 44px;
+  --spacing-measure: 620px;
+
+  --text-label: 11px;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.1em;
+  --text-ui: 13px;
+  --text-ui--line-height: 1.4;
+  --text-read: 19px;
+  --text-read--line-height: 1.55;
+  --text-card: 15px;
+  --text-card--line-height: 1.45;
+  --text-title: 30px;
+  --text-title--line-height: 1.2;
 }
 
 html,
@@ -56,38 +116,69 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Reading text: serif, generous measure and leading. */
+/* Reading text: serif, 620px measure, page numbers hang in the left margin. */
 .prose-read {
   font-family: var(--font-serif);
-  font-size: 16.5px;
-  line-height: 1.7;
-  max-width: 68ch;
+  font-size: 19px;
+  line-height: 1.55;
+  max-width: 620px;
+  position: relative;
+}
+.prose-read p + p {
+  margin-top: 18px;
+}
+.prose-read h1 {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0 0 28px;
+}
+.prose-read h2,
+.prose-read h3 {
+  font-size: 1em;
+  font-weight: 500;
+  font-style: italic;
+  margin: 1.4em 0 16px;
 }
 .prose-read ul {
   list-style: disc;
   padding-left: 1.25em;
 }
-.prose-read p + p,
-.prose-read ul + p,
-.prose-read p + ul {
-  margin-top: 1em;
+.page-mark {
+  position: absolute;
+  left: -64px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
 }
-.prose-read h2,
-.prose-read h3 {
-  font-family: var(--font-serif);
+
+/* Highlights: underline in the card colour, never a fill, so the serif stays clean. */
+.hl {
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--hl-color, var(--card-quote));
+}
+.hl-selection {
+  background: var(--line-soft);
+  box-shadow: 0 0 0 2px var(--line-soft);
+}
+
+/* Uppercase micro labels for panel heads, table heads, card kinds. */
+.label {
+  font-size: 11px;
   font-weight: 600;
-  margin: 1.6em 0 0.5em;
-}
-.prose-read h2 {
-  font-size: 1.25em;
-}
-.prose-read h3 {
-  font-size: 1.05em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 /* macOS window: the top bar is draggable, controls inside it are not. */
@@ -99,8 +190,11 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+.dark :focus-visible {
+  outline-color: var(--ink);
 }
 
 /* Reader: packages/reader injects its own plain CSS; these rules fit it to the app palette. */
@@ -118,9 +212,9 @@ body {
   color: var(--muted);
 }
 .cg-toolbar select {
-  height: 28px;
+  height: 26px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--ink);
   padding: 0 8px;
@@ -130,23 +224,28 @@ body {
 }
 .cg-doc {
   font-family: var(--font-serif);
-  font-size: 17px;
-  line-height: 1.7;
+  font-size: 19px;
+  line-height: 1.55;
 }
 .cg-doc h2 {
-  font-weight: 600;
-  font-size: 1.25em;
-  margin: 1.4em 0 0.5em;
+  font-weight: 500;
+  font-style: italic;
+  font-size: 1em;
+  margin: 1.4em 0 16px;
 }
 .cg-doc p + p {
-  margin-top: 1em;
+  margin-top: 18px;
 }
 .cg-doc section + section {
   margin-top: 1.5em;
   padding-top: 1.5em;
-  border-top: 1px dashed var(--line);
+  border-top: 1px solid var(--line-soft);
 }
-.dark .cg-hl {
+.cg-hl {
   mix-blend-mode: normal;
-  background: var(--cg-hl-color, rgba(255, 214, 0, 0.28));
+  background: transparent;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--cg-hl-color, var(--card-quote));
 }
