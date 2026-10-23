@@ -22,6 +22,7 @@ import {
 } from "@citegeist/ops";
 import { CardFrontmatter, type ItemFrontmatter, ProjectFrontmatter } from "@citegeist/schema";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
+import { bindNotesMock } from "../notes/mock";
 import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
 import { createFixtures, type MockData } from "./fixtures";
 
@@ -519,6 +520,7 @@ export function createMockRegistry(
     });
   // The browser preview has a working backend and worker, so it never asks for the setup.
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
+  bindNotesMock(registry, data, emit);
   return bindSettingsMock(registry, settings, emit, false);
 }
 

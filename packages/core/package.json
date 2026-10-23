@@ -15,6 +15,7 @@
     "@citegeist/ai": "workspace:*",
     "@citegeist/anchoring": "workspace:*",
     "@citegeist/cite": "workspace:*",
+    "@citegeist/editor": "workspace:*",
     "@citegeist/embed": "workspace:*",
     "@citegeist/metadata": "workspace:*",
     "@citegeist/ops": "workspace:*",
