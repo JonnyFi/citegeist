@@ -7,8 +7,8 @@ describe("projects", () => {
   it("lists projects with their question count", async () => {
     renderApp("/projects");
     expect(await screen.findByRole("heading", { level: 2, name: "PhD proposal" })).toBeVisible();
-    expect(screen.getByText("2 research questions")).toBeVisible();
-    expect(screen.getByText("No research questions yet")).toBeVisible();
+    expect(screen.getByText("2 Forschungsfragen")).toBeVisible();
+    expect(screen.getByText("Noch keine Forschungsfragen")).toBeVisible();
   });
 
   it("shows the brief, questions and reading list of a project", async () => {
@@ -21,8 +21,8 @@ describe("projects", () => {
 
   it("says so when a project has no brief", async () => {
     renderApp("/projects/reading-group");
-    expect(await screen.findByText("This project has no brief yet.")).toBeVisible();
-    expect(await screen.findByText("No items in this project yet.")).toBeVisible();
+    expect(await screen.findByText("Dieses Projekt hat noch keinen Brief.")).toBeVisible();
+    expect(await screen.findByText("Noch keine Quellen in diesem Projekt.")).toBeVisible();
   });
 });
 
@@ -30,7 +30,7 @@ describe("search", () => {
   it("finds items and cards for a query from the search bar", async () => {
     const user = userEvent.setup();
     renderApp("/");
-    await user.type(await screen.findByRole("searchbox", { name: "Search" }), "autopoiesis{Enter}");
+    await user.type(await screen.findByRole("searchbox", { name: "Suche" }), "autopoiesis{Enter}");
     // fixture note of luhmann mentions Autopoiesis
     const hits = await screen.findAllByTestId("hit");
     expect(hits.length).toBeGreaterThan(0);
@@ -40,16 +40,16 @@ describe("search", () => {
   it("shows page numbers on card hits", async () => {
     renderApp("/search?q=transformer");
     const hits = await screen.findAllByTestId("hit");
-    expect(hits.some((h) => h.textContent?.includes("p. 2"))).toBe(true);
+    expect(hits.some((h) => h.textContent?.includes("S. 2"))).toBe(true);
   });
 
   it("shows an empty state without hits", async () => {
     renderApp("/search?q=xyzzy");
-    expect(await screen.findByText("Nothing found")).toBeVisible();
+    expect(await screen.findByText("Nichts gefunden")).toBeVisible();
   });
 
   it("prompts for a query when there is none", async () => {
     renderApp("/search");
-    await waitFor(() => expect(screen.getByText("Search your library")).toBeVisible());
+    await waitFor(() => expect(screen.getByText("Durchsuche deine Bibliothek")).toBeVisible());
   });
 });

@@ -6,7 +6,8 @@ import {
   type RouterHistory,
   useNavigate,
 } from "@tanstack/react-router";
-import { ItemView } from "./components/item-view";
+import { InboxScreen } from "./components/inbox-screen";
+import { type ItemTab, ItemView } from "./components/item-view";
 import { type ItemFilters, ItemsScreen } from "./components/items-screen";
 import { ProjectsScreen, ProjectView } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
@@ -22,18 +23,14 @@ function parseFilters(search: Record<string, unknown>): ItemFilters {
 
 const rootRoute = createRootRoute({ component: Shell });
 
-function FilteredItems({ mode }: { mode: "library" | "inbox" }) {
+function Library() {
   const navigate = useNavigate();
-  const search = (mode === "inbox" ? inboxRoute : libraryRoute).useSearch();
+  const search = libraryRoute.useSearch();
   return (
     <ItemsScreen
-      mode={mode}
       filters={search}
       onFiltersChange={(next) =>
-        void navigate({
-          to: mode === "inbox" ? "/inbox" : "/",
-          search: { project: next.project, status: next.status },
-        })
+        void navigate({ to: "/", search: { project: next.project, status: next.status } })
       }
     />
   );
@@ -43,22 +40,44 @@ const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   validateSearch: parseFilters,
-  component: () => <FilteredItems mode="library" />,
+  component: Library,
 });
 
 const inboxRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inbox",
-  validateSearch: parseFilters,
-  component: () => <FilteredItems mode="inbox" />,
+  component: InboxScreen,
 });
 
 const itemRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/items/$citekey",
+  validateSearch: (search: Record<string, unknown>): { tab?: ItemTab; card?: string } => ({
+    ...(search.tab === "read" ? { tab: "read" as const } : {}),
+    ...(typeof search.card === "string" && search.card ? { card: search.card } : {}),
+  }),
   component: function ItemRoute() {
     const { citekey } = itemRoute.useParams();
-    return <ItemView citekey={citekey} />;
+    const { tab, card } = itemRoute.useSearch();
+    const navigate = useNavigate();
+    return (
+      <ItemView
+        citekey={citekey}
+        tab={tab ?? "overview"}
+        cardId={card}
+        onChange={(next) =>
+          void navigate({
+            to: "/items/$citekey",
+            params: { citekey },
+            search: {
+              ...(next.tab === "read" ? { tab: "read" as const } : {}),
+              ...(next.card ? { card: next.card } : {}),
+            },
+            replace: true,
+          })
+        }
+      />
+    );
   },
 });
 

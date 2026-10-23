@@ -26,21 +26,21 @@ describe("item view", () => {
     expect(cards).toHaveLength(3);
     const first = cards[0] as HTMLElement;
     expect(within(first).getByText(/Soziale Systeme bestehen aus Kommunikationen/)).toBeVisible();
-    expect(within(first).getByText("p. 31")).toBeVisible();
-    expect(within(first).getAllByText("AI").length).toBeGreaterThan(0);
+    expect(within(first).getByText("S. 31")).toBeVisible();
+    expect(within(first).getAllByText("KI").length).toBeGreaterThan(0);
     expect(within(cards[1] as HTMLElement).getByText(/Compare with Maturana/)).toBeVisible();
     expect(within(cards[2] as HTMLElement).getByText(/Possible counter-position/)).toBeVisible();
   });
 
   it("shows an empty state for an item without cards or note", async () => {
     renderApp("/items/latour2005reassembling");
-    expect(await screen.findByText("No cards yet")).toBeVisible();
-    expect(screen.getByText("No literature note yet.")).toBeVisible();
+    expect(await screen.findByText("Noch keine Karten")).toBeVisible();
+    expect(screen.getByText("Noch keine Literaturnotiz.")).toBeVisible();
   });
 
   it("explains why an agent put an item in the inbox", async () => {
     renderApp("/items/zuboff2019age");
-    expect(await screen.findByText(/Suggested by agent:claude-code/)).toBeVisible();
+    expect(await screen.findByText(/Vorgeschlagen von claude-code/)).toBeVisible();
   });
 
   it("shows the error for an unknown citekey", async () => {

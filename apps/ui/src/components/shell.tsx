@@ -1,7 +1,8 @@
-import { itemsList, projectsList } from "@citegeist/ops";
+import { itemsList, projectsList, settingsUpdate } from "@citegeist/ops";
 import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { BookOpen, FolderOpen, Inbox, Monitor, Moon, Search, Sun } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
 import { type ThemeChoice, useTheme } from "../lib/theme";
 import { cn } from "../lib/utils";
@@ -13,6 +14,7 @@ const NAV_ITEM =
 const NAV_ACTIVE = "bg-sunken text-ink font-medium";
 
 function SearchBar() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [value, setValue] = useState("");
   const ref = useRef<HTMLInputElement>(null);
@@ -49,8 +51,8 @@ function SearchBar() {
         <Input
           ref={ref}
           type="search"
-          aria-label="Search"
-          placeholder="Search items, cards and notes"
+          aria-label={t("search.label")}
+          placeholder={t("search.placeholder")}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="pl-8"
@@ -60,22 +62,26 @@ function SearchBar() {
   );
 }
 
-const THEMES: Array<{ value: ThemeChoice; label: string; icon: typeof Sun }> = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "system", label: "System", icon: Monitor },
-  { value: "dark", label: "Dark", icon: Moon },
-];
+const THEMES = [
+  { value: "light", label: "theme.light", icon: Sun },
+  { value: "system", label: "theme.system", icon: Monitor },
+  { value: "dark", label: "theme.dark", icon: Moon },
+] as const satisfies ReadonlyArray<{ value: ThemeChoice; label: MessageKey; icon: typeof Sun }>;
 
 function ThemeToggle() {
+  const { t } = useI18n();
   const [choice, setChoice] = useTheme();
   return (
-    <fieldset aria-label="Theme" className="m-0 inline-flex min-w-0 gap-0.5 border-0 p-0">
+    <fieldset
+      aria-label={t("theme.label")}
+      className="m-0 inline-flex min-w-0 gap-0.5 border-0 p-0"
+    >
       {THEMES.map(({ value, label, icon: Icon }) => (
         <Button
           key={value}
           variant="ghost"
           size="icon"
-          aria-label={label}
+          aria-label={t(label)}
           aria-pressed={choice === value}
           onClick={() => setChoice(value)}
           className={cn("size-7", choice === value ? "bg-sunken" : "text-muted")}
@@ -87,7 +93,38 @@ function ThemeToggle() {
   );
 }
 
+/** UI language switch. Also tells the core, so the choice survives a restart; the mock has no settings. */
+function LanguageToggle() {
+  const { t, lang, setLang } = useI18n();
+  const core = useCore();
+  const pick = (next: Lang) => {
+    setLang(next);
+    core.call(settingsUpdate, { patch: { uiLanguage: next } }).catch(() => {});
+  };
+  return (
+    <fieldset aria-label={t("lang.label")} className="m-0 inline-flex min-w-0 gap-0.5 border-0 p-0">
+      {LANGS.map((value) => (
+        <Button
+          key={value}
+          variant="ghost"
+          size="icon"
+          aria-label={t(`lang.${value}`)}
+          aria-pressed={lang === value}
+          onClick={() => pick(value)}
+          className={cn(
+            "size-7 text-xs font-semibold",
+            lang === value ? "bg-sunken" : "text-muted",
+          )}
+        >
+          {value.toUpperCase()}
+        </Button>
+      ))}
+    </fieldset>
+  );
+}
+
 export function Shell() {
+  const { t } = useI18n();
   const core = useCore();
   const router = useRouter();
   const projects = useOp(projectsList, {});
@@ -102,7 +139,10 @@ export function Shell() {
         <div className="drag-region flex h-12 shrink-0 items-end px-4 pb-1.5 pl-20">
           <span className="font-serif text-base font-semibold tracking-tight">citegeist</span>
         </div>
-        <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
+        <nav
+          aria-label={t("nav.main")}
+          className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2"
+        >
           <Link
             to="/"
             className={NAV_ITEM}
@@ -110,11 +150,11 @@ export function Shell() {
             activeOptions={{ exact: true }}
           >
             <BookOpen className="size-4" />
-            Library
+            {t("nav.library")}
           </Link>
           <Link to="/inbox" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
             <Inbox className="size-4" />
-            Inbox
+            {t("nav.inbox")}
             {inboxCount > 0 ? (
               <span className="ml-auto text-xs tabular-nums text-accent">{inboxCount}</span>
             ) : null}
@@ -126,7 +166,7 @@ export function Shell() {
             activeOptions={{ exact: true }}
           >
             <FolderOpen className="size-4" />
-            Projects
+            {t("nav.projects")}
           </Link>
           <div className="ml-4 flex flex-col gap-0.5 border-l border-line pl-2">
             {(projects.data?.projects ?? []).map((p) => (
@@ -142,11 +182,14 @@ export function Shell() {
             ))}
           </div>
         </nav>
-        <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
+        <div className="flex flex-col gap-1.5 border-t border-line px-3 py-2">
           <span className="min-w-0 truncate text-xs text-muted" title={core.label}>
-            {core.isMock ? "Mock library" : core.label.split("/").pop()}
+            {core.isMock ? t("shell.mockLibrary") : core.label.split("/").pop()}
           </span>
-          <ThemeToggle />
+          <div className="flex items-center justify-between gap-1.5">
+            <LanguageToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">

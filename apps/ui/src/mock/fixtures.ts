@@ -1,15 +1,29 @@
 import {
+  type Block,
   type CardBody,
   CardFrontmatter,
   ItemFrontmatter,
+  type Pages,
   ProjectFrontmatter,
 } from "@citegeist/schema";
+import { LUHMANN_PAGES, mockBlocks, mockHtml, mockPages, mockPdf, toDataUrl } from "./doc";
 
 /** In-memory library the mock core serves. Shaped like what the real core returns. */
 export interface MockData {
   items: Map<string, { frontmatter: ItemFrontmatter; note: string }>;
   cards: Array<{ frontmatter: CardFrontmatter; body: CardBody }>;
   projects: Map<string, { frontmatter: ProjectFrontmatter; brief: string }>;
+  /** Converted documents by citekey: what the real core keeps under derived/<hash>/. */
+  docs: Map<string, MockDoc>;
+}
+
+export interface MockDoc {
+  source: string;
+  /** Absent in tests that cannot run pdf.js. */
+  pdfUrl?: string;
+  html: string;
+  blocks: Block[];
+  pages: Pages;
 }
 
 const STAMP = { at: "2026-10-01T09:00:00.000Z", by: "human" } as const;
@@ -413,5 +427,17 @@ export function createFixtures(): MockData {
       brief: p.brief,
     });
   }
-  return { items, cards, projects };
+
+  const docs: MockData["docs"] = new Map();
+  const luhmann = items.get("luhmann1984soziale")?.frontmatter.sources[0];
+  if (luhmann) {
+    docs.set("luhmann1984soziale", {
+      source: luhmann.hash,
+      pdfUrl: toDataUrl(mockPdf(LUHMANN_PAGES), "application/pdf"),
+      html: mockHtml(LUHMANN_PAGES),
+      blocks: mockBlocks(LUHMANN_PAGES),
+      pages: mockPages(LUHMANN_PAGES, luhmann.hash),
+    });
+  }
+  return { items, cards, projects, docs };
 }
