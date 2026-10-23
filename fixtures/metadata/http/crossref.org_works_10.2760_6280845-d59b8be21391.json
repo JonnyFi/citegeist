@@ -1,0 +1,7 @@
+{
+  "url": "https://api.crossref.org/works/10.2760/6280845",
+  "accept": "application/json",
+  "status": 404,
+  "contentType": "text/plain",
+  "body": "Resource not found."
+}

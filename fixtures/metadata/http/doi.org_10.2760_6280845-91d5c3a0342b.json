@@ -1,0 +1,7 @@
+{
+  "url": "https://doi.org/10.2760/6280845",
+  "accept": "application/vnd.citationstyles.csl+json",
+  "status": 200,
+  "contentType": "application/vnd.citationstyles.csl+json;charset=UTF-8",
+  "body": "{\"type\":\"book\",\"language\":\"eng\",\"author\":[{\"literal\":\"European Commission. Joint Research Centre.\"}],\"issued\":{\"date-parts\":[[2025]]},\"DOI\":\"10.2760\\/6280845\",\"publisher\":\"Publications Office\",\"publisher-place\":\"LU\",\"title\":\"Highlights report 2024: from science to impact.\",\"URL\":\"https:\\/\\/data.europa.eu\\/doi\\/10.2760\\/6280845\"}"
+}
