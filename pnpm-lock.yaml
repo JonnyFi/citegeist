@@ -124,9 +124,15 @@ importers:
       '@base-ui/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@citegeist/anchoring':
+        specifier: workspace:*
+        version: link:../../packages/anchoring
       '@citegeist/ops':
         specifier: workspace:*
         version: link:../../packages/ops
+      '@citegeist/reader':
+        specifier: workspace:*
+        version: link:../../packages/reader
       '@citegeist/schema':
         specifier: workspace:*
         version: link:../../packages/schema

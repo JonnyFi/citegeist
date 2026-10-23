@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
+import { useI18n } from "../../i18n";
 import { describeError } from "../../lib/utils";
 
 export function EmptyState({
@@ -24,7 +25,8 @@ export function EmptyState({
 }
 
 export function ErrorState({ error }: { error: unknown }) {
-  const { message, fix } = describeError(error);
+  const { t } = useI18n();
+  const { message, fix } = describeError(error, t("common.error"));
   return (
     <div
       role="alert"
@@ -37,10 +39,11 @@ export function ErrorState({ error }: { error: unknown }) {
   );
 }
 
-export function Loading({ label = "Loading" }: { label?: string }) {
+export function Loading({ label }: { label?: string }) {
+  const { t } = useI18n();
   return (
     <div role="status" className="px-6 py-20 text-center text-muted">
-      {label}
+      {label ?? t("common.loading")}
     </div>
   );
 }

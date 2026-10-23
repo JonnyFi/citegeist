@@ -1,30 +1,29 @@
 import type { Creator } from "@citegeist/schema";
+import type { Translator } from "../i18n";
 
 export function creatorName(c: Creator): string {
   if ("literal" in c) return c.literal;
   return c.given ? `${c.family}, ${c.given}` : c.family;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  book: "Book",
-  chapter: "Chapter",
-  article: "Article",
-  "article-journal": "Journal article",
-  "article-magazine": "Magazine article",
-  "article-newspaper": "Newspaper article",
-  "paper-conference": "Conference paper",
-  report: "Report",
-  thesis: "Thesis",
-  webpage: "Web page",
-  dataset: "Dataset",
-};
-
-export function typeLabel(type: string): string {
-  return TYPE_LABELS[type] ?? type.replace(/-/g, " ");
+/** Item type in the UI language; unknown CSL types fall back to their id without hyphens. */
+export function typeLabel({ t, has }: Translator, type: string): string {
+  const key = `type.${type}`;
+  return has(key) ? t(key) : type.replace(/-/g, " ");
 }
 
-export const STATUS_LABELS = { unread: "Unread", reading: "Reading", read: "Read" } as const;
+export function statusLabel({ t, has }: Translator, status: string): string {
+  const key = `status.${status}`;
+  return has(key) ? t(key) : status;
+}
 
-export function statusLabel(status: string): string {
-  return STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status;
+/** "S. 31" or "S. 31-32" for a card; the label is a CSL locator term such as "page". */
+export function locatorText(
+  { t, has }: Translator,
+  locator: { label: string; start: string; end?: string | undefined } | undefined,
+): string | undefined {
+  if (!locator) return undefined;
+  const key = `locator.${locator.label}`;
+  const term = has(key) ? t(key) : locator.label;
+  return `${term} ${locator.start}${locator.end ? `-${locator.end}` : ""}`;
 }

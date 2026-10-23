@@ -15,3 +15,7 @@ Element.prototype.scrollIntoView ??= () => {};
 Element.prototype.hasPointerCapture ??= () => false;
 Element.prototype.releasePointerCapture ??= () => {};
 window.scrollTo = () => {};
+// jsdom has no layout, so ranges have no rectangles. The reader asks for them to place highlights.
+const noRects = { length: 0, item: () => null, [Symbol.iterator]: () => [][Symbol.iterator]() };
+Range.prototype.getClientRects ??= () => noRects as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect ??= () => new DOMRect(0, 0, 0, 0);

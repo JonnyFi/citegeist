@@ -6,7 +6,10 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /** Message and optional fix hint from whatever a failed call threw. */
-export function describeError(err: unknown): { message: string; fix?: string } {
+export function describeError(
+  err: unknown,
+  fallback = "Something went wrong.",
+): { message: string; fix?: string } {
   if (err && typeof err === "object") {
     const data = (err as { data?: unknown }).data;
     if (data && typeof data === "object" && "message" in data) {
@@ -17,5 +20,5 @@ export function describeError(err: unknown): { message: string; fix?: string } {
       return { message: (err as { message: string }).message };
     }
   }
-  return { message: "Something went wrong." };
+  return { message: fallback };
 }

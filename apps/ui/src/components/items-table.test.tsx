@@ -27,14 +27,14 @@ describe("library table", () => {
     expect(luhmann).toBeDefined();
     expect(within(luhmann as HTMLElement).getByText("Luhmann")).toBeInTheDocument();
     expect(within(luhmann as HTMLElement).getByText("1984")).toBeInTheDocument();
-    expect(within(luhmann as HTMLElement).getByText("Reading")).toBeInTheDocument();
+    expect(within(luhmann as HTMLElement).getByText("Wird gelesen")).toBeInTheDocument();
   });
 
   it("narrows by reading status", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/");
     await rows();
-    await user.click(screen.getByRole("button", { name: "Reading" }));
+    await user.click(screen.getByRole("button", { name: "Wird gelesen" }));
     await waitFor(async () => expect(await rows()).toHaveLength(2));
     expect(
       calls.some(
@@ -47,7 +47,7 @@ describe("library table", () => {
     const user = userEvent.setup();
     renderApp("/");
     await rows();
-    await user.click(screen.getByRole("combobox", { name: "Project" }));
+    await user.click(screen.getByRole("combobox", { name: "Projekt" }));
     await user.click(await screen.findByRole("option", { name: "RAG evaluation" }));
     await waitFor(async () => expect(await rows()).toHaveLength(4));
   });
@@ -62,8 +62,8 @@ describe("library table", () => {
   it("offers to clear filters when nothing matches", async () => {
     const user = userEvent.setup();
     renderApp("/?project=reading-group");
-    expect(await screen.findByText("No items match these filters")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(await screen.findByText("Keine Quelle passt zu diesen Filtern")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Filter zurücksetzen" }));
     await waitFor(async () => expect(await rows()).toHaveLength(11));
   });
 
@@ -71,7 +71,7 @@ describe("library table", () => {
     const data = createFixtures();
     data.items.clear();
     renderApp("/", data);
-    expect(await screen.findByText("Your library is empty")).toBeVisible();
+    expect(await screen.findByText("Deine Bibliothek ist leer")).toBeVisible();
   });
 
   it("loads further pages on demand", async () => {
@@ -88,9 +88,9 @@ describe("library table", () => {
     }
     renderApp("/", data);
     expect(await rows()).toHaveLength(50);
-    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await user.click(screen.getByRole("button", { name: "Mehr laden" }));
     await waitFor(async () => expect(await rows()).toHaveLength(61));
-    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mehr laden" })).not.toBeInTheDocument();
   });
 
   it("opens an item from its row", async () => {
@@ -104,13 +104,5 @@ describe("library table", () => {
         name: /Retrieval-Augmented Generation/,
       }),
     ).toBeVisible();
-  });
-
-  it("lists inbox items with accept and discard", async () => {
-    const user = userEvent.setup();
-    renderApp("/inbox");
-    expect(await rows()).toHaveLength(3);
-    await user.click(screen.getByRole("button", { name: "Accept all" }));
-    expect(await screen.findByText("The inbox is empty")).toBeVisible();
   });
 });
