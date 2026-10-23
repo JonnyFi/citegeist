@@ -12,7 +12,7 @@ import { Command, CommanderError } from "commander";
 import { EXIT, EXIT_HELP, exitCodeFor } from "./exit.js";
 import { buildInput, type CommandSpec, commandSpec } from "./flags.js";
 import { formatHuman } from "./output.js";
-import { createRegistry, libraryFlagFromArgv } from "./registry.js";
+import { createRegistry, libraryFlagFromArgv, registryControls } from "./registry.js";
 
 export interface CliIO {
   stdout(text: string): void;
@@ -197,6 +197,10 @@ export function buildProgram(registry: Registry, io: CliIO, onExit: (code: numbe
         return;
       }
       const onerror = (e: Error) => io.stderr(`mcp error: ${e.message}\n`);
+      // Open the library now if no app serves it, so the watcher indexes edits from the start.
+      await registryControls(registry)
+        .warm()
+        .catch((e: unknown) => onerror(e instanceof Error ? e : new Error(String(e))));
       if (!opts.http) {
         const handle = serveMcpStdio(registry, { scope: opts.scope, onerror });
         await new Promise<void>((resolve) => {
@@ -269,5 +273,8 @@ export async function runCli(argv: string[], options: RunOptions = {}): Promise<
       report(toAgentError(err), wantsJson);
     }
   }
+  await registryControls(registry)
+    .close()
+    .catch(() => {});
   return code;
 }
