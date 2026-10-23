@@ -51,25 +51,36 @@ function ContextChips({
   ];
   if (chips.length === 0) return null;
   return (
-    <ul aria-label={t("chat.contextLabel")} className="flex flex-wrap gap-1.5">
-      {chips.map((c) => (
-        <li
-          key={c.id}
-          data-testid={`chat-chip-${c.id}`}
-          className="flex max-w-full items-center gap-1 border border-line bg-sunken pl-1.5 text-xs"
-        >
-          <span className="min-w-0 truncate">{c.label}</span>
-          <button
-            type="button"
-            aria-label={t("chat.context.remove", { what: c.label })}
-            onClick={() => onRemove(c.id)}
-            className="p-1 text-muted hover:text-ink"
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-line-soft px-4 py-2.5">
+      <span className="mr-1 text-[11px] text-muted">{t("chat.contextTitle")}</span>
+      <ul aria-label={t("chat.contextLabel")} className="contents">
+        {chips.map((c) => (
+          <li
+            key={c.id}
+            data-testid={`chat-chip-${c.id}`}
+            className="flex max-w-full items-center gap-1.5 border border-line pl-2 text-xs"
           >
-            <X aria-hidden="true" className="size-3" />
-          </button>
-        </li>
-      ))}
-    </ul>
+            <span
+              aria-hidden="true"
+              className={
+                c.id === "selection"
+                  ? "size-1.5 border border-line bg-line-soft"
+                  : "size-1.5 bg-ink"
+              }
+            />
+            <span className="min-w-0 truncate">{c.label}</span>
+            <button
+              type="button"
+              aria-label={t("chat.context.remove", { what: c.label })}
+              onClick={() => onRemove(c.id)}
+              className="p-1 text-muted hover:text-ink"
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -202,7 +213,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-b border-line px-3 py-2">
+      <div className="flex flex-col gap-2 border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-1.5">
           {sessionId ? (
             <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -214,14 +225,13 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
               value={agentId ?? ""}
               onChange={setAgent}
               options={backendOptions}
-              className="min-w-0 flex-1 rounded-none"
+              className="min-w-0 flex-1"
             />
           )}
           {sessionId && view.data ? (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-none"
               aria-label={t("chat.save")}
               title={t("chat.save")}
               disabled={save.isPending || running}
@@ -235,7 +245,6 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-none"
             aria-label={t("chat.new")}
             title={t("chat.new")}
             disabled={sessionId === null}
@@ -253,7 +262,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
               setSavedPath(null);
             }}
             options={historyOptions}
-            className="w-full min-w-0 rounded-none"
+            className="w-full min-w-0"
           />
         ) : null}
         {!sessionId && current && !current.available && current.detail ? (
@@ -268,7 +277,12 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <ContextChips
+        context={context}
+        onRemove={(chip) => setRemoved((r) => new Set([...r, chip]))}
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {sessionId === null ? (
           <EmptyState title={t("chat.emptyTitle")} description={t("chat.emptyDescription")} />
         ) : view.isPending ? (
@@ -287,11 +301,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-2 border-t border-line px-3 py-2">
-        <ContextChips
-          context={context}
-          onRemove={(chip) => setRemoved((r) => new Set([...r, chip]))}
-        />
+      <form onSubmit={submit} className="flex flex-col gap-2 border-t border-line px-4 py-3">
         {failure ? (
           <p role="alert" className="text-xs text-danger">
             {(() => {
@@ -314,11 +324,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
         />
         <div className="flex justify-end gap-2">
           {running && sessionId ? (
-            <Button
-              variant="outline"
-              className="rounded-none"
-              onClick={() => cancel.mutate({ session: sessionId })}
-            >
+            <Button variant="outline" onClick={() => cancel.mutate({ session: sessionId })}>
               <Square aria-hidden="true" className="size-3.5" />
               {t("chat.stop")}
             </Button>
@@ -326,7 +332,6 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
           <Button
             type="submit"
             variant="primary"
-            className="rounded-none"
             disabled={draft.trim() === "" || running || send.isPending || start.isPending}
           >
             <SendHorizontal aria-hidden="true" className="size-3.5" />

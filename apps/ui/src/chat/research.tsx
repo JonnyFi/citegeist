@@ -26,7 +26,10 @@ function JobRow({ job, onOpenSession }: { job: Job; onOpenSession: (id: string) 
   const percent = Math.round(job.progress * 100);
   const title = (input.prompt ?? "").split("\n")[0] ?? "";
   return (
-    <li data-testid="research-job" className="flex flex-col gap-1.5 border border-line px-2.5 py-2">
+    <li
+      data-testid="research-job"
+      className="flex flex-col gap-1.5 border border-line-soft px-2.5 py-2"
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 break-words text-sm font-medium">{title}</p>
         <span className="shrink-0 border border-line px-1.5 text-xs text-muted">
@@ -42,7 +45,7 @@ function JobRow({ job, onOpenSession }: { job: Job; onOpenSession: (id: string) 
           aria-valuenow={percent}
           className="h-1.5 w-full bg-sunken"
         >
-          <div className="h-full bg-accent" style={{ width: `${percent}%` }} />
+          <div className="h-full bg-agent" style={{ width: `${percent}%` }} />
         </div>
       ) : null}
       {job.status === "succeeded" ? (
@@ -131,12 +134,7 @@ export function ResearchJobs({ onOpenSession }: { onOpenSession: (id: string) =>
               className="h-8 w-20 border border-line bg-surface px-2 text-sm text-ink"
             />
           </label>
-          <Button
-            type="submit"
-            variant="primary"
-            className="rounded-none"
-            disabled={topic.trim() === "" || start.isPending}
-          >
+          <Button type="submit" variant="primary" disabled={topic.trim() === "" || start.isPending}>
             <Search aria-hidden="true" className="size-3.5" />
             {start.isPending ? t("research.starting") : t("research.start")}
           </Button>

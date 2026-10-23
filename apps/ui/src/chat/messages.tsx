@@ -1,10 +1,14 @@
 import type { chatGet } from "@citegeist/ops";
-import { AlertTriangle, Check, Loader2, Undo2, Wrench, X } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Star, Undo2, Wrench, X } from "lucide-react";
 import type { z } from "zod";
 import { Button } from "../components/ui/button";
 import { useI18n } from "../i18n";
 import { cn } from "../lib/utils";
 import { AssistantText } from "./citations";
+
+function clock(at: string, lang: string): string {
+  return new Date(at).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+}
 
 export type ChatView = z.output<typeof chatGet.output>;
 type Entry = ChatView["entries"][number];
@@ -80,7 +84,7 @@ function TurnFooter({
       {turn.edits.length > 0 ? (
         <div
           data-testid="chat-edits"
-          className="flex flex-col gap-1 border border-line px-2 py-1.5"
+          className="flex flex-col gap-1 border border-line-soft px-2 py-1.5"
         >
           <p className="text-xs text-muted">{tn("chat.edits", turn.edits.length)}</p>
           <ul className="flex flex-col gap-0.5 text-xs">
@@ -103,7 +107,6 @@ function TurnFooter({
               <Button
                 size="sm"
                 variant="outline"
-                className="rounded-none"
                 aria-label={`${t("chat.undoTurn")} (${turn.turn})`}
                 disabled={!finished || undoing}
                 onClick={() => onUndo(turn.turn)}
@@ -134,7 +137,7 @@ export function Messages({
   onUndo: (turn: number) => void;
   undoing: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   return (
     <ol aria-label={t("chat.messages")} className="flex flex-col gap-4">
       {view.turns.map((turn) => (
@@ -145,14 +148,20 @@ export function Messages({
               switch (e.type) {
                 case "user":
                   return (
-                    <div key={e.id} className="bg-sunken px-2.5 py-1.5">
-                      <p className="mb-0.5 text-xs font-medium text-muted">{t("chat.you")}</p>
-                      <p className="whitespace-pre-wrap break-words">{e.text}</p>
+                    <div key={e.id} className="flex flex-col items-end gap-1">
+                      <p className="text-[11px] text-muted">{`${t("chat.you")} · ${clock(e.at, lang)}`}</p>
+                      <p className="max-w-[280px] whitespace-pre-wrap break-words bg-sunken px-3 py-2.5">
+                        {e.text}
+                      </p>
                     </div>
                   );
                 case "assistant":
                   return (
-                    <div key={e.id} data-testid="chat-answer">
+                    <div key={e.id} data-testid="chat-answer" className="flex flex-col gap-1.5">
+                      <p className="flex items-center gap-1.5 font-mono text-[11px] text-muted">
+                        <Star aria-hidden="true" className="size-2.5 fill-current" />
+                        {`${view.session.backend} · ${clock(e.at, lang)}`}
+                      </p>
                       <AssistantText text={e.text} />
                     </div>
                   );

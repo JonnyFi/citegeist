@@ -21,8 +21,8 @@ import {
   searchQuery,
 } from "@citegeist/ops";
 import { CardFrontmatter, type ItemFrontmatter, ProjectFrontmatter } from "@citegeist/schema";
-import { bindConnectionsMock } from "../connections/mock";
 import { bindChatMock } from "../chat/mock";
+import { bindConnectionsMock } from "../connections/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { bindNotesMock } from "../notes/mock";
 import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";

@@ -21,7 +21,7 @@ export function ChatPanel({ className }: { className?: string }) {
       data-testid="chat-panel"
       className={cn("flex h-full min-h-0 w-full min-w-0 flex-col bg-surface", className)}
     >
-      <div role="tablist" aria-label={t("chat.tabs")} className="flex border-b border-line">
+      <div role="tablist" aria-label={t("chat.tabs")} className="flex h-11 border-b border-line">
         {(["chat", "research"] as const).map((id) => (
           <button
             key={id}
@@ -32,10 +32,9 @@ export function ChatPanel({ className }: { className?: string }) {
             aria-controls={`chat-tabpanel-${id}`}
             onClick={() => setTab(id)}
             className={cn(
-              "flex-1 border-b-2 px-3 py-2 text-sm",
-              tab === id
-                ? "border-accent font-medium text-ink"
-                : "border-transparent text-muted hover:text-ink",
+              "flex flex-1 items-center justify-center text-[11px] font-semibold uppercase tracking-[0.1em]",
+              id === "research" && "border-l border-line",
+              tab === id ? "bg-ink text-bg" : "text-muted hover:text-ink",
             )}
           >
             {t(`chat.tab.${id}`)}

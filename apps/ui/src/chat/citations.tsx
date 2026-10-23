@@ -33,10 +33,21 @@ export function splitCitations(text: string): TextPart[] {
 /** What the library knows, to tell a real citation from an invented one. */
 interface Known {
   items: ReadonlySet<string>;
-  cards: ReadonlyMap<string, string>;
+  cards: ReadonlyMap<string, { item: string; kind: string }>;
 }
 
-const CHIP = "px-0.5 align-baseline";
+/** Card kinds keep their colors from the design system; the word stays in the label. */
+const KIND_COLOR: Record<string, string> = {
+  quote: "bg-card-quote",
+  finding: "bg-card-finding",
+  definition: "bg-card-definition",
+  method: "bg-card-method",
+  critique: "bg-card-critique",
+  comment: "bg-card-comment",
+};
+
+const CHIP =
+  "inline-flex items-center gap-1 border border-line px-1.5 align-baseline font-mono text-[11px] leading-[1.4] whitespace-nowrap no-underline";
 
 function Citation({
   part,
@@ -52,16 +63,21 @@ function Citation({
   if (!known) return <>{shown}</>;
 
   if (target.startsWith("c_")) {
-    const citekey = known.cards.get(target);
-    if (!citekey) return <Unknown label={shown} />;
+    const card = known.cards.get(target);
+    if (!card) return <Unknown label={shown} />;
+    const citekey = card.item;
     return (
       <Link
         to="/items/$citekey"
         params={{ citekey }}
         search={{ tab: "read", card: target }}
         aria-label={t("chat.citation.open", { label: shown })}
-        className={`${CHIP} border-b border-accent text-accent hover:bg-accent-soft`}
+        className={`${CHIP} hover:bg-sunken`}
       >
+        <span
+          aria-hidden="true"
+          className={`size-1.5 ${KIND_COLOR[card.kind] ?? "bg-card-quote"}`}
+        />
         {shown}
       </Link>
     );
@@ -72,7 +88,7 @@ function Citation({
         to="/notes/$id"
         params={{ id: target }}
         aria-label={t("chat.citation.open", { label: shown })}
-        className={`${CHIP} border-b border-accent text-accent hover:bg-accent-soft`}
+        className={`${CHIP} hover:bg-sunken`}
       >
         {shown}
       </Link>
@@ -85,7 +101,7 @@ function Citation({
       params={{ citekey: target }}
       search={anchor ? { tab: "read" } : {}}
       aria-label={t("chat.citation.open", { label: shown })}
-      className={`${CHIP} border-b border-accent text-accent hover:bg-accent-soft`}
+      className={`${CHIP} hover:bg-sunken`}
     >
       {shown}
     </Link>
@@ -98,7 +114,7 @@ function Unknown({ label }: { label: string }) {
   return (
     <span
       title={t("chat.citation.unknown", { label })}
-      className={`${CHIP} border-b border-dashed border-danger text-danger`}
+      className={`${CHIP} border-dashed border-danger text-danger`}
     >
       {label}
       <span className="sr-only"> ({t("chat.citation.unknown", { label })})</span>
@@ -128,7 +144,12 @@ export function AssistantText({ text }: { text: string }) {
   const cards = useOp(cardsList, { limit: 500 }, { enabled: hasCites });
   const known: Known = {
     items: new Set((items.data?.items ?? []).map((i) => i.citekey)),
-    cards: new Map((cards.data?.cards ?? []).map((c) => [c.frontmatter.id, c.frontmatter.item])),
+    cards: new Map(
+      (cards.data?.cards ?? []).map((c) => [
+        c.frontmatter.id,
+        { item: c.frontmatter.item, kind: c.frontmatter.kind },
+      ]),
+    ),
   };
   const ready = !hasCites || (items.isSuccess && cards.isSuccess);
 
