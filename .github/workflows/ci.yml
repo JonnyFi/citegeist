@@ -23,3 +23,6 @@ jobs:
         working-directory: workers/convert
       - run: pnpm --filter @citegeist/reader exec playwright install chromium
       - run: pnpm verify
+        env:
+          # Model downloads and full-corpus conversion stay out of CI; run them locally with -m ''.
+          PYTEST_ADDOPTS: "-m 'not slow and not network'"
