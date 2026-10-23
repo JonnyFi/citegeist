@@ -211,7 +211,7 @@ export function toRis(items: readonly ItemFrontmatter[]): string {
     }
     lines.push(["VL", item.volume], ["IS", item.issue]);
     if (item.page) {
-      const m = /^(.+?)\s*[-–—]+\s*(.+)$/.exec(item.page);
+      const m = /^(.+?)\s*[-–]+\s*(.+)$/.exec(item.page);
       lines.push(["SP", m ? m[1] : item.page], ["EP", m ? m[2] : undefined]);
     }
     lines.push(["PB", item.publisher], ["CY", item["publisher-place"]]);

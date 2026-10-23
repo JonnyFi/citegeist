@@ -199,7 +199,7 @@ function bibDate(fields: Fields, dateKey: string, yearKey: string, monthKey: str
 }
 
 function normalizePages(pages: string): string {
-  return pages.replace(/\s*[–—]\s*|\s*-{1,3}\s*/g, "-");
+  return pages.replace(/\s*[–]\s*|\s*-{1,3}\s*/g, "-");
 }
 
 function toCreator(c: BibCreator): Creator | undefined {
@@ -337,7 +337,7 @@ function bibNames(list: readonly Creator[]): string {
 }
 
 function bibPages(page: string): string {
-  return page.replace(/(?<=\w)\s*[-–—]+\s*(?=\w)/g, "--");
+  return page.replace(/(?<=\w)\s*[-–]+\s*(?=\w)/g, "--");
 }
 
 function plainCreators(value: unknown): Creator[] | undefined {

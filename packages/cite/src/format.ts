@@ -42,7 +42,7 @@ export function pandocCluster(refs: readonly CiteRef[], locale: string | undefin
     if (r.locator) {
       const label = r.label ?? "page";
       const term = terms.short.get(label) ?? terms.long.get(label);
-      const plural = /[-–—,&]/.test(r.locator);
+      const plural = /[-–,&]/.test(r.locator);
       loc = `, ${term ? `${plural ? term.multiple : term.single} ` : ""}${r.locator}`;
     }
     const suffix = r.suffix ? ` ${r.suffix.trim()}` : "";

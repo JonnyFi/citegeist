@@ -104,7 +104,7 @@ function locatorWithTerm(loc: Loc, terms: LocaleTerms): string {
 }
 
 function dashed(text: string, dash: string): string {
-  return text.replace(/(?<=\w)\s*[-–—]+\s*(?=\w)/g, dash);
+  return text.replace(/(?<=\w)\s*[-–]+\s*(?=\w)/g, dash);
 }
 
 function prefixOf(mode: CardExportMode, locale: string | undefined): string | undefined {
@@ -127,7 +127,7 @@ function pandocCitation(entry: CardExportEntry, prefix: string | undefined, o: R
   return `[${main}${via}]`;
 }
 
-const NUMERIC_LOCATOR = /^[0-9ivxlcdmIVXLCDM]+([-–—][0-9ivxlcdmIVXLCDM]+)?$/;
+const NUMERIC_LOCATOR = /^[0-9ivxlcdmIVXLCDM]+([-–][0-9ivxlcdmIVXLCDM]+)?$/;
 
 function latexCitation(entry: CardExportEntry, prefix: string | undefined, o: Resolved): string {
   const loc = locatorOf(entry);
