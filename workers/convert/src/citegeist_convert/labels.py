@@ -86,7 +86,7 @@ def vote_offset(cands: dict[int, set[int]], n: int) -> tuple[int | None, int]:
 def crossref_labels(range_hint: str | None, n: int) -> tuple[list[str | None] | None, str]:
     if not range_hint:
         return None, "no page range hint"
-    m = re.fullmatch(r"(\d+)\s*[-–—]\s*(\d+)", range_hint.strip())
+    m = re.fullmatch(r"(\d+)\s*[-\u2013\u2014]\s*(\d+)", range_hint.strip())
     if not m:
         return None, f"not a numeric range ({range_hint})"
     a, b = int(m.group(1)), int(m.group(2))
