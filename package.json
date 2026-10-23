@@ -1,0 +1,22 @@
+{
+  "name": "citegeist",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:convert": "uv run --directory workers/convert pytest",
+    "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "turbo": "^2.5.0"
+  }
+}
