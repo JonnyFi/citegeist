@@ -220,7 +220,14 @@
     },
     {
       "id": "birkmeyer-editio-princeps-1899",
-      "kind": ["journal-article", "german", "footnotes", "printed-pages-differ", "noisy-text-layer", "historic"],
+      "kind": [
+        "journal-article",
+        "german",
+        "footnotes",
+        "printed-pages-differ",
+        "noisy-text-layer",
+        "historic"
+      ],
       "title": "Birkmeyer, Der Schutz der editio princeps, Mecklenburgische Zeitschrift fuer Rechtspflege und Rechtswissenschaft 17 (1899)",
       "url": "https://upload.wikimedia.org/wikipedia/commons/2/22/Birkmeyer_-_Der_Schutz_der_editio_princeps_%28Mecklenburgische_Zeitschrift_f%C3%BCr_Rechtspflege_und_Rechtswissenschaft_17%2C_1899%29.pdf",
       "license": "Public-Domain",

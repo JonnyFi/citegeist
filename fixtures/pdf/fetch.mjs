@@ -9,7 +9,14 @@
 // Exit code is 1 if any fixture is missing or has a wrong checksum.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,10 +53,14 @@ for (const f of selected) {
     continue;
   }
   try {
-    const res = await fetch(f.url, { redirect: "follow", headers: { "User-Agent": UA, Accept: "application/pdf,*/*" } });
+    const res = await fetch(f.url, {
+      redirect: "follow",
+      headers: { "User-Agent": UA, Accept: "application/pdf,*/*" },
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") throw new Error("response is not a PDF (bot challenge or error page?)");
+    if (buf.subarray(0, 5).toString("latin1") !== "%PDF-")
+      throw new Error("response is not a PDF (bot challenge or error page?)");
     const got = sha256(buf);
     if (got !== f.sha256) {
       // keep the bad download next to the cache for inspection, never under the real name
