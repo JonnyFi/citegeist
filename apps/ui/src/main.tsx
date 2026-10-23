@@ -10,7 +10,7 @@ async function pickCore(): Promise<Core | null> {
   if (bridge) return bridge.connection ? createRemoteCore(bridge.connection) : null;
   // Plain browser (pnpm dev:mock, /qa): serve fixtures from memory.
   const { createMockCore } = await import("./mock/core");
-  return createMockCore();
+  return createMockCore(undefined, { demoJobs: true });
 }
 
 const root = document.getElementById("root");

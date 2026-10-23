@@ -30,6 +30,7 @@ describe("search", () => {
   it("finds items and cards for a query from the search bar", async () => {
     const user = userEvent.setup();
     renderApp("/");
+    await user.click(await screen.findByRole("link", { name: "Suchen" }));
     await user.type(await screen.findByRole("searchbox", { name: "Suche" }), "autopoiesis{Enter}");
     // fixture note of luhmann mentions Autopoiesis
     const hits = await screen.findAllByTestId("hit");
