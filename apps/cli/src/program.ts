@@ -12,7 +12,7 @@ import { Command, CommanderError } from "commander";
 import { EXIT, EXIT_HELP, exitCodeFor } from "./exit.js";
 import { buildInput, type CommandSpec, commandSpec } from "./flags.js";
 import { formatHuman } from "./output.js";
-import { createRegistry } from "./registry.js";
+import { createRegistry, libraryFlagFromArgv } from "./registry.js";
 
 export interface CliIO {
   stdout(text: string): void;
@@ -49,6 +49,7 @@ export function buildProgram(registry: Registry, io: CliIO, onExit: (code: numbe
   root
     .description("citegeist command line. Every operation of the library is a command.")
     .option("--json", "print results and errors as JSON")
+    .option("--library <path>", "library folder (env CITEGEIST_LIBRARY, default ~/Citegeist)")
     .option("--actor <actor>", 'who is calling, "human" or "agent:<name>" (env CITEGEIST_ACTOR)')
     .addHelpText("after", `\n${EXIT_HELP}`)
     .exitOverride()
@@ -246,7 +247,9 @@ export async function runCli(argv: string[], options: RunOptions = {}): Promise<
     env: process.env,
     ...options.io,
   };
-  const registry = options.registry ?? createRegistry(io.env);
+  const registry =
+    options.registry ??
+    createRegistry(io.env, { library: libraryFlagFromArgv(argv), longLived: argv[0] === "mcp" });
   let code: number = EXIT.ok;
   const { root, report } = buildProgram(registry, io, (c) => {
     code = c;

@@ -14,6 +14,7 @@ import {
   ProjectFrontmatter,
 } from "@citegeist/schema";
 import watcher from "@parcel/watcher";
+import { writeAgentsMd } from "./agents-md/index.js";
 import { serializeCardBody } from "./card-body.js";
 import { classify } from "./classify.js";
 import { MarkdownFile } from "./frontmatter.js";
@@ -58,20 +59,6 @@ export interface LibraryStatus {
 }
 
 const DEBOUNCE_MS = 25;
-
-const AGENTS_MD = `# Agent rules for this library
-
-This folder is a citegeist library. Every file is plain Markdown, JSON or YAML.
-
-- Read and edit notes in \`notes/\`, literature notes in \`items/<citekey>/<citekey>.md\` and project briefs in \`projects/<slug>/project.md\`.
-- Keep the YAML frontmatter valid. Files that fail validation show up in the problem list and are not used.
-- Never edit the quote of a card (the blockquote in \`items/<citekey>/cards/*.md\`). Its hash is stored in the frontmatter.
-- Never edit anything under \`derived/\` or \`sources/\`. The core writes and restores these files.
-- Link with \`[[citekey]]\`, \`[[card-id]]\` or \`[[note-file-name]]\`.
-- Prefer the \`cg\` command or the MCP tools for changes that touch several files.
-`;
-
-const CLAUDE_MD = "See AGENTS.md for the rules of this library.\n";
 
 function problem(
   code: string,
@@ -132,9 +119,9 @@ export class Library extends EventEmitter {
       mkdirSync(d, { recursive: true });
     }
     writeFileAtomic(paths.manifest, `${JSON.stringify(manifest, null, 2)}\n`);
-    if (!existsSync(paths.agentsMd)) writeFileAtomic(paths.agentsMd, AGENTS_MD);
-    if (!existsSync(paths.claudeMd)) writeFileAtomic(paths.claudeMd, CLAUDE_MD);
-    return Library.open(real, opts);
+    const lib = await Library.open(real, opts);
+    writeAgentsMd(lib);
+    return lib;
   }
 
   /** Opens an existing library, catches the index up with the folder and starts the watcher. */

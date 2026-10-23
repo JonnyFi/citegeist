@@ -371,8 +371,10 @@ describe("cards.update", () => {
     expect(() => cards.update("human", { id, patch: { bogus: 1 } })).toThrow(/INVALID_PATCH/);
     expect(readFileSync(file, "utf8")).toBe(before);
 
-    // through the registry the contract strips unknown keys, the quote stays what it was
-    await reg.call("cards.update", human, { id, patch: { quote: "Geändert", comment: "x" } });
+    // through the registry the same agent-ready error arrives
+    await expect(
+      reg.call("cards.update", human, { id, patch: { quote: "Geändert", comment: "x" } }),
+    ).rejects.toThrow(/CARD_QUOTE_IMMUTABLE/);
     const after = cards.getCard(id);
     expect(after.body.quote).toBe(quote);
     expect(lib.status().problems).toEqual([]);

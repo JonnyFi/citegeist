@@ -1,4 +1,4 @@
-import { createCoreRegistry, Library } from "@citegeist/core";
+import { createRuntime, Library } from "@citegeist/core";
 import { CONTRACTS, defineContract, Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { z } from "zod";
@@ -8,6 +8,8 @@ import { liveForeignLock, ownedByApp } from "./lock.js";
 export interface WiredOptions {
   /** Value of the `--library` flag, if the caller parsed one. */
   library?: string | undefined;
+  /** `cg mcp` keeps running and executes background jobs; one-shot commands only enqueue them. */
+  longLived?: boolean;
 }
 
 /**
@@ -50,7 +52,10 @@ export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOption
           watch: false,
           ...(localBase ? { localBase } : {}),
         });
-        return { lib, registry: createCoreRegistry(lib) };
+        return {
+          lib,
+          registry: createRuntime(lib, { autoStart: options.longLived ?? false }).registry,
+        };
       } catch (err) {
         if (err instanceof CitegeistError && err.detail.code === "LIBRARY_NOT_FOUND") {
           const via =
