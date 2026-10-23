@@ -1,4 +1,4 @@
-import type { Actor } from "@citegeist/schema";
+import { type Actor, CitegeistError } from "@citegeist/schema";
 import type { z } from "zod";
 
 export type Access = "read" | "write" | "admin";
@@ -66,9 +66,23 @@ export class Registry {
 
   async call(name: string, ctx: OpContext, rawInput: unknown): Promise<unknown> {
     const entry = this.handlers.get(name);
-    if (!entry) throw new Error(`unknown operation ${name}`);
+    if (!entry) {
+      throw new CitegeistError({
+        code: "UNKNOWN_OPERATION",
+        message: `No operation named ${name}`,
+        fix: "Run `cg --help` or list the MCP tools to see the available operations",
+        recovery: "fix-and-retry",
+        context: { name },
+      });
+    }
     if (entry.contract.access === "admin" && ctx.actor !== "human") {
-      throw new Error(`operation ${name} requires a human actor`);
+      throw new CitegeistError({
+        code: "FORBIDDEN_ADMIN",
+        message: `Operation ${name} can only be run by a human, caller was ${ctx.actor}`,
+        fix: "Ask the user to run this from the citegeist app or the cg CLI",
+        recovery: "ask-human",
+        context: { name, actor: ctx.actor },
+      });
     }
     const input = entry.contract.input.parse(rawInput);
     const output = await entry.handler(ctx, input);
