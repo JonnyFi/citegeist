@@ -4,6 +4,7 @@ import {
   inboxAccept,
   inboxReject,
   itemsAdd,
+  itemsAttach,
   itemsRename,
   itemsTrash,
   itemsUpdate,
@@ -41,7 +42,7 @@ export {
 } from "./worker.js";
 
 /**
- * Binds items.add, items.update, items.rename, items.trash, inbox.accept, inbox.reject,
+ * Binds items.add, items.attach, items.update, items.rename, items.trash, inbox.accept, inbox.reject,
  * documents.read, documents.convert, jobs.get and jobs.list. Returns the service, which owns the
  * job queue and the conversion worker: call `service.close()` when the library closes.
  */
@@ -54,6 +55,7 @@ export function bindIngestOperations(
   bindJobOperations(registry, svc.queue);
   registry
     .bind(itemsAdd, async (ctx, input) => svc.addItem(ctx.actor, input))
+    .bind(itemsAttach, async (ctx, input) => svc.attachFile(ctx.actor, input))
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
     .bind(itemsTrash, async (_ctx, input) => {

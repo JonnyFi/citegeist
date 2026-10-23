@@ -180,11 +180,14 @@ export function QuickInsertPanel() {
 
   useEffect(() => {
     let alive = true;
-    void bridge?.get().then((s) => {
-      if (!alive) return;
-      setCurrent(s);
-      setValue(s.accelerator);
-    });
+    void bridge
+      ?.get()
+      .then((s) => {
+        if (!alive) return;
+        setCurrent(s);
+        setValue(s.accelerator);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };

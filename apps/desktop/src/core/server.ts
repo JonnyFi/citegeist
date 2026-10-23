@@ -14,6 +14,7 @@ import { ORPCError, os } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/node";
 import { WebSocketServer } from "ws";
 import { ZodError } from "zod";
+import { manageConnector } from "../connector/manager.js";
 import { createManagedWorker, resolveWorkerSource } from "../setup/index.js";
 import {
   acquireLock,
@@ -43,6 +44,13 @@ export interface CoreServerOptions {
   port?: number;
   /** Overrides for the runtime, such as fixed AI backends or a stub worker (tests). */
   runtime?: RuntimeOptions;
+  /**
+   * Run the Zotero Connector listener when the settings turn it on (`settings.connector`, off by
+   * default). Default true.
+   */
+  connector?: boolean;
+  /** Receives messages of the connector listener. */
+  log?: (message: string) => void;
 }
 
 export interface CoreServer {
@@ -294,6 +302,14 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   const port = (server.address() as AddressInfo).port;
   publishLock(dir, port, token);
 
+  // The connector runs inside the core: it calls the registry as its own actor, while the oRPC
+  // endpoint takes the actor from the request.
+  const connector =
+    opts.connector === false
+      ? undefined
+      : manageConnector({ registry, library, runtime }, opts.log);
+  await connector?.ready();
+
   let closing: Promise<void> | undefined;
   return {
     port,
@@ -303,6 +319,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     registry,
     close() {
       closing ??= (async () => {
+        await connector?.stop();
         library.off("change", onChange);
         for (const ws of sockets) ws.terminate();
         wss.close();

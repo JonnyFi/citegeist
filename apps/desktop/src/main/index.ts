@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from "electron";
+import { type QuickInsertHandle, registerQuickInsert } from "../quick-insert/electron.js";
 import { deepLinkToPath, findDeepLink, PROTOCOL } from "../shared/deeplink.js";
 import { ensureCore, type RunningCore, stopCore } from "./core-process.js";
 import { buildMenu } from "./menu.js";
@@ -19,7 +20,10 @@ const PRELOAD = join(import.meta.dirname, "../preload/index.cjs");
 const UI_INDEX = resolve(import.meta.dirname, "../../../ui/dist/index.html");
 const RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 
+const QUICK_INSERT_PRELOAD = join(import.meta.dirname, "../preload/quick-insert.cjs");
+
 let window: BrowserWindow | null = null;
+let quickInsert: QuickInsertHandle | undefined;
 let core: RunningCore | null = null;
 let pendingPath: string | undefined;
 let rendererReady = false;
@@ -195,6 +199,8 @@ ipcMain.handle("citegeist:create-library", () => chooseLibrary(true));
 // Lifecycle ------------------------------------------------------------------------------------------------
 
 app.on("before-quit", (event) => {
+  quickInsert?.dispose();
+  quickInsert = undefined;
   if (quitting || !core?.child) return;
   event.preventDefault();
   quitting = true;
@@ -242,6 +248,17 @@ async function start(): Promise<void> {
     }
   }
   createWindow();
+  // After the main window, so that it stays the first window the app opens.
+  quickInsert = registerQuickInsert({
+    userDataDir: app.getPath("userData"),
+    preload: QUICK_INSERT_PRELOAD,
+    load: (w) =>
+      RENDERER_URL
+        ? w.loadURL(`${RENDERER_URL}#/quick-insert`)
+        : w.loadFile(UI_INDEX, { hash: "/quick-insert" }),
+    isOwnUrl: (url) => (RENDERER_URL ? url.startsWith(RENDERER_URL) : url.startsWith("file://")),
+    onHotkeyError: (message) => dialog.showErrorBox("Quick-insert hotkey", message),
+  });
   const link = findDeepLink(process.argv);
   if (link) handleDeepLink(link);
   if (core) window?.setTitle(`citegeist - ${core.connection.library.split("/").pop()}`);

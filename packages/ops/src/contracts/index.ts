@@ -90,6 +90,29 @@ export const itemsAdd = defineContract({
   output: z.object({ citekey: Citekey, job: JobId, duplicateOf: Citekey.optional() }),
   mcp: { tool: "add_item", readOnly: false },
 });
+export const itemsAttach = defineContract({
+  name: "items.attach",
+  summary:
+    "Attach a local file (PDF, HTML page or EPUB) to an existing item and convert it; a file the item already has is not added twice",
+  access: "write",
+  input: ItemRef.extend({
+    /** Absolute path of the file. It is copied into the item, so the original can be deleted. */
+    path: z.string().min(1),
+    /** Where the file came from, such as the page the browser saved it from. */
+    url: z.string().optional(),
+    /** Name to show for the file. Default: the file name. */
+    filename: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    citekey: Citekey,
+    /** Hash that names the file among the item's sources. */
+    source: z.string(),
+    /** False when the item already had this file. */
+    added: z.boolean(),
+    /** Conversion of the new file. Absent when nothing was added. */
+    job: JobId.optional(),
+  }),
+});
 export const itemsGet = defineContract({
   name: "items.get",
   summary: "Metadata, sources, literature note and card count of one item",
@@ -568,6 +591,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   libraryStatus,
   libraryReindex,
   itemsAdd,
+  itemsAttach,
   itemsGet,
   itemsList,
   itemsUpdate,

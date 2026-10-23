@@ -40,6 +40,8 @@ async function main(): Promise<void> {
       init: process.env.CITEGEIST_INIT === "1",
       ...(process.env.CITEGEIST_LOCAL_BASE ? { localBase: process.env.CITEGEIST_LOCAL_BASE } : {}),
       ...(origins && origins.length > 0 ? { allowedOrigins: origins } : {}),
+      // The connector listener (settings.connector) reports to the app's log.
+      log: (message) => process.stderr.write(`${message}\n`),
       // End-to-end runs answer every AI task with fixed texts instead of calling a subscription.
       ...(process.env.CITEGEIST_AI_MOCK === "1"
         ? { runtime: { ai: { backends: [cannedAiBackend()] } } }

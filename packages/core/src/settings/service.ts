@@ -100,6 +100,7 @@ export interface StatusProviders {
 export class SettingsService {
   /** Set by the runtime (semantic search) and by the app's core process (connector). */
   readonly status: StatusProviders = {};
+  private readonly listeners = new Set<(settings: MachineSettings) => void | Promise<void>>();
   private readonly kind: JobKind;
   private health: { at: number; value: WorkerStatus } | undefined;
 
@@ -220,7 +221,17 @@ export class SettingsService {
     this.deps.store.save(stored);
     const settings = await this.settings();
     this.deps.onChange?.(settings);
+    // settings.update answers after the listeners have acted, so settings.get shows their state.
+    await Promise.all([...this.listeners].map((listener) => listener(settings)));
     return settings;
+  }
+
+  /** Calls `listener` after every successful `settings.update`. Returns the unsubscribe function. */
+  subscribe(listener: (settings: MachineSettings) => void | Promise<void>): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   async workerStatus(): Promise<WorkerStatus> {
