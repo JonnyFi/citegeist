@@ -87,3 +87,9 @@ Jedes Projekt hat eine Spracheinstellung. Im Reader gibt es jederzeit ein Dropdo
 Datum: 2026-10-23. Status: entschieden.
 
 Die Entwicklung läuft ohne Pause durch alle Wellen. REA wird nicht eingesetzt, weil Zoteros Quellcode offenliegt.
+
+## A10: Der Highlighter arbeitet asynchron, Standard ist `claude -p` mit Haiku
+
+Datum: 2026-10-23. Status: entschieden auf Basis von Spike S2 (`docs/spikes/s2-inference.md`).
+
+Kein Abo-Pfad erreicht p50 unter 3 Sekunden. Am schnellsten war ein frischer `claude -p` mit Haiku, `--effort low` und ausgeschaltetem Denken (p50 4,2 s, p95 5,2 s). Der vorgewärmte SDK-Prozess war langsamer. Deshalb entsteht die Karte mit Wortlaut und Seite sofort, und Paraphrase und Kernaussage erscheinen ein paar Sekunden später. Neues Kriterium: Die Karte steht in unter 300 ms, die AI-Texte folgen mit p50 unter 5 Sekunden. API-Key und lokales Modell bleiben wählbar für alle, die es schneller wollen.
