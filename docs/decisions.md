@@ -93,3 +93,27 @@ Die Entwicklung läuft ohne Pause durch alle Wellen. REA wird nicht eingesetzt, 
 Datum: 2026-10-23. Status: entschieden auf Basis von Spike S2 (`docs/spikes/s2-inference.md`).
 
 Kein Abo-Pfad erreicht p50 unter 3 Sekunden. Am schnellsten war ein frischer `claude -p` mit Haiku, `--effort low` und ausgeschaltetem Denken (p50 4,2 s, p95 5,2 s). Der vorgewärmte SDK-Prozess war langsamer. Deshalb entsteht die Karte mit Wortlaut und Seite sofort, und Paraphrase und Kernaussage erscheinen ein paar Sekunden später. Neues Kriterium: Die Karte steht in unter 300 ms, die AI-Texte folgen mit p50 unter 5 Sekunden. API-Key und lokales Modell bleiben wählbar für alle, die es schneller wollen.
+
+## D11: Ein Abschnitt bekommt erst mit Behauptungen oder Quellen eine eigene Datei
+
+Datum: 2026-10-24. Status: entschieden.
+
+Kapitel und Abschnitte sind Knoten der Gliederung in `outline.yaml`. Jedes Kapitel hat ein eigenes Dokument. Ein Abschnitt bekommt erst eines, wenn er Behauptungen oder Quellen trägt, bis dahin stehen seine Einsichten im Dokument des Kapitels. Grundlage ist `docs/spec/research-planning.md`.
+
+## D12: Im Chat erbetene Änderungen schreibt der Agent direkt, mit Herkunft und Rückgängig
+
+Datum: 2026-10-24. Status: entschieden.
+
+Wenn Jonny im Chat sagt „so will ich das, formuliere das mal aus“, schreibt der Agent direkt ins Dokument. Jede Änderung trägt ihre Herkunft. Jede Datei hat einen Verlauf, und ein Klick nimmt einen ganzen Agent-Zug zurück. Ein Prüfmodus mit Vorschlägen lässt sich pro Projekt oder pro Chat einschalten. Änderungen, um die niemand gebeten hat, etwa aus Hintergrundjobs oder von externen Agents außerhalb eines Chats, kommen weiterhin als Vorschlag. Der Grund ist der Arbeitsfluss: Wer im Chat um einen Text bittet, will ihn sofort im Dokument sehen. Die Fassung mit Vorschlag für jede Agent-Änderung aus dem ersten Entwurf der Spec ist damit verworfen.
+
+## D13: Ein Projekt kann mehrere Pläne haben
+
+Datum: 2026-10-24. Status: entschieden.
+
+Ein Projekt wie „PhD-Proposal“ kann neben dem Plan für das Proposal einen Plan für ein Paper haben. Beide nutzen dieselben Quellen, Karten und Einsichten. Pläne liegen unter `projects/<slug>/plans/<plan>/`.
+
+## D14: Beim Anlegen eines Plans stehen die Vorlagen Exposé und IMRaD bereit
+
+Datum: 2026-10-24. Status: entschieden.
+
+Die ersten Vorlagen sind ein Exposé für das PhD-Proposal und IMRaD für Paper. Weitere Textsorten kommen später als Vorlagendateien dazu.

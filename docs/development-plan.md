@@ -120,6 +120,63 @@ Abnahme der Welle: Die E2E-Tests laufen, und Jonny kann ab hier echte Literatur 
 | W3.4 Semantische Suche | lokale Embeddings, hybride Suche, `library.ask` mit belegten Antworten und Zitatprüfung | M |
 | W3.5 Agent-Zugang schreiben | MCP-Tools `add_item`, `create_card`, `create_note`, `link`, `jobs_get`; Skill fertig, Plugin-Paket, `.mcpb` | M |
 | W3.6 Backends und Quick-Insert | Codex, Cursor, API-Keys, lokale Modelle, Routing pro Aufgabe; globaler Hotkey mit Kartensuche; Zotero Connector | M |
+| W3.7 Einsichten und Pläne | Einsichten als datierte Absätze, Absatzindex, Suche über Links und dann semantisch, Gliederung mit festen Feldern, Verlauf mit Rückgängig pro Zug, Vorschläge für ungefragte Änderungen | L |
+| W3.8 Planansicht | Tab pro Plan mit Gliederung, Knotenformular, Dokumenten und Verlauf | M |
+| W3.9 Planungs-Chat | Festhalten von Einsichten im Chat, Zurückholen mit Zitat, direkte Änderungen mit Rückgängig | M |
+
+Die Forschungsplanung folgt `docs/spec/research-planning.md`. Vor W3.7 liefert die Lead-Session `plan.ts` und die Verträge aus Abschnitt 6 der Spec. Der erste Schnitt ist W3.7 zusammen mit dem Festhalten aus W3.9, das bis zum Ende von W3.3 über Claude Code und MCP läuft.
+
+```markdown
+## W3.7 Einsichten und Pläne
+
+Ziel: Einsichten liegen als datierte Absätze in Plandateien, die Gliederung als feste Felder, der Agent schreibt beides über Operationen, und jede Änderung lässt sich zurücknehmen.
+Besitzt: packages/core/src/planning/**
+Liest: packages/schema (plan.ts), packages/ops (insights.*, plans.*, outline.*, plan.docs.*, history.*, proposals.*), docs/spec/research-planning.md Abschnitte 2 bis 6
+Darf nicht ändern: Hotspots, andere Pakete
+Abnahme:
+- [ ] note_insight schreibt an alle drei Orte einen Absatz mit Datum und Block-ID, der Index zerlegt ihn mit seinen Links
+- [ ] insights.find liefert auf einem Fixture-Projekt zuerst die Link-Treffer, dann die semantischen, jeweils mit why
+- [ ] Umordnen der Gliederung ändert die berechneten Nummern, alle Links auf Knoten bleiben gültig
+- [ ] Rundreise von outline.yaml ohne Verlust
+- [ ] history.revertTurn stellt alle Dateien eines Zugs wieder her und führt eine Handänderung dazwischen per Drei-Wege-Merge zusammen
+- [ ] Schreibende Operationen eines Hintergrundjobs und im Prüfmodus erzeugen Vorschläge
+- [ ] note_insight, find_insights, get_outline, edit_outline und edit_plan_doc bestehen den MCP-Client-Test
+- [ ] pnpm verify grün
+Modell: Sonnet. Größe: L.
+```
+
+```markdown
+## W3.8 Planansicht
+
+Ziel: Jonny liest und bearbeitet Gliederung, Dokumente und Einsichten in der App.
+Besitzt: apps/ui/src/plan/**
+Liest: W3.1-Editor, packages/ops (plans.*, outline.*, plan.docs.*, history.*), docs/spec/research-planning.md Abschnitte 4 und 7
+Darf nicht ändern: Hotspots, apps/ui/src/chat/**
+Abnahme:
+- [ ] Tab pro Plan mit Gliederung und berechneten Nummern, Planungsdokument und Einsichten des Projekts
+- [ ] Knotenformular schreibt über outline.apply, Dokumente über den Editor
+- [ ] Ziehen in der Gliederung ordnet um und nummeriert neu
+- [ ] Verlauf einer Datei zeigt Fassungen mit Herkunft und stellt eine wieder her
+- [ ] /qa gegen den Browser-Build mit Mock-Kern grün
+Modell: Sonnet. Größe: M.
+```
+
+```markdown
+## W3.9 Planungs-Chat
+
+Ziel: Jonny hält Einsichten im Chat fest, und der Agent holt sie beim Planen zurück.
+Besitzt: apps/ui/src/chat/planning/**, packages/ai/tasks/plan-chat/**
+Liest: W3.3, W3.7, docs/spec/research-planning.md Abschnitte 2, 3 und 5
+Darf nicht ändern: Hotspots, apps/ui/src/plan/**
+Abnahme:
+- [ ] Gegen das Mock-Backend schreibt „bitte einmal notieren“ einen Absatz mit Links an den passenden Ort, und die Antwort nennt den Ort in einer Zeile
+- [ ] „Füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“ legt den Knoten an der richtigen Stelle an
+- [ ] Plant Jonny ein Kapitel, stehen vor dem Zug die fünf passenden Einsichten im Kontext, zitierte Einsichten erscheinen als Chip
+- [ ] Ein Verweis auf einen unbekannten Absatz wird markiert
+- [ ] „Rückgängig“ an einem Zug nimmt alle seine Änderungen zurück
+- [ ] Ein manueller Lauf gegen das Abo hält drei Einsichten aus Fixture-Quellen fest und zitiert eine davon beim Umbau eines Kapitels
+Modell: Sonnet. Größe: M.
+```
 
 ## Welle 4: v0.3, Breite
 

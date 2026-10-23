@@ -37,6 +37,14 @@ Zu einem Paper schreibt Jonny: „Luhmanns Kommunikationsbegriff widerspricht de
 
 Das Projekt „PhD-Proposal“ hat einen Projektbrief mit Forschungsfragen und Abgrenzung, eine Leseliste mit Status und eigene Notizen. Agents lesen den Brief vor jeder Projektaufgabe. Eine Literaturmatrix vergleicht ausgewählte Paper nach Fragestellung, Methode, Befund und Grenzen, und jede Zelle verweist auf die Stelle, aus der sie stammt.
 
+### Eine Verbindung zwischen zwei Quellen
+
+Jonny hat Luhmann gelesen, markiert und notiert. Wochen später liest er Gillespie und sieht eine Verbindung. In der Chat-Seitenleiste schreibt er: „Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte einmal notieren.“ Der Agent findet die gemeinten Quellen und Karten und schreibt die Einsicht als datierten Absatz mit Links auf beide in das Dokument des Kapitels, das sie betrifft. Er antwortet mit einer Zeile, wohin sie gegangen ist. Passt sie in kein Kapitel, kommt sie ins Planungsdokument oder in die Einsichten-Datei des Projekts.
+
+### Ein Kapitel planen
+
+Jonny baut im Chat die Gliederung des Proposals um. Bevor der Agent antwortet, holt er die Einsichten, die auf dieses Kapitel oder seine Quellen verlinken oder inhaltlich dazu passen, und zitiert sie: „Zu Kapitel 3 hast du am 12.11. notiert, dass Luhmann und Gillespie denselben Mechanismus beschreiben.“ Sagt Jonny „füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“ oder „formuliere das mal aus“, ändert der Agent Gliederung und Text direkt, und ein Klick nimmt den ganzen Zug zurück.
+
 ### Recherche delegieren
 
 In der Seitenleiste schreibt Jonny: „Suche Arbeiten seit 2020, die Systemtheorie auf Plattformen anwenden, und fasse die fünf relevantesten zusammen.“ Ein Agent (Claude Code, Codex, Cursor oder ein verbundener externer Agent) arbeitet im Hintergrund, nutzt die Bibliothek über MCP und legt seine Funde mit Begründung in die Inbox.
@@ -88,6 +96,12 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Projekte | Projektbrief mit Forschungsfragen als Kontext für Agents | v0.1 | Jonny |
 | Projekte | Startseite über alles Gelesene | v0.2 | Jonny |
 | Projekte | Literaturmatrix mit belegten Zellen | v0.3 | Vorschlag |
+| Planung | Einsichten über Quellen hinweg im Chat festhalten, der Agent schreibt sie als Absatz an den passenden Ort (Kapitel, Planungsdokument, Einsichten-Datei) | v0.2 | Jonny |
+| Planung | Gliederung mit festen Feldern und berechneten Nummern, vom Agent gepflegt und von Hand bearbeitbar | v0.2 | Jonny |
+| Planung | Der Planungs-Chat holt passende Einsichten zurück und zitiert sie | v0.2 | Jonny |
+| Planung | Mehrere Pläne pro Projekt mit Vorlagen Exposé und IMRaD | v0.2 | D13, D14 |
+| Planung | Direkte Agent-Änderungen im Chat mit Verlauf pro Datei und Rückgängig pro Zug, Prüfmodus wählbar | v0.2 | D12 |
+| Planung | Weitere Vorlagen für andere Textsorten | später | D14 |
 | Agents | Inbox für alles, was Agents hinzufügen, mit Herkunft | v0.1 | D7 |
 | Agents | MCP-Abkürzung: ein Agent legt ein Paper direkt in die Bibliothek | v0.1 | Jonny, D7 |
 | Agents | Chat-Seitenleiste mit Kontext (Dokument, Markierung, Projekt) | v0.2 | Jonny |
@@ -107,10 +121,10 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 ## Releases
 
 - **v0.1, Lesen und Zitieren:** Paper rein, lesen, markieren, als Zitat herauskopieren. Dazu Projekte mit Brief, Volltextsuche und lesender MCP-Zugang. Ab hier ist citegeist für die PhD-Lektüre nutzbar.
-- **v0.2, Denken und Verknüpfen:** Notizen mit typisierten Verbindungen, Graph, Startseite, Chat-Seitenleiste, Recherche-Jobs, semantische Suche, schreibender MCP-Zugang, weitere Inferenz-Anbieter, Quick-Insert, Zotero Connector.
+- **v0.2, Denken und Verknüpfen:** Notizen mit typisierten Verbindungen, Graph, Startseite, Chat-Seitenleiste, Forschungsplanung mit Einsichten und Plänen, Recherche-Jobs, semantische Suche, schreibender MCP-Zugang, weitere Inferenz-Anbieter, Quick-Insert, Zotero Connector.
 - **v0.3, Breite:** Importer, Sync, Literaturmatrix, Schneeballsuche, Webhooks, Rückruf-Warnungen.
 - **1.0:** Feinschliff und Open-Source-Release mit Lizenzprüfung, Signierung und Dokumentation.
 
 ## Entschiedene Feature-Fragen
 
-D7 bis D10 in `decisions.md` beantworten die Fragen aus dem ersten Entwurf. Alle Vorschläge der Landkarte sind angenommen (D10).
+D7 bis D10 in `decisions.md` beantworten die Fragen aus dem ersten Entwurf. Alle Vorschläge der Landkarte sind angenommen (D10). D11 bis D14 regeln die Forschungsplanung, die Spec dazu steht in `docs/spec/research-planning.md`.
