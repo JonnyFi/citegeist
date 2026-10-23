@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/.venv", "!pnpm-lock.yaml", "!**/*.md", "!spikes", "!.claude"]
+    "includes": [
+      "**",
+      "!**/.venv",
+      "!pnpm-lock.yaml",
+      "!**/*.md",
+      "!spikes",
+      "!.claude",
+      "!docs/design/boards"
+    ]
   },
   "formatter": {
     "enabled": true,

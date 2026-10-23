@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>System I: Bibliothek</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;font-family:Inter,"Helvetica Neue",Arial,sans-serif;color:#141414;background:#ffffff}
+a{color:#141414}a:hover{color:#2f5fa8}
+</style>
+</helmet>
+<div style="width: 1280px; height: 820px; box-sizing: border-box; background: #ffffff; display: flex; flex-direction: column; font-size: 13px; line-height: 1.4; overflow: hidden">
+
+  <div style="height: 48px; box-sizing: border-box; border-bottom: 1px solid #141414; display: flex; align-items: stretch; flex-shrink: 0">
+    <div style="width: 56px; box-sizing: border-box; border-right: 1px solid #141414; display: flex; align-items: center; justify-content: center; font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500" aria-hidden="true">c</div>
+    <div style="flex: 1 1 auto; display: flex; align-items: center; padding: 0 32px; gap: 16px; min-width: 0">
+      <div style="font-size: 13px; font-weight: 500">Bibliothek</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">412 Quellen</div>
+      <div style="flex: 1 1 auto"></div>
+      <label for="ib-add" style="font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #5c5c5c">Hinzufügen</label>
+      <input id="ib-add" type="text" placeholder="DOI, arXiv-Link, ISBN oder URL einfügen, PDF ins Fenster ziehen" style="width: 420px; height: 30px; box-sizing: border-box; border: 0; border-bottom: 1px solid #141414; border-radius: 0; background: transparent; font: inherit; font-size: 13px; color: #141414; padding: 0">
+    </div>
+    <div style="width: 360px; box-sizing: border-box; border-left: 1px solid #141414; display: flex; align-items: center; padding: 0 16px; gap: 12px">
+      <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #5c5c5c; white-space: nowrap">Konvertiert 2 von 3</div>
+      <div style="flex: 1 1 auto; height: 4px; background: #e4e4e4; display: flex"><div style="width: 66%; background: #141414"></div></div>
+      <a href="#jobs" style="font-size: 12px; text-decoration: none; color: #5c5c5c; white-space: nowrap">2 Jobs</a>
+    </div>
+  </div>
+
+  <div style="flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 56px minmax(0, 1fr)">
+
+    <nav aria-label="Hauptnavigation" style="box-sizing: border-box; border-right: 1px solid #141414; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 12px 0">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+        <a href="#suche" aria-label="Suche" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; border: 1px solid #141414"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="9" r="5"></circle><path d="M13 13l4 4"></path></svg></a>
+        <a href="#bibliothek" aria-label="Bibliothek" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #141414; color: #ffffff"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="4" height="14"></rect><rect x="8" y="3" width="4" height="14"></rect><path d="M13 4l4 1-3 12-4-1z"></path></svg></a>
+        <a href="#inbox" aria-label="Inbox, 3 neue" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><path d="M3 11l2-7h10l2 7v5H3z"></path><path d="M3 11h4l1 2h4l1-2h4"></path></svg><span style="position: absolute; top: 6px; right: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; background: #141414; color: #ffffff; padding: 0 4px; line-height: 14px">3</span></a>
+        <a href="#projekte" aria-label="Projekte" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="14" height="12"></rect><path d="M3 8h14M8 8v8"></path></svg></a>
+        <a href="#notizen" aria-label="Notizen" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="12" height="14"></rect><path d="M7 7h6M7 10h6M7 13h4"></path></svg></a>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+        <a href="#chat" aria-label="Agent-Chat" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><path d="M3 3h14v10H8l-5 4z"></path></svg></a>
+        <a href="#theme" aria-label="Dunkelmodus" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="#141414" stroke-width="1.5"></circle><path d="M10 4a6 6 0 0 1 0 12z" fill="#141414"></path></svg></a>
+        <a href="#settings" aria-label="Einstellungen" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#141414" stroke-width="1.5" aria-hidden="true"><circle cx="10" cy="10" r="3"></circle><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.3 4.3l2.1 2.1M13.6 13.6l2.1 2.1M4.3 15.7l2.1-2.1M13.6 6.4l2.1-2.1"></path></svg></a>
+      </div>
+    </nav>
+
+    <main style="box-sizing: border-box; min-width: 0; display: flex; flex-direction: column">
+      <div style="box-sizing: border-box; border-bottom: 1px solid #141414; padding: 0 32px; height: 44px; display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; align-items: center; gap: 20px; font-size: 12px">
+          <div style="display: flex; align-items: center; gap: 8px"><span style="color: #5c5c5c">Projekt</span><button type="button" style="height: 26px; padding: 0 10px; border: 1px solid #141414; background: #141414; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">PhD-Proposal</button></div>
+          <div style="display: flex; align-items: center; gap: 8px"><span style="color: #5c5c5c">Lesestatus</span>
+            <div style="display: flex">
+              <button type="button" style="height: 26px; padding: 0 10px; border: 1px solid #141414; background: #141414; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Alle</button>
+              <button type="button" style="height: 26px; padding: 0 10px; border: 1px solid #141414; border-left: 0; background: #ffffff; color: #141414; font: inherit; font-size: 12px; cursor: pointer">Ungelesen</button>
+              <button type="button" style="height: 26px; padding: 0 10px; border: 1px solid #141414; border-left: 0; background: #ffffff; color: #141414; font: inherit; font-size: 12px; cursor: pointer">Lese ich</button>
+              <button type="button" style="height: 26px; padding: 0 10px; border: 1px solid #141414; border-left: 0; background: #ffffff; color: #141414; font: inherit; font-size: 12px; cursor: pointer">Gelesen</button>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">38 Treffer</div>
+      </div>
+
+      <div style="flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+          <thead>
+            <tr style="height: 36px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5c5c5c; text-align: left">
+              <th style="padding: 0 12px 0 32px; border-bottom: 1px solid #141414; font-weight: 600; width: 44px"></th>
+              <th style="padding: 0 12px; border-bottom: 1px solid #141414; font-weight: 600">Titel</th>
+              <th style="padding: 0 12px; border-bottom: 1px solid #141414; font-weight: 600; width: 220px">Autoren</th>
+              <th style="padding: 0 12px; border-bottom: 1px solid #141414; font-weight: 600; width: 64px">Jahr</th>
+              <th style="padding: 0 12px; border-bottom: 1px solid #141414; font-weight: 600; width: 110px">Typ</th>
+              <th style="padding: 0 12px; border-bottom: 1px solid #141414; font-weight: 600; width: 150px">Status</th>
+              <th style="padding: 0 32px 0 12px; border-bottom: 1px solid #141414; font-weight: 600; width: 60px; text-align: right">Karten</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="height: 40px; background: #f3f3f1">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-weight: 500">Soziale Systeme. Grundriß einer allgemeinen Theorie</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Luhmann, Niklas</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1984</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Lese ich</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">4</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Theorie des kommunikativen Handelns. Band 1</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Habermas, Jürgen</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1981</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; display: flex; align-items: center; gap: 8px; height: 40px"><span style="width: 60px; height: 4px; background: #e4e4e4; display: flex"><span style="width: 40%; background: #141414"></span></span><span style="color: #5c5c5c; font-size: 12px">konvertiert</span></td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">The Constitution of Society: Outline of the Theory of Structuration</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Giddens, Anthony</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1984</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Gelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">11</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Attention Is All You Need</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Vaswani, Ashish et al.</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2017</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Artikel</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Die Gesellschaft der Gesellschaft</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Luhmann, Niklas</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1997</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Lese ich</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">7</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Reassembling the Social: An Introduction to Actor-Network-Theory</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Latour, Bruno</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2005</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Organisation und Entscheidung</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Luhmann, Niklas</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2000</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Gelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">9</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Lewis, Patrick et al.</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2020</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Artikel</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Die Kunst der Gesellschaft</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Luhmann, Niklas</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1995</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Gelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">3</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Wissenschaft als Beruf</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Weber, Max</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1919</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Kapitel</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; background: #141414"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Grenzen der Gemeinschaft. Eine Kritik des sozialen Radikalismus</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Plessner, Helmuth</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">1924</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Buch</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Gelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px">5</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Digitalisierung und Verwaltung: Ein Forschungsüberblick</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Hofmann, Sara; Ogonek, Nadine</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2018</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Bericht</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+            <tr style="height: 40px">
+              <td style="padding: 0 12px 0 32px; border-bottom: 1px solid #e4e4e4"><span style="display: block; width: 8px; height: 8px; border: 1px solid #141414; box-sizing: border-box"></span></td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Language Models are Few-Shot Learners</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Brown, Tom et al.</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4; font-family: 'JetBrains Mono', monospace; font-size: 12px">2020</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Artikel</td>
+              <td style="padding: 0 12px; border-bottom: 1px solid #e4e4e4">Ungelesen</td>
+              <td style="padding: 0 32px 0 12px; border-bottom: 1px solid #e4e4e4; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5c5c5c">0</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 32px; font-size: 12px; color: #5c5c5c">
+          <span>13 von 38 geladen</span>
+          <button type="button" style="height: 28px; padding: 0 12px; border: 1px solid #141414; background: #ffffff; color: #141414; font: inherit; font-size: 12px; cursor: pointer">Mehr laden</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
