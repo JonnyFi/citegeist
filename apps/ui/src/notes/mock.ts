@@ -10,7 +10,7 @@ import type { NoteFrontmatter } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
 
-interface MockNote {
+export interface MockNote {
   slug: string;
   frontmatter: NoteFrontmatter;
   body: string;
@@ -91,7 +91,8 @@ function seed(data: MockData): Map<string, MockNote> {
   return notes;
 }
 
-function storeFor(data: MockData): Map<string, MockNote> {
+/** The notes of a mock data set, shared with the connections mock. */
+export function storeFor(data: MockData): Map<string, MockNote> {
   let store = STORES.get(data);
   if (!store) {
     store = seed(data);
@@ -100,7 +101,7 @@ function storeFor(data: MockData): Map<string, MockNote> {
   return store;
 }
 
-const toNote = (n: MockNote) => ({
+export const toNote = (n: MockNote) => ({
   frontmatter: n.frontmatter,
   body: n.body,
   path: `/mock/library/notes/${n.slug}.md`,

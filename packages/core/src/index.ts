@@ -21,6 +21,7 @@ export {
   type LibraryStatus,
   type OpenOptions,
 } from "./library.js";
+export * from "./links/index.js";
 export { bindCoreOperations, createCoreRegistry } from "./ops.js";
 export { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 export { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
