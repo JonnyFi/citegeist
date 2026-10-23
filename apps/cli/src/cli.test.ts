@@ -196,11 +196,13 @@ describe("cg", () => {
     expect(r.code).toBe(EXIT.ok);
   });
 
-  it("fails every call with CORE_NOT_WIRED until the core is plugged in", async () => {
-    const r = await cg(["library", "status", "--json"], { registry: createRegistry({}) });
-    expect(r.code).toBe(EXIT.askHuman);
-    expect(JSON.parse(r.err).error.code).toBe("CORE_NOT_WIRED");
-    expect(JSON.parse(r.err).error.fix).toContain("CITEGEIST_FIXTURE=1");
+  it("reports a missing library with the way to create one", async () => {
+    const env = { CITEGEIST_LIBRARY: "/nonexistent/citegeist-library" };
+    const r = await cg(["library", "status", "--json"], { registry: createRegistry(env) });
+    expect(r.code).toBe(EXIT.notFound);
+    const { error } = JSON.parse(r.err);
+    expect(error.code).toBe("LIBRARY_NOT_FOUND");
+    expect(error.fix).toContain("cg init");
   });
 });
 

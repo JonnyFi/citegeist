@@ -29,6 +29,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@citegeist/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@citegeist/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
