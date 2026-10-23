@@ -10,3 +10,4 @@ onlyBuiltDependencies:
   - better-sqlite3
   - "@parcel/watcher"
   - esbuild
+  - electron
