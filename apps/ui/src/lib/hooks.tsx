@@ -18,7 +18,12 @@ const CoreContext = createContext<Core | null>(null);
 export function CoreProvider({ core, children }: { core: Core; children: ReactNode }) {
   const queryClient = useQueryClient();
   useEffect(
-    () => core.subscribe(() => void queryClient.invalidateQueries({ queryKey: ["op"] })),
+    () =>
+      core.subscribe((event) => {
+        // Chat sessions stream many events; the chat panel refetches its own queries for them.
+        if (event.path.startsWith("chat/")) return;
+        void queryClient.invalidateQueries({ queryKey: ["op"] });
+      }),
     [core, queryClient],
   );
   return <CoreContext.Provider value={core}>{children}</CoreContext.Provider>;

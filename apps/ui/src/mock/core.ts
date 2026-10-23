@@ -21,6 +21,7 @@ import {
   searchQuery,
 } from "@citegeist/ops";
 import { CardFrontmatter, type ItemFrontmatter, ProjectFrontmatter } from "@citegeist/schema";
+import { bindChatMock } from "../chat/mock";
 import { bindConnectionsMock } from "../connections/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { bindNotesMock } from "../notes/mock";
@@ -523,6 +524,7 @@ export function createMockRegistry(
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
   bindNotesMock(registry, data, emit);
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
+  bindChatMock(registry, data, emit, { stepMs: Math.max(5, Math.round(aiDelayMs / 5)) });
   return bindSettingsMock(registry, settings, emit, false);
 }
 

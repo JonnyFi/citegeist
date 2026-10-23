@@ -1,3 +1,5 @@
+import { chatDe } from "../chat/strings";
+
 /**
  * German strings, the default language of the UI. `en.ts` must define the same keys. Keys with a
  * `.one` and a `.other` variant are plurals, used through `tn(base, count)`.
@@ -415,6 +417,7 @@ export const de = {
   "graph.canvasLabel": "Graph der Verbindungen",
   "graph.noWebgl":
     "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
+  ...chatDe,
 };
 
 export type MessageKey = keyof typeof de;
