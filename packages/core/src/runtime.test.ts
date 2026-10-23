@@ -91,6 +91,25 @@ async function paraphraseOf(
     .paraphrase;
 }
 
+describe("createRuntime operations", () => {
+  it("binds every contract the app screens call", async () => {
+    const s = await setup();
+    for (const name of [
+      "links.create",
+      "links.propose",
+      "links.decide",
+      "graph.neighbors",
+      "cite.format",
+      "items.attach",
+      "notes.list",
+      "notes.backlinks",
+      "search.query",
+    ]) {
+      expect(s.rt.registry.get(name), name).toBeDefined();
+    }
+  });
+});
+
 describe("createRuntime notes", () => {
   it("binds notes.list and notes.backlinks next to the other operations", async () => {
     const s = await setup();
