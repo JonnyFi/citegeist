@@ -1,0 +1,7 @@
+{
+  "url": "https://api.openalex.org/works/doi:10.2760/6280845?select=id%2Cdoi%2Cids%2Ctitle%2Clanguage%2Cauthorships%2Ctopics%2Ckeywords%2Creferenced_works%2Ccited_by_count%2Cabstract_inverted_index%2Copen_access%2Cbest_oa_location%2Cis_retracted",
+  "accept": "application/json",
+  "status": 404,
+  "contentType": "text/html; charset=utf-8",
+  "body": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>\n"
+}

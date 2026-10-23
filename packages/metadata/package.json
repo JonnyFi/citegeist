@@ -8,7 +8,12 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "record": "CITEGEIST_RECORD=1 vitest run src/record.test.ts"
+  },
+  "dependencies": {
+    "@citegeist/schema": "workspace:*",
+    "fast-xml-parser": "^5.0.0"
   },
   "devDependencies": {
     "typescript": "catalog:",

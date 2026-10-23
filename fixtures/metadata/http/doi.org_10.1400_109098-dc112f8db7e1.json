@@ -1,0 +1,7 @@
+{
+  "url": "https://doi.org/10.1400/109098",
+  "accept": "application/vnd.citationstyles.csl+json",
+  "status": 200,
+  "contentType": "application/vnd.citationstyles.csl+json;charset=UTF-8",
+  "body": "{\"type\":\"article-journal\",\"author\":[{\"family\":\"C&#243;ceres\",\"given\":\"Mar&#237;a Beatriz\"}],\"issued\":{\"date-parts\":[[2008]]},\"container-title\":\"Studi buzzatiani : rivista del centro studi Buzzati\",\"DOI\":\"10.1400\\/109098\",\"ISSN\":\"11246286\",\"issue\":\"Anno XIII\",\"medium\":\"JD\",\"publisher\":\"Fabrizio Serra Editore\",\"publisher-place\":\"IT\",\"title\":\"Traducción en español\",\"URL\":\"https:\\/\\/doi.org\\/10.1400\\/109098\"}"
+}
