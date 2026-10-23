@@ -10,6 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@citation-js/core": "^0.9.0",
+    "@citation-js/plugin-csl": "^0.9.0",
+    "@citegeist/schema": "workspace:*",
+    "@retorquere/bibtex-parser": "^12.1.13"
+  },
   "devDependencies": {
     "typescript": "catalog:",
     "vitest": "catalog:"

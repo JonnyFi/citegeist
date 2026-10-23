@@ -1,0 +1,30 @@
+luhmann1984soziale
+  cite: (Luhmann, 1984, S. 31)
+  bib:  Luhmann, N. (1984). Soziale Systeme: Grundriß einer allgemeinen Theorie. Suhrkamp.
+kahneman1979prospect
+  cite: (Kahneman & Tversky, 1979, S. 31)
+  bib:  Kahneman, D., & Tversky, A. (1979). Prospect theory: An analysis of decision under risk. Econometrica, 47(2), 263–291. https://doi.org/10.2307/1914185
+bourdieu1983okonomisches
+  cite: (Bourdieu, 1983, S. 31)
+  bib:  Bourdieu, P. (1983). Ökonomisches Kapital, kulturelles Kapital, soziales Kapital. In R. Kreckel (Hrsg.), Soziale Ungleichheiten (S. 183–198). Schwartz.
+vaswani2017attention
+  cite: (Vaswani et al., 2017, S. 31)
+  bib:  Vaswani, A., Shazeer, N., & Parmar, N. (2017). Attention is all you need. Advances in Neural Information Processing Systems 30, 5998–6008.
+muller2019lernen
+  cite: (Müller, 2019, S. 31)
+  bib:  Müller, A. (2019). Lernen mit digitalen Medien im Studium: Eine empirische Untersuchung [Dissertation]. Universität Wien.
+who2021global
+  cite: (World Health Organization, 2022, S. 31)
+  bib:  World Health Organization. (2022). Global report on infection prevention and control. World Health Organization. https://www.who.int/publications/i/item/9789240051164
+bmbf2023bildung
+  cite: (Bundesministerium für Bildung und Forschung, 2023, S. 31)
+  bib:  Bundesministerium für Bildung und Forschung. (2023, Mai). Digitalisierung in der Bildung. BMBF. https://www.bmbf.de/digitalisierung
+foucault1976uberwachen
+  cite: (Foucault, 1976, S. 31)
+  bib:  Foucault, M. (1976). Überwachen und Strafen: Die Geburt des Gefängnisses (W. Seitter, Übers.; 14. Aufl.). Suhrkamp.
+humboldt1836verschiedenheit
+  cite: (von Humboldt, 1836, S. 31)
+  bib:  von Humboldt, W. (1836). Über die Verschiedenheit des menschlichen Sprachbaues. Dümmler.
+schafer2021digitale
+  cite: (Schäfer et al., 2021, S. 31)
+  bib:  Schäfer, J., Öztürk, A., & Böhm, M. (2021). Digitale Lernumgebungen in der Hochschullehre. Zeitschrift für Pädagogische Psychologie, 35(2–3), 101–118. https://doi.org/10.1024/1010-0652/a000300

@@ -1,0 +1,20 @@
+Vendored CSL styles and locales
+================================
+
+The files in this directory are copied unmodified from the Citation Style Language projects:
+
+  apa.csl
+  chicago-author-date.csl
+  deutsche-gesellschaft-fur-psychologie.csl
+      Source: https://github.com/citation-style-language/styles (master, fetched 2026-10-23)
+
+  locales-de-DE.xml
+  locales-en-US.xml
+      Source: https://github.com/citation-style-language/locales (master, fetched 2026-10-23)
+
+License: Creative Commons Attribution-ShareAlike 3.0 Unported
+  https://creativecommons.org/licenses/by-sa/3.0/
+Each file carries its own <rights> element and its list of authors and contributors
+(<author>, <contributor>) in the header. Those headers must stay intact.
+The files are redistributed as separate data files and are not merged into citegeist source code.
+Any modified copy of a style or locale must be released under the same license.
