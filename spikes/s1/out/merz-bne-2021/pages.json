@@ -1,0 +1,162 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "12",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 1,
+   "label": "13",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 2,
+   "label": "14",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 3,
+   "label": "15",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 4,
+   "label": "16",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 5,
+   "label": "17",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 16
+  },
+  {
+   "index": 6,
+   "label": "18",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 7,
+   "label": "19",
+   "labelSource": "detected",
+   "confidence": 0.97,
+   "size": [
+    481.89,
+    680.315
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 18
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": null,
+   "note": "no /PageLabels"
+  },
+  "detected": {
+   "labels": [
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19"
+   ],
+   "offset": 12,
+   "votes": 8,
+   "candidatesPerPage": {
+    "0": [
+     12
+    ],
+    "1": [
+     13
+    ],
+    "2": [
+     14
+    ],
+    "3": [
+     15
+    ],
+    "4": [
+     16
+    ],
+    "5": [
+     17
+    ],
+    "6": [
+     18
+    ],
+    "7": [
+     19
+    ]
+   }
+  },
+  "crossref": {
+   "labels": [
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19"
+   ],
+   "note": "range 12-19, 0 injected page(s)"
+  }
+ },
+ "flags": [
+  "crossref agrees with detected on 8/8 pages"
+ ]
+}

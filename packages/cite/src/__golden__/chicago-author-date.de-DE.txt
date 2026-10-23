@@ -1,0 +1,30 @@
+luhmann1984soziale
+  cite: (Luhmann 1984, 31)
+  bib:  Luhmann, Niklas. 1984. Soziale Systeme: Grundriß einer allgemeinen Theorie. Suhrkamp.
+kahneman1979prospect
+  cite: (Kahneman und Tversky 1979, 31)
+  bib:  Kahneman, Daniel, und Amos Tversky. 1979. „Prospect Theory: An Analysis of Decision under Risk“. Econometrica 47 (2): 263–91. https://doi.org/10.2307/1914185.
+bourdieu1983okonomisches
+  cite: (Bourdieu 1983, 31)
+  bib:  Bourdieu, Pierre. 1983. „Ökonomisches Kapital, kulturelles Kapital, soziales Kapital“. In Soziale Ungleichheiten, herausgegeben von Reinhard Kreckel. Schwartz.
+vaswani2017attention
+  cite: (Vaswani u. a. 2017, 31)
+  bib:  Vaswani, Ashish, Noam Shazeer, und Niki Parmar. 2017. „Attention Is All You Need“. Advances in Neural Information Processing Systems 30 (Red Hook, NY), 5998–6008.
+muller2019lernen
+  cite: (Müller 2019, 31)
+  bib:  Müller, Anna. 2019. „Lernen mit digitalen Medien im Studium: Eine empirische Untersuchung“. Dissertation, Universität Wien.
+who2021global
+  cite: (World Health Organization 2022, 31)
+  bib:  World Health Organization. 2022. Global Report on Infection Prevention and Control. World Health Organization. https://www.who.int/publications/i/item/9789240051164.
+bmbf2023bildung
+  cite: (Bundesministerium für Bildung und Forschung 2023, 31)
+  bib:  Bundesministerium für Bildung und Forschung. 2023. „Digitalisierung in der Bildung“. BMBF, Mai. https://www.bmbf.de/digitalisierung.
+foucault1976uberwachen
+  cite: (Foucault 1976, 31)
+  bib:  Foucault, Michel. 1976. Überwachen und Strafen: Die Geburt des Gefängnisses. 14. Aufl. Übersetzt von Walter Seitter. Suhrkamp.
+humboldt1836verschiedenheit
+  cite: (von Humboldt 1836, 31)
+  bib:  Humboldt, Wilhelm von. 1836. Über die Verschiedenheit des menschlichen Sprachbaues. Dümmler.
+schafer2021digitale
+  cite: (Schäfer u. a. 2021, 31)
+  bib:  Schäfer, Jürgen, Aylin Öztürk, und Martin Böhm. 2021. „Digitale Lernumgebungen in der Hochschullehre“. Zeitschrift für Pädagogische Psychologie 35 (2–3): 101–18. https://doi.org/10.1024/1010-0652/a000300.

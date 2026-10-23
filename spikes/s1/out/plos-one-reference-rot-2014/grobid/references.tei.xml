@@ -1,0 +1,1025 @@
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:xlink="http://www.w3.org/1999/xlink" 
+ xmlns:mml="http://www.w3.org/1998/Math/MathML">
+	<teiHeader/>
+	<text>
+		<front/>
+		<body/>
+		<back>
+			<div>
+				<listBibl>
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Hiberlink</surname></persName>
+		</author>
+		<ptr target="http://hiberlink.org/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Lockss</surname></persName>
+		</author>
+		<ptr target="http://lockss.org/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Clockss</surname></persName>
+		</author>
+		<ptr target="http://www.clockss.org/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Wavelab and reproducible research</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">B</forename><surname>Buckheit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Wavelets and Statistics</title>
+		<imprint>
+			<date type="published" when="1995">1995</date>
+			<biblScope unit="volume">103</biblScope>
+			<biblScope unit="page" from="55" to="81" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Cool URIs don&apos;t change</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Berners-Lee</surname></persName>
+		</author>
+		<ptr target="http://www.w3.org/Provider/Style/URI.html" />
+		<imprint>
+			<date type="published" when="1998">1998. 2014 November 26</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Web Page Change and Persistence -A Four-Year Longitudinal Study</title>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">C</forename><surname>Koehler</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of the American Society for Information Science and Technology</title>
+		<imprint>
+			<biblScope unit="volume">53</biblScope>
+			<biblScope unit="page" from="162" to="171" />
+			<date type="published" when="2002">2002</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Link Rot&apos;&apos; and Legal Resources on the Web: A 2013 Analysis by the Chesapeake Digital Preservation Group</title>
+		<imprint>
+			<date type="published" when="2013">2013</date>
+			<publisher>The Chesapeake Digital Preservation Group</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Perma: Scoping and addressing the problem of link and reference rot in legal citations</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zittrain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Albert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Lessig</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Harward Law Review Forum</title>
+		<imprint>
+			<biblScope unit="volume">127</biblScope>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">404 not found: the stability and persistence of urls published in medline</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">D</forename><surname>Wren</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Bioinformatics</title>
+		<imprint>
+			<biblScope unit="volume">20</biblScope>
+			<biblScope unit="page" from="668" to="672" />
+			<date type="published" when="2004">2004</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Url decay in medlinea 4-year follow-up study</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">D</forename><surname>Wren</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Bioinformatics</title>
+		<imprint>
+			<biblScope unit="volume">24</biblScope>
+			<biblScope unit="page" from="1381" to="1385" />
+			<date type="published" when="2008">2008</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Ecology in the information age: patterns of use and attrition rates of internetbased citations in esa journals, 1997-2005</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">J</forename><surname>Duda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">J</forename><surname>Camp</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Frontiers in Ecology and the Environment</title>
+		<imprint>
+			<biblScope unit="volume">6</biblScope>
+			<biblScope unit="page" from="145" to="151" />
+			<date type="published" when="2008">2008</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<author>
+			<persName><forename type="first">S</forename><surname>Lawrence</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">M</forename><surname>Pennock</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><forename type="middle">W</forename><surname>Flake</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Krovetz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">M</forename><surname>Coetzee</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Persistence of Web References in Scientific Research</title>
+		<imprint>
+			<date type="published" when="2001">2001</date>
+			<biblScope unit="volume">34</biblScope>
+			<biblScope unit="page" from="26" to="31" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">The decay and failures of web references</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Spinellis</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Communications of the ACM</title>
+		<imprint>
+			<biblScope unit="volume">46</biblScope>
+			<biblScope unit="page" from="71" to="77" />
+			<date type="published" when="2003">2003</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">The half-life of internet references cited in communication journals</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">V</forename><surname>Dimitrova</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bugeja</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">New Media &amp; Society</title>
+		<imprint>
+			<biblScope unit="volume">9</biblScope>
+			<biblScope unit="page" from="811" to="826" />
+			<date type="published" when="2007">2007</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">The prevalence and inaccessibility of internet references in the biomedical literature at the time of publication</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Aronsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Madani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">J</forename><surname>Carnevale</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Duda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">T</forename><surname>Feyder</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of the American Medical Informatics Association</title>
+		<imprint>
+			<biblScope unit="volume">14</biblScope>
+			<biblScope unit="page" from="232" to="234" />
+			<date type="published" when="2007">2007</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Information Science: Going, Going, Gone: Lost Internet References</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">P</forename><surname>Dellavalle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">J</forename><surname>Hester</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">F</forename><surname>Heilig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">L</forename><surname>Drake</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">W</forename><surname>Kuntzman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Science</title>
+		<imprint>
+			<biblScope unit="volume">302</biblScope>
+			<biblScope unit="page" from="787" to="788" />
+			<date type="published" when="2003">2003</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">A cross disciplinary study of link decay and the effectiveness of mitigation techniques</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hennessey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xijin</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">BMC Bioinformatics</title>
+		<imprint>
+			<biblScope unit="volume">14</biblScope>
+			<date type="published" when="2013">2013</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Accessibility of online resources cited in scholarly LIS journals: A study of emerald ISI-ranked journals</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sadat-Moosavi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Isfandyari-Moghaddam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Tajeddini</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Aslib Proceedings</title>
+		<imprint>
+			<biblScope unit="volume">64</biblScope>
+			<biblScope unit="page" from="178" to="192" />
+			<date type="published" when="2012">2012</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Raising the dead: Recovery of decayed online citations</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">V</forename><surname>Dimitrova</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bugeja</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">American Communication Journal</title>
+		<imprint>
+			<biblScope unit="volume">9</biblScope>
+			<date type="published" when="2007">2007</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Disappearing act: decay of uniform resource locators in health care management journals</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wagner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">D</forename><surname>Gebremichael</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">K</forename><surname>Taylor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J</forename><surname>Soltys</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of the Medical Library Association: JMLA</title>
+		<imprint>
+			<biblScope unit="volume">97</biblScope>
+			<biblScope unit="page" from="122" to="130" />
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">Analyzing the Persistence of Referenced Web Resources with Memento</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Sanderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Phillips</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Van De Sompel</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1105.3459</idno>
+		<imprint>
+			<date type="published" when="2011">2011</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Technical Report</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Keeping Up With the Changing Web</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Brewington</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cybenko</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Computer</title>
+		<imprint>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="52" to="58" />
+			<date type="published" when="2000">2000</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">The Evolution of the Web and Implications for an Incremental Crawler</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of VLDB 900</title>
+		<meeting>VLDB 900</meeting>
+		<imprint>
+			<date type="published" when="2000">2000</date>
+			<biblScope unit="page" from="200" to="209" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">A Large-Scale Study of the Evolution of Web Pages</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Fetterly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Manasse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Najork</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wiener</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of WWW 903</title>
+		<meeting>WWW 903</meeting>
+		<imprint>
+			<date type="published" when="2003">2003</date>
+			<biblScope unit="page" from="669" to="678" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">What&apos;s New on the Web? The Evolution of the Web from a Search Engine Perspective</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ntoulas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olston</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of WWW 904</title>
+		<meeting>WWW 904</meeting>
+		<imprint>
+			<date type="published" when="2004">2004</date>
+			<biblScope unit="page" from="1" to="12" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">The Web Changes Everything: Understanding the Dynamics of Web Content</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Adar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Teevan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">T</forename><surname>Dumais</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">L</forename><surname>Elsas</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of WSDM 909</title>
+		<meeting>WSDM 909</meeting>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<biblScope unit="page" from="282" to="291" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Zoetrope: Interacting with the Ephemeral Web</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Adar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dontcheva</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Fogarty</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">S</forename><surname>Weld</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of UIST 908</title>
+		<meeting>UIST 908</meeting>
+		<imprint>
+			<date type="published" when="2008">2008</date>
+			<biblScope unit="page" from="239" to="248" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Moved but not gone: an evaluation of real-time methods for discovering replacement web pages</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Klein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">International Journal on Digital Libraries</title>
+		<imprint>
+			<biblScope unit="volume">14</biblScope>
+			<biblScope unit="page" from="17" to="38" />
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Revisiting Lexical Signatures to (Re-)Discover Web Pages</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Klein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ECDL 908</title>
+		<meeting>ECDL 908</meeting>
+		<imprint>
+			<date type="published" when="2008">2008</date>
+			<biblScope unit="page" from="371" to="382" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">H</forename><surname>Van De Sompel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Sanderson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">RFC</title>
+		<imprint>
+			<biblScope unit="volume">7089</biblScope>
+			<date type="published" when="2013">2013</date>
+		</imprint>
+		<respStmt>
+			<orgName>HTTP Framework for Time-Based Access to Resource States -Memento</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Randoim</surname></persName>
+		</author>
+		<ptr target="http://labs.crossref.org/randoim/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Ulrich&apos;s Periodicals Directory. ß [2014] ProQuest LLC. All rights reserved. Used with permission</title>
+		<author>
+			<persName><surname>Ulrich's Knowledgebase</surname></persName>
+		</author>
+		<ptr target="http://www.proquest.com/products-services/Ulrichsweb.html" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Science and Engineering Indicators</title>
+	</analytic>
+	<monogr>
+		<title level="j">National Science Foundation</title>
+		<imprint>
+			<date type="published" when="2014">2014. 2014</date>
+			<pubPlace>Arlington VA</pubPlace>
+		</imprint>
+		<respStmt>
+			<orgName>National Science Board</orgName>
+		</respStmt>
+	</monogr>
+	<note>NSB 14-01</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Pdftohtml</surname></persName>
+		</author>
+		<ptr target="http://pdftohtml.sourceforge.net/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Large-Scale Extraction and Analysis of Web Link References in Scholarly Articles</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Tobin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Grover</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of DL 914</title>
+		<meeting>DL 914</meeting>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+	<note>to appear</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Iana</surname></persName>
+		</author>
+		<ptr target="https://www.icann.org/resources/pages/tlds-2012-02-25-en" />
+		<imprint>
+			<date type="published" when="2012">2012. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">S</forename><surname>Cheshire</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Krochmal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">RFC</title>
+		<imprint>
+			<biblScope unit="volume">6761</biblScope>
+			<date type="published" when="2013">2013</date>
+			<publisher>Special-Use Domain Names</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Profiling web archive coverage for toplevel domain and content language</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Alsum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">C</forename><surname>Weigle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Van De Sompel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">International Journal on Digital Libraries</title>
+		<imprint>
+			<biblScope unit="volume">14</biblScope>
+			<biblScope unit="page" from="149" to="166" />
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">NIH open access mandate made permanent</title>
+		<ptr target="http://sciencecommons.org/weblog/archives/2009/03/17/nih-mandate-made-permanent/" />
+		<imprint>
+			<date type="published" when="2009">2009. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<ptr target="http://www.nihms.nih.gov/stats/index.shtml" />
+		<title level="m">NIHMS statistics</title>
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Rate of change and other metrics: a live study of the world wide web</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Douglis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Feldmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Krishnamurthy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">C</forename><surname>Mogul</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">USENIX Symposium on Internet Technologies and Systems</title>
+		<imprint>
+			<date type="published" when="1997">1997</date>
+			<biblScope unit="volume">119</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Librarians and link rot: A comparative analysis with some methodological considerations</title>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">C</forename><surname>Tyler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mcneil</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Libraries and the Academy</title>
+		<imprint>
+			<date type="published" when="2003">2003</date>
+			<biblScope unit="volume">3</biblScope>
+			<biblScope unit="page" from="615" to="632" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ware</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mabe</surname></persName>
+		</author>
+		<title level="m">The STM report. An overview of scientific and scholarly journal publishing</title>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Webcite</surname></persName>
+		</author>
+		<ptr target="http://webcitation.org/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Figshare</surname></persName>
+		</author>
+		<ptr target="http://figshare.com/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Zenodo</surname></persName>
+		</author>
+		<ptr target="http://zenodo.org/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Github</surname></persName>
+		</author>
+		<ptr target="https://github.com/" />
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Towards robust hyperlinks for web-based scholarly communication</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Van De Sompel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Klein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Shankar</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Intelligent Computer Mathematics</title>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+			<biblScope unit="volume">8543</biblScope>
+			<biblScope unit="page" from="12" to="25" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<author>
+			<persName><forename type="first">H</forename><surname>Van De Sompel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Klein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Sanderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+		<ptr target="http://mementoweb.org/missing-link/" />
+		<title level="m">Thoughts on Referencing, Linking, Reference Rot</title>
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<analytic>
+		<ptr target="https://chrome.google.com/webstore/detail/memento-time-travel/jgbfpjledahoajcppakbgilmojkaghgm" />
+	</analytic>
+	<monogr>
+		<title level="m">?hl5engl5US</title>
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<analytic>
+		<title level="a" type="main">Research objects: Towards exchange and reuse of digital knowledge</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bechhofer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>De Roure</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gamble</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Goble</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Buchan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">The Future of the Web for Collaborative Science</title>
+		<imprint>
+			<date type="published" when="2010">2010</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<monogr>
+		<ptr target="http://en.wikipedia.org/wiki/Wikipedia_talk:Link_rot" />
+		<title level="m">Wikipedia talk: Link rot</title>
+		<imprint>
+			<date type="published" when="2014-11-01">2014. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">In supreme court opinions, web links to nowhere</title>
+		<ptr target="http://www.nytimes.com/2013/09/24/us/politics/in-supreme-court-opinions-clicks-that-lead-nowhere.html" />
+	</analytic>
+	<monogr>
+		<title level="j">The New York Times</title>
+		<imprint>
+			<date type="published" when="2013">2013. 2014 November 1</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<analytic>
+		<title level="a" type="main">Losing My Revolution: How Many Resources Shared on Social Media Have Been Lost?</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Salaheldeen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">L</forename><surname>Nelson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of TPDL 912</title>
+		<meeting>TPDL 912</meeting>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+			<biblScope unit="page" from="125" to="137" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

@@ -1,0 +1,23 @@
+{
+  "name": "citegeist-spike-s3",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Spike S3: highlight anchoring (throwaway)",
+  "scripts": {
+    "data": "node scripts/download.mjs",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "approx-string-match": "^2.0.1",
+    "pdfjs-dist": "^6.4.299"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

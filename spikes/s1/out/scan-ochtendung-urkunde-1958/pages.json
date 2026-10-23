@@ -1,0 +1,36 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "1",
+   "labelSource": "fallback",
+   "confidence": 0.1,
+   "size": [
+    595.0,
+    842.0
+   ],
+   "textSource": "ocr",
+   "nBlocks": 3
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": null,
+   "note": "no /PageLabels"
+  },
+  "detected": {
+   "labels": null,
+   "offset": null,
+   "votes": 0,
+   "candidatesPerPage": {}
+  },
+  "crossref": {
+   "labels": null,
+   "note": "no Crossref pages"
+  }
+ },
+ "flags": [
+  "no evidence, physical index + 1",
+  "text quality too low for label detection (dictionary hit rate 0.50)"
+ ]
+}

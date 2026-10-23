@@ -1,0 +1,938 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "227",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 1,
+   "label": "228",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 2,
+   "label": "229",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 14
+  },
+  {
+   "index": 3,
+   "label": "230",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 4,
+   "label": "231",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 5,
+   "label": "232",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 6,
+   "label": "233",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 7,
+   "label": "234",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 1
+  },
+  {
+   "index": 8,
+   "label": "235",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 9,
+   "label": "236",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 10,
+   "label": "237",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 11,
+   "label": "238",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 12,
+   "label": "239",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 13,
+   "label": "240",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 14,
+   "label": "241",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 15,
+   "label": "242",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 16,
+   "label": "243",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 17,
+   "label": "244",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 18,
+   "label": "245",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 19,
+   "label": "246",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 20,
+   "label": "247",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 21,
+   "label": "248",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 22,
+   "label": "249",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 23,
+   "label": "250",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 24,
+   "label": "251",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 25,
+   "label": "252",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 26,
+   "label": "253",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 27,
+   "label": "254",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 28,
+   "label": "255",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 29,
+   "label": "256",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 30,
+   "label": "257",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 31,
+   "label": "258",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 32,
+   "label": "259",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 33,
+   "label": "260",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 34,
+   "label": "261",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 35,
+   "label": "262",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 36,
+   "label": "263",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 37,
+   "label": "264",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 38,
+   "label": "265",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 14
+  },
+  {
+   "index": 39,
+   "label": "266",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 3
+  },
+  {
+   "index": 40,
+   "label": "267",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 41,
+   "label": "268",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 42,
+   "label": "269",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 43,
+   "label": "270",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 44,
+   "label": "271",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 45,
+   "label": "272",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 5
+  },
+  {
+   "index": 46,
+   "label": "273",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 9
+  },
+  {
+   "index": 47,
+   "label": "274",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 48,
+   "label": "275",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 49,
+   "label": "276",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 50,
+   "label": "277",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 51,
+   "label": "278",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 52,
+   "label": "279",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 53,
+   "label": "280",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 54,
+   "label": "281",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 55,
+   "label": "282",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 6
+  },
+  {
+   "index": 56,
+   "label": "283",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 57,
+   "label": "284",
+   "labelSource": "detected",
+   "confidence": 0.48,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 1
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": null,
+   "note": "no /PageLabels"
+  },
+  "detected": {
+   "labels": [
+    "227",
+    "228",
+    "229",
+    "230",
+    "231",
+    "232",
+    "233",
+    "234",
+    "235",
+    "236",
+    "237",
+    "238",
+    "239",
+    "240",
+    "241",
+    "242",
+    "243",
+    "244",
+    "245",
+    "246",
+    "247",
+    "248",
+    "249",
+    "250",
+    "251",
+    "252",
+    "253",
+    "254",
+    "255",
+    "256",
+    "257",
+    "258",
+    "259",
+    "260",
+    "261",
+    "262",
+    "263",
+    "264",
+    "265",
+    "266",
+    "267",
+    "268",
+    "269",
+    "270",
+    "271",
+    "272",
+    "273",
+    "274",
+    "275",
+    "276",
+    "277",
+    "278",
+    "279",
+    "280",
+    "281",
+    "282",
+    "283",
+    "284"
+   ],
+   "offset": 227,
+   "votes": 23,
+   "candidatesPerPage": {
+    "1": [
+     228
+    ],
+    "2": [
+     226
+    ],
+    "3": [
+     230
+    ],
+    "4": [
+     15
+    ],
+    "6": [
+     233
+    ],
+    "7": [
+     234
+    ],
+    "8": [
+     235
+    ],
+    "9": [
+     236
+    ],
+    "10": [
+     237,
+     1868
+    ],
+    "11": [
+     2
+    ],
+    "12": [
+     223
+    ],
+    "14": [
+     2,
+     207
+    ],
+    "15": [
+     242
+    ],
+    "16": [
+     24
+    ],
+    "17": [
+     244
+    ],
+    "18": [
+     16,
+     245
+    ],
+    "19": [
+     246
+    ],
+    "20": [
+     247
+    ],
+    "21": [
+     1870
+    ],
+    "22": [
+     249
+    ],
+    "23": [
+     250
+    ],
+    "24": [
+     251
+    ],
+    "25": [
+     252
+    ],
+    "26": [
+     253
+    ],
+    "27": [
+     254,
+     266
+    ],
+    "28": [
+     255
+    ],
+    "29": [
+     256
+    ],
+    "30": [
+     257
+    ],
+    "32": [
+     259
+    ],
+    "33": [
+     26
+    ],
+    "34": [
+     17
+    ],
+    "35": [
+     262
+    ],
+    "36": [
+     17,
+     26
+    ],
+    "38": [
+     22
+    ],
+    "39": [
+     636
+    ],
+    "40": [
+     22
+    ],
+    "41": [
+     638
+    ],
+    "44": [
+     341
+    ],
+    "45": [
+     342
+    ],
+    "46": [
+     10,
+     343
+    ],
+    "47": [
+     344
+    ],
+    "48": [
+     3,
+     5
+    ],
+    "49": [
+     346
+    ],
+    "50": [
+     125,
+     347
+    ],
+    "51": [
+     348
+    ],
+    "52": [
+     349
+    ],
+    "53": [
+     350
+    ],
+    "54": [
+     351
+    ],
+    "55": [
+     352
+    ],
+    "56": [
+     353
+    ],
+    "57": [
+     354
+    ]
+   }
+  },
+  "crossref": {
+   "labels": null,
+   "note": "no Crossref pages"
+  }
+ },
+ "flags": []
+}

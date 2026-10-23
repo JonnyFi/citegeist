@@ -1,0 +1,349 @@
+{
+  "sdkRows": [
+    {
+      "id": 1,
+      "lang": "en",
+      "sec": 8.072018417,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 7212,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Gedächtniskonsolidierung im Schlaf wird oft als Übertragung vom Hippocampus in den Neokortex beschrieben, die Befundlage ist allerdings differenzierter. Bei Nagetieren fallen hippocampale Sharp-Wave-Ripples mit der Wiedergabe kürzlich durchlaufener Wege zusammen, und werden diese Ripples gestört, verschlechtert sich die spätere Leistung bei räumlichen Aufgaben. Beim Menschen sind die Effekte dagegen moderat und hängen stark vom Materialtyp ab: Bei deklarativen Wortpaar-Aufgaben zeigen sich nach einer Nacht Schlaf verlässliche Zuwächse, prozedurale Fertigkeiten verbessern sich dagegen häufig nur, wenn die Lernenden vor dem Schlaf ausreichend geübt haben. Mehrere Autoren argumentieren daher, dass Schlaf Erinnerungen nicht einfach kopiert, sondern selektiv jene stärkt, die für künftiges Verhalten als relevant markiert sind – eine Sicht, die sich mit rein passiven Konsolidierungsmodellen nur schwer verträgt.",
+        "core": "Beim Menschen ist die schlafabhängige Gedächtniskonsolidierung moderat und materialabhängig, und mehrere Autoren deuten sie eher als selektive Verstärkung relevanter Erinnerungen denn als passives Kopieren."
+      },
+      "usage": {
+        "in": 2,
+        "out": 1297
+      }
+    },
+    {
+      "id": 2,
+      "lang": "de",
+      "sec": 3.7156173330000017,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 4917,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Digitalisierung der deutschen Verwaltung wird seit zwanzig Jahren angekündigt, bleibt aber hinter den Erwartungen zurück. Das Onlinezugangsgesetz verpflichtete Bund, Länder und Kommunen, bis Ende 2022 rund 575 Verwaltungsleistungen digital anzubieten; zu diesem Stichtag war davon nur ein Bruchteil flächendeckend verfügbar. Die Forschung führt dies vor allem auf die föderale Aufgabenteilung, uneinheitliche Fachverfahren und fehlende gemeinsame Standards zurück. Viele Kommunen haben zudem weder Personal noch Haushaltsmittel, um Lösungen anderer Träger nachzunutzen. Die Autorinnen schlagen daher vor, zentrale Basiskomponenten verbindlich bereitzustellen und die Verantwortung für die Ende-zu-Ende-Digitalisierung eindeutig einer Ebene zuzuweisen, statt sie weiter auf viele Schultern zu verteilen.",
+        "core": "Die verbindliche Bereitstellung zentraler Basiskomponenten und eine eindeutig zugewiesene Verantwortung für die Ende-zu-Ende-Digitalisierung auf einer Ebene können die stockende Verwaltungsdigitalisierung voranbringen, die bislang an föderaler Aufgabenteilung, uneinheitlichen Fachverfahren und knappen Ressourcen der Kommunen scheitert."
+      },
+      "usage": {
+        "in": 2,
+        "out": 611
+      }
+    },
+    {
+      "id": 3,
+      "lang": "en",
+      "sec": 5.828726833000001,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 6610,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Transformer-Architektur ersetzt Rekurrenz durch Self-Attention, sodass jedes Token einer Sequenz direkt auf jedes andere zugreifen kann. Das beseitigt den sequentiellen Engpass rekurrenter Netze und macht das Training auf moderner Hardware stark parallelisierbar. Der Preis ist ein quadratischer Aufwand in der Sequenzlänge, da die Attention-Matrix mit dem Quadrat der Token-Anzahl wächst. Viele Folgearbeiten wollten diesen Aufwand über dünn besetzte Muster, Low-Rank-Approximationen oder kernelisierte Attention senken. In der Praxis haben jedoch optimierte exakte Attention-Kernels, die die Speicherhierarchie nutzen, diese Approximationen oft in der Laufzeit übertroffen. Das deutet darauf hin, dass häufig die Speicherbandbreite und nicht die Rechenoperationen der Engpass sind, und dass die asymptotische Komplexität allein ein schlechter Maßstab für die reale Geschwindigkeit ist.",
+        "core": "Exakte, speichereffiziente Attention-Kernels übertreffen in der Praxis oft asymptotisch schnellere Approximationen, weil die Speicherbandbreite und nicht die Rechenleistung den Engpass bildet."
+      },
+      "usage": {
+        "in": 2,
+        "out": 552
+      }
+    },
+    {
+      "id": 4,
+      "lang": "de",
+      "sec": 8.584304000000003,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 9970,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Der Begriff der Resilienz wandelte sich in den Sozialwissenschaften von einer Eigenschaft einzelner Menschen zu einem Merkmal ganzer Systeme. Frühe Studien wie die Kauai-Längsschnittstudie beschrieben Kinder, die sich trotz widriger Umstände stabil entwickelten, und suchten nach persönlichen Schutzfaktoren. Neuere Ansätze betonen dagegen, dass Anpassungsfähigkeit von Beziehungen, Institutionen und verfügbaren Ressourcen abhängt. Kritiker warnen, der Begriff verlagere die Verantwortung für den Umgang mit Belastungen auf die Betroffenen und verdecke strukturelle Ursachen. Der Beitrag plädiert daher dafür, Resilienz als Ergebnis eines Zusammenspiels zu verstehen und nicht als persönliche Leistung, die man einfordern könnte.",
+        "core": "Resilienz gilt neueren Ansätzen zufolge als Ergebnis des Zusammenspiels von Beziehungen, Institutionen und Ressourcen statt als individuelle Leistung, wobei Kritiker die Verlagerung der Verantwortung auf Betroffene und die Verdeckung struktureller Ursachen bemängeln."
+      },
+      "usage": {
+        "in": 2,
+        "out": 532
+      }
+    },
+    {
+      "id": 5,
+      "lang": "en",
+      "sec": 7.788008624999995,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 8313,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Replikationsbemühungen in der Psychologie haben ernüchternde Zahlen hervorgebracht. Im Reproducibility Project erzielten nur etwa 36 Prozent der Replikationen statistisch signifikante Ergebnisse, verglichen mit 97 Prozent der Originalstudien, und die durchschnittliche Effektstärke fiel etwa halb so groß aus. Verteidiger der Originalbefunde verweisen auf Unterschiede in Stichproben und Vorgehen, doch das Muster passt ebenso zu Publikationsbias und flexiblen Analyseentscheidungen. Präregistrierung und Registered Reports sind seither häufiger geworden, und erste Belege deuten darauf hin, dass Registered Reports deutlich weniger positive Ergebnisse berichten als konventionelle Artikel. Ob diese Reformen das Vertrauen wiederherstellen, hängt davon ab, ob Zeitschriften, Geldgeber und Berufungskommissionen sorgfältiges Design statt überraschender Befunde belohnen – eine Anreizfrage, die methodische Korrekturen allein nicht beantworten können.",
+        "core": "Die Replikationskrise zeigt, dass Reformen wie Präregistrierung nur dann Vertrauen zurückgewinnen, wenn Anreize in Publikation und Karriere sorgfältiges Design statt überraschender Ergebnisse belohnen."
+      },
+      "usage": {
+        "in": 2,
+        "out": 572
+      }
+    },
+    {
+      "id": 6,
+      "lang": "de",
+      "sec": 4.7956205000000045,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 5676,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Im Mittelalter war die Mühle eine zentrale technische Einrichtung des ländlichen Raums, und wer sie besaß, übte zugleich Herrschaft aus. Durch den Mühlenzwang mussten die Bauern ihr Getreide ausschließlich dort mahlen lassen, was dauerhafte Abhängigkeiten schuf und in den Quellen immer wieder zu Streit führte. Dem Müller wurde häufig nachgesagt, zu viel Mehl für sich zu behalten, was sich in zahlreichen Redensarten und Erzählungen niederschlug. Die jüngere Forschung sieht darin auch die Spannung zwischen Dorfgemeinschaft und einem Gewerbe, das als Einziges über kostspielige Technik verfügte und deshalb eine Sonderstellung genoss.",
+        "core": "Im Mittelalter sicherte der Mühlenzwang dem Müller Abgaben und Abhängigkeiten der Bauern, und die Vorwürfe des Mehlbehaltens spiegeln laut jüngerer Forschung vor allem die Spannung zwischen Dorfgemeinschaft und einem technisch privilegierten Gewerbe."
+      },
+      "usage": {
+        "in": 2,
+        "out": 490
+      }
+    },
+    {
+      "id": 7,
+      "lang": "en",
+      "sec": 10.632609666999997,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 11590,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Städtische Wärmeinseln entstehen, weil dichte Baumaterialien Sonnenstrahlung speichern und wieder abgeben, während fehlende Vegetation die Verdunstungskühlung verringert. In ruhigen Sommernächten können Stadtzentren laut Übersicht mehrere Grad wärmer sein als das Umland, was den Kühlbedarf erhöht und die hitzebedingte Sterblichkeit älterer Menschen steigert. Straßenbäume werden oft als Abhilfe vorgeschlagen, ihre Wirkung hängt aber von Art, Wasserverfügbarkeit und Standort ab. In engen Straßenschluchten können Bäume nachts Hitze unter der Krone einschließen und so die tagsüber gewonnene Verschattung teilweise aufheben. Helle Dachmaterialien wirken günstiger und sofort, können in kälteren Klimata aber die winterlichen Wärmegewinne verringern. Die Übersicht schließt, dass keine einzelne Maßnahme überall funktioniert und vor großen Investitionen eine lokale Klimamodellierung stehen sollte.",
+        "core": "Eine einzelne Maßnahme gegen städtische Hitzeinseln wirkt nicht überall, weshalb vor großen Investitionen eine lokale Klimamodellierung erfolgen sollte."
+      },
+      "usage": {
+        "in": 2,
+        "out": 548
+      }
+    },
+    {
+      "id": 8,
+      "lang": "de",
+      "sec": 3.3561157919999967,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 5019,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Qualitative Interviews eignen sich besonders, wenn Deutungsmuster und Handlungslogiken erschlossen werden sollen, die sich in standardisierten Befragungen nicht abbilden lassen. Leitfadeninterviews sind ein Kompromiss: Sie sichern die Vergleichbarkeit der Themen und lassen zugleich Raum für unerwartete Wendungen. Forschende müssen dabei ihre eigene Rolle reflektieren, da Vorannahmen sowohl die Fragen als auch die spätere Auswertung prägen. In der Auswertung hat sich die zusammenfassende Inhaltsanalyse etabliert, die Aussagen schrittweise verdichtet. Kritisch ist, dass diese Verdichtung Nuancen glätten und gerade jene Widersprüche verdecken kann, die den eigentlichen Erkenntniswert qualitativer Daten ausmachen.",
+        "core": "Die zusammenfassende Inhaltsanalyse kann durch Verdichtung Nuancen glätten und dadurch Widersprüche verdecken, die qualitativen Daten ihren eigentlichen Erkenntniswert verleihen könnten."
+      },
+      "usage": {
+        "in": 2,
+        "out": 485
+      }
+    },
+    {
+      "id": 9,
+      "lang": "en",
+      "sec": 5.370179250000001,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 5622,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Open-Access-Publishing hat sich schnell ausgeweitet, doch seine Wirkung auf Chancengleichheit ist umstritten. Article Processing Charges verlagern die Kosten von den Lesenden auf die Autorinnen und Autoren, was Institutionen mit großen Budgets begünstigt und Forschende in einkommensschwächeren Ländern oder ohne Fördermittel benachteiligt. Erlassprogramme existieren, werden aber uneinheitlich angewendet und verlangen von Antragstellenden oft die Offenlegung finanzieller Notlagen. Diamond Open Access, bei dem weder Lesende noch Autorinnen und Autoren zahlen, gilt als Alternative, stützt sich aber auf ehrenamtliche Arbeit und öffentliche Subventionen, die sich womöglich nicht im großen Maßstab tragen. Eine aktuelle Befragung von Herausgebenden legt nahe, dass der Übergang weniger eine Frage der Geschäftsmodelle ist als die, wer bereit ist, eine Infrastruktur zu finanzieren, die allen nützt, aber niemandem konkret gehört.",
+        "core": "Die Umstellung auf Open Access hängt laut einer Herausgeber-Befragung weniger vom Geschäftsmodell ab als von der Finanzierungsbereitschaft für gemeinsam genutzte, aber herrenlose Infrastruktur."
+      },
+      "usage": {
+        "in": 2,
+        "out": 574
+      }
+    },
+    {
+      "id": 10,
+      "lang": "de",
+      "sec": 4.0670930419999936,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 4416,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Pfadabhängigkeit zeigt, dass einmal getroffene Entscheidungen spätere Handlungsoptionen dauerhaft begrenzen können. Der QWERTY-Tastatur-Fall verdeutlicht das: Trotz als effizienter geltender Alternativen verhindern Gewöhnung, Lernkosten und die Verbreitung der Geräte einen Wechsel. In der Politikwissenschaft gilt dasselbe für Institutionen, deren Reform mit zunehmenden Erträgen der bestehenden Ordnung immer unwahrscheinlicher wird. Kritiker halten dagegen, dass der Ansatz Stabilität besser erklärt als Wandel und Brüche nur als externe Schocks erfassen kann; neuere Arbeiten beschreiben deshalb schrittweisen Wandel von innen, bei dem Akteure bestehende Regeln umdeuten, ohne sie formell abzuschaffen.",
+        "core": "Pfadabhängigkeit macht einmal getroffene Entscheidungen zu dauerhaften Einschränkungen, die Reformen zunehmend unwahrscheinlich machen, während der Ansatz Wandel nur schwer erklären kann."
+      },
+      "usage": {
+        "in": 2,
+        "out": 498
+      }
+    }
+  ],
+  "cliRows": [
+    {
+      "id": 1,
+      "lang": "en",
+      "sec": 4.6668115,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 3153,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Vorstellung, dass Gedächtniskonsolidierung im Schlaf einfach als Übertragung vom Hippocampus in den Neokortex abläuft, wird oft verwendet, ist aber laut Passage zu simpel. Bei Nagetieren fallen hippocampale Sharp-Wave-Ripples mit dem Replay kürzlich durchlaufener Wege zusammen, und ihre Unterbrechung beeinträchtigt später die Leistung bei räumlichen Aufgaben. Beim Menschen sind die Effekte dagegen eher gering und hängen stark vom Materialtyp ab: Deklarative Wortpaar-Aufgaben zeigen nach einer Nacht verlässliche Zuwächse, prozedurale Fertigkeiten verbessern sich dagegen oft nur, wenn vor dem Schlaf ausreichend geübt wurde. Mehrere Autoren argumentieren deshalb, dass Schlaf Erinnerungen nicht einfach kopiert, sondern selektiv jene stärkt, die als für künftiges Verhalten relevant markiert sind, was sich nur schwer mit rein passiven Konsolidierungsmodellen vereinbaren lässt.",
+        "core": "Schlafabhängige Konsolidierung ist beim Menschen modest und materialabhängig, und mehrere Autoren deuten sie eher als selektive, relevanzbasierte Stärkung denn als passive Kopie hippocampaler Inhalte."
+      },
+      "usage": {
+        "in": 2,
+        "out": 589
+      }
+    },
+    {
+      "id": 2,
+      "lang": "de",
+      "sec": 4.0493110839999975,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2811,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Digitalisierung der deutschen Verwaltung wird seit rund zwanzig Jahren angekündigt, bleibt aber hinter den Erwartungen zurück. Das Onlinezugangsgesetz verpflichtete Bund, Länder und Kommunen, bis Ende 2022 etwa 575 Verwaltungsleistungen digital anzubieten; zum Stichtag war davon jedoch nur ein Bruchteil flächendeckend verfügbar. Die Forschung führt dies vor allem auf die föderale Aufgabenteilung, uneinheitliche Fachverfahren und fehlende gemeinsame Standards zurück. Viele Kommunen haben zudem weder Personal noch Haushaltsmittel, um Lösungen anderer Träger nachzunutzen. Die Autorinnen schlagen daher verbindlich bereitgestellte zentrale Basiskomponenten vor und eine klare Zuweisung der Verantwortung für die Ende-zu-Ende-Digitalisierung an eine einzige Ebene, statt sie auf viele Schultern zu verteilen.",
+        "core": "Die Verwaltungsdigitalisierung scheitert laut Forschung vor allem an föderaler Zersplitterung und fehlenden Ressourcen der Kommunen, weshalb die Autorinnen verbindliche zentrale Basiskomponenten und eine klare Verantwortung einer Ebene für die Ende-zu-Ende-Digitalisierung fordern."
+      },
+      "usage": {
+        "in": 2,
+        "out": 589
+      }
+    },
+    {
+      "id": 3,
+      "lang": "en",
+      "sec": 4.706018042000004,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2977,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Die Transformer-Architektur ersetzt Rekurrenz durch Self-Attention, sodass jedes Token einer Sequenz direkt auf jedes andere zugreifen kann. Dadurch entfällt der sequenzielle Engpass rekurrenter Netze, und das Training wird auf moderner Hardware stark parallelisierbar. Der Preis ist ein quadratischer Aufwand in der Sequenzlänge, da die Attention-Matrix mit dem Quadrat der Token-Anzahl wächst. Viele Folgearbeiten versuchen, diese Kosten über dünn besetzte Muster, Low-Rank-Approximationen oder kernelisierte Attention zu senken. In der Praxis sind jedoch oft optimierte exakte Attention-Kernels, die die Speicherhierarchie ausnutzen, bei der Laufzeit schneller als diese Approximationen. Das deutet darauf hin, dass häufig die Speicherbandbreite und nicht die Rechenoperationen der Engpass sind und dass die asymptotische Komplexität allein ein schlechter Maßstab für die reale Geschwindigkeit ist.",
+        "core": "Exakte, speicheroptimierte Attention schlägt in der Praxis oft asymptotisch effizientere Approximationen, weil häufig die Speicherbandbreite und nicht die Rechenlast den Engpass bildet, weshalb Komplexität allein ein unzuverlässiger Indikator für Laufzeit ist."
+      },
+      "usage": {
+        "in": 2,
+        "out": 590
+      }
+    },
+    {
+      "id": 4,
+      "lang": "de",
+      "sec": 4.172009082999997,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2927,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Der Resilienzbegriff hat sich in den Sozialwissenschaften von einer Eigenschaft einzelner Menschen zu einem Merkmal ganzer Systeme gewandelt. Frühe Studien wie die Längsschnittuntersuchung auf Kauai beschrieben Kinder, die sich trotz widriger Umstände stabil entwickelten, und suchten nach persönlichen Schutzfaktoren. Neuere Ansätze betonen hingegen, dass Anpassungsfähigkeit von Beziehungen, Institutionen und verfügbaren Ressourcen abhängt. Kritiker halten dagegen, der Begriff verlagere die Verantwortung für den Umgang mit Belastungen auf die Betroffenen und verdecke strukturelle Ursachen. Der Beitrag plädiert daher dafür, Resilienz als Ergebnis eines Zusammenspiels zu verstehen und nicht als persönliche Leistung, die man einfordern könnte.",
+        "core": "Resilienz sollte als Ergebnis des Zusammenspiels von Person, Beziehungen, Institutionen und Ressourcen verstanden werden und nicht als individuelle Leistung, die Betroffenen abverlangt werden kann."
+      },
+      "usage": {
+        "in": 2,
+        "out": 504
+      }
+    },
+    {
+      "id": 5,
+      "lang": "en",
+      "sec": 4.081409625,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2890,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Replikationsversuche in der Psychologie haben ernüchternde Zahlen hervorgebracht. Im Reproducibility Project erzielten nur etwa sechsunddreißig Prozent der Replikationen statistisch signifikante Ergebnisse, verglichen mit siebenundneunzig Prozent der Originalstudien, und die durchschnittliche Effektstärke war ungefähr halb so groß. Verteidiger der Originalbefunde verweisen auf Unterschiede in Stichproben und Verfahren, doch das Muster ist mit Publikationsbias und flexiblen Analyseentscheidungen vereinbar. Präregistrierung und Registered Reports sind inzwischen verbreiteter, und frühe Belege deuten darauf hin, dass Registered Reports deutlich weniger positive Ergebnisse berichten als konventionelle Artikel. Ob diese Reformen das Vertrauen wiederherstellen, hängt davon ab, ob Zeitschriften, Geldgeber und Berufungskommissionen sorgfältiges Design statt überraschender Ergebnisse belohnen – eine Anreizfrage, die methodische Korrekturen allein nicht beantworten können.",
+        "core": "Die Replikationskrise in der Psychologie zeigt sich in deutlich geringeren Erfolgsquoten und halbierten Effektstärken, und ob Reformen wie Präregistrierung greifen, hängt vor allem davon ab, ob Anreizsysteme sorgfältige Forschung statt überraschender Befunde belohnen."
+      },
+      "usage": {
+        "in": 2,
+        "out": 611
+      }
+    },
+    {
+      "id": 6,
+      "lang": "de",
+      "sec": 4.165714250000004,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2932,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Im Mittelalter war die Mühle eine zentrale technische Einrichtung auf dem Land, und wer sie besaß, übte zugleich Herrschaft aus. Durch den Mühlenzwang mussten Bauern ihr Getreide dort mahlen lassen, was den Müller zu Abgaben berechtigte und dauerhafte Abhängigkeiten schuf, die immer wieder Streit auslösten. Dem Müller wurde häufig nachgesagt, zu viel Mehl für sich zu behalten; dieser Vorwurf fand Niederschlag in Redensarten und Erzählungen. Die jüngere Forschung deutet diese Vorwürfe als Ausdruck der Spannung zwischen Dorfgemeinschaft und einem Gewerbe, das als einziges über kostspielige Technik verfügte und deshalb eine Sonderstellung genoss.",
+        "core": "Die mittelalterliche Mühle war durch den Mühlenzwang ein Instrument ländlicher Herrschaft, und die Vorwürfe gegen Müller spiegeln laut jüngerer Forschung vor allem die Spannung zwischen Dorfgemeinschaft und einem technisch privilegierten Gewerbe."
+      },
+      "usage": {
+        "in": 2,
+        "out": 498
+      }
+    },
+    {
+      "id": 7,
+      "lang": "en",
+      "sec": 5.431000167000006,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 4225,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Urbane Hitzeinseln entstehen, weil dichte Baumaterialien Sonnenstrahlung speichern und wieder abgeben, während fehlende Vegetation die Verdunstungskühlung verringert. In ruhigen Sommernächten können Stadtzentren mehrere Grad wärmer sein als das Umland, was den Kühlenergiebedarf erhöht und die hitzebedingte Sterblichkeit älterer Menschen steigert. Straßenbäume werden häufig als Gegenmaßnahme vorgeschlagen, ihre Wirkung hängt jedoch von Art, Wasserverfügbarkeit und Standort ab; in engen Straßenschluchten kann Hitze unter der Krone nachts gestaut werden und so den Tagesschatteneffekt teilweise aufheben. Reflektierende Dachmaterialien sind eine günstigere Alternative mit sofortiger Wirkung, können in kälteren Klimata jedoch die winterlichen Wärmegewinne verringern. Der Review kommt zu dem Schluss, dass keine einzelne Maßnahme überall funktioniert und vor großen Investitionen eine lokale Klimamodellierung erfolgen sollte.",
+        "core": "Urbane Hitzeinseln lassen sich nicht mit einer einzigen Maßnahme lösen: Straßenbäume wirken je nach Art, Wasser und Standort unterschiedlich (in engen Schluchten teils gegenläufig), reflektierende Dächer wirken schnell, können aber in kalten Klimata den Winterwärmegewinn mindern, weshalb vor großen Investitionen lokale Klimamodellierung empfohlen wird."
+      },
+      "usage": {
+        "in": 2,
+        "out": 660
+      }
+    },
+    {
+      "id": 8,
+      "lang": "de",
+      "sec": 4.039575291000001,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 2461,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Qualitative Interviews eignen sich vor allem, wenn Deutungsmuster und Handlungslogiken erschlossen werden sollen, die sich in standardisierten Befragungen nicht abbilden lassen. Leitfadeninterviews stellen dabei einen Kompromiss dar: Sie sichern die Vergleichbarkeit der Themen und lassen zugleich Raum für unerwartete Wendungen im Gespräch. Entscheidend ist, dass Forschende ihre eigene Rolle reflektieren, da Vorannahmen sowohl die Fragen als auch die spätere Auswertung prägen. In der Auswertung hat sich die zusammenfassende Inhaltsanalyse etabliert, die Aussagen schrittweise verdichtet. Kritisch ist jedoch, dass diese Verdichtung leicht Nuancen glättet und so gerade jene Widersprüche verdecken kann, die den eigentlichen Erkenntniswert qualitativer Daten ausmachen könnten.",
+        "core": "Leitfadeninterviews verbinden Vergleichbarkeit mit Offenheit, doch die zusammenfassende Inhaltsanalyse kann durch Verdichtung Nuancen und gerade die aufschlussreichen Widersprüche verdecken."
+      },
+      "usage": {
+        "in": 2,
+        "out": 518
+      }
+    },
+    {
+      "id": 9,
+      "lang": "en",
+      "sec": 4.786335250000004,
+      "subtype": "success",
+      "valid": true,
+      "apiMs": 3588,
+      "turns": 2,
+      "out": {
+        "paraphrase": "Open-Access-Publizieren hat sich schnell ausgeweitet, doch seine Wirkung auf die Chancengleichheit ist umstritten. Article Processing Charges verlagern die Kosten von den Leserinnen und Lesern auf die Autorinnen und Autoren, was Institutionen mit großen Budgets begünstigt und Forschende aus einkommensschwachen Ländern oder ohne Fördermittel benachteiligt. Erlassprogramme (Waiver) existieren zwar, werden aber uneinheitlich angewendet und verlangen häufig, dass Antragstellende finanzielle Notlagen offenlegen. Diamond Open Access, bei dem weder Lesende noch Autorinnen und Autoren zahlen, gilt als Alternative, stützt sich aber auf ehrenamtliche Arbeit und öffentliche Subventionen, die im großen Maßstab möglicherweise nicht tragfähig sind. Eine aktuelle Umfrage unter Herausgebenden legt nahe, dass der Wandel weniger eine Frage der Geschäftsmodelle ist als die Frage, wer bereit ist, eine Infrastruktur zu finanzieren, die allen nützt, aber niemandem im Besonderen gehört.",
+        "core": "Die Frage der Equity im Open Access hängt laut einer aktuellen Herausgeberumfrage weniger am Geschäftsmodell als daran, wer die gemeinsam genutzte, aber herrenlose Infrastruktur finanziert."
+      },
+      "usage": {
+        "in": 2,
+        "out": 599
+      }
+    }
+  ],
+  "idleSpareMb": 330.1875,
+  "peakChildMb": 677.890625,
+  "sdk": {
+    "name": "sdk-warm-tuned",
+    "n": 10,
+    "p50": 5.599453041500001,
+    "p95": 9.710872116849998,
+    "min": 3.3561157919999967,
+    "max": 10.632609666999997,
+    "valid": "10/10"
+  },
+  "cli": {
+    "name": "cli-tuned",
+    "n": 9,
+    "p50": 4.172009082999997,
+    "p95": 5.173134200200005,
+    "min": 4.039575291000001,
+    "max": 5.431000167000006,
+    "valid": "9/9"
+  }
+}

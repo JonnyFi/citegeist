@@ -1,0 +1,432 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "337",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 14
+  },
+  {
+   "index": 1,
+   "label": "338",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 2,
+   "label": "339",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 33
+  },
+  {
+   "index": 3,
+   "label": "340",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 26
+  },
+  {
+   "index": 4,
+   "label": "341",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 30
+  },
+  {
+   "index": 5,
+   "label": "342",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 6,
+   "label": "343",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 25
+  },
+  {
+   "index": 7,
+   "label": "344",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 26
+  },
+  {
+   "index": 8,
+   "label": "345",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 33
+  },
+  {
+   "index": 9,
+   "label": "346",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 7
+  },
+  {
+   "index": 10,
+   "label": "347",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 11,
+   "label": "348",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 15
+  },
+  {
+   "index": 12,
+   "label": "349",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 13,
+   "label": "350",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 14
+  },
+  {
+   "index": 14,
+   "label": "351",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 12
+  },
+  {
+   "index": 15,
+   "label": "352",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 34
+  },
+  {
+   "index": 16,
+   "label": "353",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 25
+  },
+  {
+   "index": 17,
+   "label": "354",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 30
+  },
+  {
+   "index": 18,
+   "label": "355",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 4
+  },
+  {
+   "index": 19,
+   "label": "356",
+   "labelSource": "catalog",
+   "confidence": 0.95,
+   "size": [
+    637.276,
+    883.89
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 18
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": [
+    "337",
+    "338",
+    "339",
+    "340",
+    "341",
+    "342",
+    "343",
+    "344",
+    "345",
+    "346",
+    "347",
+    "348",
+    "349",
+    "350",
+    "351",
+    "352",
+    "353",
+    "354",
+    "355",
+    "356"
+   ],
+   "note": "ok"
+  },
+  "detected": {
+   "labels": [
+    "337",
+    "338",
+    "339",
+    "340",
+    "341",
+    "342",
+    "343",
+    "344",
+    "345",
+    "346",
+    "347",
+    "348",
+    "349",
+    "350",
+    "351",
+    "352",
+    "353",
+    "354",
+    "355",
+    "356"
+   ],
+   "offset": 337,
+   "votes": 20,
+   "candidatesPerPage": {
+    "0": [
+     11,
+     30,
+     337
+    ],
+    "1": [
+     11,
+     18,
+     30,
+     338
+    ],
+    "2": [
+     11,
+     18,
+     30,
+     339
+    ],
+    "3": [
+     11,
+     18,
+     30,
+     340
+    ],
+    "4": [
+     11,
+     18,
+     30,
+     250,
+     341,
+     500,
+     512,
+     620
+    ],
+    "5": [
+     11,
+     18,
+     30,
+     342
+    ],
+    "6": [
+     1,
+     2,
+     11,
+     18,
+     30,
+     343
+    ],
+    "7": [
+     11,
+     18,
+     30,
+     344
+    ],
+    "8": [
+     11,
+     18,
+     30,
+     345
+    ],
+    "9": [
+     11,
+     18,
+     30,
+     346
+    ],
+    "10": [
+     2,
+     11,
+     18,
+     30,
+     347
+    ],
+    "11": [
+     11,
+     18,
+     30,
+     348
+    ],
+    "12": [
+     2,
+     4,
+     11,
+     18,
+     30,
+     349
+    ],
+    "13": [
+     11,
+     18,
+     30,
+     350
+    ],
+    "14": [
+     11,
+     18,
+     30,
+     351
+    ],
+    "15": [
+     11,
+     18,
+     30,
+     352
+    ],
+    "16": [
+     11,
+     18,
+     30,
+     353,
+     2900
+    ],
+    "17": [
+     11,
+     18,
+     30,
+     354
+    ],
+    "18": [
+     11,
+     18,
+     30,
+     355
+    ],
+    "19": [
+     11,
+     30,
+     356
+    ]
+   }
+  },
+  "crossref": {
+   "labels": null,
+   "note": "no Crossref pages"
+  }
+ },
+ "flags": []
+}

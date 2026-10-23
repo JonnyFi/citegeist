@@ -1,0 +1,22 @@
+{
+  "name": "@citegeist/metadata",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "record": "CITEGEIST_RECORD=1 vitest run src/record.test.ts"
+  },
+  "dependencies": {
+    "@citegeist/schema": "workspace:*",
+    "fast-xml-parser": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

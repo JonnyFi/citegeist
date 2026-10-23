@@ -1,0 +1,7 @@
+{
+  "url": "https://api.openalex.org/works/doi:10.1400/109098?select=id%2Cdoi%2Cids%2Ctitle%2Clanguage%2Cauthorships%2Ctopics%2Ckeywords%2Creferenced_works%2Ccited_by_count%2Cabstract_inverted_index%2Copen_access%2Cbest_oa_location%2Cis_retracted",
+  "accept": "application/json",
+  "status": 200,
+  "contentType": "application/json",
+  "body": "{\"id\":\"https://openalex.org/W1687003559\",\"doi\":\"https://doi.org/10.1400/109098\",\"ids\":{\"openalex\":\"https://openalex.org/W1687003559\",\"doi\":\"https://doi.org/10.1400/109098\",\"mag\":\"1687003559\"},\"title\":\"Traducci\\u00f3n en espa\\u00f1ol\",\"language\":\"es\",\"authorships\":[{\"author_position\":\"first\",\"author\":{\"id\":\"https://openalex.org/A5063598217\",\"display_name\":\"Mar\\u00eda Beatriz C\\u00f3ceres\",\"orcid\":null,\"observed_orcids\":[]},\"institutions\":[],\"countries\":[],\"is_corresponding\":true,\"raw_author_name\":\"Mar\\u00eda Beatriz C\\u00f3ceres\",\"raw_affiliation_strings\":[],\"raw_orcid\":null,\"affiliations\":[]}],\"topics\":[],\"keywords\":[],\"referenced_works\":[],\"cited_by_count\":3,\"abstract_inverted_index\":null,\"open_access\":{\"is_oa\":false,\"oa_status\":\"closed\",\"oa_url\":null,\"any_repository_has_fulltext\":false},\"best_oa_location\":null,\"is_retracted\":false}\n"
+}

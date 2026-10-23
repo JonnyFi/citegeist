@@ -1,0 +1,7 @@
+{
+  "url": "https://api.crossref.org/works/10.5281/zenodo.12490189",
+  "accept": "application/json",
+  "status": 404,
+  "contentType": "text/plain",
+  "body": "Resource not found."
+}
