@@ -49,6 +49,11 @@ export interface I18n extends Translator {
   explicit: boolean;
 }
 
+/** Translated text for a key built at runtime, or undefined when no such message exists. */
+export function lookup(tr: Translator, key: string): string | undefined {
+  return tr.has(key) ? tr.t(key) : undefined;
+}
+
 /** A translator for code outside React, such as tests and format helpers. */
 export function translator(lang: Lang): Translator {
   const cat = CATALOGS[lang];

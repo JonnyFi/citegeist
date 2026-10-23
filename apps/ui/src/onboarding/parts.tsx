@@ -13,7 +13,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useCore } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
-import { type Lang, lookup, type MessageKey, type Translate, useI18n } from "./i18n";
+import { lookup, type MessageKey, type Translator, useI18n } from "../i18n";
 
 type SettingsData = z.output<typeof settingsGet.output>;
 export type BackendInfo = SettingsData["backends"][number];
@@ -34,10 +34,11 @@ export function splitDetail(detail: string | undefined): { code: string; rest: s
     : { code: detail.slice(0, at), rest: detail.slice(at + 1).trim() };
 }
 
-export function statusText(lang: Lang, t: Translate, backend: BackendInfo): string {
+export function statusText(tr: Translator, backend: BackendInfo): string {
+  const { t } = tr;
   const { code, rest } = splitDetail(backend.detail);
   const base =
-    lookup(lang, `backend.status.${code}`) ??
+    lookup(tr, `backend.status.${code}`) ??
     (backend.available ? t("backend.status.ready") : t("backend.status.unknown"));
   const models = /^(\d+) models$/.exec(rest);
   return code === "ready" && models
@@ -99,9 +100,10 @@ export function BackendRow({
   onSaveKey?: (key: string) => Promise<unknown>;
   onRemoveKey?: () => Promise<unknown>;
 }) {
-  const { lang, t } = useI18n();
+  const tr = useI18n();
+  const { t } = tr;
   const { code } = splitDetail(backend.detail);
-  const hint = lookup(lang, `backend.hint.${backend.id}.${code}`);
+  const hint = lookup(tr, `backend.hint.${backend.id}.${code}`);
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -134,7 +136,7 @@ export function BackendRow({
               aria-hidden="true"
               className={cn("size-1.5 rounded-full", backend.available ? "bg-accent" : "bg-danger")}
             />
-            {statusText(lang, t, backend)}
+            {statusText(tr, backend)}
           </p>
           {hint && !backend.available ? <p className="mt-1 text-sm">{hint}</p> : null}
         </div>
@@ -263,7 +265,8 @@ export function useWorkerSetup() {
 }
 
 export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
-  const { lang, t } = useI18n();
+  const tr = useI18n();
+  const { t } = tr;
   const queryClient = useQueryClient();
   const { state, start } = useWorkerSetup();
   const running = state.phase === "running" || (worker.detail === "installing" && !worker.ready);
@@ -281,16 +284,16 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
   const { code } = splitDetail(worker.detail);
   const label = worker.ready
     ? t("worker.status.ready")
-    : (lookup(lang, `worker.status.${code}`) ?? t("worker.status.not-ready"));
+    : (lookup(tr, `worker.status.${code}`) ?? t("worker.status.not-ready"));
   const engines = Object.entries(worker.engines)
     .map(([name, version]) => `${name} ${version}`)
     .join(", ");
   const progressMessage = state.message
-    ? (lookup(lang, `worker.progress.${state.message}`) ?? state.message)
+    ? (lookup(tr, `worker.progress.${state.message}`) ?? state.message)
     : undefined;
   const errorText =
     state.phase === "failed"
-      ? (lookup(lang, `worker.error.${state.errorCode}`) ??
+      ? (lookup(tr, `worker.error.${state.errorCode}`) ??
         (state.errorMessage || t("worker.failed")))
       : undefined;
 

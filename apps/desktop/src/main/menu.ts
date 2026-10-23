@@ -17,6 +17,12 @@ export function buildMenu(actions: MenuActions): Menu {
             submenu: [
               { role: "about" },
               { type: "separator" },
+              {
+                label: "Settings...",
+                accelerator: "CmdOrCtrl+,",
+                click: () => actions.navigate("/settings"),
+              },
+              { type: "separator" },
               { role: "hide" },
               { role: "hideOthers" },
               { role: "unhide" },

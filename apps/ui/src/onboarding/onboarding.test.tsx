@@ -1,12 +1,23 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import type { CitegeistBridge } from "../bridge";
+import { I18nProvider } from "../i18n";
 import { renderWithSettingsCore } from "../routes/settings-test-utils";
 import { FirstRun, isOnboardingDone, OnboardingFlow, OnboardingGate } from "./onboarding";
 import { pollConfig } from "./parts";
 
 beforeEach(() => localStorage.clear());
+
+const inApp = (ui: ReactNode) => <I18nProvider>{ui}</I18nProvider>;
+const offline = (id: string) => ({
+  id,
+  kind: "subscription-cli" as const,
+  label: id,
+  available: false,
+  detail: "not-installed",
+});
 
 function fakeBridge(): CitegeistBridge & {
   openLibrary: ReturnType<typeof vi.fn>;
@@ -26,7 +37,7 @@ describe("first run without a library", () => {
     localStorage.setItem("citegeist.lang", "de");
     const user = userEvent.setup();
     const bridge = fakeBridge();
-    render(<FirstRun bridge={bridge} fallback={<p>welcome</p>} />);
+    render(inApp(<FirstRun bridge={bridge} fallback={<p>welcome</p>} />));
     expect(screen.getByRole("heading", { level: 1, name: "citegeist einrichten" })).toBeVisible();
     expect(screen.getByText("Schritt 1 von 3")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Neue Bibliothek" }));
@@ -38,7 +49,7 @@ describe("first run without a library", () => {
   it("switches to English and remembers the choice", async () => {
     localStorage.setItem("citegeist.lang", "de");
     const user = userEvent.setup();
-    render(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />);
+    render(inApp(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />));
     await user.click(screen.getByRole("button", { name: "English" }));
     expect(screen.getByRole("heading", { level: 1, name: "Set up citegeist" })).toBeVisible();
     expect(screen.getByRole("button", { name: "New library" })).toBeVisible();
@@ -47,12 +58,12 @@ describe("first run without a library", () => {
 
   it("skips to the welcome screen and does not come back", async () => {
     const user = userEvent.setup();
-    const { unmount } = render(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />);
+    const { unmount } = render(inApp(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />));
     await user.click(screen.getByRole("button", { name: /Später einrichten|Set up later/ }));
     expect(screen.getByText("welcome")).toBeVisible();
     expect(isOnboardingDone()).toBe(true);
     unmount();
-    render(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />);
+    render(inApp(<FirstRun bridge={fakeBridge()} fallback={<p>welcome</p>} />));
     expect(screen.getByText("welcome")).toBeVisible();
   });
 });
@@ -127,6 +138,7 @@ describe("OnboardingGate", () => {
       <OnboardingGate>
         <p>the app</p>
       </OnboardingGate>,
+      { backends: [offline("claude-code-cli"), offline("codex-exec")] },
     );
     expect(await screen.findByText("Schritt 2 von 3")).toBeVisible();
     expect(screen.queryByText("the app")).toBeNull();
@@ -134,6 +146,35 @@ describe("OnboardingGate", () => {
     await user.click(await screen.findByRole("button", { name: "Später" }));
     expect(await screen.findByText("the app")).toBeVisible();
     expect(isOnboardingDone()).toBe(true);
+  });
+
+  it("shows the app at once when a backend works", async () => {
+    renderWithSettingsCore(
+      <OnboardingGate>
+        <p>the app</p>
+      </OnboardingGate>,
+    );
+    expect(await screen.findByText("the app")).toBeVisible();
+    expect(screen.queryByText("Schritt 2 von 3")).toBeNull();
+  });
+
+  it("keeps the flow open when a backend starts to work in the middle of it", async () => {
+    const user = userEvent.setup();
+    const { state } = renderWithSettingsCore(
+      <OnboardingGate>
+        <p>the app</p>
+      </OnboardingGate>,
+      { backends: [offline("claude-code-cli")] },
+    );
+    expect(await screen.findByText("Schritt 2 von 3")).toBeVisible();
+    const backend = state.backends[0];
+    if (backend) backend.available = true;
+    await user.click(screen.getByRole("button", { name: "Erneut prüfen" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Aktiv" })).toBeEnabled(),
+    );
+    expect(screen.getByText("Schritt 2 von 3")).toBeVisible();
+    expect(screen.queryByText("the app")).toBeNull();
   });
 
   it("goes straight to the app once the setup was done", async () => {

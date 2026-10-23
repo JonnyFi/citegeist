@@ -1,5 +1,11 @@
 import { buildBlockStream } from "@citegeist/anchoring";
-import { cardsCreate, cardsList, itemsUpdate, projectsList } from "@citegeist/ops";
+import {
+  cardsCreate,
+  cardsList,
+  documentsAssets,
+  itemsUpdate,
+  projectsList,
+} from "@citegeist/ops";
 import {
   type HighlightStatus,
   PdfView,
@@ -12,18 +18,20 @@ import type { ItemFrontmatter } from "@citegeist/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { z } from "zod";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
 import { anchorFromSelection, type CardsListOutput, itemCardsInput } from "../lib/cards";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
-import { type DocumentAssets, documentsAssets } from "../lib/reader-ops";
 import { describeError } from "../lib/utils";
 import { CardPanel } from "./card-panel";
 import { PageBanner } from "./page-banner";
 import { hideReaderPopover, SelectionActions } from "./selection-actions";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, Loading } from "./ui/states";
+
+type DocumentAssets = z.output<typeof documentsAssets.output>;
 
 type View = "pdf" | "reflow";
 
@@ -92,7 +100,7 @@ function ReaderLoaded({
   const [statuses, setStatuses] = useState<Record<string, HighlightStatus>>({});
   const { jobs, track, watchers } = useCardJobs();
 
-  const pdfUrl = data.pdfUrl;
+  const pdfUrl = data.pdfUrl ? core.fileUrl(data.pdfUrl) : undefined;
   const pdf = useQuery({
     queryKey: ["file", pdfUrl],
     enabled: view === "pdf" && pdfUrl !== undefined,

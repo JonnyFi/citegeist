@@ -1,12 +1,12 @@
 import { settingsGet, settingsUpdate } from "@citegeist/ops";
 import { Library } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { CitegeistBridge } from "../bridge";
 import { Button } from "../components/ui/button";
 import { Segmented } from "../components/ui/segmented";
 import { ErrorState, Loading } from "../components/ui/states";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
-import { guessLang, type Lang, rememberLang, translator, useI18n } from "./i18n";
+import { type Lang, useI18n } from "../i18n";
 import { BackendRow, useBackendTests, WorkerPanel } from "./parts";
 
 const DONE_KEY = "citegeist.onboarding";
@@ -42,17 +42,15 @@ export function resetOnboarding(): void {
 }
 
 function Frame({
-  lang,
   onLang,
   step,
   children,
 }: {
-  lang: Lang;
   onLang: (lang: Lang) => void;
   step: Step;
   children: ReactNode;
 }) {
-  const t = translator(lang);
+  const { lang, t } = useI18n();
   return (
     <div className="drag-region flex h-full items-center justify-center overflow-y-auto px-6 py-10">
       <div className="no-drag flex w-full max-w-xl flex-col gap-6">
@@ -83,17 +81,9 @@ export function FirstRunLibrary({
   bridge: CitegeistBridge;
   onSkip: () => void;
 }) {
-  const [lang, setLang] = useState<Lang>(guessLang);
-  const t = translator(lang);
+  const { t, setLang } = useI18n();
   return (
-    <Frame
-      lang={lang}
-      onLang={(next) => {
-        rememberLang(next);
-        setLang(next);
-      }}
-      step="library"
-    >
+    <Frame onLang={setLang} step="library">
       <div className="flex items-start gap-3">
         <Library className="mt-0.5 size-5 shrink-0 text-muted" />
         <p>{t("onb.library.desc")}</p>
@@ -128,14 +118,14 @@ export function FirstRun({ bridge, fallback }: { bridge: CitegeistBridge; fallba
 
 /** Steps two and three: pick a backend and test it, install the worker. Needs the core provider. */
 export function OnboardingFlow({ onDone }: { onDone: () => void }) {
-  const { lang, t } = useI18n();
+  const { t, setLang } = useI18n();
   const query = useOp(settingsGet, {});
   const update = useOpMutation(settingsUpdate);
   const { tests, run } = useBackendTests();
   const [step, setStep] = useState<Step>("backend");
 
   const onLang = (next: Lang) => {
-    rememberLang(next);
+    setLang(next);
     void update.mutateAsync({ patch: { uiLanguage: next } });
   };
 
@@ -146,7 +136,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const selectedOk = selected !== undefined && tests[selected]?.status === "ok";
 
   return (
-    <Frame lang={lang} onLang={onLang} step={step}>
+    <Frame onLang={onLang} step={step}>
       {step === "backend" ? (
         <>
           <p>{t("onb.backend.desc")}</p>
@@ -199,7 +189,9 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
 }
 
 /**
- * Wraps the routed app. Until the setup is finished it shows the backend and worker steps.
+ * Wraps the routed app. The backend and worker steps show while no AI backend works and the setup
+ * was not finished or skipped before. The decision is made once per start, from the first answer
+ * of `settings.get`, so the flow does not vanish when the user's own test makes a backend work.
  * The mock core (browser preview) skips the setup unless `force` is set.
  */
 export function OnboardingGate({
@@ -211,7 +203,19 @@ export function OnboardingGate({
 }) {
   const core = useCore();
   const [done, setDone] = useState(isOnboardingDone);
-  if (done || (core.isMock && !force)) return children;
+  const [needed, setNeeded] = useState<boolean | undefined>(undefined);
+  const skip = done || (core.isMock && !force);
+  const settings = useOp(settingsGet, {}, { enabled: !skip });
+
+  useEffect(() => {
+    if (skip || needed !== undefined) return;
+    if (settings.data) setNeeded(!settings.data.backends.some((b) => b.available));
+    else if (settings.isError) setNeeded(false);
+  }, [skip, needed, settings.data, settings.isError]);
+
+  if (skip) return children;
+  if (needed === undefined) return <Loading />;
+  if (!needed) return children;
   return (
     <OnboardingFlow
       onDone={() => {

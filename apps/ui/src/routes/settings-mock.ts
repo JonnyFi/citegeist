@@ -7,7 +7,7 @@ import {
   workerSetup,
 } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
-import { z } from "zod";
+import type { z } from "zod";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 
 type Backend = z.input<typeof settingsGet.output>["backends"][number];
@@ -65,24 +65,6 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
   };
 }
 
-/** Same name and output as `settings.update`, with a patch whose fields are all optional. */
-const settingsUpdateLoose = {
-  ...settingsUpdate,
-  input: z.object({
-    patch: z.object({
-      ai: z
-        .object({
-          routing: z.record(z.string(), z.string()).optional(),
-          apiKeys: z.record(z.string(), z.boolean()).optional(),
-        })
-        .optional(),
-      mailto: z.string().optional(),
-      uiLanguage: z.enum(["de", "en"]).optional(),
-    }),
-    apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
-  }),
-};
-
 const JOB_ID = `j_01J${"0".repeat(23)}`;
 
 /** Binds settings.get, settings.update, ai.testBackend, worker.setup and jobs.get to in-memory state. */
@@ -90,6 +72,8 @@ export function bindSettingsMock(
   registry: Registry,
   state: SettingsMockState,
   emit: (e: CoreEvent) => void = () => {},
+  /** `false` leaves `worker.setup` and `jobs.get` to the caller, who has its own jobs. */
+  withJobs = true,
 ): Registry {
   let polls = 0;
   let jobStarted = false;
@@ -100,7 +84,7 @@ export function bindSettingsMock(
   });
   const now = () => new Date().toISOString();
 
-  return registry
+  registry
     .bind(settingsGet, async () => ({
       settings: settings(),
       backends: state.backends.map((b) => ({ ...b })),
@@ -110,9 +94,9 @@ export function bindSettingsMock(
         ...(jobStarted && polls < state.setupPolls ? { detail: "installing" } : {}),
       },
     }))
-    .bind(settingsUpdateLoose, async (_ctx, input) => {
+    .bind(settingsUpdate, async (_ctx, input) => {
       const { patch, apiKey } = input;
-      if (patch.ai?.routing) state.routing = { ...patch.ai.routing };
+      if (patch.ai) state.routing = { ...patch.ai.routing };
       for (const [provider, keep] of Object.entries(patch.ai?.apiKeys ?? {})) {
         if (!keep) setKey(state, provider, false);
       }
@@ -136,7 +120,9 @@ export function bindSettingsMock(
     })
     .bind(aiTestBackend, async (_ctx, input) => {
       return state.tests[input.backend] ?? { ok: true, latencyMs: 1200 };
-    })
+    });
+  if (!withJobs) return registry;
+  return registry
     .bind(workerSetup, async () => {
       jobStarted = true;
       polls = 0;
@@ -146,7 +132,7 @@ export function bindSettingsMock(
       polls++;
       const base = {
         id: JOB_ID,
-        kind: "enrich" as const,
+        kind: "worker-setup" as const,
         input: null,
         attempts: 1,
         by: "human" as const,

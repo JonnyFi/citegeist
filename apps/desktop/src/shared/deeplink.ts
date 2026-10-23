@@ -6,7 +6,7 @@ const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
 /**
  * Maps a citegeist:// link to a renderer route, or undefined for anything unknown or malformed.
  *
- *   citegeist://library | inbox | projects
+ *   citegeist://library | inbox | projects | settings
  *   citegeist://item/<citekey>
  *   citegeist://project/<slug>
  *   citegeist://search?q=<text>
@@ -30,6 +30,8 @@ export function deepLinkToPath(raw: string): string | undefined {
       return "/inbox";
     case "projects":
       return "/projects";
+    case "settings":
+      return "/settings";
     case "item":
       return arg && CITEKEY.test(arg) ? `/items/${arg}` : undefined;
     case "project":
