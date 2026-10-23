@@ -1,13 +1,14 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { type ChangeEvent, createRuntime, Library } from "@citegeist/core";
+import { type ChangeEvent, createRuntime, Library, type RuntimeOptions } from "@citegeist/core";
 import type { Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { ORPCError, os } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/node";
 import { WebSocketServer } from "ws";
 import { ZodError } from "zod";
+import { createManagedWorker, resolveWorkerSource } from "../setup/index.js";
 import {
   acquireLock,
   defaultLocalBase,
@@ -17,6 +18,7 @@ import {
   readLibraryId,
   releaseLock,
 } from "../shared/lockfile.js";
+import { FILES_PREFIX, serveLibraryFile } from "./files.js";
 
 export { LockHeldError };
 
@@ -33,6 +35,8 @@ export interface CoreServerOptions {
   watch?: boolean;
   /** Port to bind. Default 0 (random). */
   port?: number;
+  /** Overrides for the runtime, such as fixed AI backends or a stub worker (tests). */
+  runtime?: RuntimeOptions;
 }
 
 export interface CoreServer {
@@ -132,7 +136,19 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   }
   const dir = lockDir;
 
-  const runtime = createRuntime(library);
+  // The conversion worker runs inside the machine-local Python environment, unless a command is
+  // forced for development and tests.
+  const workerSource = resolveWorkerSource({
+    override: process.env.CITEGEIST_WORKER_DIR,
+    resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+  });
+  const runtime = createRuntime(library, {
+    settings: { localBase, workerSource },
+    ...(process.env.CITEGEIST_WORKER_CMD
+      ? {}
+      : { worker: createManagedWorker(localBase, workerSource) }),
+    ...opts.runtime,
+  });
   const registry = runtime.registry;
   const rpc = new RPCHandler(buildRouter(registry));
   const token = randomBytes(32).toString("hex");
@@ -169,7 +185,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
         "access-control-allow-headers",
         req.headers["access-control-request-headers"] ?? "authorization, content-type",
       );
-      res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
+      res.setHeader("access-control-allow-methods", "GET, HEAD, POST, OPTIONS");
     }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -179,6 +195,10 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
     if (!tokenOk(req, url)) return reply(res, 401, { error: "missing or wrong token" });
 
+    if (url.pathname.startsWith(FILES_PREFIX)) {
+      serveLibraryFile(library.root, url.pathname, req, res);
+      return;
+    }
     if (url.pathname === "/health") {
       return reply(res, 200, { ok: true, library: library.root, pid: process.pid });
     }
