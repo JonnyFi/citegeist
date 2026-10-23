@@ -39,11 +39,11 @@ Das Projekt „PhD-Proposal“ hat einen Projektbrief mit Forschungsfragen und A
 
 ### Eine Verbindung zwischen zwei Quellen
 
-Jonny hat Luhmann gelesen, markiert und notiert. Wochen später liest er Gillespie und sieht eine Verbindung. In der Chat-Seitenleiste schreibt er: „Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte einmal notieren.“ Der Agent findet die gemeinten Quellen und Karten, hält die Einsicht mit festen Feldern fest und legt sie in das Kapitel, das sie betrifft. Er antwortet mit einer Zeile, wohin sie gegangen ist. Passt sie in kein Kapitel, kommt sie ins allgemeine Planungsdokument oder zu den losen Gedanken des Projekts.
+Jonny hat Luhmann gelesen, markiert und notiert. Wochen später liest er Gillespie und sieht eine Verbindung. In der Chat-Seitenleiste schreibt er: „Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte einmal notieren.“ Der Agent findet die gemeinten Quellen und Karten und schreibt die Einsicht als datierten Absatz mit Links auf beide in das Dokument des Kapitels, das sie betrifft. Er antwortet mit einer Zeile, wohin sie gegangen ist. Passt sie in kein Kapitel, kommt sie ins Planungsdokument oder in die Einsichten-Datei des Projekts.
 
 ### Ein Kapitel planen
 
-Jonny baut im Chat die Gliederung des Proposals um. Bevor der Agent antwortet, holt er die Einsichten, die zu diesem Kapitel, seinen Quellen und Forschungsfragen passen, und zitiert sie: „Zu Kapitel 3 hast du am 12.11. notiert, dass Luhmann und Gillespie denselben Mechanismus beschreiben.“ Sagt Jonny „formuliere das mal aus“, schreibt der Agent direkt ins Kapitel, pflegt dabei Kapitel, Abschnitte und Zuordnungen als Felder, und ein Klick nimmt den ganzen Zug zurück.
+Jonny baut im Chat die Gliederung des Proposals um. Bevor der Agent antwortet, holt er die Einsichten, die auf dieses Kapitel oder seine Quellen verlinken oder inhaltlich dazu passen, und zitiert sie: „Zu Kapitel 3 hast du am 12.11. notiert, dass Luhmann und Gillespie denselben Mechanismus beschreiben.“ Sagt Jonny „füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“ oder „formuliere das mal aus“, ändert der Agent Gliederung und Text direkt, und ein Klick nimmt den ganzen Zug zurück.
 
 ### Recherche delegieren
 
@@ -96,8 +96,8 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Projekte | Projektbrief mit Forschungsfragen als Kontext für Agents | v0.1 | Jonny |
 | Projekte | Startseite über alles Gelesene | v0.2 | Jonny |
 | Projekte | Literaturmatrix mit belegten Zellen | v0.3 | Vorschlag |
-| Planung | Einsichten über Quellen hinweg im Chat festhalten, der Agent wählt den Ort (Kapitel, Planungsdokument, lose Gedanken) | v0.2 | Jonny |
-| Planung | Einsichten und Gliederung als feste Felder, vom Agent gepflegt und von Hand bearbeitbar | v0.2 | Jonny |
+| Planung | Einsichten über Quellen hinweg im Chat festhalten, der Agent schreibt sie als Absatz an den passenden Ort (Kapitel, Planungsdokument, Einsichten-Datei) | v0.2 | Jonny |
+| Planung | Gliederung mit festen Feldern und berechneten Nummern, vom Agent gepflegt und von Hand bearbeitbar | v0.2 | Jonny |
 | Planung | Der Planungs-Chat holt passende Einsichten zurück und zitiert sie | v0.2 | Jonny |
 | Planung | Mehrere Pläne pro Projekt mit Vorlagen Exposé und IMRaD | v0.2 | D13, D14 |
 | Planung | Direkte Agent-Änderungen im Chat mit Verlauf pro Datei und Rückgängig pro Zug, Prüfmodus wählbar | v0.2 | D12 |

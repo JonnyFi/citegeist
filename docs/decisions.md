@@ -98,7 +98,7 @@ Kein Abo-Pfad erreicht p50 unter 3 Sekunden. Am schnellsten war ein frischer `cl
 
 Datum: 2026-10-24. Status: entschieden.
 
-Jedes Kapitel eines Plans ist eine eigene Datei. Ein Abschnitt ist ein Eintrag in den Feldern seines Kapitels, bis er Behauptungen oder Quellen trägt, dann bekommt er eine eigene Datei. Grundlage ist `docs/spec/research-planning.md`.
+Kapitel und Abschnitte sind Knoten der Gliederung in `outline.yaml`. Jedes Kapitel hat ein eigenes Dokument. Ein Abschnitt bekommt erst eines, wenn er Behauptungen oder Quellen trägt, bis dahin stehen seine Einsichten im Dokument des Kapitels. Grundlage ist `docs/spec/research-planning.md`.
 
 ## D12: Im Chat erbetene Änderungen schreibt der Agent direkt, mit Herkunft und Rückgängig
 
