@@ -15,7 +15,15 @@ import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
+import { bindLinkOperations } from "./links/index.js";
+import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
+import {
+  type AttachSemanticOptions,
+  type ModelEmbedder,
+  SemanticController,
+  type SemanticControllerOptions,
+} from "./semantic/index.js";
 import {
   type BackendProvider,
   type BackendStatus,
@@ -45,12 +53,23 @@ export interface RuntimeOptions {
   mailto?: string;
   /** Start background jobs immediately. Default true. */
   autoStart?: boolean;
+  /**
+   * An embedder for semantic search that is always on, ignoring the settings switch. Tests pass
+   * a fake one. Without it, semantic search follows `settings.semantic.enabled` and uses
+   * EmbeddingGemma, which is downloaded when the switch is turned on and never before.
+   */
+  embedder?: ModelEmbedder;
+  /** Tuning and test hooks for semantic search. Only used when background jobs run. */
+  semantic?: Omit<AttachSemanticOptions, "embedder"> &
+    Pick<SemanticControllerOptions, "createEmbedder">;
 }
 
 export interface Runtime {
   registry: Registry;
   ingest: IngestService;
   settings: SettingsService;
+  /** Semantic search. Absent in a one-shot process, which does not run background jobs. */
+  semantic?: SemanticController;
   close(): Promise<void>;
 }
 
@@ -123,7 +142,13 @@ function followingResolver(initial: string | undefined): {
  * ingest with jobs, quote cards with AI and the machine settings. App, CLI and MCP all use this.
  */
 export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime {
-  const registry = bindCoreOperations(new Registry(), lib);
+  // search.query is bound once. It asks the semantic controller, which answers with hybrid
+  // search when the model is ready and with full-text search otherwise.
+  let semantic: SemanticController | undefined;
+  const registry = bindCoreOperations(new Registry(), lib, {
+    search: async (input) => (semantic ? semantic.search(input) : lib.search(input)),
+  });
+  bindNoteOperations(registry, lib);
   const worker = opts.worker ?? defaultWorker();
   const localBase = opts.settings?.localBase ?? dirname(lib.local.dir);
   const workerSource = opts.settings?.workerSource ?? join(repoRoot(), "workers", "convert");
@@ -168,6 +193,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     onChange: (settings) => {
       router = undefined;
       resolver?.use(settings.mailto);
+      void semantic?.setEnabled(settings.semantic.enabled);
     },
   });
   provider = fixed ? fixedBackends(fixed) : (opts.settings?.backends ?? deps.backends);
@@ -205,12 +231,30 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     };
   }
   bindCardOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
+  bindLinkOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
+
+  // Semantic search needs the job queue to run, so a one-shot process leaves it out.
+  if (opts.autoStart !== false) {
+    const { createEmbedder, ...tuning } = opts.semantic ?? {};
+    semantic = new SemanticController({
+      lib,
+      queue: ingest.queue,
+      embedder: opts.embedder,
+      createEmbedder,
+      semantic: tuning,
+    });
+    const controller = semantic;
+    service.status.semantic = () => controller.status();
+    void controller.setEnabled(deps.store.load().semantic.enabled);
+  }
 
   return {
     registry,
     ingest,
     settings: service,
+    ...(semantic ? { semantic } : {}),
     close: async () => {
+      semantic?.close();
       await ingest.close();
     },
   };

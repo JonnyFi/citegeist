@@ -1,5 +1,5 @@
+import type { QuickInsertBridge } from "@citegeist/ui/quick-insert";
 import { contextBridge, ipcRenderer } from "electron";
-import type { QuickInsertBridge } from "../../../ui/src/quick-insert/bridge.js";
 import { QI } from "./channels.js";
 
 // Preload of the palette window. Sandboxed, so it only imports electron and plain modules.

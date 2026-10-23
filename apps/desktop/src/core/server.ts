@@ -1,13 +1,20 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { type ChangeEvent, createRuntime, Library, type RuntimeOptions } from "@citegeist/core";
+import {
+  type ChangeEvent,
+  createRuntime,
+  Library,
+  type Runtime,
+  type RuntimeOptions,
+} from "@citegeist/core";
 import type { Registry } from "@citegeist/ops";
-import { CitegeistError } from "@citegeist/schema";
+import { Actor, CitegeistError } from "@citegeist/schema";
 import { ORPCError, os } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/node";
 import { WebSocketServer } from "ws";
 import { ZodError } from "zod";
+import { manageConnector } from "../connector/manager.js";
 import { createManagedWorker, resolveWorkerSource } from "../setup/index.js";
 import {
   acquireLock,
@@ -37,12 +44,20 @@ export interface CoreServerOptions {
   port?: number;
   /** Overrides for the runtime, such as fixed AI backends or a stub worker (tests). */
   runtime?: RuntimeOptions;
+  /**
+   * Run the Zotero Connector listener when the settings turn it on (`settings.connector`, off by
+   * default). Default true.
+   */
+  connector?: boolean;
+  /** Receives messages of the connector listener. */
+  log?: (message: string) => void;
 }
 
 export interface CoreServer {
   port: number;
   token: string;
   library: Library;
+  runtime: Runtime;
   registry: Registry;
   close(): Promise<void>;
 }
@@ -79,7 +94,29 @@ function toOrpcError(err: unknown): ORPCError<string, unknown> {
   });
 }
 
-type Node = { [segment: string]: Node } | ReturnType<typeof os.handler>;
+/** Header that names the caller of an RPC call, e.g. `agent:claude-desktop`. */
+export const ACTOR_HEADER = "x-citegeist-actor";
+
+interface RpcContext {
+  actor: Actor;
+}
+
+const base = os.$context<RpcContext>();
+
+type Node = { [segment: string]: Node } | ReturnType<typeof base.handler>;
+
+/**
+ * The actor of one request. The app's own UI sends no header and acts as the human. `cg` and the
+ * MCP server send the header. A header that is not a valid Actor yields undefined and the request
+ * is refused, so a typo can never give an agent the rights of the user.
+ */
+export function actorOf(req: IncomingMessage): Actor | undefined {
+  const raw = req.headers[ACTOR_HEADER];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === undefined) return "human";
+  const parsed = Actor.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
 
 /** Builds the oRPC router from the bound operations: `items.list` becomes items -> list. */
 export function buildRouter(registry: Registry): Record<string, Node> {
@@ -95,9 +132,9 @@ export function buildRouter(registry: Registry): Record<string, Node> {
       node[s] = next;
       node = next;
     }
-    node[leaf] = os.handler(async ({ input }) => {
+    node[leaf] = base.handler(async ({ input, context }) => {
       try {
-        return await registry.call(contract.name, { actor: "human" }, input);
+        return await registry.call(contract.name, { actor: context.actor }, input);
       } catch (err) {
         throw toOrpcError(err);
       }
@@ -191,7 +228,8 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       res.setHeader("vary", "origin");
       res.setHeader(
         "access-control-allow-headers",
-        req.headers["access-control-request-headers"] ?? "authorization, content-type",
+        req.headers["access-control-request-headers"] ??
+          `authorization, content-type, ${ACTOR_HEADER}`,
       );
       res.setHeader("access-control-allow-methods", "GET, HEAD, POST, OPTIONS");
     }
@@ -208,10 +246,18 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       return;
     }
     if (url.pathname === "/health") {
-      return reply(res, 200, { ok: true, library: library.root, pid: process.pid });
+      // `actors`: RPC calls run as the actor named in x-citegeist-actor, so cg can forward agent writes.
+      return reply(res, 200, { ok: true, actors: true, library: library.root, pid: process.pid });
+    }
+    const actor = actorOf(req);
+    if (!actor) {
+      return reply(res, 400, {
+        error: `${ACTOR_HEADER} is not a valid actor`,
+        fix: 'Use "human", "system" or "agent:<name>".',
+      });
     }
     rpc
-      .handle(req, res, { prefix: "/rpc", context: {} })
+      .handle(req, res, { prefix: "/rpc", context: { actor } })
       .then(({ matched }) => {
         if (!matched) reply(res, 404, { error: "not found" });
       })
@@ -256,14 +302,24 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   const port = (server.address() as AddressInfo).port;
   publishLock(dir, port, token);
 
+  // The connector runs inside the core: it calls the registry as its own actor, while the oRPC
+  // endpoint takes the actor from the request.
+  const connector =
+    opts.connector === false
+      ? undefined
+      : manageConnector({ registry, library, runtime }, opts.log);
+  await connector?.ready();
+
   let closing: Promise<void> | undefined;
   return {
     port,
     token,
     library,
+    runtime,
     registry,
     close() {
       closing ??= (async () => {
+        await connector?.stop();
         library.off("change", onChange);
         for (const ws of sockets) ws.terminate();
         wss.close();

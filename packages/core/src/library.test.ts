@@ -106,18 +106,25 @@ describe("operations", () => {
         body: "Neuer Text",
         title: "Anderer Titel",
       },
-    )) as { frontmatter: { title: string; modified: unknown }; body: string };
+    )) as { frontmatter: { title: string; modified: unknown }; body: string; path: string };
     expect(updated.body).toBe("Neuer Text");
     expect(updated.frontmatter.title).toBe("Anderer Titel");
     expect(updated.frontmatter.modified).toMatchObject({ by: "agent:grok" });
 
-    // the file name is stable and the second note with the same title gets its own file
+    // a new title renames the file, which frees the old name for the next note
+    expect(updated.path).toBe(join(lib.root, "notes", "anderer-titel.md"));
     const second = (await reg.call("notes.create", human, {
       title: "Autopoiesis erklärt Stabilität",
       type: "question",
       projects: [],
     })) as { path: string };
-    expect(second.path.endsWith("autopoiesis-erklaert-stabilitaet-2.md")).toBe(true);
+    expect(second.path.endsWith("autopoiesis-erklaert-stabilitaet.md")).toBe(true);
+    const third = (await reg.call("notes.create", human, {
+      title: "Autopoiesis erklärt Stabilität",
+      type: "question",
+      projects: [],
+    })) as { path: string };
+    expect(third.path.endsWith("autopoiesis-erklaert-stabilitaet-2.md")).toBe(true);
 
     // the replaced body no longer contributes edges
     expect(lib.index.all("SELECT dst FROM links WHERE src_ref = ?", id)).toEqual([]);

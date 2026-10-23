@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import {
   CitegeistError,
   WORKER_METHODS,
+  WORKER_NOTIFICATIONS,
   type WorkerConvertParams as WorkerConvertParamsSchema,
   type WorkerConvertResult as WorkerConvertResultSchema,
   type WorkerHealthResult as WorkerHealthResultSchema,
@@ -24,8 +25,11 @@ export type HealthResult = z.infer<typeof WorkerHealthResultSchema>;
 
 export interface ConvertCallOptions {
   signal?: AbortSignal;
-  /** Called for `progress` notifications of the worker. */
-  onProgress?: (progress: number, message?: string) => void;
+  /**
+   * Called for `progress` notifications of the worker. `fraction` (0 to 1) is undefined for a
+   * notification that only names the current step.
+   */
+  onProgress?: (fraction: number | undefined, message?: string) => void;
 }
 
 /** The conversion worker as the ingest pipeline sees it. */
@@ -50,7 +54,7 @@ interface Pending {
   method: keyof typeof WORKER_METHODS;
   resolve(value: unknown): void;
   reject(err: unknown): void;
-  onProgress?: ((progress: number, message?: string) => void) | undefined;
+  onProgress?: ((fraction: number | undefined, message?: string) => void) | undefined;
   cleanup(): void;
 }
 
@@ -165,7 +169,7 @@ export class ChildProcessConvertWorker implements ConvertWorker {
     let msg: {
       id?: number;
       method?: string;
-      params?: { progress?: number; message?: string; id?: number };
+      params?: unknown;
       result?: unknown;
       error?: { code?: number; message?: string; data?: { retryable?: boolean } };
     };
@@ -174,10 +178,14 @@ export class ChildProcessConvertWorker implements ConvertWorker {
     } catch {
       return; // stray output of a library; stdout lines that are not JSON are ignored
     }
-    if (msg.method === "progress" && msg.params) {
-      const target = msg.params.id !== undefined ? this.pending.get(msg.params.id) : undefined;
-      const handlers = target ? [target] : [...this.pending.values()];
-      for (const p of handlers) p.onProgress?.(msg.params.progress ?? 0, msg.params.message);
+    if (msg.id === undefined && msg.method !== undefined) {
+      // A notification. Progress is shown; anything else is ignored, so a newer worker may add more.
+      if (msg.method === "progress") {
+        const note = WORKER_NOTIFICATIONS.progress.safeParse(msg.params);
+        const target = note.success ? this.pending.get(note.data.id) : undefined;
+        if (note.success && target)
+          target.onProgress?.(note.data.fraction ?? undefined, note.data.message);
+      }
       return;
     }
     if (msg.id === undefined) return;

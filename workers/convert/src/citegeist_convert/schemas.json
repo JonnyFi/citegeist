@@ -1115,6 +1115,11 @@
               "type": "string",
               "enum": ["pdf-pagelabels", "header-footer", "crossref-offset", "user", "none"]
             },
+            "labelConfidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
             "width": {
               "type": "number",
               "exclusiveMinimum": 0
@@ -1386,6 +1391,9 @@
       },
       "pageRangeHint": {
         "type": "string"
+      },
+      "pdfPath": {
+        "type": "string"
       }
     },
     "required": ["sourcePath", "source", "outDir", "kind"]
@@ -1435,5 +1443,54 @@
       }
     },
     "required": ["manifest"]
+  },
+  "worker-health-result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "version": {
+        "type": "string"
+      },
+      "engines": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "ready": {
+        "type": "boolean"
+      }
+    },
+    "required": ["version", "engines", "ready"]
+  },
+  "worker-progress": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "message": {
+        "type": "string"
+      },
+      "fraction": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": ["id"]
   }
 }

@@ -1,0 +1,35 @@
+# Packaging of the desktop app with electron-builder. Run it after `pnpm --filter @citegeist/desktop build`.
+#
+# Native code cannot be loaded from inside app.asar, so every module with a .node or .dylib file is
+# unpacked next to it. The core runs as a utilityProcess from out/main/core.js and finds them there.
+appId: app.citegeist.desktop
+productName: citegeist
+directories:
+  output: dist
+files:
+  - out/**
+  - package.json
+  # the built renderer of apps/ui, loaded from file://
+  - from: ../ui/dist
+    to: ../ui/dist
+extraResources:
+  # the Python conversion worker; the app installs its environment from these sources
+  - from: ../../workers/convert
+    to: workers/convert
+    filter:
+      - pyproject.toml
+      - uv.lock
+      - README.md
+      - src/**
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/@parcel/watcher*/**"
+  # semantic search: the ONNX runtime and the sqlite-vec extension with its platform binary
+  - "**/node_modules/onnxruntime-node/**"
+  - "**/node_modules/sqlite-vec/**"
+  - "**/node_modules/sqlite-vec-*/**"
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg

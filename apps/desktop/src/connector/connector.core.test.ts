@@ -2,6 +2,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createStubWorker } from "@citegeist/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CoreServer, startCoreServer } from "../core/server.js";
 import { seedLibrary } from "../testing/seed.js";
@@ -38,7 +39,12 @@ beforeEach(async () => {
   tmp = mkdtempSync(join(tmpdir(), "citegeist-connector-core-"));
   const library = join(tmp, "library");
   seedLibrary(library);
-  core = await startCoreServer({ library, localBase: join(tmp, "local"), watch: false });
+  core = await startCoreServer({
+    library,
+    localBase: join(tmp, "local"),
+    watch: false,
+    runtime: { worker: createStubWorker() },
+  });
   connector = await attachConnector(core, { port: 0 });
 });
 
@@ -95,6 +101,36 @@ describe("Connector against a real core", () => {
     const { frontmatter: fm } = await call("items.get", { citekey: added.citekey });
     expect(fm.projects).toContain("phd-proposal");
     expect(fm.tags).toContain("to-read");
+  });
+
+  it("attaches the uploaded PDF to the item it belongs to, as the connector", async () => {
+    await post("save-items-journal-article");
+    const fx = fixture("save-attachment");
+    const res = await fetch(`http://127.0.0.1:${connector.port}${fx.path}`, {
+      method: fx.method,
+      headers: fx.headers,
+      body: fx.bodyText,
+    });
+    expect(res.status).toBe(201);
+
+    const list = await call("items.list", { limit: 100 });
+    // Only the article was added: the PDF did not become an inbox item of its own.
+    expect(list.items.filter((i: any) => i.title !== undefined && i.inbox)).toEqual([
+      expect.objectContaining({ title: "The Age of Surveillance Capitalism" }),
+    ]);
+    const added = list.items.find((i: any) => i.title === "Array programming with NumPy");
+    const { frontmatter: fm } = await call("items.get", { citekey: added.citekey });
+    expect(fm.sources).toHaveLength(1);
+    expect(fm.sources[0]).toMatchObject({
+      kind: "pdf",
+      role: "main",
+      filename: "Full-Text-PDF.pdf",
+      url: "https://www.nature.com/articles/s41586-020-2649-2.pdf",
+    });
+    expect(fm.sources[0].added.by).toBe("agent:zotero-connector");
+    const jobs = await call("jobs.list", { limit: 50 });
+    const convert = jobs.jobs.find((j: any) => j.kind === "convert");
+    expect(convert.by).toBe("agent:zotero-connector");
   });
 
   it("lists the library projects as targets", async () => {

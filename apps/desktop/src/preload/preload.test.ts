@@ -1,0 +1,14 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { QI } from "../quick-insert/channels.js";
+
+describe("main preload", () => {
+  it("uses the channel names of the quick-insert settings, without importing them", () => {
+    const source = readFileSync(join(import.meta.dirname, "index.ts"), "utf8");
+    expect(source).toContain(`"${QI.getSettings}"`);
+    expect(source).toContain(`"${QI.setSettings}"`);
+    // A sandboxed preload cannot require a shared chunk, so no local module may be imported.
+    expect(source).not.toMatch(/from "\.\.?\//);
+  });
+});

@@ -12,7 +12,7 @@ import {
   Library,
   type Runtime,
 } from "@citegeist/core";
-import { bindLinkOperations } from "@citegeist/mcp/links";
+import { LockHeldError, startCoreServer } from "@citegeist/desktop/core-server";
 import { createReplayFetch, createResolver } from "@citegeist/metadata";
 import type { Registry } from "@citegeist/ops";
 import { Actor, CitegeistError } from "@citegeist/schema";
@@ -25,7 +25,8 @@ import { ZodError } from "zod";
 import { EXIT } from "../exit.js";
 import { runCli } from "../program.js";
 import { createRegistry } from "../registry.js";
-import { ACTOR_HEADER } from "./forward.js";
+import { ACTOR_HEADER, findRunningCore, forwardCall } from "./forward.js";
+import { readCoreLock } from "./lock.js";
 
 const cleanups: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
@@ -125,7 +126,7 @@ async function startFakeCore(sb: Sandbox, opts: { actors: boolean }): Promise<Fa
     }),
     ai: { backends: [cannedAiBackend()] },
   });
-  const registry = bindLinkOperations(runtime.registry, lib);
+  const registry = runtime.registry;
   const calls: FakeCore["calls"] = [];
 
   const base = os.$context<{ actor: Actor }>();
@@ -421,5 +422,52 @@ describe("cg mcp", () => {
       if (Date.now() > deadline) throw new Error("the watcher did not index the file");
       await new Promise((r) => setTimeout(r, 100));
     }
+  });
+  it("takes core.lock with a port, so the app attaches instead of opening a second writer", async () => {
+    const sb = await sandbox();
+    const owner = await connect(sb, "owner-bot");
+    const made = await owner.callTool({
+      name: "create_note",
+      arguments: { title: "Owned by cg mcp", type: "permanent" },
+    });
+    expect(made.isError, JSON.stringify(made.content)).toBeFalsy();
+
+    const dir = join(sb.localBase, sb.libraryId);
+    const lock = readCoreLock(join(dir, "core.lock"));
+    expect(lock?.pid).toBeGreaterThan(0);
+    expect(lock?.pid).not.toBe(process.pid);
+    expect(lock?.port).toBeGreaterThan(0);
+
+    // The app side: a second core for the library fails on the lock and finds the holder.
+    await expect(
+      startCoreServer({ library: sb.root, localBase: sb.localBase, watch: false }),
+    ).rejects.toBeInstanceOf(LockHeldError);
+    const running = await findRunningCore(dir);
+    expect(running?.pid).toBe(lock?.pid);
+    expect(running?.actors).toBe(true);
+
+    // What the app and a second agent write goes through the holder, with their own names.
+    const fromApp = (await forwardCall(
+      running as NonNullable<typeof running>,
+      "notes.create",
+      "human",
+      {
+        title: "Written by the app",
+        type: "permanent",
+      },
+    )) as { frontmatter: { created: { by: string } } };
+    expect(fromApp.frontmatter.created.by).toBe("human");
+
+    const second = await connect(sb, "second-bot");
+    const viaSecond = await second.callTool({
+      name: "create_note",
+      arguments: { title: "Written by the second agent", type: "permanent" },
+    });
+    expect(viaSecond.isError, JSON.stringify(viaSecond.content)).toBeFalsy();
+    const found = await owner.callTool({ name: "search", arguments: { q: "second agent" } });
+    expect(
+      (found.structuredContent as { hits: Array<{ title: string }> }).hits.map((h) => h.title),
+    ).toContain("Written by the second agent");
+    expect(readCoreLock(join(dir, "core.lock"))?.pid).toBe(lock?.pid);
   });
 });

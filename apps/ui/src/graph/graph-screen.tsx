@@ -1,5 +1,4 @@
-import { notesList } from "@citegeist/editor/contracts";
-import { graphNeighbors, itemsList } from "@citegeist/ops";
+import { graphNeighbors, itemsList, notesList } from "@citegeist/ops";
 import { Network } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Badge } from "../components/ui/badge";

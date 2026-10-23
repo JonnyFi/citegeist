@@ -1,6 +1,7 @@
 import type { OperationContract } from "@citegeist/ops";
 import { itemsList } from "@citegeist/ops";
 import {
+  type Query,
   type UseQueryResult,
   useInfiniteQuery,
   useMutation,
@@ -38,13 +39,18 @@ export function useCore(): Core {
 export function useOp<C extends OperationContract>(
   contract: C,
   input: z.input<C["input"]>,
-  options: { enabled?: boolean } = {},
+  options: {
+    enabled?: boolean;
+    /** Milliseconds between refetches, or a function of the current data (false stops). */
+    refetchInterval?: number | false | ((query: Query<z.output<C["output"]>>) => number | false);
+  } = {},
 ): UseQueryResult<z.output<C["output"]>> {
   const core = useCore();
   return useQuery({
     queryKey: ["op", contract.name, input],
     queryFn: () => core.call(contract, input),
     enabled: options.enabled ?? true,
+    ...(options.refetchInterval !== undefined ? { refetchInterval: options.refetchInterval } : {}),
   });
 }
 

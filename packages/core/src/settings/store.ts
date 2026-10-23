@@ -7,15 +7,31 @@ export interface StoredSettings {
   ai: { routing: Record<string, string> };
   mailto?: string;
   uiLanguage: "de" | "en";
+  semantic: { enabled: boolean };
+  connector: { enabled: boolean; port: number };
 }
 
 export const DEFAULT_SETTINGS: StoredSettings = {
   ai: { routing: { "*": "claude-code-cli" } },
   uiLanguage: "de",
+  semantic: { enabled: false },
+  connector: { enabled: false, port: 23119 },
 };
 
+function validPort(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1024 && value <= 65535
+    ? value
+    : DEFAULT_SETTINGS.connector.port;
+}
+
 function sanitize(raw: unknown): StoredSettings {
-  const v = (raw ?? {}) as { ai?: { routing?: unknown }; mailto?: unknown; uiLanguage?: unknown };
+  const v = (raw ?? {}) as {
+    ai?: { routing?: unknown };
+    mailto?: unknown;
+    uiLanguage?: unknown;
+    semantic?: { enabled?: unknown };
+    connector?: { enabled?: unknown; port?: unknown };
+  };
   const routing: Record<string, string> = {};
   if (v.ai?.routing && typeof v.ai.routing === "object") {
     for (const [task, id] of Object.entries(v.ai.routing)) {
@@ -26,6 +42,8 @@ function sanitize(raw: unknown): StoredSettings {
     ai: { routing: Object.keys(routing).length > 0 ? routing : { ...DEFAULT_SETTINGS.ai.routing } },
     ...(typeof v.mailto === "string" && v.mailto ? { mailto: v.mailto } : {}),
     uiLanguage: v.uiLanguage === "en" ? "en" : "de",
+    semantic: { enabled: v.semantic?.enabled === true },
+    connector: { enabled: v.connector?.enabled === true, port: validPort(v.connector?.port) },
   };
 }
 

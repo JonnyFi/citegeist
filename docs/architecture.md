@@ -41,6 +41,8 @@ Die Architektur folgt drei Regeln. Der Kern ist ein eigener Prozess und gehört 
 
 Ein Kern pro Bibliothek: `~/Library/Application Support/citegeist/<library-id>/core.lock` hält PID und Port. Wer startet, prüft zuerst den Lock und verbindet sich mit dem laufenden Kern.
 
+Der Kern nimmt den Aufrufer aus dem Header `x-citegeist-actor` (`human`, `system` oder `agent:<name>`). Ohne Header handelt der Aufruf als `human`, so spricht die Oberfläche der App. Ein ungültiger Wert wird mit 400 abgelehnt. `GET /health` meldet mit `actors: true`, dass der Kern den Header kennt; `cg` leitet Schreibzugriffe von Agents nur an einen Kern weiter, der das meldet. Läuft keine App, öffnet `cg mcp` die Bibliothek als Kern: Es nimmt `core.lock`, bedient denselben HTTP-Endpunkt, und die App, die danach startet, verbindet sich mit ihm. Einmalige `cg`-Kommandos nehmen den Lock nicht.
+
 ## Operations-Registry
 
 Jede Fähigkeit ist eine Operation mit Name, Zod-Schema für Ein- und Ausgabe, Zugriffsklasse und Handler:

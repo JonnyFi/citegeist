@@ -3,9 +3,12 @@ import {
   type Backlink,
   type NoteSummary,
   notesBacklinks,
+  notesCreate,
+  notesGet,
   notesList,
-} from "@citegeist/editor/contracts";
-import { notesCreate, notesGet, notesUpdate, type Registry } from "@citegeist/ops";
+  notesUpdate,
+  type Registry,
+} from "@citegeist/ops";
 import type { NoteFrontmatter } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
