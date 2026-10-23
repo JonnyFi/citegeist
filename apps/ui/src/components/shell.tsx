@@ -4,6 +4,7 @@ import {
   BookOpen,
   FolderOpen,
   Inbox,
+  MessageSquare,
   Monitor,
   Moon,
   Network,
@@ -13,6 +14,7 @@ import {
   Sun,
 } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { ChatPanel } from "../chat";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
 import { type ThemeChoice, useTheme } from "../lib/theme";
@@ -141,6 +143,7 @@ export function Shell() {
   const projects = useOp(projectsList, {});
   const inbox = useOp(itemsList, { inbox: true, limit: 500 });
   const inboxCount = inbox.data?.items.length ?? 0;
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => window.citegeist?.onNavigate((path) => router.history.push(path)), [router]);
 
@@ -218,11 +221,27 @@ export function Shell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="drag-region flex h-12 shrink-0 items-center border-b border-line px-6">
           <SearchBar />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="no-drag ml-auto"
+            aria-label={t("chat.toggle")}
+            aria-pressed={chatOpen}
+            aria-controls="chat-column"
+            onClick={() => setChatOpen((open) => !open)}
+          >
+            <MessageSquare className="size-4" />
+          </Button>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
+      {chatOpen ? (
+        <aside id="chat-column" className="w-[360px] shrink-0 border-l border-line">
+          <ChatPanel />
+        </aside>
+      ) : null}
     </div>
   );
 }
