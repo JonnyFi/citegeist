@@ -22,6 +22,7 @@ import { TEMP_FILE, writeFileAtomic } from "./fsutil.js";
 import { newNoteId, slugify } from "./ids.js";
 import { Index, type Scope, scopeClauses } from "./index-db.js";
 import { Indexer, type IndexResult, type SyncSummary } from "./indexer.js";
+import { renameNoteFile } from "./notes/rename.js";
 import { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 import { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
 import { type SearchHit, type SearchInput, search } from "./search.js";
@@ -533,21 +534,38 @@ export class Library extends EventEmitter {
     return this.getNote(id);
   }
 
+  /**
+   * Changes body, title, type, tags or projects of a note. A new title also renames the file to
+   * the matching slug and rewrites the `[[wiki links]]` that pointed at the old file name.
+   */
   updateNote(
     actor: Actor,
-    input: { id: string; title?: string | undefined; body?: string | undefined },
+    input: {
+      id: string;
+      title?: string | undefined;
+      body?: string | undefined;
+      type?: NoteFrontmatter["type"] | undefined;
+      tags?: string[] | undefined;
+      projects?: string[] | undefined;
+    },
   ) {
     const row = this.getNote(input.id);
     const rel = this.paths.rel(row.path);
     const file = MarkdownFile.parse(readFileSync(row.path, "utf8"));
-    if (input.title !== undefined && input.title !== row.frontmatter.title) {
-      file.patch({ title: input.title });
+    const retitled = input.title !== undefined && input.title !== row.frontmatter.title;
+    if (retitled) file.patch({ title: input.title });
+    if (input.type !== undefined && input.type !== row.frontmatter.type) {
+      file.patch({ type: input.type });
     }
-    if (input.title !== undefined || input.body !== undefined) {
-      file.patch({ modified: this.stamp(actor) });
+    if (input.tags !== undefined) {
+      file.patch({ tags: [...new Set(input.tags.map((t) => t.trim()).filter(Boolean))] });
     }
+    if (input.projects !== undefined) file.patch({ projects: [...new Set(input.projects)] });
+    const changes = [input.title, input.body, input.type, input.tags, input.projects];
+    if (changes.some((v) => v !== undefined)) file.patch({ modified: this.stamp(actor) });
     if (input.body !== undefined) file.setBody(input.body);
     this.writeFile(rel, file.toString());
+    if (retitled && input.title !== undefined) renameNoteFile(this, rel, input.title);
     return this.getNote(input.id);
   }
 

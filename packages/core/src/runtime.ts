@@ -15,6 +15,7 @@ import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
+import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
 import {
   type AttachSemanticOptions,
@@ -146,6 +147,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const registry = bindCoreOperations(new Registry(), lib, {
     search: async (input) => (semantic ? semantic.search(input) : lib.search(input)),
   });
+  bindNoteOperations(registry, lib);
   const worker = opts.worker ?? defaultWorker();
   const localBase = opts.settings?.localBase ?? dirname(lib.local.dir);
   const workerSource = opts.settings?.workerSource ?? join(repoRoot(), "workers", "convert");

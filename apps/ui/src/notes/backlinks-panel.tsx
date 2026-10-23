@@ -1,4 +1,4 @@
-import { type Backlink, notesBacklinks } from "@citegeist/editor/contracts";
+import { type Backlink, notesBacklinks } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "../components/ui/badge";
 import { ErrorState } from "../components/ui/states";

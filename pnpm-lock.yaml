@@ -296,9 +296,6 @@ importers:
       '@citegeist/cite':
         specifier: workspace:*
         version: link:../cite
-      '@citegeist/editor':
-        specifier: workspace:*
-        version: link:../editor
       '@citegeist/embed':
         specifier: workspace:*
         version: link:../embed
@@ -348,12 +345,6 @@ importers:
 
   packages/editor:
     dependencies:
-      '@citegeist/ops':
-        specifier: workspace:*
-        version: link:../ops
-      '@citegeist/schema':
-        specifier: workspace:*
-        version: link:../schema
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.4
@@ -375,9 +366,6 @@ importers:
       '@lezer/highlight':
         specifier: ^1.2.0
         version: 1.2.5
-      zod:
-        specifier: ^4.0.0
-        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.3.3

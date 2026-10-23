@@ -1,5 +1,4 @@
-import { notesList } from "@citegeist/editor/contracts";
-import { notesCreate } from "@citegeist/ops";
+import { notesCreate, notesList } from "@citegeist/ops";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { NotebookPen, Plus } from "lucide-react";
 import { useState } from "react";

@@ -91,6 +91,32 @@ async function paraphraseOf(
     .paraphrase;
 }
 
+describe("createRuntime notes", () => {
+  it("binds notes.list and notes.backlinks next to the other operations", async () => {
+    const s = await setup();
+    const note = await s.call<{ frontmatter: { id: string } }>("notes.create", {
+      title: "Autopoiesis",
+      type: "permanent",
+    });
+    const listed = await s.call<{ notes: Array<{ title: string; slug: string }> }>(
+      "notes.list",
+      {},
+    );
+    expect(listed.notes).toMatchObject([{ title: "Autopoiesis", slug: "autopoiesis" }]);
+    const back = await s.call<{ backlinks: unknown[] }>("notes.backlinks", {
+      id: note.frontmatter.id,
+    });
+    expect(back.backlinks).toEqual([]);
+
+    const renamed = await s.call<{ path: string }>("notes.update", {
+      id: note.frontmatter.id,
+      title: "Selbstherstellung",
+      type: "claim",
+    });
+    expect(renamed.path).toMatch(/selbstherstellung\.md$/);
+  });
+});
+
 describe("createRuntime settings", () => {
   it("routes AI tasks by the stored settings and follows settings.update", async () => {
     const s = await setup();
