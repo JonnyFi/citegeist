@@ -40,7 +40,7 @@ If your workstream needs a new dependency, add it to your own package's `package
 
 ```
 pnpm install                              install all JS dependencies
-pnpm verify                               biome check, typecheck, vitest, pytest (must pass before every commit)
+pnpm verify                               biome check, typecheck, vitest, pytest (must pass before every commit; the pre-push hook enforces it)
 pnpm lint                                 biome check .
 pnpm format                               biome format --write .
 pnpm typecheck                            tsc --noEmit in every package via turbo
@@ -67,7 +67,7 @@ cd workers/convert && uv run pytest       run the worker tests
 2. Build against fixtures and mocks, and run `pnpm verify` until green.
 3. `/review` checks the diff before landing.
 4. `/qa` exercises the running app or CLI.
-5. `/ship` creates the PR.
+5. `/ship` creates the PR. CI runs on Linux runners while Actions minutes last. When they are used up, the local `pnpm verify` (pre-push hook) is the gate and the PR body quotes its result.
 
 ## Docs
 

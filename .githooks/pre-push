@@ -1,0 +1,8 @@
+#!/bin/sh
+# Local quality gate. GitHub Actions is manual-only, so every push must pass pnpm verify here.
+# Skip once in an emergency with: git push --no-verify
+echo "pre-push: running pnpm verify"
+pnpm verify || {
+  echo "pre-push: pnpm verify failed, push aborted. Fix the errors above or push with --no-verify." >&2
+  exit 1
+}
