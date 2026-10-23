@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Mistral 7B</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2023-10-10">10 Oct 2023</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Albert</forename><forename type="middle">Q</forename><surname>Jiang</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Alexandre</forename><surname>Sablayrolles</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Chris</forename><surname>Bamford</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Singh</forename><surname>Devendra</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Diego</forename><surname>Chaplot</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Florian</forename><surname>De Las Casas</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Gianna</forename><surname>Bressand</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Guillaume</forename><surname>Lengyel</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Lucile</forename><surname>Lample</surname></persName>
+						</author>
+						<author>
+							<persName><roleName>Lélio</roleName><forename type="first">Renard</forename><surname>Saulnier</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Marie-Anne</forename><surname>Lavaud</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Pierre</forename><surname>Lachaux</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Teven</forename><surname>Stock</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Thibaut</forename><surname>Le Scao</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Thomas</forename><surname>Lavril</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Timothée</forename><surname>Wang</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">William</forename><surname>Lacroix</surname></persName>
+						</author>
+						<author>
+							<persName><surname>El Sayed</surname></persName>
+						</author>
+						<title level="a" type="main">Mistral 7B</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2023-10-10">10 Oct 2023</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">8AD11D7D6D3A9CE8A0870088EBBCDB00</idno>
+					<idno type="arXiv">arXiv:2310.06825v1[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.1" ident="GROBID" when="2026-10-23T12:42+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.1</label>
+					<label type="parameters">startPage=0, endPage=2, consolidateCitations=0, consolidateHeader=0, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=null, flavor=null, debugLabelingCollector=disabled</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+				<p>We introduce Mistral 7B, a 7-billion-parameter language model engineered for superior performance and efficiency. Mistral 7B outperforms the best open 13B model (Llama 2) across all evaluated benchmarks, and the best released 34B model (Llama 1) in reasoning, mathematics, and code generation. Our model leverages grouped-query attention (GQA) for faster inference, coupled with sliding window attention (SWA) to effectively handle sequences of arbitrary length with a reduced inference cost. We also provide a model fine-tuned to follow instructions, Mistral 7B-Instruct, that surpasses Llama 2 13B-chat model both on human and automated benchmarks. Our models are released under the Apache 2.0 license.</p>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+	</text>
+</TEI>

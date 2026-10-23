@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "description": "Fixture PDFs for conversion spikes and regression tests. PDFs are not committed; run `node fixtures/pdf/fetch.mjs` to download them into fixtures/pdf/cache/ and verify sha256.",
+  "conventions": {
+    "pageIndex": "zero-based",
+    "expected.firstPrintedPage": "printed page number on PDF page index 0 (null when the document has no printed page numbers). Gold label for index i is firstPrintedPage + i unless expected.labelGaps says otherwise.",
+    "expected.labelSource": "which of the three label sources of architecture.md should win: catalog (/PageLabels), detected (header/footer number run), crossref-offset, none",
+    "kind": "tags from the spike corpus plan (docs/research/document-conversion.md section 9.3)"
+  },
+  "fixtures": [
+    {
+      "id": "tacl-natural-questions-2019",
+      "kind": ["journal-article", "two-column", "doi"],
+      "title": "Natural Questions: A Benchmark for Question Answering Research",
+      "url": "https://aclanthology.org/Q19-1026.pdf",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "Footer on page 1: Distributed under a CC-BY 4.0 license",
+      "sha256": "bb1423eb40e9ca3c864bcd9c316d4f84f4f84694924b873ae3e20da1e600dcb6",
+      "bytes": 1638280,
+      "pages": 14,
+      "language": "en",
+      "doi": "10.1162/tacl_a_00276",
+      "crossrefPages": "453-466",
+      "expected": {
+        "firstPrintedPage": 453,
+        "labelSource": "catalog",
+        "notes": "Two-column TACL article. /PageLabels is meaningful (453..466), page numbers also printed in the footer of pages 2 to 14. Footnotes with URLs at the bottom of columns, tables, one large figure on page 1."
+      }
+    },
+    {
+      "id": "plos-one-reference-rot-2014",
+      "kind": ["journal-article", "e-locator", "long"],
+      "title": "Scholarly Context Not Found: One in Five Articles Suffers from Reference Rot",
+      "url": "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0115253&type=printable",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "Article text: distributed under the terms of the Creative Commons Attribution License",
+      "sha256": "2a23f07d7040f286f8910b47f4d95bcc9aefc302a281df37ae5b868cc4c6e092",
+      "bytes": 1794628,
+      "pages": 39,
+      "language": "en",
+      "doi": "10.1371/journal.pone.0115253",
+      "crossrefPages": "e115253",
+      "expected": {
+        "firstPrintedPage": 1,
+        "labelSource": "catalog",
+        "notes": "Crossref page is an e-locator, not a range, so the Crossref offset path must refuse it. Footer reads '1 / 39' (physical numbering). Single column, tables, 39 pages with long reference list."
+      }
+    },
+    {
+      "id": "arxiv-2312.00752-mamba",
+      "kind": ["arxiv", "math-heavy"],
+      "title": "Mamba: Linear-Time Sequence Modeling with Selective State Spaces",
+      "url": "https://arxiv.org/pdf/2312.00752v2",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "arxiv.org/abs/2312.00752 license link: creativecommons.org/licenses/by/4.0",
+      "sha256": "adf70ed1803c85b1899dec3e21f3af0b124411439e8654b840ea65f7b9f52b2e",
+      "bytes": 1168615,
+      "pages": 36,
+      "language": "en",
+      "arxivId": "2312.00752",
+      "arxivVersion": "v2",
+      "doi": "10.48550/arXiv.2312.00752",
+      "expected": {
+        "firstPrintedPage": 1,
+        "labelSource": "detected",
+        "notes": "Display equations and algorithms with dense math, appendix proofs. No /PageLabels. Page number is printed at the bottom centre. arXiv HTML (LaTeXML) path applies."
+      }
+    },
+    {
+      "id": "arxiv-2310.06825-mistral-7b",
+      "kind": ["arxiv", "complex-tables", "two-column-mixed"],
+      "title": "Mistral 7B",
+      "url": "https://arxiv.org/pdf/2310.06825v1",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "arxiv.org/abs/2310.06825 license link: creativecommons.org/licenses/by/4.0",
+      "sha256": "dfbac4e7035344b305c947481f2e7e8a02f7a24a563917eb6e47f6591d14c5ae",
+      "bytes": 3749788,
+      "pages": 9,
+      "language": "en",
+      "arxivId": "2310.06825",
+      "arxivVersion": "v1",
+      "doi": "10.48550/arXiv.2310.06825",
+      "expected": {
+        "firstPrintedPage": 1,
+        "labelSource": "detected",
+        "notes": "Benchmark result tables with many numeric cells and bold best values, figures with captions. No /PageLabels. arXiv HTML path applies."
+      }
+    },
+    {
+      "id": "arxiv-2408.09869-docling-report",
+      "kind": ["arxiv", "preprint", "tables"],
+      "title": "Docling Technical Report",
+      "url": "https://arxiv.org/pdf/2408.09869v5",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "arxiv.org/abs/2408.09869 license link: creativecommons.org/licenses/by/4.0",
+      "sha256": "82dd470712ce8389f19f20eb9330475e2166a281f8c7990a9f1d0763d73b4d22",
+      "bytes": 5566575,
+      "pages": 9,
+      "language": "en",
+      "arxivId": "2408.09869",
+      "arxivVersion": "v5",
+      "doi": "10.48550/arXiv.2408.09869",
+      "expected": {
+        "firstPrintedPage": 1,
+        "labelSource": "detected",
+        "notes": "Two-column arXiv preprint, pipeline figures, a few tables, footnotes with URLs, a code listing. Page numbers printed at the bottom centre; no /PageLabels. Good smoke test because the converter under test describes itself."
+      }
+    },
+    {
+      "id": "lsp-ledgeway-dative-marking-2020",
+      "kind": ["book-chapter", "printed-pages-differ", "footnotes"],
+      "title": "Microvariation in dative-marking in the Romance and Greek varieties of Southern Italy (chapter 13)",
+      "url": "https://www.repository.cam.ac.uk/bitstreams/90ac2a4b-13d6-40bf-8e8f-419072298332/download",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "Language Science Press publishes all books under CC BY 4.0; OpenAlex lists cc-by for this deposit. The PDF itself carries no licence line.",
+      "sha256": "e80dbfeb43ebbbbc3085c603c6538180aa4a55e435d7a6a3014bd79d14c46ebb",
+      "bytes": 192236,
+      "pages": 34,
+      "language": "en",
+      "doi": null,
+      "crossrefPages": "317-349",
+      "expected": {
+        "firstPrintedPage": 317,
+        "labelSource": "detected",
+        "notes": "Book chapter, printed pages 317 to 349, PDF has no /PageLabels. Page 1 is a chapter-opening page with a title block and, in this book design, a footer number that may be missing, so the detector has to interpolate. Footnotes, linguistic example tables (glossed lines)."
+      }
+    },
+    {
+      "id": "cup-bruce-vinuales-sdg7-2020",
+      "kind": ["book-chapter", "printed-pages-differ", "odd-pagelabels", "doi"],
+      "title": "SDG 7: Ensure Access to Affordable, Reliable, Sustainable and Modern Energy for All",
+      "url": "https://www.repository.cam.ac.uk/bitstreams/6a020a6f-6edb-49ce-abd2-20c3077dad23/download",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "OpenAlex/Apollo repository record lists cc-by for this deposit; the PDF itself carries no licence line. Check before redistributing outside tests.",
+      "sha256": "05722b1990a0eb97404c1ee9feb0a074a85482d3b4da1e666df772a19f8aa55c",
+      "bytes": 182672,
+      "pages": 23,
+      "language": "en",
+      "doi": "10.1017/9781108769631.009",
+      "crossrefPages": "185-207",
+      "expected": {
+        "firstPrintedPage": 185,
+        "labelSource": "catalog",
+        "notes": "Cambridge book chapter, printed pages 185 to 207. /PageLabels is encoded as one range per page with prefix '185', '186', ... and no numbering style, so a parser must emit the prefix alone and not append a counter. Heavy footnotes at the bottom of every page."
+      }
+    },
+    {
+      "id": "merz-bne-2021",
+      "kind": ["journal-article", "german", "printed-pages-differ"],
+      "title": "Bildung für nachhaltige Entwicklung",
+      "url": "https://www.merz-zeitschrift.de/article/download/2097/1934",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "Crossref license URL creativecommons.org/licenses/by/4.0",
+      "sha256": "6c9a55e01a0ed0acfe8f05518666f8da8c227eea0970cac6abaf2704ebf21a29",
+      "bytes": 263759,
+      "pages": 8,
+      "language": "de",
+      "doi": "10.21240/merz/2021.4.7",
+      "crossrefPages": "12-19",
+      "expected": {
+        "firstPrintedPage": 12,
+        "labelSource": "detected",
+        "notes": "German born-digital article, two-column, hyphenated line breaks (BNE, Nachhaltigkeits-/kompetenzen), umlauts. No /PageLabels. The printed number appears twice in the header on each page. Crossref range 12-19 matches the 8 PDF pages exactly, so the crossref-offset path applies."
+      }
+    },
+    {
+      "id": "rki-johm-kiggs-2019",
+      "kind": ["journal-article", "german", "printed-pages-differ", "complex-tables", "long"],
+      "title": "Gesundheitliche Ungleichheiten bei Kindern und Jugendlichen in Deutschland, Journal of Health Monitoring 4(1)",
+      "url": "https://edoc.rki.de/bitstream/176904/5908/1/JoHM_01_2019_Gesundheitliche_Ungleichheiten.pdf",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "Page 1: Dieses Werk ist lizenziert unter einer Creative Commons Namensnennung 4.0 International Lizenz",
+      "sha256": "a02820404eefd6bf4e554c31e480f079f3c66a64d9c2163b866bff8d679585ec",
+      "bytes": 460127,
+      "pages": 25,
+      "language": "de",
+      "doi": "10.25646/5867",
+      "crossrefPages": null,
+      "expected": {
+        "firstPrintedPage": 16,
+        "labelSource": "catalog",
+        "notes": "Extract of a journal issue: PDF index 0 is printed page 16 and the last page is 40. /PageLabels is present and correct. Running headers 'Journal of Health Monitoring 2019 4(1)', info boxes, many figures and tables, German decimal commas."
+      }
+    },
+    {
+      "id": "gvbl-berlin-2013-18",
+      "kind": ["grey-literature", "german", "printed-pages-differ", "legal-gazette"],
+      "title": "Gesetz- und Verordnungsblatt fuer Berlin, 69. Jahrgang, Nr. 18, 30. Juli 2013",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/8/87/GVBl_Berlin_Jahrgang_69_Nr_18.pdf",
+      "license": "Public-Domain",
+      "licenseEvidence": "Official work of a German authority (par. 5 UrhG); Wikimedia Commons marks it public domain",
+      "sha256": "259e7c2e0a86d45b8b384353c272049017b670bcce3dfa2ccd8501208c1b914c",
+      "bytes": 1207940,
+      "pages": 20,
+      "language": "de",
+      "doi": null,
+      "expected": {
+        "firstPrintedPage": 337,
+        "labelSource": "catalog",
+        "notes": "German legal gazette, printed pages 337 to 356, /PageLabels present. Page numbers are printed at the top outer corner, not the footer. Paragraph numbering, tables of amounts, two columns on some pages."
+      }
+    },
+    {
+      "id": "nist-ai-rmf-1.0",
+      "kind": ["report", "grey-literature", "long", "roman-numerals"],
+      "title": "Artificial Intelligence Risk Management Framework (AI RMF 1.0), NIST AI 100-1",
+      "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+      "license": "Public-Domain",
+      "licenseEvidence": "Work of the US federal government (17 USC 105), NIST publication",
+      "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
+      "bytes": 1946127,
+      "pages": 48,
+      "language": "en",
+      "doi": "10.6028/NIST.AI.100-1",
+      "expected": {
+        "firstPrintedPage": null,
+        "labelSource": "catalog",
+        "notes": "Long single-column report. Cover and title pages are unnumbered, front matter uses roman numerals (i, ii, ...), body restarts at 1. /PageLabels is present but starts oddly ('1','1','i','i'), so the cover pages are wrongly labelled and must be flagged as low confidence. Complex tables in the appendices, figures, boxed text."
+      }
+    },
+    {
+      "id": "birkmeyer-editio-princeps-1899",
+      "kind": ["journal-article", "german", "footnotes", "printed-pages-differ", "noisy-text-layer", "historic"],
+      "title": "Birkmeyer, Der Schutz der editio princeps, Mecklenburgische Zeitschrift fuer Rechtspflege und Rechtswissenschaft 17 (1899)",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/22/Birkmeyer_-_Der_Schutz_der_editio_princeps_%28Mecklenburgische_Zeitschrift_f%C3%BCr_Rechtspflege_und_Rechtswissenschaft_17%2C_1899%29.pdf",
+      "license": "Public-Domain",
+      "licenseEvidence": "Published 1899, author died before 1950; Wikimedia Commons marks it public domain",
+      "sha256": "7e30f290fac9689fa8cfd92cae275f92f7a406db961285ca15379c2883709909",
+      "bytes": 9254710,
+      "pages": 58,
+      "language": "de",
+      "doi": null,
+      "expected": {
+        "firstPrintedPage": 227,
+        "labelSource": "detected",
+        "notes": "Scanned 1899 law article set in Fraktur, with an embedded OCR text layer of mixed quality (Google Books / Internet Archive derivative, Google watermark on every page). Apple Vision OCR cannot read the Fraktur (long s becomes f), so the embedded layer is the better text source. Dense footnotes below a rule on every page, words split into one token per line in the text layer, page number at the top. Printed page 227 is on PDF index 0 (index 10 shows 237). OCR garbles some page numbers (index 57 reads 354, expected 284), so a longest-increasing-run detector has to tolerate errors."
+      }
+    },
+    {
+      "id": "nomos-huntington-review-1970",
+      "kind": ["journal-article", "german", "printed-pages-differ", "short"],
+      "title": "Samuel P. Huntington: Political Order in Changing Societies (Buchbesprechung), VRUe 3 (1970)",
+      "url": "http://www.nomos-elibrary.de/10.5771/0506-7286-1970-2-257.pdf",
+      "license": "CC-BY-4.0",
+      "licenseEvidence": "OpenAlex lists cc-by; the PDF footer says 'Open Access'. Verify the exact licence before redistributing outside tests.",
+      "sha256": "28410f773ab3f07f2b38ee2452e4980c64860300ca476bc3dfc6bd72fa9838fb",
+      "bytes": 3482832,
+      "pages": 5,
+      "language": "de",
+      "doi": "10.5771/0506-7286-1970-2-257",
+      "crossrefPages": "257-261",
+      "expected": {
+        "firstPrintedPage": 257,
+        "labelSource": "crossref-offset",
+        "notes": "Digitised 1970 German book review, two columns, soft hyphens in the text layer, page 1 starts with the table of contents of the review section. Printed number at the bottom. Crossref range 257-261 matches the 5 PDF pages."
+      }
+    },
+    {
+      "id": "scan-ochtendung-urkunde-1958",
+      "kind": ["scan", "german", "no-text-layer", "calligraphy"],
+      "title": "Urkunde fuer die im Jahr 1957/58 neuerbaute Pfarrkirche in Ochtendung",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/73/Urkunde_f%C3%BCr_die_im_Jahr_1957_58_neuerbaute_Pfarrkirche_in_Ochtendung.pdf",
+      "license": "CC-BY-SA-4.0",
+      "licenseEvidence": "Wikimedia Commons file page",
+      "sha256": "d877648284cc56a796e0140d5cd09a97668c9224d6f4538db97b3725c6039699",
+      "bytes": 690897,
+      "pages": 1,
+      "language": "de",
+      "doi": null,
+      "expected": {
+        "firstPrintedPage": null,
+        "labelSource": "none",
+        "notes": "One phone scan (CamScanner) of a calligraphed German certificate in three columns. The only text in the PDF is the watermark 'Scanned with CamScanner', so the triage step must classify the page as a scan despite 23 characters of text. Calligraphic script makes OCR hard. Reference text for the first column starts 'Zur unendlichen Ehre und Verherrlichung der Allerheiligsten Dreifaltigkeit'. Reading order is column by column, left to right."
+      }
+    },
+    {
+      "id": "scan-boehmer-palatinat-1739",
+      "kind": ["scan", "german", "no-text-layer", "handwritten", "negative-control"],
+      "title": "Johann Samuel Friedrich (von) Boehmer, Palatinat-Urkunde von 1739",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Johann_Samuel_Friedrich_%28von%29_B%C3%B6hmer_-_Palatinat-Urkunde_von_1739.pdf",
+      "license": "Public-Domain",
+      "licenseEvidence": "18th century manuscript, Wikimedia Commons marks it public domain",
+      "sha256": "af01396c1aee1a6b88bd32d826111267faf9515374151979478580bebe7ebeb4",
+      "bytes": 5349103,
+      "pages": 14,
+      "language": "de",
+      "doi": null,
+      "expected": {
+        "firstPrintedPage": null,
+        "labelSource": "none",
+        "notes": "Negative control: 14 spreads of an 18th century Kurrent manuscript, no text layer. No OCR engine in the spike reads Kurrent, so the pipeline must produce few or no blocks and flag every page as low quality instead of emitting confident garbage. Folio numbers are stamped in the margin of some images only."
+      }
+    }
+  ]
+}

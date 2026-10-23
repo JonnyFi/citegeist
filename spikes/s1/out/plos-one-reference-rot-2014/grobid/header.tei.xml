@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Scholarly Context Not Found: One in Five Articles Suffers from Reference Rot</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2014-12-26">December 26, 2014</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Martin</forename><surname>Klein</surname></persName>
+							<email>martinklein0815@gmail.com</email>
+							<affiliation key="aff0">
+								<orgName type="institution">Digital Library Research and Prototyping Team</orgName>
+								<address>
+									<settlement>Research Library</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Herbert</forename><surname>Van De Sompel</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Digital Library Research and Prototyping Team</orgName>
+								<address>
+									<settlement>Research Library</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Robert</forename><surname>Sanderson</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Digital Library Research and Prototyping Team</orgName>
+								<address>
+									<settlement>Research Library</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Harihar</forename><surname>Shankar</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Digital Library Research and Prototyping Team</orgName>
+								<address>
+									<settlement>Research Library</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Lyudmila</forename><surname>Balakireva</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Digital Library Research and Prototyping Team</orgName>
+								<address>
+									<settlement>Research Library</settlement>
+								</address>
+							</affiliation>
+							<affiliation key="aff3">
+								<orgName type="institution">Bar-Ilan University</orgName>
+								<address>
+									<country key="IL">Israel</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ke</forename><surname>Zhou</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="laboratory">Language Technology Group</orgName>
+								<orgName type="institution">Los Alamos National Laboratory</orgName>
+								<address>
+									<settlement>Los Alamos</settlement>
+									<region>New Mexico</region>
+									<country key="US">United States of America</country>
+								</address>
+							</affiliation>
+							<affiliation key="aff2">
+								<orgName type="institution">The University of Edinburgh</orgName>
+								<address>
+									<settlement>Edinburgh</settlement>
+									<country>Scotland United Kingdom</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Richard</forename><surname>Tobin</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="laboratory">Language Technology Group</orgName>
+								<orgName type="institution">Los Alamos National Laboratory</orgName>
+								<address>
+									<settlement>Los Alamos</settlement>
+									<region>New Mexico</region>
+									<country key="US">United States of America</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Scholarly Context Not Found: One in Five Articles Suffers from Reference Rot</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2014-12-26">December 26, 2014</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">5A28DB88EACABE976234713CC42D1B83</idno>
+					<idno type="DOI">10.1371/journal.pone.0115253</idno>
+					<note type="submission">Received: August 13, 2014 Accepted: November 20, 2014</note>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.1" ident="GROBID" when="2026-10-23T12:42+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.1</label>
+					<label type="parameters">startPage=0, endPage=2, consolidateCitations=0, consolidateHeader=0, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=null, flavor=null, debugLabelingCollector=disabled</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+				<p>The emergence of the web has fundamentally affected most aspects of information communication, including scholarly communication. The immediacy that characterizes publishing information to the web, as well as accessing it, allows for a dramatic increase in the speed of dissemination of scholarly knowledge. But, the transition from a paper-based to a web-based scholarly communication system also poses challenges. In this paper, we focus on reference rot, the combination of link rot and content drift to which references to web resources included in Science, Technology, and Medicine (STM) articles are subject. We investigate the extent to which reference rot impacts the ability to revisit the web context that surrounds STM articles some time after their publication. We do so on the basis of a vast collection of articles from three corpora that span publication years 1997 to 2012. For over one million references to web resources extracted from over 3.5 million articles, we determine whether the HTTP URI is still responsive on the live web and whether web archives contain an archived snapshot representative of the state the referenced resource had at the time it was referenced. We observe that the fraction of articles containing references to web resources is growing steadily over time. We find one out of five STM articles suffering from reference rot, meaning it is impossible to revisit the web context that surrounds them some time after their publication. When only considering STM articles that contain references to web resources, this fraction increases to seven out of ten. We suggest that, in order to safeguard the long-term integrity of the web-based scholarly record, robust solutions to combat the reference rot problem are required. In conclusion, we provide a brief insight into the directions that are explored with this regard in the context of the Hiberlink project.</p>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+	</text>
+</TEI>

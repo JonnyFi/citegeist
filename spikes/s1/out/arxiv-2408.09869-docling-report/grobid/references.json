@@ -1,0 +1,98 @@
+[
+ {
+  "title": "Easyocr: Ready-to-use ocr with 80+ supported languages",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 1
+ },
+ {
+  "title": "Pytorch 2: Faster machine learning through dynamic python bytecode transformation and graph compilation",
+  "doi": "10.1145/3620665.3640366",
+  "year": null,
+  "n_authors": 49
+ },
+ {
+  "title": "Delivering document conversion as a cloud service with high throughput and responsiveness",
+  "doi": null,
+  "year": "2022",
+  "n_authors": 5
+ },
+ {
+  "title": "Qpdf: A content-preserving pdf document transformer",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 1
+ },
+ {
+  "title": "Onnx runtime",
+  "doi": null,
+  "year": null,
+  "n_authors": 1
+ },
+ {
+  "title": "Data Prep Kit: a community project to democratize and accelerate unstructured data preparation for LLM app developers",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 1
+ },
+ {
+  "title": "",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 2
+ },
+ {
+  "title": "",
+  "doi": null,
+  "year": null,
+  "n_authors": 2
+ },
+ {
+  "title": "Optimized Table Tokenization for Table Structure Recognition",
+  "doi": "10.1007/978-3-031-41679-8_3",
+  "year": "2023",
+  "n_authors": 5
+ },
+ {
+  "title": "Statements: Universal information extraction from tables with large language models for ESG KPIs",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 7
+ },
+ {
+  "title": "Patcid: an open-access dataset of chemical structures in patent documents",
+  "doi": "10.1038/s41467-024-50779-y",
+  "year": "2024",
+  "n_authors": 5
+ },
+ {
+  "title": "Tableformer: Table structure understanding with transformers",
+  "doi": null,
+  "year": "2022",
+  "n_authors": 4
+ },
+ {
+  "title": "Doclaynet: a large humanannotated dataset for document-layout segmentation",
+  "doi": null,
+  "year": "2022",
+  "n_authors": 5
+ },
+ {
+  "title": "pypdf: A Pure-Python PDF Library",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 1
+ },
+ {
+  "title": "PyPDFium2: Python bindings for PDFium",
+  "doi": null,
+  "year": "2024",
+  "n_authors": 1
+ },
+ {
+  "title": "Detrs beat yolos on real-time object detection",
+  "doi": null,
+  "year": "2023",
+  "n_authors": 8
+ }
+]

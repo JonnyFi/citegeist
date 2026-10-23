@@ -1,0 +1,21 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+W1023 14:38:18.494000 38265 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 17742.40it/s]
+warm-up (digital pipeline, 1 page, includes model load): 45.3 s
+tacl-natural-questions-2019               14 p      2.2 s    0.16 s/p   217 blocks  ConversionStatus.SUCCESS
+plos-one-reference-rot-2014               39 p      6.0 s    0.15 s/p   483 blocks  ConversionStatus.SUCCESS
+arxiv-2312.00752-mamba                    36 p      8.2 s    0.23 s/p   598 blocks  ConversionStatus.SUCCESS
+arxiv-2310.06825-mistral-7b                9 p      2.0 s    0.22 s/p   111 blocks  ConversionStatus.SUCCESS
+arxiv-2408.09869-docling-report            9 p      1.6 s    0.18 s/p   111 blocks  ConversionStatus.SUCCESS
+lsp-ledgeway-dative-marking-2020          34 p      2.2 s    0.06 s/p   367 blocks  ConversionStatus.SUCCESS
+cup-bruce-vinuales-sdg7-2020              23 p      1.5 s    0.07 s/p   285 blocks  ConversionStatus.SUCCESS
+merz-bne-2021                              8 p      0.6 s    0.08 s/p    91 blocks  ConversionStatus.SUCCESS
+rki-johm-kiggs-2019                       25 p     10.2 s    0.41 s/p   373 blocks  ConversionStatus.SUCCESS
+gvbl-berlin-2013-18                       20 p     13.3 s    0.66 s/p   459 blocks  ConversionStatus.SUCCESS
+nist-ai-rmf-1.0                           48 p      4.9 s    0.10 s/p   442 blocks  ConversionStatus.SUCCESS
+birkmeyer-editio-princeps-1899            58 p      4.0 s    0.07 s/p   487 blocks  ConversionStatus.SUCCESS
+nomos-huntington-review-1970               5 p      0.6 s    0.13 s/p    53 blocks  ConversionStatus.SUCCESS
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 14222.93it/s]
+warm-up (OCR pipeline, 1 page, includes model load): 24.5 s
+scan-ochtendung-urkunde-1958               1 p      0.8 s    0.85 s/p     5 blocks  ConversionStatus.SUCCESS
+scan-boehmer-palatinat-1739               14 p      9.7 s    0.70 s/p    59 blocks  ConversionStatus.SUCCESS

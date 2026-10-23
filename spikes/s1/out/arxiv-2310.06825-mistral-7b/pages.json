@@ -1,0 +1,169 @@
+{
+ "pages": [
+  {
+   "index": 0,
+   "label": "1",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 10
+  },
+  {
+   "index": 1,
+   "label": "2",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 2,
+   "label": "3",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 15
+  },
+  {
+   "index": 3,
+   "label": "4",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 11
+  },
+  {
+   "index": 4,
+   "label": "5",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  },
+  {
+   "index": 5,
+   "label": "6",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 8
+  },
+  {
+   "index": 6,
+   "label": "7",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 2
+  },
+  {
+   "index": 7,
+   "label": "8",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 17
+  },
+  {
+   "index": 8,
+   "label": "9",
+   "labelSource": "detected",
+   "confidence": 0.95,
+   "size": [
+    612.0,
+    792.0
+   ],
+   "textSource": "born-digital",
+   "nBlocks": 13
+  }
+ ],
+ "sources": {
+  "catalog": {
+   "labels": null,
+   "note": "no /PageLabels"
+  },
+  "detected": {
+   "labels": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+   ],
+   "offset": 1,
+   "votes": 8,
+   "candidatesPerPage": {
+    "0": [
+     10
+    ],
+    "1": [
+     1,
+     2,
+     3
+    ],
+    "2": [
+     3
+    ],
+    "3": [
+     4
+    ],
+    "4": [
+     5
+    ],
+    "5": [
+     6
+    ],
+    "6": [
+     7
+    ],
+    "7": [
+     8
+    ],
+    "8": [
+     9
+    ]
+   }
+  },
+  "crossref": {
+   "labels": null,
+   "note": "no Crossref pages"
+  }
+ },
+ "flags": []
+}

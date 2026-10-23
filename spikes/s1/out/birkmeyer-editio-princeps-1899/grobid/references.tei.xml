@@ -1,0 +1,85 @@
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:xlink="http://www.w3.org/1999/xlink" 
+ xmlns:mml="http://www.w3.org/1998/Math/MathML">
+	<teiHeader/>
+	<text>
+		<front/>
+		<body/>
+		<back>
+			<div>
+				<listBibl>
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<idno>ZS. 15 S. 212</idno>
+		<title level="m">Grünh</title>
+		<imprint>
+			<biblScope unit="page" from="213" to="214" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Kommissionsbericht S. 2; Ewald in den Steuogr</title>
+		<author>
+			<persName><forename type="first">»°)</forename><surname>Vgl</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Motive zum Deutschen Schriftwerkgesetz S</title>
+		<imprint>
+			<biblScope unit="volume">1870</biblScope>
+			<biblScope unit="page">12</biblScope>
+			<publisher>Dahn le, S</publisher>
+		</imprint>
+	</monogr>
+	<note>Reichstagsvcrichten Gesetzgebung S</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bahr Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Kohler In Griinh</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Iss ; Nohler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kunstwerk</surname></persName>
+		</author>
+		<imprint>
+			<biblScope unit="page">15</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">S</forename><surname>Beiträge</surname></persName>
+		</author>
+		<imprint>
+			<biblScope unit="volume">22</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>I6</surname></persName>
+		</author>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>
