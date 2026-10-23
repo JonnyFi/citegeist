@@ -1,6 +1,6 @@
 ---
 name: citegeist
-description: Search, read, quote and cite sources in the user's citegeist research library (papers, PDFs, quote cards, notes, projects stored as plain files). Use when the user asks to find sources or literature in their library, read a paper or a page of it, add a paper by DOI, arXiv ID, ISBN or URL, save a quote or create a quote card, cite with a page number, build a bibliography, or write and link notes. Triggers include "in my library", "citegeist", "add this paper", "quote card", "cite with page", "find sources for", "literature note", "Zettel", "which paper says".
+description: Search, read, quote and cite sources in the user's citegeist research library (papers, PDFs, quote cards, notes, projects stored as plain files). Use when the user asks to find sources or literature in their library, read a paper or a page of it, add a paper by DOI, arXiv ID, ISBN or URL, save a quote or create a quote card, cite with a page number, build a bibliography, or write and link notes. Triggers include "in my library", "citegeist", "add this paper", "add this paper directly to my library", "save this to my library", "quote card", "cite with page", "find sources for", "literature note", "Zettel", "which paper says", "link this note to".
 compatibility: Needs the citegeist MCP server (`cg mcp`) or the `cg` command on PATH, and an initialized citegeist library.
 allowed-tools: Bash(cg:*)
 metadata:
@@ -16,7 +16,7 @@ citegeist keeps a researcher's library as plain files in one folder: sources, co
 
 1. If the tools `search`, `get_item`, `read_document` and `add_item` are available from an MCP server named citegeist, use them. They are the default.
 2. Otherwise use the CLI through Bash. Always add `--json` and set your name: `cg --actor agent:<your-name> ... --json`. For long lists, pipe the output through `jq` before you read it.
-3. If neither exists, tell the user to connect the server (`cg mcp`, stdio) or to install `cg`, and stop.
+3. If neither exists, tell the user to connect the server (`cg mcp`, stdio) or to install `cg`, and stop. Claude Desktop users install the `.mcpb` bundle (built with `node skills/citegeist/mcpb/build.mjs`), which starts `cg mcp` for them.
 
 The library is found through `--library <path>`, then the environment variable `CITEGEIST_LIBRARY`, then `~/Citegeist`. A new library is created with `cg init <path>`, which only the user may run.
 
@@ -25,9 +25,14 @@ The library is found through `--library <path>`, then the environment variable `
 - Citekeys come from `search`, `get_item` or `add_item` results. Never invent one.
 - Page numbers are printed page numbers, not PDF indexes.
 - The wording of a quote is verbatim. Never retype or "fix" it; copy it from `read_document` output.
-- Everything you add lands in the inbox first. Pass `target: "library"` only when the user asked for exactly this paper.
+- Everything you add lands in the inbox first and is stamped with your name and the reason. Pass `target: "library"` only when the user named exactly this paper, or told you to put it straight into the library.
+- Fill `why` on every `add_item`. The user reads it next to the inbox item and decides from it.
 - Never edit `derived/`, `sources/` or the quote of a card in the library folder. Notes and literature note bodies may be edited as files; everything else goes through the tools.
 - Read `AGENTS.md` in the library root once per session if you touch files directly.
+
+## Where your writes go
+
+If the citegeist app is open, `cg` and `cg mcp` hand every call to it, so the app stays the single writer and shows your change at once. Without the app, the call runs in your own process, and `cg mcp` keeps watching the library folder so edits made by hand are indexed. Your name travels along in both cases. If the app is too old to take it along, writes fail with `LIBRARY_OWNED_BY_APP` and reads still work.
 
 ## Workflow: find sources
 
@@ -46,12 +51,46 @@ The library is found through `--library <path>`, then the environment variable `
 
 ## Workflow: add a paper
 
-1. Choose the target. Default is the inbox. Use `target: "library"` only on the user's explicit request for this paper.
+1. Choose the target. Default is the inbox. Use `target: "library"` only when the user named this paper or asked for it to go straight into the library.
 2. MCP: `add_item {identifier, why, projects?, tags?, target?}`. CLI: `cg items add <identifier> --why "<reason>" --projects <slug> --json`. The identifier is a DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path.
 3. The call returns at once with `citekey` and `job`. Poll `jobs_get {job}` (CLI: `cg jobs get <job> --json`) until the status is `succeeded` or `failed`. Wait a few seconds between polls.
 4. If `duplicateOf` is set, the paper exists already. Use that citekey and do not add again.
 5. For many DOIs use the CLI in a loop; it costs fewer tokens than one MCP call each.
 6. Tell the user what landed in the inbox and why. They accept or reject it in the app (`cg inbox accept <citekey>` for the user).
+
+## Workflow: add a paper straight to the library
+
+Use this when the user says "add this paper directly to my library" or hands you a paper from another tool, for example a chat with a research bot.
+
+1. Take the identifier from the message: DOI, arXiv ID or URL. If the user only names a title, search the library first, then ask for an identifier.
+2. Call `add_item {identifier, target: "library", why}`. CLI: `cg --actor agent:<your-name> items add <identifier> --target library --why "<reason>" --json`.
+3. Poll `jobs_get` until `succeeded`. On `failed`, read the error, apply its fix, and report what is missing (usually the full text, the metadata still exists).
+4. Confirm with `get_item {citekey}` and report the citekey, the title and whether the full text arrived. The item has no `inbox` field when it sits in the library.
+
+## Examples
+
+A user pastes an arXiv link and says "add this paper directly to my library":
+
+```
+add_item {"identifier": "arxiv:1706.03762", "target": "library", "why": "user asked for it"}
+jobs_get {"job": "j_01JB8Z3QK7ABCDEFGH"}
+get_item {"citekey": "vaswani2017attention"}
+```
+
+On the shell, a list of DOIs goes to the inbox, because the user did not ask for a direct add:
+
+```
+for doi in $(cat dois.txt); do
+  cg --actor agent:codex items add "$doi" --why "cited in chapter 2" --projects thesis --json
+done
+```
+
+Write a note about a finding, then tie it to the paper and to a quote card:
+
+```
+create_note {"title": "Weak ties carry new information", "body": "See [[granovetter1973strength]].", "type": "permanent"}
+link {"from": "n_01JB8Z3QK7ABCDEFGH", "link": {"to": "[[granovetter1973strength]]", "rel": "supports", "why": "the paper states it"}}
+```
 
 ## Workflow: create a quote card
 
@@ -89,7 +128,9 @@ A failed MCP call returns `isError` with text; a failed CLI call prints the erro
 | `ITEM_NOT_FOUND`, `NOTE_NOT_FOUND`, `PROJECT_NOT_FOUND` | Search for the right id. Do not guess a similar one. Exit code 3. |
 | `IDENTIFIER_UNRESOLVABLE` | The identifier is not a DOI, arXiv ID, ISBN, PMID, URL or file. Ask the user for a better one. |
 | `FORBIDDEN_ADMIN` | The operation is for humans only (reindex, init). Ask the user to run it. Exit code 4. |
-| `LIBRARY_OWNED_BY_APP` | The citegeist app owns the library right now. Reads still work. Tell the user which change you wanted and ask them to make it in the app. Exit code 7. |
+| `LIBRARY_OWNED_BY_APP` | The citegeist app owns the library and cannot take your call, for example because it is an older version. Reads still work. Tell the user which change you wanted and ask them to make it in the app. Exit code 7. |
+| `CORE_UNREACHABLE` | The running app did not answer. Retry in a few seconds. If it repeats, ask the user to restart the app. Exit code 5. |
+| `LINK_TARGET_NOT_FOUND` | The link points at an id that does not exist. Find the citekey, card id or note id with `search` and call `link` again. |
 | `LIBRARY_NOT_FOUND` | Set `CITEGEIST_LIBRARY` or `--library`, or ask the user to run `cg init <path>`. |
 | `QUOTE_HASH_MISMATCH` | A card quote was edited. Do not repair it. Tell the user. |
 | `ICLOUD_PLACEHOLDER`, `ICLOUD_CONFLICT` | A file is not downloaded or has a conflict copy. Ask the user to resolve it in Finder. |

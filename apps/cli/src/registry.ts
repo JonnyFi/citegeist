@@ -3,7 +3,7 @@ import type { Registry } from "@citegeist/ops";
 import { createWiredRegistry, type WiredOptions } from "./core/wired-registry.js";
 
 export { libraryFlagFromArgv, resolveLibraryPath } from "./core/library-path.js";
-export { libraryInit } from "./core/wired-registry.js";
+export { libraryInit, registryControls } from "./core/wired-registry.js";
 
 /**
  * The one place where the CLI gets its Registry. Everything else in the CLI is generated from

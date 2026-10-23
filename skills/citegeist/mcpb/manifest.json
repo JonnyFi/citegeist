@@ -1,0 +1,58 @@
+{
+  "manifest_version": "0.3",
+  "name": "citegeist",
+  "display_name": "citegeist",
+  "version": "0.1.0",
+  "description": "Search, read, quote, cite and add papers in your citegeist research library.",
+  "long_description": "Connects Claude Desktop to your citegeist library through the cg command. Claude can search papers, read them by printed page, save quote cards, write and link notes, and add papers. Papers that Claude adds land in the inbox of the citegeist app unless you ask for them to go straight into the library. The bundle needs the citegeist app or the cg command on this Mac.",
+  "author": { "name": "citegeist" },
+  "license": "UNLICENSED",
+  "keywords": ["research", "citations", "papers", "library", "zotero"],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "CITEGEIST_LIBRARY": "${user_config.library}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "search", "description": "Search items, cards, notes and text blocks" },
+    {
+      "name": "get_item",
+      "description": "Metadata, sources, literature note and card count of one item"
+    },
+    {
+      "name": "read_document",
+      "description": "Read a converted document by printed page, section or block"
+    },
+    { "name": "list_cards", "description": "List quote cards by item, project, tag or text" },
+    {
+      "name": "add_item",
+      "description": "Add a paper by DOI, arXiv ID, ISBN, PMID, URL, BibTeX or file path"
+    },
+    { "name": "create_card", "description": "Save a verbatim quote as a quote card" },
+    { "name": "create_note", "description": "Create a note" },
+    { "name": "link", "description": "Add a typed link from a note to an item, card or note" },
+    { "name": "get_project", "description": "Read a project with its brief and counts" },
+    { "name": "cite", "description": "Format citations and bibliographies in a CSL style" },
+    { "name": "jobs_get", "description": "Status of a background job" }
+  ],
+  "tools_generated": false,
+  "user_config": {
+    "library": {
+      "type": "directory",
+      "title": "Library folder",
+      "description": "The folder of your citegeist library (it contains citegeist.json).",
+      "required": true,
+      "default": "${HOME}/Citegeist"
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "node": ">=18.0.0" }
+  }
+}
