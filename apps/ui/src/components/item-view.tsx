@@ -1,6 +1,7 @@
 import { cardsList, itemsGet } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, FileText, Quote } from "lucide-react";
+import { ConnectionsPanel } from "../connections";
 import { useI18n } from "../i18n";
 import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
@@ -219,6 +220,8 @@ export function ItemView({
             />
           )}
         </Section>
+
+        <ConnectionsPanel kind="item" id={citekey} />
       </article>
     </div>
   );

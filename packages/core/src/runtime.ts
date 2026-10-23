@@ -15,6 +15,7 @@ import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
+import { bindLinkOperations } from "./links/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
 import {
@@ -230,6 +231,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     };
   }
   bindCardOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
+  bindLinkOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
 
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {

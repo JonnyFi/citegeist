@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { ErrorState, Loading } from "../components/ui/states";
+import { ConnectionsPanel } from "../connections";
 import { type MessageKey, useI18n } from "../i18n";
 import { useOp } from "../lib/hooks";
 import { type Draft, type SaveState, useNoteAutosave } from "./autosave";
@@ -67,6 +68,7 @@ function NoteBody({ id, initial, type }: { id: string; initial: Draft; type: str
         label={t("notes.bodyLabel")}
         placeholder={t("notes.bodyPlaceholder")}
       />
+      <ConnectionsPanel kind="note" id={id} />
       <BacklinksPanel id={id} />
     </article>
   );

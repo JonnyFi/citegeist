@@ -6,6 +6,7 @@ import {
   Inbox,
   Monitor,
   Moon,
+  Network,
   NotebookPen,
   Search,
   Settings,
@@ -172,6 +173,10 @@ export function Shell() {
           <Link to="/notes" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
             <NotebookPen className="size-4" />
             {t("nav.notes")}
+          </Link>
+          <Link to="/graph" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
+            <Network className="size-4" />
+            {t("nav.graph")}
           </Link>
           <Link
             to="/projects"

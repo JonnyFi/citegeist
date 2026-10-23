@@ -21,6 +21,7 @@ export {
   type LibraryStatus,
   type OpenOptions,
 } from "./library.js";
+export * from "./links/index.js";
 export {
   bindNoteOperations,
   freeNoteSlug,

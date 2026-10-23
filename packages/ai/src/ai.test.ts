@@ -136,8 +136,13 @@ describe("nodeRunner", () => {
 });
 
 describe("task registry", () => {
-  it("registers the three tasks with versioned prompts, model classes and fixtures", () => {
-    expect(TASK_NAMES).toEqual(["card.paraphrase", "card.verify", "metadata.fromFirstPage"]);
+  it("registers the tasks with versioned prompts, model classes and fixtures", () => {
+    expect(TASK_NAMES).toEqual([
+      "card.paraphrase",
+      "card.verify",
+      "metadata.fromFirstPage",
+      "note.proposeLinks",
+    ]);
     for (const name of TASK_NAMES) {
       const t = TASKS[name];
       expect(t.promptVersion).toBeGreaterThan(0);
