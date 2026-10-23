@@ -19,6 +19,7 @@ import {
 } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
+import { CHAT_CONTRACTS } from "./chat.js";
 
 const Paged = z.object({
   limit: z.number().int().positive().max(500).default(50),
@@ -47,6 +48,8 @@ const ItemSummary = z.object({
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
 });
+
+export * from "./chat.js";
 
 // Library -----------------------------------------------------------------------------------------
 export const libraryStatus = defineContract({
@@ -573,4 +576,5 @@ export const CONTRACTS: readonly OperationContract[] = [
   settingsUpdate,
   aiTestBackend,
   workerSetup,
+  ...CHAT_CONTRACTS,
 ];
