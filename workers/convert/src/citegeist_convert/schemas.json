@@ -1,0 +1,1438 @@
+{
+  "item": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[0-9A-HJKMNP-TV-Z]{10,26}$"
+      },
+      "citekey": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "article",
+          "article-journal",
+          "article-magazine",
+          "article-newspaper",
+          "bill",
+          "book",
+          "broadcast",
+          "chapter",
+          "classic",
+          "collection",
+          "dataset",
+          "document",
+          "entry",
+          "entry-dictionary",
+          "entry-encyclopedia",
+          "event",
+          "figure",
+          "graphic",
+          "hearing",
+          "interview",
+          "legal_case",
+          "legislation",
+          "manuscript",
+          "map",
+          "motion_picture",
+          "musical_score",
+          "pamphlet",
+          "paper-conference",
+          "patent",
+          "performance",
+          "periodical",
+          "personal_communication",
+          "post",
+          "post-weblog",
+          "regulation",
+          "report",
+          "review",
+          "review-book",
+          "software",
+          "song",
+          "speech",
+          "standard",
+          "thesis",
+          "treaty",
+          "webpage"
+        ]
+      },
+      "zotero_type": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "subtitle": {
+        "type": "string"
+      },
+      "author": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "family": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "given": {
+                  "type": "string"
+                },
+                "non-dropping-particle": {
+                  "type": "string"
+                },
+                "dropping-particle": {
+                  "type": "string"
+                },
+                "suffix": {
+                  "type": "string"
+                },
+                "orcid": {
+                  "type": "string"
+                }
+              },
+              "required": ["family"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "literal": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["literal"]
+            }
+          ]
+        }
+      },
+      "editor": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "family": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "given": {
+                  "type": "string"
+                },
+                "non-dropping-particle": {
+                  "type": "string"
+                },
+                "dropping-particle": {
+                  "type": "string"
+                },
+                "suffix": {
+                  "type": "string"
+                },
+                "orcid": {
+                  "type": "string"
+                }
+              },
+              "required": ["family"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "literal": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["literal"]
+            }
+          ]
+        }
+      },
+      "issued": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "string",
+            "pattern": "^-?\\d{1,4}(-\\d{2}(-\\d{2})?)?$"
+          }
+        ]
+      },
+      "container-title": {
+        "type": "string"
+      },
+      "volume": {
+        "type": "string"
+      },
+      "issue": {
+        "type": "string"
+      },
+      "page": {
+        "type": "string"
+      },
+      "publisher": {
+        "type": "string"
+      },
+      "publisher-place": {
+        "type": "string"
+      },
+      "DOI": {
+        "type": "string"
+      },
+      "ISBN": {
+        "type": "string"
+      },
+      "ISSN": {
+        "type": "string"
+      },
+      "URL": {
+        "type": "string"
+      },
+      "abstract": {
+        "type": "string"
+      },
+      "language": {
+        "type": "string",
+        "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+      },
+      "ids": {
+        "default": {},
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "tags": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "projects": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        }
+      },
+      "status": {
+        "default": "unread",
+        "type": "string",
+        "enum": ["unread", "reading", "read"]
+      },
+      "ai_language": {
+        "type": "string",
+        "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+      },
+      "inbox": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          },
+          "why": {
+            "type": "string"
+          },
+          "job": {
+            "type": "string"
+          }
+        },
+        "required": ["by"]
+      },
+      "sources": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{12}$"
+            },
+            "kind": {
+              "type": "string",
+              "enum": ["pdf", "html", "epub", "arxiv-html", "web"]
+            },
+            "filename": {
+              "type": "string",
+              "minLength": 1
+            },
+            "role": {
+              "default": "main",
+              "type": "string",
+              "enum": ["main", "supplement", "version"]
+            },
+            "pages": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "added": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "by": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "human"
+                    },
+                    {
+                      "type": "string",
+                      "const": "system"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+                    }
+                  ]
+                }
+              },
+              "required": ["at", "by"]
+            }
+          },
+          "required": ["hash", "kind", "filename", "added"]
+        }
+      },
+      "provenance": {
+        "default": {},
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string",
+          "pattern": "^[a-z0-9:._-]+@\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "created": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      },
+      "modified": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      }
+    },
+    "required": ["id", "citekey", "type", "title", "created"],
+    "additionalProperties": {}
+  },
+  "card": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^c_[0-9A-HJKMNP-TV-Z]{10,26}$"
+      },
+      "item": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+      },
+      "source": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{12}$"
+      },
+      "kind": {
+        "default": "quote",
+        "type": "string",
+        "enum": ["quote", "finding", "method", "definition", "critique", "comment"]
+      },
+      "locator": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "default": "page",
+            "type": "string"
+          },
+          "start": {
+            "type": "string",
+            "minLength": 1
+          },
+          "end": {
+            "type": "string"
+          },
+          "confirmed": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": ["start"]
+      },
+      "anchor": {
+        "type": "object",
+        "properties": {
+          "pdf": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "quads": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 4,
+                  "maxItems": 4
+                }
+              },
+              "file": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{12}$"
+              }
+            },
+            "required": ["page", "quads", "file"]
+          },
+          "text": {
+            "type": "object",
+            "properties": {
+              "block": {
+                "type": "string",
+                "pattern": "^b[0-9a-z]{6,12}$"
+              },
+              "exact": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prefix": {
+                "default": "",
+                "type": "string"
+              },
+              "suffix": {
+                "default": "",
+                "type": "string"
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "norm": {
+                "default": "norm-v1",
+                "type": "string"
+              }
+            },
+            "required": ["exact"]
+          }
+        }
+      },
+      "quote_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "via": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+      },
+      "paraphrase": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+          },
+          "checked": {
+            "type": "boolean"
+          }
+        },
+        "required": ["by", "at"]
+      },
+      "core": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "language": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+          },
+          "checked": {
+            "type": "boolean"
+          }
+        },
+        "required": ["by", "at"]
+      },
+      "tags": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "projects": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        }
+      },
+      "color": {
+        "type": "string"
+      },
+      "created": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      },
+      "modified": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      }
+    },
+    "required": ["id", "item", "anchor", "quote_sha256", "created"]
+  },
+  "card-body": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "quote": {
+        "type": "string",
+        "minLength": 1
+      },
+      "paraphrase": {
+        "type": "string"
+      },
+      "core": {
+        "type": "string"
+      },
+      "ownWords": {
+        "type": "string"
+      },
+      "comment": {
+        "type": "string"
+      },
+      "extra": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": ["heading", "text"]
+        }
+      }
+    },
+    "required": ["quote"]
+  },
+  "note": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^n_[0-9A-HJKMNP-TV-Z]{10,26}$"
+      },
+      "type": {
+        "default": "permanent",
+        "type": "string",
+        "enum": ["permanent", "literature", "question", "claim", "project", "daily"]
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "links": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "string",
+              "pattern": "^\\[\\[[^\\]|#]+(#\\^?[^\\]|]+)?(\\|[^\\]]+)?\\]\\]$"
+            },
+            "rel": {
+              "type": "string",
+              "enum": [
+                "supports",
+                "opposes",
+                "qualifies",
+                "addresses",
+                "extends",
+                "uses-method-of",
+                "uses-data-from",
+                "elaborates",
+                "related"
+              ]
+            },
+            "why": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string",
+              "pattern": "^\\[\\[[^\\]|#]+(#\\^?[^\\]|]+)?(\\|[^\\]]+)?\\]\\]$"
+            },
+            "by": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "human"
+                },
+                {
+                  "type": "string",
+                  "const": "system"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+                }
+              ]
+            },
+            "status": {
+              "default": "accepted",
+              "type": "string",
+              "enum": ["proposed", "accepted"]
+            }
+          },
+          "required": ["to", "by"]
+        }
+      },
+      "tags": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "projects": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        }
+      },
+      "created": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      },
+      "modified": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      }
+    },
+    "required": ["id", "title", "created"]
+  },
+  "project": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "status": {
+        "default": "active",
+        "type": "string",
+        "enum": ["active", "paused", "done"]
+      },
+      "questions": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^q\\d+$"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id", "text"]
+        }
+      },
+      "style": {
+        "default": "apa",
+        "type": "string"
+      },
+      "locale": {
+        "default": "de-DE",
+        "type": "string"
+      },
+      "ai_language": {
+        "type": "string",
+        "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+      },
+      "export": {
+        "default": {
+          "paraphrase": "own-else-ai",
+          "labelAi": false
+        },
+        "type": "object",
+        "properties": {
+          "paraphrase": {
+            "default": "own-else-ai",
+            "type": "string",
+            "enum": ["ai", "own", "own-else-ai", "none"]
+          },
+          "labelAi": {
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "created": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "human"
+              },
+              {
+                "type": "string",
+                "const": "system"
+              },
+              {
+                "type": "string",
+                "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            ]
+          }
+        },
+        "required": ["at", "by"]
+      }
+    },
+    "required": ["slug", "title", "created"]
+  },
+  "library": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "format": {
+        "type": "number",
+        "const": 1
+      },
+      "id": {
+        "type": "string",
+        "minLength": 8
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "defaults": {
+        "default": {
+          "ai_language": "de",
+          "style": "apa",
+          "locale": "de-DE",
+          "citekey": "auth.lower + year + shorttitle(1,0)"
+        },
+        "type": "object",
+        "properties": {
+          "ai_language": {
+            "default": "de",
+            "type": "string",
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+          },
+          "style": {
+            "default": "apa",
+            "type": "string"
+          },
+          "locale": {
+            "default": "de-DE",
+            "type": "string"
+          },
+          "citekey": {
+            "default": "auth.lower + year + shorttitle(1,0)",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required": ["format", "id", "name"]
+  },
+  "block": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^b[0-9a-z]{6,12}$"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "title",
+          "heading",
+          "paragraph",
+          "list-item",
+          "table",
+          "figure",
+          "caption",
+          "equation",
+          "footnote",
+          "reference",
+          "code",
+          "quote",
+          "page-furniture"
+        ]
+      },
+      "sec": {
+        "type": "string"
+      },
+      "flow": {
+        "default": "body",
+        "type": "string",
+        "enum": ["body", "furniture", "notes"]
+      },
+      "text": {
+        "type": "string"
+      },
+      "html": {
+        "type": "string"
+      },
+      "latex": {
+        "type": "string"
+      },
+      "spans": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "label": {
+              "type": ["string", "null"]
+            },
+            "start": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "bbox": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            }
+          },
+          "required": ["page", "label", "start", "end"]
+        }
+      },
+      "refs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "src": {
+        "type": "object",
+        "properties": {
+          "engine": {
+            "type": "string"
+          },
+          "native": {
+            "type": "string"
+          }
+        },
+        "required": ["engine"]
+      },
+      "conf": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "required": ["id", "type", "text", "spans", "src"]
+  },
+  "pages": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{12}$"
+      },
+      "pages": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "index": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "label": {
+              "type": ["string", "null"]
+            },
+            "labelSource": {
+              "type": "string",
+              "enum": ["pdf-pagelabels", "header-footer", "crossref-offset", "user", "none"]
+            },
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "rotation": {
+              "default": 0,
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 0
+                },
+                {
+                  "type": "number",
+                  "const": 90
+                },
+                {
+                  "type": "number",
+                  "const": 180
+                },
+                {
+                  "type": "number",
+                  "const": 270
+                }
+              ]
+            },
+            "textSource": {
+              "type": "string",
+              "enum": ["born-digital", "ocr", "html"]
+            },
+            "quality": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": ["index", "label", "labelSource", "width", "height", "textSource"]
+        }
+      },
+      "confirmed": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "required": ["source", "pages"]
+  },
+  "derived-manifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{12}$"
+      },
+      "path": {
+        "type": "string",
+        "enum": ["arxiv", "digital", "scan", "web"]
+      },
+      "tools": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "durationMs": {
+        "type": "number",
+        "minimum": 0
+      },
+      "flags": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["source", "path", "tools", "createdAt", "durationMs"]
+  },
+  "idmap": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "propertyNames": {
+      "type": "string",
+      "pattern": "^b[0-9a-z]{6,12}$"
+    },
+    "additionalProperties": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^b[0-9a-z]{6,12}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "job": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^j_[0-9A-HJKMNP-TV-Z]{10,26}$"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "ingest",
+          "resolve-metadata",
+          "fetch-source",
+          "convert",
+          "enrich",
+          "embed",
+          "ai-task",
+          "research",
+          "import",
+          "export"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": ["queued", "running", "succeeded", "failed", "cancelled"]
+      },
+      "progress": {
+        "default": 0,
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "message": {
+        "type": "string"
+      },
+      "input": {},
+      "result": {},
+      "error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"]
+      },
+      "attempts": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "parent": {
+        "type": "string",
+        "pattern": "^j_[0-9A-HJKMNP-TV-Z]{10,26}$"
+      },
+      "by": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "human"
+          },
+          {
+            "type": "string",
+            "const": "system"
+          },
+          {
+            "type": "string",
+            "pattern": "^agent:[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        ]
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      }
+    },
+    "required": ["id", "kind", "status", "input", "by", "createdAt", "updatedAt"]
+  },
+  "agent-error": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]+$"
+      },
+      "message": {
+        "type": "string",
+        "minLength": 1
+      },
+      "fix": {
+        "type": "string",
+        "minLength": 1
+      },
+      "recovery": {
+        "type": "string",
+        "enum": ["retry", "fix-and-retry", "do-first", "ask-human"]
+      },
+      "sideEffects": {
+        "default": "none",
+        "type": "string",
+        "enum": ["none", "partial", "complete", "unknown"]
+      },
+      "context": {
+        "default": {},
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      }
+    },
+    "required": ["code", "message", "fix", "recovery"]
+  },
+  "worker-convert-params": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "sourcePath": {
+        "type": "string",
+        "minLength": 1
+      },
+      "source": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{12}$"
+      },
+      "outDir": {
+        "type": "string",
+        "minLength": 1
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["pdf", "arxiv-html", "web", "epub"]
+      },
+      "ocr": {
+        "default": "auto",
+        "type": "string",
+        "enum": ["auto", "force", "off"]
+      },
+      "languages": {
+        "default": ["de", "en"],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "previousBlocks": {
+        "type": "string"
+      },
+      "pageRangeHint": {
+        "type": "string"
+      }
+    },
+    "required": ["sourcePath", "source", "outDir", "kind"]
+  },
+  "worker-convert-result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "manifest": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          },
+          "path": {
+            "type": "string",
+            "enum": ["arxiv", "digital", "scan", "web"]
+          },
+          "tools": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "durationMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "flags": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["source", "path", "tools", "createdAt", "durationMs"]
+      }
+    },
+    "required": ["manifest"]
+  }
+}
