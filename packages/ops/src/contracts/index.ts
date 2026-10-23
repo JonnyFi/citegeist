@@ -1,0 +1,469 @@
+import {
+  CardBody,
+  CardFrontmatter,
+  CardKind,
+  Citekey,
+  DerivedManifest,
+  ItemFrontmatter,
+  Job,
+  JobId,
+  Language,
+  Link,
+  NoteFrontmatter,
+  ProjectFrontmatter,
+  ProjectSlug,
+  Relation,
+} from "@citegeist/schema";
+import { z } from "zod";
+import { defineContract, type OperationContract } from "../registry.js";
+
+const Paged = z.object({
+  limit: z.number().int().positive().max(500).default(50),
+  cursor: z.string().optional(),
+});
+const Scope = z.object({
+  project: ProjectSlug.optional(),
+  tags: z.array(z.string()).optional(),
+  status: z.enum(["unread", "reading", "read"]).optional(),
+});
+const ItemRef = z.object({ citekey: Citekey });
+const Ok = z.object({ ok: z.literal(true) });
+const JobHandle = z.object({ job: JobId });
+
+const Card = z.object({ frontmatter: CardFrontmatter, body: CardBody });
+const Note = z.object({ frontmatter: NoteFrontmatter, body: z.string(), path: z.string() });
+const ItemSummary = z.object({
+  citekey: Citekey,
+  title: z.string(),
+  year: z.string().optional(),
+  authors: z.string().optional(),
+  type: z.string(),
+  status: z.string(),
+  inbox: z.boolean(),
+});
+
+// Library -----------------------------------------------------------------------------------------
+export const libraryStatus = defineContract({
+  name: "library.status",
+  summary: "Library path, counts, index health and problems",
+  access: "read",
+  input: z.object({}),
+  output: z.object({
+    path: z.string(),
+    items: z.number(),
+    cards: z.number(),
+    notes: z.number(),
+    problems: z.array(z.object({ path: z.string(), code: z.string(), message: z.string() })),
+  }),
+});
+export const libraryReindex = defineContract({
+  name: "library.reindex",
+  summary: "Rebuild the local index from the library folder",
+  access: "admin",
+  input: z.object({}),
+  output: JobHandle,
+});
+
+// Items ---------------------------------------------------------------------------------------------
+export const itemsAdd = defineContract({
+  name: "items.add",
+  summary: "Add an item by DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path",
+  access: "write",
+  input: z.object({
+    identifier: z.string().min(1),
+    projects: z.array(ProjectSlug).default([]),
+    tags: z.array(z.string()).default([]),
+    /** D7: agents land in the inbox unless they pass "library". Humans always land in the library. */
+    target: z.enum(["inbox", "library"]).default("inbox"),
+    why: z.string().optional(),
+  }),
+  output: z.object({ citekey: Citekey, job: JobId, duplicateOf: Citekey.optional() }),
+  mcp: { tool: "add_item", readOnly: false },
+});
+export const itemsGet = defineContract({
+  name: "items.get",
+  summary: "Metadata, sources, literature note and card count of one item",
+  access: "read",
+  input: ItemRef,
+  output: z.object({
+    frontmatter: ItemFrontmatter,
+    note: z.string(),
+    cards: z.number(),
+    path: z.string(),
+  }),
+  mcp: { tool: "get_item", readOnly: true },
+});
+export const itemsList = defineContract({
+  name: "items.list",
+  summary: "List items in a scope",
+  access: "read",
+  input: Scope.extend({ inbox: z.boolean().optional() }).merge(Paged),
+  output: z.object({ items: z.array(ItemSummary), next: z.string().optional() }),
+});
+export const itemsUpdate = defineContract({
+  name: "items.update",
+  summary: "Update metadata fields, tags, projects, status or AI language of an item",
+  access: "write",
+  input: ItemRef.extend({ patch: z.record(z.string(), z.unknown()) }),
+  output: z.object({ frontmatter: ItemFrontmatter }),
+});
+export const itemsRename = defineContract({
+  name: "items.rename",
+  summary: "Change a citekey and rewrite every link to it",
+  access: "write",
+  input: ItemRef.extend({ to: Citekey }),
+  output: z.object({ rewritten: z.number() }),
+});
+export const itemsTrash = defineContract({
+  name: "items.trash",
+  summary: "Move an item to the trash",
+  access: "write",
+  input: ItemRef,
+  output: Ok,
+});
+export const inboxAccept = defineContract({
+  name: "inbox.accept",
+  summary: "Move inbox items into the library",
+  access: "write",
+  input: z.object({ citekeys: z.array(Citekey).min(1) }),
+  output: Ok,
+});
+export const inboxReject = defineContract({
+  name: "inbox.reject",
+  summary: "Discard inbox items",
+  access: "write",
+  input: z.object({ citekeys: z.array(Citekey).min(1) }),
+  output: Ok,
+});
+
+// Documents -----------------------------------------------------------------------------------------
+export const documentsRead = defineContract({
+  name: "documents.read",
+  summary: "Read an item's converted text as Markdown, by printed page range, section or block ids",
+  access: "read",
+  input: ItemRef.extend({
+    pages: z.string().optional(),
+    section: z.string().optional(),
+    blocks: z.array(z.string()).optional(),
+    maxChars: z.number().int().positive().default(20000),
+  }),
+  output: z.object({
+    markdown: z.string(),
+    truncated: z.boolean(),
+    manifest: DerivedManifest.optional(),
+  }),
+  mcp: { tool: "read_document", readOnly: true },
+});
+export const documentsConvert = defineContract({
+  name: "documents.convert",
+  summary: "(Re)convert an item's sources",
+  access: "write",
+  input: ItemRef.extend({ force: z.boolean().default(false) }),
+  output: JobHandle,
+});
+export const documentsConfirmPages = defineContract({
+  name: "documents.confirmPages",
+  summary:
+    "Confirm or correct the printed page label mapping of a PDF with an offset or explicit labels",
+  access: "write",
+  input: ItemRef.extend({
+    source: z.string(),
+    offset: z.number().int().optional(),
+    labels: z.record(z.string(), z.string()).optional(),
+  }),
+  output: z.object({ cardsUpdated: z.number() }),
+});
+
+// Cards ---------------------------------------------------------------------------------------------
+export const cardsCreate = defineContract({
+  name: "cards.create",
+  summary:
+    "Create a quote card from an anchored selection; AI paraphrase and core statement follow asynchronously",
+  access: "write",
+  input: z.object({
+    citekey: Citekey,
+    anchor: CardFrontmatter.shape.anchor,
+    quote: z.string().min(1),
+    kind: CardKind.default("quote"),
+    ai: z.boolean().default(true),
+    language: Language.optional(),
+    projects: z.array(ProjectSlug).default([]),
+    tags: z.array(z.string()).default([]),
+  }),
+  output: z.object({ card: Card, job: JobId.optional() }),
+  mcp: { tool: "create_card", readOnly: false },
+});
+export const cardsUpdate = defineContract({
+  name: "cards.update",
+  summary: "Edit own words, comment, kind, tags or locator of a card (never the quote)",
+  access: "write",
+  input: z.object({
+    id: CardFrontmatter.shape.id,
+    patch: CardBody.omit({ quote: true })
+      .partial()
+      .extend({ kind: CardKind.optional(), tags: z.array(z.string()).optional() }),
+  }),
+  output: z.object({ card: Card }),
+});
+export const cardsList = defineContract({
+  name: "cards.list",
+  summary: "List quote cards by item, project, tag or text",
+  access: "read",
+  input: Scope.extend({
+    citekey: Citekey.optional(),
+    query: z.string().optional(),
+    kind: CardKind.optional(),
+  }).merge(Paged),
+  output: z.object({ cards: z.array(Card), next: z.string().optional() }),
+  mcp: { tool: "list_cards", readOnly: true },
+});
+export const cardsRegenerate = defineContract({
+  name: "cards.regenerate",
+  summary: "Rewrite the AI paraphrase and core statement, optionally in another language",
+  access: "write",
+  input: z.object({ id: CardFrontmatter.shape.id, language: Language.optional() }),
+  output: JobHandle,
+});
+export const cardsExport = defineContract({
+  name: "cards.export",
+  summary: "Render cards as direct or indirect citations for the clipboard or a document",
+  access: "read",
+  input: z.object({
+    ids: z.array(CardFrontmatter.shape.id).min(1),
+    mode: z.enum(["direct", "indirect"]).default("direct"),
+    format: z.enum(["html", "text", "pandoc", "latex", "typst"]).default("html"),
+    project: ProjectSlug.optional(),
+  }),
+  output: z.object({ html: z.string().optional(), text: z.string() }),
+});
+
+// Notes and links -----------------------------------------------------------------------------------
+export const notesCreate = defineContract({
+  name: "notes.create",
+  summary: "Create a note; wiki links in the body are resolved and indexed",
+  access: "write",
+  input: z.object({
+    title: z.string().min(1),
+    body: z.string().default(""),
+    type: NoteFrontmatter.shape.type,
+    projects: z.array(ProjectSlug).default([]),
+  }),
+  output: Note,
+  mcp: { tool: "create_note", readOnly: false },
+});
+export const notesUpdate = defineContract({
+  name: "notes.update",
+  summary: "Replace a note's body or title",
+  access: "write",
+  input: z.object({
+    id: NoteFrontmatter.shape.id,
+    title: z.string().optional(),
+    body: z.string().optional(),
+  }),
+  output: Note,
+});
+export const notesGet = defineContract({
+  name: "notes.get",
+  summary: "Read a note",
+  access: "read",
+  input: z.object({ id: NoteFrontmatter.shape.id }),
+  output: Note,
+});
+export const linksCreate = defineContract({
+  name: "links.create",
+  summary: "Add a typed link from a note to an item, card or note",
+  access: "write",
+  input: z.object({ from: NoteFrontmatter.shape.id, link: Link.omit({ by: true }) }),
+  output: Note,
+  mcp: { tool: "link", readOnly: false },
+});
+export const linksPropose = defineContract({
+  name: "links.propose",
+  summary: "Let the AI propose typed links for a note",
+  access: "write",
+  input: z.object({ note: NoteFrontmatter.shape.id }),
+  output: JobHandle,
+});
+export const linksDecide = defineContract({
+  name: "links.decide",
+  summary: "Accept or reject proposed links",
+  access: "write",
+  input: z.object({
+    note: NoteFrontmatter.shape.id,
+    accept: z.array(z.number().int()),
+    reject: z.array(z.number().int()),
+  }),
+  output: Note,
+});
+export const graphNeighbors = defineContract({
+  name: "graph.neighbors",
+  summary: "Typed neighbors of an item, card or note up to a depth",
+  access: "read",
+  input: z.object({
+    node: z.string(),
+    depth: z.number().int().min(1).max(3).default(1),
+    rel: z.array(Relation).optional(),
+  }),
+  output: z.object({
+    nodes: z.array(
+      z.object({ id: z.string(), kind: z.enum(["item", "card", "note"]), label: z.string() }),
+    ),
+    edges: z.array(
+      z.object({ from: z.string(), to: z.string(), rel: z.string(), status: z.string() }),
+    ),
+  }),
+});
+
+// Projects ------------------------------------------------------------------------------------------
+export const projectsCreate = defineContract({
+  name: "projects.create",
+  summary: "Create a project with a brief",
+  access: "write",
+  input: z.object({ slug: ProjectSlug, title: z.string().min(1), brief: z.string().default("") }),
+  output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string() }),
+});
+export const projectsGet = defineContract({
+  name: "projects.get",
+  summary: "Project brief, research questions, settings and item count",
+  access: "read",
+  input: z.object({ slug: ProjectSlug }),
+  output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string(), items: z.number() }),
+  mcp: { tool: "get_project", readOnly: true },
+});
+export const projectsUpdate = defineContract({
+  name: "projects.update",
+  summary: "Update a project's brief, questions or settings",
+  access: "write",
+  input: z.object({
+    slug: ProjectSlug,
+    patch: z.record(z.string(), z.unknown()),
+    brief: z.string().optional(),
+  }),
+  output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string() }),
+});
+export const projectsList = defineContract({
+  name: "projects.list",
+  summary: "List projects",
+  access: "read",
+  input: z.object({}),
+  output: z.object({ projects: z.array(ProjectFrontmatter) }),
+});
+
+// Search and citations ------------------------------------------------------------------------------
+export const searchQuery = defineContract({
+  name: "search.query",
+  summary:
+    "Hybrid full-text and semantic search over items, cards, notes and document text in a scope",
+  access: "read",
+  input: Scope.extend({
+    q: z.string().min(1),
+    kinds: z
+      .array(z.enum(["item", "card", "note", "block"]))
+      .default(["item", "card", "note", "block"]),
+    limit: z.number().int().positive().max(100).default(20),
+  }),
+  output: z.object({
+    hits: z.array(
+      z.object({
+        kind: z.enum(["item", "card", "note", "block"]),
+        id: z.string(),
+        citekey: Citekey.optional(),
+        title: z.string(),
+        snippet: z.string(),
+        page: z.string().optional(),
+        score: z.number(),
+      }),
+    ),
+  }),
+  mcp: { tool: "search", readOnly: true },
+});
+export const citeFormat = defineContract({
+  name: "cite.format",
+  summary: "Format citations or a bibliography in a CSL style, with locators",
+  access: "read",
+  input: z.object({
+    items: z
+      .array(
+        z.object({
+          citekey: Citekey,
+          locator: z.string().optional(),
+          label: z.string().optional(),
+          prefix: z.string().optional(),
+        }),
+      )
+      .min(1),
+    mode: z.enum(["citation", "bibliography"]).default("citation"),
+    style: z.string().optional(),
+    locale: z.string().optional(),
+    project: ProjectSlug.optional(),
+    format: z.enum(["text", "html", "pandoc", "bibtex", "csl-json"]).default("text"),
+  }),
+  output: z.object({ text: z.string(), html: z.string().optional() }),
+  mcp: { tool: "cite", readOnly: true },
+});
+
+// Jobs and AI -----------------------------------------------------------------------------------------
+export const jobsGet = defineContract({
+  name: "jobs.get",
+  summary: "Status, progress and result of a background job",
+  access: "read",
+  input: z.object({ job: JobId }),
+  output: Job,
+  mcp: { tool: "jobs_get", readOnly: true, idempotent: true },
+});
+export const jobsList = defineContract({
+  name: "jobs.list",
+  summary: "Recent and running jobs",
+  access: "read",
+  input: z.object({ status: Job.shape.status.optional() }).merge(Paged),
+  output: z.object({ jobs: z.array(Job), next: z.string().optional() }),
+});
+export const researchStart = defineContract({
+  name: "research.start",
+  summary: "Start an agent research job; found papers land in the inbox with a reason",
+  access: "write",
+  input: z.object({
+    prompt: z.string().min(1),
+    project: ProjectSlug.optional(),
+    backend: z.string().optional(),
+    maxItems: z.number().int().positive().max(50).default(10),
+  }),
+  output: JobHandle,
+});
+
+export const CONTRACTS: readonly OperationContract[] = [
+  libraryStatus,
+  libraryReindex,
+  itemsAdd,
+  itemsGet,
+  itemsList,
+  itemsUpdate,
+  itemsRename,
+  itemsTrash,
+  inboxAccept,
+  inboxReject,
+  documentsRead,
+  documentsConvert,
+  documentsConfirmPages,
+  cardsCreate,
+  cardsUpdate,
+  cardsList,
+  cardsRegenerate,
+  cardsExport,
+  notesCreate,
+  notesUpdate,
+  notesGet,
+  linksCreate,
+  linksPropose,
+  linksDecide,
+  graphNeighbors,
+  projectsCreate,
+  projectsGet,
+  projectsUpdate,
+  projectsList,
+  searchQuery,
+  citeFormat,
+  jobsGet,
+  jobsList,
+  researchStart,
+];

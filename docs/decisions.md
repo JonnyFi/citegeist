@@ -64,11 +64,11 @@ Datum: 2026-10-23. Status: von Jonny freigegeben. Begründungen in `architecture
 
 - **A9:** Obsidian-Format, Sync und Versionierung sind drei getrennte Rollen. Das Format kostet nichts. Sync läuft über genau einen Transport, entweder iCloud/Dropbox oder einen git-Remote, nie beide gleichzeitig. git-Verlauf ist immer erlaubt, bei iCloud mit ausgelagertem `.git`. Konfliktkopien von iCloud (`Datei 2.md`) erkennt der Watcher und meldet sie.
 
-## D7: Paper von Agents landen direkt in der Bibliothek
+## D7: Inhalte von Agents landen zuerst in der Inbox, mit Abkürzung über MCP
 
-Datum: 2026-10-23. Status: entschieden.
+Datum: 2026-10-23. Status: entschieden (ersetzt die erste Fassung vom selben Tag).
 
-Jonnys Fall: Ein externer Agent wie sein Grok-Bot findet ein Paper, das er lesen will, und legt es in die Bibliothek. Das landet direkt dort, mit Herkunftsmarke. Die Inbox gibt es trotzdem, als Filter für Recherche-Jobs, die in citegeist gestartet werden.
+Alles, was ein Agent hinzufügt, landet zuerst in der Inbox und trägt eine Herkunftsmarke. Das MCP-Tool `add_item` hat den Parameter `target: "library"`, mit dem ein Agent wie der Grok-Bot ein Paper direkt in die Bibliothek legt, wenn er weiß, welches gemeint ist, oder Jonny es ihm sagt. Was Jonny selbst hinzufügt, landet direkt in der Bibliothek.
 
 ## D8: Externe Agents kommen über allgemeine Webhooks
 

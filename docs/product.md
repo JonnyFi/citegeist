@@ -88,8 +88,8 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Projekte | Projektbrief mit Forschungsfragen als Kontext für Agents | v0.1 | Jonny |
 | Projekte | Startseite über alles Gelesene | v0.2 | Jonny |
 | Projekte | Literaturmatrix mit belegten Zellen | v0.3 | Vorschlag |
-| Agents | Inbox zum Filtern von Recherche-Ergebnissen, die in citegeist gestartet wurden | v0.2 | Vorschlag, D7 |
-| Agents | Externe Agents legen Paper direkt in die Bibliothek, mit Herkunftsmarke | v0.1 | Jonny, D7 |
+| Agents | Inbox für alles, was Agents hinzufügen, mit Herkunft | v0.1 | D7 |
+| Agents | MCP-Abkürzung: ein Agent legt ein Paper direkt in die Bibliothek | v0.1 | Jonny, D7 |
 | Agents | Chat-Seitenleiste mit Kontext (Dokument, Markierung, Projekt) | v0.2 | Jonny |
 | Agents | Recherche-Aufträge als Hintergrundjobs | v0.2 | Jonny |
 | Agents | Fragen an die Bibliothek mit belegten Antworten | v0.2 | Vorschlag |

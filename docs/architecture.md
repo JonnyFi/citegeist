@@ -228,7 +228,7 @@ Eingabe ──► Erkennen ──► Metadaten ──► Quelle holen ──► 
 - **Konvertieren:** Python-Worker, siehe unten.
 - **Anreichern:** Referenzen, Zitationsgraph, Embeddings, eine AI-Zusammenfassung und eine Einschätzung der Relevanz für jedes Projekt.
 
-Was ein externer Agent oder Jonny hinzufügt, landet direkt in der Bibliothek. Die Inbox ist ein Filter für Recherche-Jobs, die in citegeist gestartet werden: Dort sieht Jonny die Kandidaten mit Begründung und übernimmt oder verwirft sie (D7).
+Was ein Agent hinzufügt, landet zuerst in der Inbox, dort übernimmt oder verwirft Jonny es. Mit `target: "library"` legt ein Agent ein Paper direkt in die Bibliothek. Was Jonny selbst hinzufügt, landet immer direkt in der Bibliothek (D7).
 
 Jeder Schritt ist ein Job in `state.sqlite` mit Status, Fortschritt und Wiederholung. Langsame Arbeit gibt über MCP sofort einen Job-Handle zurück, den Status liefert `jobs.get`.
 
@@ -302,7 +302,7 @@ citegeist erzeugt und pflegt eine `AGENTS.md`, die das Ordnerformat erklärt und
 
 ### Webhooks und externe Agents
 
-Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC. Eingehend nimmt ein lokaler Endpunkt Paper und Notizen an und legt sie direkt in die Bibliothek, mit Herkunftsmarke des Agents (D7). Für Aufrufe aus dem Internet braucht es einen Tunnel (Tailscale Funnel, Cloudflare Tunnel) oder ein kleines Relay, das der Kern abfragt. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
+Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC. Eingehend nimmt ein lokaler Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Für Aufrufe aus dem Internet braucht es einen Tunnel (Tailscale Funnel, Cloudflare Tunnel) oder ein kleines Relay, das der Kern abfragt. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
 
 ### Zotero-Kompatibilität
 

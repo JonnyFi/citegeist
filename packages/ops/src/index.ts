@@ -1,1 +1,2 @@
-export const name = "@citegeist/ops";
+export * from "./contracts/index.js";
+export * from "./registry.js";

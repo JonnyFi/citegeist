@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/.venv", "!pnpm-lock.yaml", "!**/*.md", "!spikes/**"]
+    "includes": ["**", "!**/.venv", "!pnpm-lock.yaml", "!**/*.md", "!spikes"]
   },
   "formatter": {
     "enabled": true,
