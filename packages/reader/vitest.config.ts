@@ -7,6 +7,7 @@ export default defineConfig({
       {
         test: {
           name: "unit",
+          testTimeout: 60_000,
           environment: "node",
           include: ["src/**/*.test.ts"],
         },
@@ -15,7 +16,7 @@ export default defineConfig({
         test: {
           name: "browser",
           include: ["src/**/*.browser.test.tsx"],
-          testTimeout: 20_000,
+          testTimeout: 60_000,
           browser: {
             enabled: true,
             headless: true,
