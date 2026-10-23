@@ -28,6 +28,8 @@ export const TextAnchor = z.object({
   suffix: z.string().default(""),
   start: z.number().int().nonnegative().optional(),
   end: z.number().int().nonnegative().optional(),
+  /** Text normalisation the offsets refer to (see packages/anchoring). */
+  norm: z.string().default("norm-v1"),
 });
 
 /** Frontmatter of items/<citekey>/cards/<id>.md */
