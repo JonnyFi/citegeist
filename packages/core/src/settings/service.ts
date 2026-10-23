@@ -9,7 +9,7 @@ import {
   workerSetup,
 } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
-import { z } from "zod";
+import type { z } from "zod";
 import type { ConvertWorker } from "../ingest/worker.js";
 import type { JobQueue } from "../jobs/queue.js";
 import { BACKEND_IDS, type BackendProvider, KEY_PROVIDERS } from "./backends.js";
@@ -33,7 +33,7 @@ export interface SettingsDeps {
   runner?: ProcessRunner;
   /** Called after every successful `settings.update`, so the runtime can retarget the AiRouter. */
   onChange?: (settings: MachineSettings) => void;
-  /** Job kind for `worker.setup`. Default `enrich`, until the schema has a dedicated kind. */
+  /** Job kind for `worker.setup`. Default `worker-setup`. */
   jobKind?: JobKind;
   /** How long a worker health answer is reused, in ms. Default 15000. */
   healthCacheMs?: number;
@@ -43,29 +43,6 @@ export interface SettingsDeps {
 
 const SAMPLE_PASSAGE =
   "Social systems consist of communications, not of people. Communication produces further communication.";
-
-const UpdateInput = z.object({
-  patch: z.object({
-    ai: z
-      .object({
-        routing: z.record(z.string(), z.string()).optional(),
-        /** `false` removes the stored key of that provider. `true` is ignored. */
-        apiKeys: z.record(z.string(), z.boolean()).optional(),
-      })
-      .optional(),
-    /** An empty string clears the address. */
-    mailto: z.string().optional(),
-    uiLanguage: z.enum(["de", "en"]).optional(),
-  }),
-  apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
-});
-
-/**
- * `Settings.partial()` of the contract fills `uiLanguage` with its default whenever the patch
- * leaves it out, so changing only the contact address would reset the language. The bound
- * contract therefore uses a patch whose fields are all truly optional. Same name and output.
- */
-const settingsUpdateStrict = { ...settingsUpdate, input: UpdateInput };
 
 function invalid(message: string, fix: string): CitegeistError {
   return new CitegeistError({
@@ -114,7 +91,7 @@ export class SettingsService {
   private health: { at: number; value: WorkerStatus } | undefined;
 
   constructor(private readonly deps: SettingsDeps) {
-    this.kind = deps.jobKind ?? "enrich";
+    this.kind = deps.jobKind ?? "worker-setup";
     deps.queue.register(
       this.kind,
       async (ctx) => {
@@ -155,7 +132,7 @@ export class SettingsService {
     return { routing: { ...this.deps.store.load().ai.routing } };
   }
 
-  async update(input: z.output<typeof UpdateInput>): Promise<MachineSettings> {
+  async update(input: z.output<typeof settingsUpdate.input>): Promise<MachineSettings> {
     const stored = this.deps.store.load();
     const { patch } = input;
 
@@ -300,7 +277,7 @@ export function bindSettingsOperations(registry: Registry, deps: SettingsDeps): 
       backends: await deps.backends.status(),
       worker: await svc.workerStatus(),
     }))
-    .bind(settingsUpdateStrict, async (_ctx, input) => ({ settings: await svc.update(input) }))
+    .bind(settingsUpdate, async (_ctx, input) => ({ settings: await svc.update(input) }))
     .bind(aiTestBackend, async (_ctx, input) => svc.testBackend(input.backend))
     .bind(workerSetup, async (ctx, input) => ({ job: svc.startSetup(ctx.actor, input.force) }));
   return svc;

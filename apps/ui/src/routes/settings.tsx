@@ -5,9 +5,9 @@ import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
 import { Select } from "../components/ui/select";
 import { ErrorState, Loading } from "../components/ui/states";
+import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
-import { type Lang, type MessageKey, rememberLang, useI18n } from "../onboarding/i18n";
 import { BackendRow, useBackendTests, WorkerPanel } from "../onboarding/parts";
 
 /** Tasks the routing can name besides the default. Mirrors TASKS of @citegeist/ai. */
@@ -95,7 +95,7 @@ function ContactForm({ current }: { current: string }) {
 
 /** The settings screen: language, backends with test, routing, contact address and worker. */
 export function SettingsScreen() {
-  const { t } = useI18n();
+  const { t, setLang } = useI18n();
   const query = useOp(settingsGet, {});
   const update = useOpMutation(settingsUpdate);
   const { tests, run } = useBackendTests();
@@ -129,7 +129,7 @@ export function SettingsScreen() {
               { value: "en", label: "English" },
             ]}
             onChange={(lang) => {
-              rememberLang(lang);
+              setLang(lang);
               void update.mutateAsync({ patch: { uiLanguage: lang } });
             }}
           />

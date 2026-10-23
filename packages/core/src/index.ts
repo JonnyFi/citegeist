@@ -1,6 +1,8 @@
 export const name = "@citegeist/core";
 
 export * from "./agents-md/index.js";
+export { type AssetsInput, type AssetsResult, documentAssets } from "./assets.js";
+export { CANNED_CORE, CANNED_PARAPHRASE, cannedAiBackend } from "./canned-ai.js";
 export { CardBodyError, parseCardBody, serializeCardBody } from "./card-body.js";
 export * from "./cards/index.js";
 export { type Classified, classify, type FileKind } from "./classify.js";

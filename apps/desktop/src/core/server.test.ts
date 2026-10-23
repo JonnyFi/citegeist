@@ -144,6 +144,19 @@ describe("core server", () => {
     ws.close();
   });
 
+  it("accepts the WebSocket of a page loaded from a file", async () => {
+    const server = await start();
+    const ws = new WebSocket(`ws://127.0.0.1:${server.port}/events?token=${server.token}`, {
+      origin: "file://",
+    });
+    const outcome = await new Promise<string>((resolve) => {
+      ws.once("error", () => resolve("error"));
+      ws.once("open", () => resolve("open"));
+    });
+    expect(outcome).toBe("open");
+    ws.close();
+  });
+
   it("rejects WebSocket upgrades without the token", async () => {
     const server = await start();
     const ws = new WebSocket(`ws://127.0.0.1:${server.port}/events`);

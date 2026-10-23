@@ -3,24 +3,45 @@ import { fileURLToPath } from "node:url";
 import {
   AiRouter,
   type AiRoutingSettings,
-  ClaudeCodeCliBackend,
   type InferenceBackend,
+  type RunTaskOptions,
+  type TaskName,
 } from "@citegeist/ai";
 import { createResolver } from "@citegeist/metadata";
 import { Registry } from "@citegeist/ops";
 import { bindCardOperations } from "./cards/index.js";
+import type { CardJobQueue } from "./cards/jobs.js";
 import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
 import { bindCoreOperations } from "./ops.js";
+import {
+  type BackendProvider,
+  type BackendStatus,
+  bindSettingsOperations,
+  createSettingsDeps,
+  type DefaultSettingsOptions,
+  type SettingsService,
+} from "./settings/index.js";
 
 export interface RuntimeOptions {
-  /** Inference backends and task routing. Default: Claude Code CLI with the user's subscription. */
+  /**
+   * Fixed inference backends and routing, for tests and for a stub in end-to-end runs. Without
+   * it the router follows the stored settings: the backends the settings screen offers, the
+   * routing the user chose, rebuilt after every `settings.update`.
+   */
   ai?: { backends?: InferenceBackend[]; routing?: AiRoutingSettings };
+  /** Machine-local settings: where they live and what backs the Keychain, process runner and HTTP. */
+  settings?: Partial<
+    Pick<DefaultSettingsOptions, "localBase" | "workerSource" | "keychain" | "runner" | "fetch">
+  > & {
+    /** Replaces the backends the settings screen lists and the router can use. */
+    backends?: BackendProvider;
+  };
   resolver?: MetadataLookup;
   worker?: ConvertWorker;
-  /** Contact address for Crossref's polite pool, from the user's settings. */
+  /** Contact address for Crossref's polite pool. Default: the one in the settings. */
   mailto?: string;
   /** Start background jobs immediately. Default true. */
   autoStart?: boolean;
@@ -29,7 +50,13 @@ export interface RuntimeOptions {
 export interface Runtime {
   registry: Registry;
   ingest: IngestService;
+  settings: SettingsService;
   close(): Promise<void>;
+}
+
+/** Repo root when running from source: packages/core/src -> three levels up. */
+function repoRoot(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 }
 
 /** Repo-relative worker location for development; packaged builds set CITEGEIST_WORKER_CMD. */
@@ -39,32 +66,150 @@ function defaultWorker(): ConvertWorker {
     const [command = "uv", ...args] = override.split(" ").filter(Boolean);
     return new ChildProcessConvertWorker({ command, args });
   }
-  const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
   return new ChildProcessConvertWorker({
     command: "uv",
-    args: ["run", "--directory", join(repo, "workers", "convert"), "citegeist-convert"],
+    args: ["run", "--directory", join(repoRoot(), "workers", "convert"), "citegeist-convert"],
   });
+}
+
+/** Backends handed in by the caller, shown in the settings as ready. */
+function fixedBackends(list: InferenceBackend[]): BackendProvider {
+  const status = (): BackendStatus[] =>
+    list.map((b) => ({
+      id: b.id,
+      kind: "local" as const,
+      label: b.id,
+      available: true,
+      detail: "ready",
+    }));
+  return {
+    async get(id) {
+      const backend = list.find((b) => b.id === id);
+      if (!backend) throw new Error(`no backend ${id}`);
+      return backend;
+    },
+    async status() {
+      return status();
+    },
+    async build() {
+      return list;
+    },
+  };
+}
+
+/** Metadata resolver that follows the contact address in the settings. */
+function followingResolver(initial: string | undefined): {
+  lookup: MetadataLookup;
+  use(mailto: string | undefined): void;
+} {
+  const make = (mailto: string | undefined) => createResolver(mailto ? { config: { mailto } } : {});
+  let current = make(initial);
+  let mailto = initial;
+  return {
+    lookup: {
+      resolve: (input, options) => current.resolve(input, options),
+      resolveByTitle: (query, options) => current.resolveByTitle(query, options),
+    },
+    use(next) {
+      if (next === mailto) return;
+      mailto = next;
+      current = make(next);
+    },
+  };
 }
 
 /**
  * Builds the full operation registry for one library: index-backed reads, notes and projects,
- * ingest with jobs, and quote cards with AI. App, CLI and MCP all use this.
+ * ingest with jobs, quote cards with AI and the machine settings. App, CLI and MCP all use this.
  */
 export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime {
   const registry = bindCoreOperations(new Registry(), lib);
-  const backends = opts.ai?.backends ?? [new ClaudeCodeCliBackend()];
-  const routing = opts.ai?.routing ?? { routing: { "*": backends[0]?.id ?? "claude-code-cli" } };
-  const ai = new AiRouter(backends, routing);
+  const worker = opts.worker ?? defaultWorker();
+  const localBase = opts.settings?.localBase ?? dirname(lib.local.dir);
+  const workerSource = opts.settings?.workerSource ?? join(repoRoot(), "workers", "convert");
+
+  const fixed = opts.ai?.backends;
+  const fixedRouter = fixed
+    ? new AiRouter(fixed, opts.ai?.routing ?? { routing: { "*": fixed[0]?.id ?? "mock" } })
+    : undefined;
+
+  // The router is rebuilt lazily after a settings change, because API keys add and remove backends.
+  let service: SettingsService | undefined;
+  let provider: BackendProvider | undefined;
+  let router: Promise<AiRouter> | undefined;
+  const currentRouter = (): Promise<AiRouter> => {
+    router ??= (async () => {
+      if (!service || !provider) throw new Error("the runtime is not ready");
+      return new AiRouter(await provider.build(), service.routing());
+    })();
+    return router;
+  };
+  const ai = {
+    async run<N extends TaskName>(task: N, input: unknown, runOpts?: RunTaskOptions) {
+      return (fixedRouter ?? (await currentRouter())).run(task, input, runOpts);
+    },
+  };
+
+  const resolver = opts.resolver ? undefined : followingResolver(opts.mailto);
   const ingest = bindIngestOperations(registry, lib, {
-    resolver:
-      opts.resolver ?? createResolver(opts.mailto ? { config: { mailto: opts.mailto } } : {}),
-    worker: opts.worker ?? defaultWorker(),
+    resolver: opts.resolver ?? (resolver as NonNullable<typeof resolver>).lookup,
+    worker,
     ...(opts.autoStart === undefined ? {} : { autoStart: opts.autoStart }),
   });
-  bindCardOperations(registry, lib, { ai });
+
+  const deps = createSettingsDeps({
+    localBase,
+    queue: ingest.queue,
+    worker,
+    workerSource,
+    ...(opts.settings?.runner ? { runner: opts.settings.runner } : {}),
+    ...(opts.settings?.keychain ? { keychain: opts.settings.keychain } : {}),
+    ...(opts.settings?.fetch ? { fetch: opts.settings.fetch } : {}),
+    onChange: (settings) => {
+      router = undefined;
+      resolver?.use(settings.mailto);
+    },
+  });
+  provider = fixed ? fixedBackends(fixed) : (opts.settings?.backends ?? deps.backends);
+  service = bindSettingsOperations(registry, { ...deps, backends: provider });
+  if (!opts.mailto) resolver?.use(deps.store.load().mailto);
+
+  // Card AI work runs as real jobs, so jobs.get answers for the ids cards.create returns. A
+  // one-shot process (the CLI) does not run the queue and keeps the detached fallback.
+  let cardJobs: CardJobQueue | undefined;
+  if (opts.autoStart !== false) {
+    const runs = new Map<string, () => Promise<unknown>>();
+    ingest.queue.register(
+      "ai-task",
+      async (ctx) => {
+        const run = runs.get(ctx.job.id);
+        runs.delete(ctx.job.id);
+        if (!run) throw new Error("the AI job was queued by an earlier session and cannot resume");
+        await run();
+      },
+      { concurrency: 2, maxAttempts: 1 },
+    );
+    cardJobs = {
+      enqueue(spec) {
+        const id = ingest.queue.newId();
+        runs.set(id, () => spec.run());
+        ingest.queue.enqueue({
+          id,
+          kind: spec.kind,
+          by: spec.by,
+          input: { label: spec.label, ...(spec.input as object) },
+          maxAttempts: 1,
+        });
+        return id;
+      },
+    };
+  }
+  bindCardOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
+
   return {
     registry,
     ingest,
+    settings: service,
     close: async () => {
       await ingest.close();
     },

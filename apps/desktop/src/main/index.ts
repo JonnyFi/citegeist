@@ -212,9 +212,12 @@ app.on("activate", () => {
 
 async function start(): Promise<void> {
   await app.whenReady();
-  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) =>
-    callback(false),
+  // Everything is denied except writing to the clipboard, which "copy citation" needs.
+  const allowed = (permission: string) => permission === "clipboard-sanitized-write";
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>
+    callback(allowed(permission)),
   );
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed(permission));
   Menu.setApplicationMenu(
     buildMenu({
       openLibrary: () => void chooseLibrary(false),
