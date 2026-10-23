@@ -1,0 +1,15 @@
+{
+  "note": "The save popup moved the item to a collection and added a tag.",
+  "method": "POST",
+  "path": "/connector/updateSession",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {
+    "sessionID": "session-journal-0001",
+    "target": "Cphd-proposal",
+    "tags": ["to-read"]
+  }
+}

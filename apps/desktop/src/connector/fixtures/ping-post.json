@@ -1,0 +1,13 @@
+{
+  "note": "The Connector's POST ping announces the active tab and reads the prefs.",
+  "method": "POST",
+  "path": "/connector/ping",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {
+    "activeURL": "https://www.nature.com/articles/s41586-020-2649-2"
+  }
+}

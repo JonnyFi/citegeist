@@ -1,0 +1,57 @@
+{
+  "note": "A journal article as the Nature translator emits it, with a linked PDF the browser downloads itself.",
+  "method": "POST",
+  "path": "/connector/saveItems",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3"
+  },
+  "body": {
+    "sessionID": "session-journal-0001",
+    "uri": "https://www.nature.com/articles/s41586-020-2649-2",
+    "items": [
+      {
+        "id": "Hq7xVzAq",
+        "itemType": "journalArticle",
+        "title": "Array programming with NumPy",
+        "creators": [
+          {
+            "firstName": "Charles R.",
+            "lastName": "Harris",
+            "creatorType": "author"
+          },
+          {
+            "firstName": "K. Jarrod",
+            "lastName": "Millman",
+            "creatorType": "author"
+          }
+        ],
+        "date": "2020-09-16",
+        "publicationTitle": "Nature",
+        "volume": "585",
+        "issue": "7825",
+        "pages": "357-362",
+        "DOI": "10.1038/s41586-020-2649-2",
+        "ISSN": "1476-4687",
+        "url": "https://www.nature.com/articles/s41586-020-2649-2",
+        "abstractNote": "Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays.",
+        "language": "en",
+        "tags": [
+          {
+            "tag": "Computational science"
+          },
+          "Software"
+        ],
+        "attachments": [
+          {
+            "id": "Xy3Pq9Lm",
+            "title": "Full Text PDF",
+            "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
+            "mimeType": "application/pdf"
+          }
+        ]
+      }
+    ]
+  }
+}

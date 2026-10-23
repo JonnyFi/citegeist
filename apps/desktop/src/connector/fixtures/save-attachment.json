@@ -1,0 +1,12 @@
+{
+  "note": "The browser downloaded the PDF with the user's cookies and uploads the bytes. X-Metadata names the parent by the id from saveItems.",
+  "method": "POST",
+  "path": "/connector/saveAttachment?sessionID=session-journal-0001",
+  "headers": {
+    "content-type": "application/pdf",
+    "origin": "chrome-extension://ekhagklcjbdpajgpjgmbionohlpdbjgc",
+    "x-zotero-connector-api-version": "3",
+    "x-metadata": "{\"id\":\"Xy3Pq9Lm\",\"url\":\"https://www.nature.com/articles/s41586-020-2649-2.pdf\",\"contentType\":\"application/pdf\",\"parentItemID\":\"Hq7xVzAq\",\"title\":\"Full Text PDF\"}"
+  },
+  "bodyText": "%PDF-1.4\n% fixture bytes\n%%EOF\n"
+}
