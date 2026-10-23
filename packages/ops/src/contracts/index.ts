@@ -9,6 +9,7 @@ import {
   JobId,
   Language,
   Link,
+  Locator,
   NoteFrontmatter,
   ProjectFrontmatter,
   ProjectSlug,
@@ -199,9 +200,15 @@ export const cardsUpdate = defineContract({
   access: "write",
   input: z.object({
     id: CardFrontmatter.shape.id,
+    // Loose, so a "quote" key reaches the handler, which rejects it with CARD_QUOTE_IMMUTABLE.
     patch: CardBody.omit({ quote: true })
       .partial()
-      .extend({ kind: CardKind.optional(), tags: z.array(z.string()).optional() }),
+      .extend({
+        kind: CardKind.optional(),
+        tags: z.array(z.string()).optional(),
+        locator: Locator.partial().optional(),
+      })
+      .loose(),
   }),
   output: z.object({ card: Card }),
 });

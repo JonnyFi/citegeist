@@ -19,9 +19,12 @@ function Frame({ children }: { children: React.ReactNode }) {
   return <div style={{ height: 900, width: 900 }}>{children}</div>;
 }
 
+// pdf.js rendering on CI runners takes several seconds; the default poll timeout is 1 s.
+const POLL = { timeout: 20_000, interval: 100 };
+
 async function textLayerReady(pageIndex = 0) {
   await expect
-    .poll(() => document.querySelector(`.cg-page[data-page="${pageIndex}"]`))
+    .poll(() => document.querySelector(`.cg-page[data-page="${pageIndex}"]`), POLL)
     .not.toBeNull();
   document.querySelector(`.cg-page[data-page="${pageIndex}"]`)?.scrollIntoView();
   await expect
@@ -29,6 +32,7 @@ async function textLayerReady(pageIndex = 0) {
       () =>
         document.querySelectorAll(`.cg-page[data-page="${pageIndex}"] .textLayer span[data-item]`)
           .length,
+      POLL,
     )
     .toBeGreaterThanOrEqual(1);
 }
@@ -169,13 +173,13 @@ describe("PdfView", () => {
         />
       </Frame>,
     );
-    await expect.poll(() => box("h-quads").length).toBe(1);
+    await expect.poll(() => box("h-quads").length, POLL).toBe(1);
     const pageBox = document.querySelector(".cg-page")?.getBoundingClientRect();
     const r = box("h-quads")[0];
     expect(r?.left).toBeCloseTo((pageBox?.left ?? 0) + 72 * 1.25, 0);
     expect(r?.top).toBeCloseTo((pageBox?.top ?? 0) + (792 - 609) * 1.25, 0);
     expect(r?.width).toBeCloseTo(128 * 1.25, 0);
-    await expect.poll(() => onResolved.mock.lastCall?.[0]).toEqual({ "h-quads": "pdf" });
+    await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-quads": "pdf" });
   });
 
   it("re-finds a highlight without pdf anchor through the text anchor", async () => {
@@ -196,12 +200,12 @@ describe("PdfView", () => {
         />
       </Frame>,
     );
-    await expect.poll(() => box("h-text").length).toBe(1);
+    await expect.poll(() => box("h-text").length, POLL).toBe(1);
     const pageBox = document.querySelectorAll(".cg-page")[1]?.getBoundingClientRect();
     const r = box("h-text")[0];
     expect(r?.top).toBeGreaterThan(pageBox?.top ?? 0);
     expect(r?.bottom).toBeLessThan(pageBox?.bottom ?? 0);
-    await expect.poll(() => onResolved.mock.lastCall?.[0]).toEqual({ "h-text": "text" });
+    await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-text": "text" });
   });
 
   it("falls back to the text anchor when the PDF anchor belongs to another file", async () => {
@@ -219,7 +223,7 @@ describe("PdfView", () => {
         <PdfView data={pdfData} source={FIXTURE_SOURCE} highlights={[hl]} />
       </Frame>,
     );
-    await expect.poll(() => box("h-other").length).toBeGreaterThan(0);
+    await expect.poll(() => box("h-other").length, POLL).toBeGreaterThan(0);
     const pageBox = document.querySelectorAll(".cg-page")[2]?.getBoundingClientRect();
     expect(box("h-other")[0]?.top).toBeGreaterThan(pageBox?.top ?? 0);
   });
@@ -246,7 +250,7 @@ describe("PdfView", () => {
         />
       </Frame>,
     );
-    await expect.poll(() => onResolved.mock.lastCall?.[0]).toEqual({ "h-gone": "orphaned" });
+    await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-gone": "orphaned" });
     expect(box("h-gone")).toHaveLength(0);
   });
 
@@ -266,7 +270,7 @@ describe("PdfView", () => {
         />
       </Frame>,
     );
-    await expect.poll(() => box("h-click").length).toBe(1);
+    await expect.poll(() => box("h-click").length, POLL).toBe(1);
     const r = box("h-click")[0];
     if (!r) throw new Error("no box");
     document
@@ -287,7 +291,7 @@ describe("ReflowView", () => {
         <ReflowView html={html} />
       </Frame>,
     );
-    await expect.poll(() => document.getElementById("bpara0003")).not.toBeNull();
+    await expect.poll(() => document.getElementById("bpara0003"), POLL).not.toBeNull();
     expect(document.getElementById("bpara0003")?.closest("section")?.dataset).toMatchObject({
       page: "1",
       label: "10",
@@ -301,7 +305,7 @@ describe("ReflowView", () => {
         <ReflowView html={html} stream={stream} onCreateAnchor={onCreate} />
       </Frame>,
     );
-    await expect.poll(() => document.getElementById("bpara0003")).not.toBeNull();
+    await expect.poll(() => document.getElementById("bpara0003"), POLL).not.toBeNull();
     selectInReflow("bpara0003", "Every actualisation of meaning", "further possibilities");
     await pressPopover();
     const a = created(onCreate);
@@ -330,13 +334,13 @@ describe("ReflowView", () => {
         <ReflowView html={html} highlights={[hl]} onHighlightsResolved={onResolved} />
       </Frame>,
     );
-    await expect.poll(() => box("h-reflow").length).toBeGreaterThan(0);
+    await expect.poll(() => box("h-reflow").length, POLL).toBeGreaterThan(0);
     const blockRect = document.getElementById("bpara0003")?.getBoundingClientRect();
     for (const r of box("h-reflow")) {
       expect(r.top).toBeGreaterThanOrEqual((blockRect?.top ?? 0) - 1);
       expect(r.bottom).toBeLessThanOrEqual((blockRect?.bottom ?? 0) + 1);
     }
-    await expect.poll(() => onResolved.mock.lastCall?.[0]).toEqual({ "h-reflow": "text" });
+    await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-reflow": "text" });
   });
 
   it("re-finds a highlight after re-conversion changed a word", async () => {
@@ -357,7 +361,7 @@ describe("ReflowView", () => {
         <ReflowView html={changed} highlights={[hl]} />
       </Frame>,
     );
-    await expect.poll(() => box("h-fuzzy").length).toBeGreaterThan(0);
+    await expect.poll(() => box("h-fuzzy").length, POLL).toBeGreaterThan(0);
   });
 
   it("removes active content from doc.html", () => {
@@ -395,14 +399,14 @@ describe("one stored card in both views", () => {
         <PdfView data={pdfData} source={FIXTURE_SOURCE} highlights={[hl]} />
       </Frame>,
     );
-    await expect.poll(() => box("card-1").length).toBeGreaterThan(0);
+    await expect.poll(() => box("card-1").length, POLL).toBeGreaterThan(0);
     await second.unmount();
     await render(
       <Frame>
         <ReflowView html={fixtureHtml()} highlights={[hl]} />
       </Frame>,
     );
-    await expect.poll(() => box("card-1").length).toBeGreaterThan(0);
+    await expect.poll(() => box("card-1").length, POLL).toBeGreaterThan(0);
     const blockRect = document.getElementById("bpara0004")?.getBoundingClientRect();
     expect(box("card-1")[0]?.top).toBeGreaterThanOrEqual((blockRect?.top ?? 0) - 1);
     expect(fixtureBlocks().length).toBe(6);

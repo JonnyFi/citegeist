@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { type ChangeEvent, createCoreRegistry, Library } from "@citegeist/core";
+import { type ChangeEvent, createRuntime, Library } from "@citegeist/core";
 import type { Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { ORPCError, os } from "@orpc/server";
@@ -132,7 +132,8 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   }
   const dir = lockDir;
 
-  const registry = createCoreRegistry(library);
+  const runtime = createRuntime(library);
+  const registry = runtime.registry;
   const rpc = new RPCHandler(buildRouter(registry));
   const token = randomBytes(32).toString("hex");
   const sockets = new Set<import("ws").WebSocket>();
@@ -219,6 +220,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     });
   } catch (err) {
     library.off("change", onChange);
+    await runtime.close();
     await library.close();
     releaseLock(dir);
     throw err;
@@ -239,6 +241,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
         wss.close();
         server.closeAllConnections();
         await new Promise<void>((resolve) => server.close(() => resolve()));
+        await runtime.close();
         await library.close();
         releaseLock(dir);
       })();
