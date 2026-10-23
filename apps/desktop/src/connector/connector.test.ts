@@ -76,12 +76,13 @@ async function start(
       const input = raw as any;
       const call = { name, actor, input };
       calls.push(call);
+      const staged = name === "items.add" ? input.identifier : input.path;
       if (
-        name === "items.add" &&
-        typeof input.identifier === "string" &&
-        existsSync(input.identifier)
+        (name === "items.add" || name === "items.attach") &&
+        typeof staged === "string" &&
+        existsSync(staged)
       ) {
-        stagedFiles.push({ path: input.identifier, bytes: readFileSync(input.identifier, "utf8") });
+        stagedFiles.push({ path: staged, bytes: readFileSync(staged, "utf8") });
       }
       if (name === "projects.list") {
         return { projects: [{ slug: "phd-proposal", title: "PhD proposal" }] };
@@ -329,21 +330,35 @@ describe("saveSnapshot", () => {
 });
 
 describe("attachment upload", () => {
-  it("stages the uploaded bytes, hands the path to items.add and removes the file afterwards", async () => {
+  it("stages the uploaded bytes, attaches them to the saved item and removes the file afterwards", async () => {
     const { port, calls, stagedFiles } = await start();
     await replay(port, fixture("save-items-journal-article"));
     const res = await replay(port, fixture("save-attachment"));
     expect(res.status).toBe(201);
-    const adds = calls.filter((c) => c.name === "items.add");
-    expect(adds).toHaveLength(2);
-    const upload = adds[1];
+    // The article is the only item added; its PDF goes to that item, not into the inbox.
+    expect(calls.filter((c) => c.name === "items.add")).toHaveLength(1);
+    const attaches = calls.filter((c) => c.name === "items.attach");
+    expect(attaches).toHaveLength(1);
+    const upload = attaches[0];
     expect(upload?.actor).toBe("agent:zotero-connector");
-    expect(upload?.input.target).toBe("inbox");
-    expect(upload?.input.why).toContain("harris2020array");
+    expect(upload?.input.citekey).toBe("harris2020array");
+    expect(upload?.input.url).toBe("https://www.nature.com/articles/s41586-020-2649-2.pdf");
     expect(stagedFiles).toHaveLength(1);
     expect(stagedFiles[0]?.path).toMatch(/Full-Text-PDF\.pdf$/);
     expect(stagedFiles[0]?.bytes).toBe("%PDF-1.4\n% fixture bytes\n%%EOF\n");
     expect(existsSync(stagedFiles[0]?.path ?? "")).toBe(false);
+  });
+
+  it("adds a file whose item is unknown as an inbox item of its own", async () => {
+    const { port, calls } = await start();
+    const res = await replay(port, fixture("save-attachment"), {
+      path: "/connector/saveStandaloneAttachment",
+    });
+    expect(res.status).toBe(201);
+    expect(calls.filter((c) => c.name === "items.attach")).toHaveLength(0);
+    const adds = calls.filter((c) => c.name === "items.add");
+    expect(adds).toHaveLength(1);
+    expect(adds[0]?.input.target).toBe("inbox");
   });
 
   it("skips the file when its item was a duplicate", async () => {
@@ -356,6 +371,7 @@ describe("attachment upload", () => {
     const res = await replay(port, fixture("save-attachment"));
     expect(res.status).toBe(201);
     expect(calls.filter((c) => c.name === "items.add")).toHaveLength(1);
+    expect(calls.filter((c) => c.name === "items.attach")).toHaveLength(0);
   });
 
   it("refuses a file above the size limit with 413", async () => {

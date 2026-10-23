@@ -8,7 +8,8 @@ import { ErrorState, Loading } from "../components/ui/states";
 import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
-import { BackendRow, useBackendTests, WorkerPanel } from "../onboarding/parts";
+import { BackendRow, pollConfig, useBackendTests, WorkerPanel } from "../onboarding/parts";
+import { ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
 
 /** Tasks the routing can name besides the default. Mirrors TASKS of @citegeist/ai. */
 export const ROUTED_TASKS = ["card.paraphrase", "card.verify", "metadata.fromFirstPage"] as const;
@@ -96,13 +97,22 @@ function ContactForm({ current }: { current: string }) {
 /** The settings screen: language, backends with test, routing, contact address and worker. */
 export function SettingsScreen() {
   const { t, setLang } = useI18n();
-  const query = useOp(settingsGet, {});
+  // While the model downloads, the progress is read again.
+  const query = useOp(
+    settingsGet,
+    {},
+    {
+      refetchInterval: (q) =>
+        q.state.data?.semantic?.state === "downloading" ? pollConfig.ms : false,
+    },
+  );
   const update = useOpMutation(settingsUpdate);
   const { tests, run } = useBackendTests();
 
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorState error={query.error} />;
   const { settings, backends, worker } = query.data;
+  const hasQuickInsert = typeof window !== "undefined" && Boolean(window.citegeist?.quickInsert);
   const routing = settings.ai.routing;
 
   const setRouting = (next: Record<string, string>) =>
@@ -211,6 +221,32 @@ export function SettingsScreen() {
       >
         <ContactForm current={settings.mailto ?? ""} />
       </Section>
+
+      <Section
+        id="settings-semantic"
+        title={t("settings.semantic.title")}
+        description={t("settings.semantic.desc")}
+      >
+        <SemanticPanel data={query.data} />
+      </Section>
+
+      <Section
+        id="settings-connector"
+        title={t("settings.connector.title")}
+        description={t("settings.connector.desc")}
+      >
+        <ConnectorPanel data={query.data} />
+      </Section>
+
+      {hasQuickInsert ? (
+        <Section
+          id="settings-quick-insert"
+          title={t("settings.quickInsert.title")}
+          description={t("settings.quickInsert.desc")}
+        >
+          <QuickInsertPanel />
+        </Section>
+      ) : null}
 
       <Section
         id="settings-worker"

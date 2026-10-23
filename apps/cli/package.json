@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@citegeist/core": "workspace:*",
+    "@citegeist/desktop": "workspace:*",
     "@citegeist/mcp": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",

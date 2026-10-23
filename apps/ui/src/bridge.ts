@@ -14,6 +14,19 @@ export interface CoreConnection {
   library: string;
 }
 
+/** Settings of the quick-insert palette, which lives in the main process. */
+export interface QuickInsertSettings {
+  enabled: boolean;
+  /** Electron accelerator, e.g. "CommandOrControl+Shift+K". */
+  accelerator: string;
+}
+
+export interface QuickInsertSettingsBridge {
+  get(): Promise<QuickInsertSettings>;
+  /** Applies and saves a change. The error says why a hotkey was refused. */
+  set(patch: Partial<QuickInsertSettings>): Promise<{ ok: true } | { ok: false; error: string }>;
+}
+
 export interface CitegeistBridge {
   /** Null until a library is open. */
   connection: CoreConnection | null;
@@ -23,6 +36,8 @@ export interface CitegeistBridge {
   createLibrary(): Promise<boolean>;
   /** Subscribes to navigation requests from the menu and from citegeist:// links. */
   onNavigate(listener: (path: string) => void): () => void;
+  /** Settings of the quick-insert palette. Absent where there is no palette. */
+  quickInsert?: QuickInsertSettingsBridge;
   platform: string;
 }
 

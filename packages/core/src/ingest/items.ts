@@ -183,7 +183,7 @@ export function rewriteWikiLinks(
 }
 
 /** Root-relative paths of the Markdown files that can hold links or citekey references. */
-function markdownFiles(lib: Library): string[] {
+export function markdownFiles(lib: Library): string[] {
   const out: string[] = [];
   const ls = (dir: string): import("node:fs").Dirent[] => {
     try {

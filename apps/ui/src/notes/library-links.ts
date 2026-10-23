@@ -5,8 +5,7 @@ import {
   type Suggestion,
   type WikiLinkProvider,
 } from "@citegeist/editor";
-import { notesList } from "@citegeist/editor/contracts";
-import { cardsList, itemsList } from "@citegeist/ops";
+import { cardsList, itemsList, notesList } from "@citegeist/ops";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { Translator } from "../i18n";

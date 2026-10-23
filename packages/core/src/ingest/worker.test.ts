@@ -29,10 +29,13 @@ describe("ChildProcessConvertWorker", () => {
     const health = await w.health();
     expect(health).toMatchObject({ ready: true, version: "stub-1.0.0" });
     const p = params();
-    const progress: number[] = [];
-    const res = await w.convert(p, { onProgress: (v) => progress.push(v) });
+    const progress: Array<[number | undefined, string | undefined]> = [];
+    const res = await w.convert(p, { onProgress: (v, message) => progress.push([v, message]) });
     expect(res.manifest).toMatchObject({ source: "0123456789ab", path: "digital" });
-    expect(progress).toEqual([0.5]);
+    expect(progress).toEqual([
+      [0.5, "stub converting"],
+      [undefined, "stub writing files"],
+    ]);
     expect(existsSync(join(p.outDir, "doc.md"))).toBe(true);
     expect(readFileSync(join(p.outDir, "doc.md"), "utf8")).toContain("<!-- page 0 label=10 -->");
   });

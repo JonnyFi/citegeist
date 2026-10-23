@@ -5,8 +5,11 @@ import {
   CitegeistError,
   ItemFrontmatter,
   NoteFrontmatter,
+  PageInfo,
   ProjectFrontmatter,
   toJsonSchemas,
+  WORKER_NOTIFICATIONS,
+  WorkerConvertParams,
 } from "./index.js";
 
 const stamp = { at: "2026-10-23T10:00:00Z", by: "human" };
@@ -89,5 +92,40 @@ describe("schemas", () => {
     expect(err.detail.sideEffects).toBe("none");
     const schemas = toJsonSchemas();
     expect(Object.keys(schemas)).toContain("card");
+  });
+
+  it("carries the worker additions: label confidence, pdfPath and progress notifications", () => {
+    const page = {
+      index: 0,
+      label: "12",
+      labelSource: "header-footer",
+      width: 595,
+      height: 842,
+      textSource: "born-digital",
+    };
+    expect(PageInfo.parse({ ...page, labelConfidence: 0.8 }).labelConfidence).toBe(0.8);
+    expect(PageInfo.parse(page).labelConfidence).toBeUndefined();
+    expect(PageInfo.safeParse({ ...page, labelConfidence: 1.2 }).success).toBe(false);
+
+    const params = {
+      sourcePath: "/a/paper.html",
+      source: "0123456789ab",
+      outDir: "/o",
+      kind: "arxiv-html",
+    };
+    expect(WorkerConvertParams.parse({ ...params, pdfPath: "/a/paper.pdf" }).pdfPath).toBe(
+      "/a/paper.pdf",
+    );
+    expect(WorkerConvertParams.parse(params).pdfPath).toBeUndefined();
+
+    const progress = WORKER_NOTIFICATIONS.progress;
+    expect(progress.parse({ id: 3, message: "Converting", fraction: 0.4 }).fraction).toBe(0.4);
+    expect(
+      progress.parse({ id: 3, message: "Loading models", fraction: null }).fraction,
+    ).toBeNull();
+    expect(progress.safeParse({ id: 3, fraction: 2 }).success).toBe(false);
+    expect(Object.keys(toJsonSchemas())).toEqual(
+      expect.arrayContaining(["worker-health-result", "worker-progress"]),
+    );
   });
 });

@@ -3,8 +3,8 @@ import {
   type NoteSummary,
   notesBacklinks,
   notesList,
-} from "@citegeist/editor/contracts";
-import type { Registry } from "@citegeist/ops";
+  type Registry,
+} from "@citegeist/ops";
 import type { Library } from "../library.js";
 
 interface NoteRow {
@@ -120,10 +120,9 @@ export function noteBacklinks(lib: Library, id: string): Backlink[] {
   return out;
 }
 
-/**
- * Binds the notes operations that have no contract in packages/ops yet (notes.list,
- * notes.backlinks). Call it next to bindCoreOperations in the runtime.
- */
+export { freeNoteSlug, renameNoteFile } from "./rename.js";
+
+/** Binds notes.list and notes.backlinks. The runtime calls it next to bindCoreOperations. */
 export function bindNoteOperations(registry: Registry, lib: Library): Registry {
   return registry
     .bind(notesList, async (_ctx, input) => ({ notes: listNotes(lib, input) }))

@@ -3,7 +3,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalPaths } from "@citegeist/core";
-import { itemsGet, itemsList, projectsList } from "@citegeist/ops";
+import { itemsGet, itemsList, notesCreate, projectsList } from "@citegeist/ops";
 import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import { WebSocket } from "ws";
 import { findRunningCore } from "../shared/connect.js";
 import { localDir, lockFile, readLock, tokenFile } from "../shared/lockfile.js";
 import { SEED, seedLibrary } from "../testing/seed.js";
-import { type CoreServer, LockHeldError, startCoreServer } from "./server.js";
+import { ACTOR_HEADER, type CoreServer, LockHeldError, startCoreServer } from "./server.js";
 
 let tmp: string;
 let library: string;
@@ -25,10 +25,14 @@ async function start(extra: Partial<Parameters<typeof startCoreServer>[0]> = {})
 }
 
 type Client = Record<string, Record<string, (input: unknown) => Promise<unknown>>>;
-function clientFor(server: CoreServer, token = server.token): Client {
+function clientFor(
+  server: CoreServer,
+  token = server.token,
+  extraHeaders: Record<string, string> = {},
+): Client {
   const link = new RPCLink({
     url: `http://127.0.0.1:${server.port}/rpc`,
-    headers: { authorization: `Bearer ${token}` },
+    headers: { authorization: `Bearer ${token}`, ...extraHeaders },
   });
   return createORPCClient<Client>(link);
 }
@@ -165,6 +169,62 @@ describe("core server", () => {
       ws.once("open", () => resolve("open"));
     });
     expect(outcome).toBe("error");
+  });
+});
+
+describe("actor header", () => {
+  type CreatedNote = { frontmatter: { created: { by: string } } };
+  const noteInput = { title: "Who wrote this", type: "permanent" };
+
+  async function health(server: CoreServer): Promise<{ ok: boolean; actors?: boolean }> {
+    const res = await fetch(`http://127.0.0.1:${server.port}/health`, {
+      headers: { authorization: `Bearer ${server.token}` },
+    });
+    return (await res.json()) as { ok: boolean; actors?: boolean };
+  }
+
+  it("announces the capability in /health", async () => {
+    const server = await start();
+    expect(await health(server)).toMatchObject({ ok: true, actors: true });
+  });
+
+  it("stamps writes with the actor of the header", async () => {
+    const server = await start();
+    const agent = clientFor(server, server.token, { [ACTOR_HEADER]: "agent:claude-desktop" });
+    const made = (await agent.notes?.create?.(noteInput)) as CreatedNote;
+    expect(made.frontmatter.created.by).toBe("agent:claude-desktop");
+    const onDisk = server.library.getNote(
+      (made as unknown as { frontmatter: { id: string } }).frontmatter.id,
+    );
+    expect(onDisk.frontmatter.created.by).toBe("agent:claude-desktop");
+  });
+
+  it("acts as the human when the app's UI sends no header", async () => {
+    const server = await start();
+    const made = (await clientFor(server).notes?.create?.(noteInput)) as CreatedNote;
+    expect(made.frontmatter.created.by).toBe("human");
+    expect(server.registry.get(notesCreate.name)).toBeDefined();
+  });
+
+  it("refuses a header that is not an actor instead of falling back to human", async () => {
+    const server = await start();
+    const status = await rawRequest(
+      server.port,
+      { authorization: `Bearer ${server.token}`, [ACTOR_HEADER]: "root" },
+      "/rpc/notes/create",
+      "POST",
+    );
+    expect(status).toBe(400);
+    expect(server.library.listItems({ limit: 5 }).items.length).toBeGreaterThan(0);
+  });
+
+  it("keeps admin operations away from agents", async () => {
+    const server = await start();
+    const agent = clientFor(server, server.token, { [ACTOR_HEADER]: "agent:claude-desktop" });
+    const err = await agent.settings
+      ?.update?.({ patch: { uiLanguage: "en" } })
+      .catch((e: unknown) => e);
+    expect((err as ORPCError<string, { code: string }>).data.code).toBe("FORBIDDEN_ADMIN");
   });
 });
 

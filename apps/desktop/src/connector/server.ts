@@ -353,18 +353,20 @@ export async function startConnector(opts: ConnectorOptions): Promise<ConnectorH
   }
 
   /**
-   * Hands an uploaded file to the core. items.add has no "attach to this item" mode yet, so the
-   * file goes in as its own item. The metadata item stays in the library, the file lands in the
-   * inbox where one click rejects it, and duplicate detection (DOI on the first page, URL, hash)
-   * folds it into the right item whenever it can. An `items.attach` operation replaces this.
+   * Hands an uploaded file to the core. A file of an item saved in this session is attached to
+   * that item (`items.attach`). A file without a known item goes in as its own item, in the inbox
+   * where one click rejects it, and duplicate detection (DOI on the first page, URL, hash) folds
+   * it into the right item whenever it can.
    */
   async function addFile(path: string, parent: string | undefined, url?: string) {
+    if (parent) {
+      await call("items.attach", { citekey: parent, path, ...(isHttpUrl(url) ? { url } : {}) });
+      return;
+    }
     await call("items.add", {
       identifier: path,
       target: "inbox",
-      why: parent
-        ? `File for ${parent}, saved with the Zotero Connector${url ? ` from ${url}` : ""}`
-        : `Saved with the Zotero Connector${url ? ` from ${url}` : ""}`,
+      why: `Saved with the Zotero Connector${url ? ` from ${url}` : ""}`,
     });
   }
 

@@ -583,6 +583,74 @@ export class IngestService {
     return source;
   }
 
+  /**
+   * items.attach: copies a local file into an existing item and queues its conversion. A file the
+   * item has already (same content, or same origin URL) is not added again; the answer then names
+   * the source that is there and starts no job. A second main file of the same kind becomes a
+   * supplement, so the reader keeps showing the first one.
+   */
+  attachFile(
+    actor: Actor,
+    input: {
+      citekey: string;
+      path: string;
+      url?: string | undefined;
+      filename?: string | undefined;
+    },
+  ): { citekey: string; source: string; added: boolean; job?: string } {
+    const item = loadItem(this.lib, input.citekey);
+    const path = this.asLocalPath(input.path);
+    if (!path) {
+      throw problem(
+        "FILE_NOT_FOUND",
+        `file '${input.path}' does not exist`,
+        "Pass the absolute path of an existing PDF, HTML or EPUB file.",
+        { path: input.path },
+      );
+    }
+    const ext = extname(path).toLowerCase();
+    const type = FILE_KINDS[ext];
+    if (!type) {
+      throw problem(
+        "FILE_TYPE_UNSUPPORTED",
+        `files of type '${ext || "none"}' cannot be attached (${basename(path)})`,
+        "Attach a PDF, HTML or EPUB file.",
+        { path, ext },
+      );
+    }
+    const buf = readFileSync(path);
+    if (type.kind === "pdf" && !isPdf(buf)) {
+      throw problem(
+        "FILE_TYPE_UNSUPPORTED",
+        `${basename(path)} has the extension .pdf but is not a PDF file`,
+        "Attach a real PDF file.",
+        { path },
+      );
+    }
+    const url = input.url && /^https?:\/\//i.test(input.url) ? input.url : undefined;
+    const hash = sha256Hex(buf).slice(0, 12);
+    const known = item.fm.sources.find((s) => s.hash === hash || (url && s.url === url));
+    if (known) return { citekey: input.citekey, source: known.hash, added: false };
+
+    writeFileAtomic(this.lib.paths.sourceFile(input.citekey, hash, type.ext), buf);
+    const hasMain = item.fm.sources.some((s) => s.kind === type.kind && s.role === "main");
+    const source: Source = {
+      hash,
+      kind: type.kind,
+      filename: input.filename ?? basename(path),
+      role: hasMain ? "supplement" : "main",
+      ...(url ? { url } : {}),
+      added: this.lib.stamp(actor),
+    };
+    saveItem(this.lib, actor, item, { sources: [...item.fm.sources, source] });
+    const job = this.queue.enqueue({
+      kind: "convert",
+      by: actor,
+      input: { citekey: input.citekey, source: hash, force: false },
+    });
+    return { citekey: input.citekey, source: hash, added: true, job: job.id };
+  }
+
   private async fetchSources(
     ctx: JobContext,
     citekey: string,
@@ -663,8 +731,8 @@ export class IngestService {
       this.queue.cancel(child.id);
     };
     ctx.signal.addEventListener("abort", onAbort, { once: true });
-    const sub = (job: { id: string; progress: number }): void => {
-      if (job.id === child.id) ctx.progress(0.3 + 0.7 * job.progress);
+    const sub = (job: { id: string; progress: number; message?: string | undefined }): void => {
+      if (job.id === child.id) ctx.progress(0.3 + 0.7 * job.progress, job.message);
     };
     this.queue.on("job", sub);
     let done: Awaited<ReturnType<JobQueue["waitFor"]>>;
@@ -710,7 +778,12 @@ export class IngestService {
       n++;
       ctx.progress(base, `converting ${source.filename}`);
       try {
-        await this.convertSource(ctx, citekey, source, (p) => ctx.progress(base + span * p));
+        // A step without a position keeps the last one and only changes the message.
+        let at = base;
+        await this.convertSource(ctx, citekey, source, (p, message) => {
+          if (p !== undefined) at = base + span * p;
+          ctx.progress(at, message);
+        });
         converted.push(source.hash);
       } catch (err) {
         // The HTML of an arXiv paper may fail while the PDF works: keep going, fail at the end.
@@ -733,7 +806,7 @@ export class IngestService {
     ctx: JobContext,
     citekey: string,
     source: Source,
-    progress: (p: number) => void,
+    progress: (fraction: number | undefined, message?: string) => void,
   ): Promise<void> {
     const lib = this.lib;
     const finalDir = lib.paths.derivedDir(citekey, source.hash);
@@ -754,7 +827,7 @@ export class IngestService {
           kind: CONVERT_KINDS[source.kind],
           ...(existsSync(previous) ? { previousBlocks: previous } : {}),
         },
-        { signal: ctx.signal, onProgress: (p) => progress(p) },
+        { signal: ctx.signal, onProgress: progress },
       );
       if (!existsSync(join(tmpDir, "manifest.json"))) {
         writeFileAtomic(

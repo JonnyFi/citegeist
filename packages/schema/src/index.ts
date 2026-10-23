@@ -7,7 +7,12 @@ import { Job } from "./job.js";
 import { LibraryManifest } from "./library.js";
 import { NoteFrontmatter } from "./note.js";
 import { ProjectFrontmatter } from "./project.js";
-import { WorkerConvertParams, WorkerConvertResult } from "./worker.js";
+import {
+  WorkerConvertParams,
+  WorkerConvertResult,
+  WorkerHealthResult,
+  WorkerProgress,
+} from "./worker.js";
 
 export * from "./card.js";
 export * from "./common.js";
@@ -36,6 +41,8 @@ export const EXPORTED_SCHEMAS = {
   "agent-error": AgentError,
   "worker-convert-params": WorkerConvertParams,
   "worker-convert-result": WorkerConvertResult,
+  "worker-health-result": WorkerHealthResult,
+  "worker-progress": WorkerProgress,
 } as const;
 
 export function toJsonSchemas(): Record<string, unknown> {

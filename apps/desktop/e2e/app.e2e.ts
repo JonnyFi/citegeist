@@ -60,7 +60,8 @@ test("starts the core, shows the library table and opens an item", async () => {
   await expect(page.getByText("Niklas", { exact: false }).first()).toBeVisible();
   await expect(page.getByText("Kommunikation ist das Element sozialer Systeme.")).toBeVisible();
   await expect(page.getByTestId("card")).toHaveCount(1);
-  await expect(page.getByText(SEED.quote)).toBeVisible();
+  // The connections panel lists the card as well, now that graph.neighbors answers.
+  await expect(page.getByTestId("card").getByText(SEED.quote)).toBeVisible();
 
   // Inbox and projects come from the same core.
   await page.getByRole("link", { name: /Inbox/ }).click();

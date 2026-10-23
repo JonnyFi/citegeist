@@ -37,7 +37,7 @@ export default defineConfig({
       outDir: "out/preload",
       // The sandboxed preload must be CommonJS.
       rollupOptions: {
-        input: { index: "src/preload/index.ts" },
+        input: { index: "src/preload/index.ts", "quick-insert": "src/quick-insert/preload.ts" },
         output: { format: "cjs", entryFileNames: "[name].cjs" },
       },
     },

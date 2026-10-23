@@ -1,7 +1,8 @@
 import type { IncomingHttpHeaders } from "node:http";
+import { DEFAULT_CONNECTOR_PORT } from "@citegeist/ops";
 
-/** Port the official Connector talks to by default (ASCII "ZO"). */
-export const DEFAULT_CONNECTOR_PORT = 23119;
+/** Port the official Connector talks to by default (ASCII "ZO"). The settings default is the same. */
+export { DEFAULT_CONNECTOR_PORT };
 /** The Connector API version both sides speak (`X-Zotero-Connector-API-Version`). */
 export const CONNECTOR_API_VERSION = "3";
 /**

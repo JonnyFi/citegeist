@@ -83,15 +83,31 @@ describe("SettingsStore", () => {
     expect(store.load()).toEqual({
       ai: { routing: { "*": "claude-code-cli" } },
       uiLanguage: "de",
+      semantic: { enabled: false },
+      connector: { enabled: false, port: 23119 },
     });
     writeFileSync(join(dir, "settings.json"), "{ nope");
     expect(store.load().uiLanguage).toBe("de");
-    store.save({ ai: { routing: { "*": "codex-exec" } }, mailto: "a@b.org", uiLanguage: "en" });
+    store.save({
+      ai: { routing: { "*": "codex-exec" } },
+      mailto: "a@b.org",
+      uiLanguage: "en",
+      semantic: { enabled: true },
+      connector: { enabled: true, port: 23120 },
+    });
     expect(store.load()).toEqual({
       ai: { routing: { "*": "codex-exec" } },
       mailto: "a@b.org",
       uiLanguage: "en",
+      semantic: { enabled: true },
+      connector: { enabled: true, port: 23120 },
     });
+    writeFileSync(
+      join(dir, "settings.json"),
+      JSON.stringify({ connector: { enabled: true, port: 80 }, semantic: { enabled: "yes" } }),
+    );
+    expect(store.load().connector).toEqual({ enabled: true, port: 23119 });
+    expect(store.load().semantic).toEqual({ enabled: false });
   });
 });
 

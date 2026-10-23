@@ -20,6 +20,15 @@ export interface SettingsMockState {
   uiLanguage: "de" | "en";
   backends: Backend[];
   worker: { ready: boolean; engines: Record<string, string>; detail?: string };
+  semantic: {
+    enabled: boolean;
+    /** What the model reports once enabled. "downloading" ends after `semanticPolls` reads. */
+    state: "downloading" | "ready" | "error";
+    progress: number;
+    detail?: string;
+  };
+  semanticPolls: number;
+  connector: { enabled: boolean; port: number; error?: string };
   /** Result of `ai.testBackend` per backend id. Missing ids succeed after 1.2 s. */
   tests: Record<string, TestResult>;
   /** Polls of `jobs.get` before the setup job ends. */
@@ -59,6 +68,9 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
       },
     ],
     worker: { ready: false, engines: {}, detail: "not-installed" },
+    semantic: { enabled: false, state: "downloading", progress: 0 },
+    semanticPolls: 3,
+    connector: { enabled: false, port: 23119 },
     tests: {},
     setupPolls: 2,
     ...over,
@@ -81,7 +93,32 @@ export function bindSettingsMock(
     ai: { routing: { ...state.routing }, apiKeys: { ...state.apiKeys } },
     ...(state.mailto ? { mailto: state.mailto } : {}),
     uiLanguage: state.uiLanguage,
+    semantic: { enabled: state.semantic.enabled },
+    connector: { enabled: state.connector.enabled, port: state.connector.port },
   });
+  let semanticReads = 0;
+  const semanticStatus = () => {
+    const { enabled, state: shown, progress, detail } = state.semantic;
+    const model = "embeddinggemma-300m";
+    if (!enabled) return { state: "off" as const, model };
+    if (shown === "downloading") {
+      semanticReads++;
+      if (semanticReads >= state.semanticPolls) return { state: "ready" as const, model };
+      return {
+        state: "downloading" as const,
+        model,
+        progress: Math.max(progress, semanticReads / state.semanticPolls),
+      };
+    }
+    return { state: shown, model, ...(detail ? { detail } : {}) };
+  };
+  const connectorStatus = () => {
+    const { enabled, port, error } = state.connector;
+    if (!enabled) return { state: "off" as const };
+    return error
+      ? { state: "error" as const, detail: error }
+      : { state: "listening" as const, port };
+  };
   const now = () => new Date().toISOString();
 
   registry
@@ -93,6 +130,8 @@ export function bindSettingsMock(
         engines: { ...state.worker.engines },
         ...(jobStarted && polls < state.setupPolls ? { detail: "installing" } : {}),
       },
+      semantic: semanticStatus(),
+      connector: connectorStatus(),
     }))
     .bind(settingsUpdate, async (_ctx, input) => {
       const { patch, apiKey } = input;
@@ -115,6 +154,14 @@ export function bindSettingsMock(
         else delete state.mailto;
       }
       if (patch.uiLanguage) state.uiLanguage = patch.uiLanguage;
+      if (patch.semantic) {
+        if (patch.semantic.enabled && !state.semantic.enabled) semanticReads = 0;
+        state.semantic.enabled = patch.semantic.enabled;
+      }
+      if (patch.connector) {
+        state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;
+        state.connector.port = patch.connector.port ?? state.connector.port;
+      }
       emit({ type: "change", path: "settings", external: false });
       return { settings: settings() };
     })
