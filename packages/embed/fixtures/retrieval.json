@@ -1,0 +1,507 @@
+{
+  "license": "CC0-1.0. Passages and queries written for citegeist; they paraphrase well-known ideas and quote no source.",
+  "passages": [
+    {
+      "id": "p01",
+      "lang": "de",
+      "title": "Soziale Systeme",
+      "text": "Soziale Systeme bestehen nach Luhmann nicht aus Menschen, sondern aus Kommunikationen. Jede Kommunikation schließt an eine vorherige an und erzeugt so die Grenze des Systems gegenüber seiner Umwelt."
+    },
+    {
+      "id": "p02",
+      "lang": "en",
+      "title": "Grounded theory",
+      "text": "Grounded theory builds categories from the data instead of testing a hypothesis fixed in advance. Researchers code interview transcripts line by line and compare incidents until no new properties of a category appear."
+    },
+    {
+      "id": "p03",
+      "lang": "de",
+      "title": "Replikationskrise",
+      "text": "In der Psychologie ließen sich viele publizierte Effekte nicht wiederholen, wenn unabhängige Gruppen die Studien mit denselben Methoden nachstellten. Kleine Stichproben und selektives Berichten signifikanter Ergebnisse gelten als Hauptursachen."
+    },
+    {
+      "id": "p04",
+      "lang": "en",
+      "title": "Self-attention",
+      "text": "The transformer replaces recurrence with self-attention: every token computes weights over all other tokens in the sequence and mixes their value vectors. This allows parallel training and captures long-range dependencies."
+    },
+    {
+      "id": "p05",
+      "lang": "de",
+      "title": "Zettelkasten",
+      "text": "Der Zettelkasten ist eine Sammlung von Notizen, die durch feste Nummern und Verweise miteinander verbunden sind. Neue Gedanken entstehen im Gespräch mit dem Kasten, weil Zettel an unerwarteter Stelle wieder auftauchen."
+    },
+    {
+      "id": "p06",
+      "lang": "en",
+      "title": "Cultural capital",
+      "text": "Bourdieu distinguishes economic, social and cultural capital. Cultural capital includes educational credentials, tastes and dispositions that families pass on to their children, which helps reproduce class positions."
+    },
+    {
+      "id": "p07",
+      "lang": "de",
+      "title": "Beschleunigung",
+      "text": "Rosa beschreibt die Moderne als Steigerung des Tempos in Technik, sozialem Wandel und Lebenstakt. Wer mithalten will, gerät in einen Zustand dauernder Zeitknappheit, obwohl technische Neuerungen Zeit sparen sollten."
+    },
+    {
+      "id": "p08",
+      "lang": "en",
+      "title": "Urban heat islands",
+      "text": "Cities are several degrees warmer than the surrounding countryside because asphalt and concrete store heat and there is little vegetation to cool the air by evaporation. Green roofs and street trees reduce the effect."
+    },
+    {
+      "id": "p09",
+      "lang": "de",
+      "title": "Kippelemente im Klima",
+      "text": "Kippelemente sind Teile des Erdsystems, die nach Überschreiten einer Schwelle abrupt und oft unumkehrbar in einen anderen Zustand wechseln. Beispiele sind das Abschmelzen des grönländischen Eisschilds und das Absterben tropischer Regenwälder."
+    },
+    {
+      "id": "p10",
+      "lang": "en",
+      "title": "CRISPR gene editing",
+      "text": "CRISPR-Cas9 uses a guide RNA to direct a nuclease to a specific DNA sequence, where it cuts both strands. The cell then repairs the break, which allows researchers to disable a gene or insert new genetic material."
+    },
+    {
+      "id": "p11",
+      "lang": "de",
+      "title": "Darmflora",
+      "text": "Die Darmflora umfasst Billionen Bakterien, die Nahrungsbestandteile verwerten, das Immunsystem schulen und Botenstoffe bilden. Antibiotika und einseitige Ernährung können das Gleichgewicht der Mikroorganismen stören."
+    },
+    {
+      "id": "p12",
+      "lang": "en",
+      "title": "Inflation expectations",
+      "text": "When households and firms expect prices to keep rising, they demand higher wages and raise prices in advance, which can make inflation persistent. Central banks therefore try to keep these expectations anchored near their target."
+    },
+    {
+      "id": "p13",
+      "lang": "de",
+      "title": "Mindestlohn",
+      "text": "Empirische Studien zum Mindestlohn finden meist geringe Beschäftigungseffekte, wenn der Lohn nicht weit über dem Marktniveau liegt. Arbeitgeber reagieren teilweise mit höheren Preisen oder weniger Arbeitsstunden."
+    },
+    {
+      "id": "p14",
+      "lang": "en",
+      "title": "Categorical imperative",
+      "text": "Kant's categorical imperative demands that I act only on maxims I could will to become universal laws. A promise I make with the intention to break it fails this test, since universal lying would destroy trust itself."
+    },
+    {
+      "id": "p15",
+      "lang": "de",
+      "title": "Sprachspiele",
+      "text": "Wittgenstein sieht die Bedeutung eines Wortes in seinem Gebrauch innerhalb eines Sprachspiels. Es gibt keine einzelne Wesenseigenschaft, die alle Verwendungen verbindet, sondern nur Familienähnlichkeiten."
+    },
+    {
+      "id": "p16",
+      "lang": "en",
+      "title": "Consent under the GDPR",
+      "text": "Under the GDPR, consent to data processing must be freely given, specific, informed and unambiguous. Pre-ticked boxes and bundling consent with unrelated terms of service do not meet this standard."
+    },
+    {
+      "id": "p17",
+      "lang": "de",
+      "title": "Hanse",
+      "text": "Die Hanse war ein Bund niederdeutscher Kaufleute und Städte, der im Mittelalter den Handel zwischen Nord- und Ostsee organisierte. Lübeck stand an der Spitze, Tuch, Salz, Pelze und Getreide waren die wichtigsten Waren."
+    },
+    {
+      "id": "p18",
+      "lang": "en",
+      "title": "Lithium-ion batteries",
+      "text": "In a lithium-ion cell, lithium ions move through an electrolyte from the anode to the cathode during discharge. Capacity fades over many cycles because a solid layer grows on the anode and consumes active lithium."
+    },
+    {
+      "id": "p19",
+      "lang": "de",
+      "title": "Schlaf und Gedächtnis",
+      "text": "Im Tiefschlaf werden Erinnerungen vom Hippocampus in den Neokortex übertragen und dadurch gefestigt. Wer nach dem Lernen schläft, behält den Stoff deutlich besser als jemand, der wach bleibt."
+    },
+    {
+      "id": "p20",
+      "lang": "en",
+      "title": "Selective attention",
+      "text": "People cannot process all sensory input at once, so attention filters what reaches awareness. In the cocktail party effect, a listener follows one voice among many and still notices their own name in an ignored conversation."
+    },
+    {
+      "id": "p21",
+      "lang": "de",
+      "title": "Polarisierung in sozialen Medien",
+      "text": "Empfehlungsalgorithmen zeigen Nutzerinnen und Nutzern vor allem Inhalte, die ihre bisherigen Ansichten bestätigen. Ob dadurch tatsächlich Echokammern und politische Polarisierung entstehen, ist in der Forschung umstritten."
+    },
+    {
+      "id": "p22",
+      "lang": "en",
+      "title": "Open access",
+      "text": "Open access publishing makes research articles free to read. In the gold model authors or funders pay an article processing charge, while the green model lets authors deposit a version of the manuscript in a repository."
+    },
+    {
+      "id": "p23",
+      "lang": "de",
+      "title": "Mixed Methods",
+      "text": "Mixed-Methods-Designs kombinieren qualitative und quantitative Verfahren in einer Studie. Eine Umfrage kann etwa durch Interviews vertieft werden, um zu verstehen, warum die Befragten so geantwortet haben."
+    },
+    {
+      "id": "p24",
+      "lang": "en",
+      "title": "Peer review",
+      "text": "In peer review, independent experts assess a manuscript before a journal accepts it. Critics point to long delays, unpaid labour and reviewers who favour work that matches their own views."
+    },
+    {
+      "id": "p25",
+      "lang": "de",
+      "title": "Wohnungsmarkt",
+      "text": "In Großstädten steigen die Mieten schneller als die Einkommen, weil der Neubau mit der Nachfrage nicht Schritt hält. Mietpreisbremsen dämpfen den Anstieg bei Bestandsverträgen, bringen aber keine zusätzlichen Wohnungen."
+    },
+    {
+      "id": "p26",
+      "lang": "en",
+      "title": "Neural network overfitting",
+      "text": "A network overfits when it memorizes the training examples and performs worse on unseen data. Regularization, dropout and early stopping reduce the gap between training and validation error."
+    },
+    {
+      "id": "p27",
+      "lang": "de",
+      "title": "Frühe Neuzeit",
+      "text": "Der Buchdruck mit beweglichen Lettern senkte im 15. Jahrhundert die Kosten für Texte erheblich. Flugschriften verbreiteten reformatorische Ideen in wenigen Wochen über ganze Regionen."
+    },
+    {
+      "id": "p28",
+      "lang": "en",
+      "title": "Citation analysis",
+      "text": "Bibliometric studies count how often a paper is cited to estimate its influence. Citation counts depend strongly on the field and on the age of the paper, so raw numbers are hard to compare across disciplines."
+    },
+    {
+      "id": "p29",
+      "lang": "de",
+      "title": "Nachhaltige Landwirtschaft",
+      "text": "Fruchtfolgen, Zwischenfrüchte und reduzierte Bodenbearbeitung erhalten den Humusgehalt und verringern die Erosion. Der Einsatz von Mineraldünger und Pflanzenschutzmitteln lässt sich dadurch teilweise senken."
+    },
+    {
+      "id": "p30",
+      "lang": "en",
+      "title": "Language acquisition",
+      "text": "Children acquire their first language without explicit instruction, passing through a babbling stage, one-word utterances and then two-word combinations. Whether this relies on an innate grammar is still debated."
+    },
+    {
+      "id": "p31",
+      "lang": "de",
+      "title": "Quellenkritik",
+      "text": "Die historische Quellenkritik fragt, wer eine Quelle verfasst hat, für welches Publikum und zu welchem Zweck. Erst danach lässt sich beurteilen, was sie über die Vergangenheit tatsächlich belegt."
+    },
+    {
+      "id": "p32",
+      "lang": "en",
+      "title": "Regression to the mean",
+      "text": "Extreme measurements tend to be followed by less extreme ones simply because chance contributed to the first value. Ignoring this can make an ineffective treatment look helpful after patients were selected for unusually bad scores."
+    },
+    {
+      "id": "p33",
+      "lang": "de",
+      "title": "Datenschutz bei Forschungsdaten",
+      "text": "Interviewdaten müssen vor der Veröffentlichung pseudonymisiert werden, damit Befragte nicht identifizierbar sind. Einwilligungserklärungen sollten festhalten, ob die Daten später für Nachnutzung freigegeben werden."
+    },
+    {
+      "id": "p34",
+      "lang": "en",
+      "title": "Network effects",
+      "text": "A platform becomes more valuable to each user as more people join it. These network effects make markets tip toward one dominant provider and make it difficult for newcomers to attract a first group of users."
+    },
+    {
+      "id": "p35",
+      "lang": "de",
+      "title": "Klimaanpassung in Städten",
+      "text": "Städte reagieren auf Starkregen mit Schwammstadt-Konzepten: Flächen werden entsiegelt, damit Wasser versickern kann, und Mulden und Grünflächen nehmen Spitzen der Abflussmenge auf."
+    },
+    {
+      "id": "p36",
+      "lang": "en",
+      "title": "Statistical significance",
+      "text": "A p-value below 0.05 only tells us that the data would be unlikely if the null hypothesis were true. It does not give the probability that the hypothesis is correct and says nothing about the size or importance of an effect."
+    },
+    {
+      "id": "p37",
+      "lang": "de",
+      "title": "Kommunikatives Handeln",
+      "text": "Habermas unterscheidet zwischen strategischem und kommunikativem Handeln. Beim kommunikativen Handeln verständigen sich die Beteiligten über Geltungsansprüche und suchen einen Konsens, statt den anderen für eigene Zwecke zu benutzen."
+    },
+    {
+      "id": "p38",
+      "lang": "en",
+      "title": "Qualitative content analysis",
+      "text": "Qualitative content analysis assigns passages of a text to a predefined coding frame. Unlike open coding, the categories come from theory or earlier studies, and coders check how reliably they apply them."
+    },
+    {
+      "id": "p39",
+      "lang": "de",
+      "title": "Publikationsverzerrung",
+      "text": "Studien mit positiven Ergebnissen werden häufiger veröffentlicht als Studien ohne Effekt. Meta-Analysen, die nur auf Zeitschriftenartikeln beruhen, überschätzen deshalb oft die Wirkung einer Maßnahme."
+    },
+    {
+      "id": "p40",
+      "lang": "en",
+      "title": "Recurrent networks",
+      "text": "Recurrent neural networks read a sentence one word at a time and carry a hidden state forward. Gated variants such as the LSTM mitigate vanishing gradients but remain slow to train on long sequences."
+    },
+    {
+      "id": "p41",
+      "lang": "de",
+      "title": "Lernen mit Karteikarten",
+      "text": "Karteikarten unterstützen das Lernen durch Abrufen: Wer eine Antwort aus dem Gedächtnis holt, festigt sie stärker als beim erneuten Lesen. Abstände zwischen den Wiederholungen werden schrittweise größer."
+    },
+    {
+      "id": "p42",
+      "lang": "en",
+      "title": "Social capital",
+      "text": "Putnam describes social capital as the networks, norms and trust that allow people to act together. Declining membership in clubs and associations, he argued, weakens civic life."
+    },
+    {
+      "id": "p43",
+      "lang": "de",
+      "title": "Resonanz",
+      "text": "Als Gegenbegriff zur Entfremdung beschreibt Rosa Resonanz: eine antwortende Beziehung zur Welt, in der Menschen sich berührt fühlen und selbst wirksam sind."
+    },
+    {
+      "id": "p44",
+      "lang": "en",
+      "title": "Air pollution",
+      "text": "Fine particulate matter from traffic and heating penetrates deep into the lungs and raises the risk of heart disease. Low emission zones in city centres have reduced concentrations only modestly."
+    },
+    {
+      "id": "p45",
+      "lang": "de",
+      "title": "Meeresspiegel",
+      "text": "Der Meeresspiegel steigt, weil sich das Wasser erwärmt und ausdehnt und weil Gletscher und Eisschilde abschmelzen. Küstenstädte müssen Deiche erhöhen oder Siedlungen zurückverlegen."
+    },
+    {
+      "id": "p46",
+      "lang": "en",
+      "title": "mRNA vaccines",
+      "text": "An mRNA vaccine delivers instructions for a viral protein inside lipid nanoparticles. Cells produce the protein briefly, and the immune system learns to recognise it without exposure to the virus."
+    },
+    {
+      "id": "p47",
+      "lang": "de",
+      "title": "Ballaststoffe",
+      "text": "Ballaststoffe aus Vollkorn, Hülsenfrüchten und Gemüse fördern die Verdauung und sättigen lange. Ein hoher Verzehr wird mit einem geringeren Risiko für Herz-Kreislauf-Erkrankungen verbunden."
+    },
+    {
+      "id": "p48",
+      "lang": "en",
+      "title": "Interest rate policy",
+      "text": "A central bank raises its policy rate to cool demand: borrowing becomes more expensive, firms invest less and households save more. The effects on prices appear only after a delay of a year or more."
+    },
+    {
+      "id": "p49",
+      "lang": "de",
+      "title": "Gewerkschaften",
+      "text": "Gewerkschaften verhandeln Tarifverträge für ganze Branchen und sichern Beschäftigte gegen einseitige Lohnkürzungen ab. In vielen Ländern sinkt der Organisationsgrad seit Jahrzehnten."
+    },
+    {
+      "id": "p50",
+      "lang": "en",
+      "title": "Utilitarianism",
+      "text": "Utilitarianism judges an action by its consequences: the right choice is the one that produces the greatest happiness for the greatest number. Critics object that it can justify harming a minority."
+    },
+    {
+      "id": "p51",
+      "lang": "de",
+      "title": "Bewusstsein",
+      "text": "Das schwierige Problem des Bewusstseins fragt, warum körperliche Prozesse im Gehirn überhaupt mit subjektivem Erleben verbunden sind. Funktionale Erklärungen lassen diese Frage nach Ansicht vieler offen."
+    },
+    {
+      "id": "p52",
+      "lang": "en",
+      "title": "Right to erasure",
+      "text": "Data subjects can ask a controller to delete their personal data when it is no longer needed or when they withdraw consent. Exceptions apply for legal obligations and for archiving in the public interest."
+    },
+    {
+      "id": "p53",
+      "lang": "de",
+      "title": "Fernhandel",
+      "text": "Die Fugger organisierten im 16. Jahrhundert Kredite und Bergbau über ganz Europa. Ihr Vermögen beruhte auf Darlehen an Fürsten, die nicht immer zurückgezahlt wurden."
+    },
+    {
+      "id": "p54",
+      "lang": "en",
+      "title": "Solar power",
+      "text": "Solar panels convert sunlight into electricity with efficiencies of around twenty percent. Output varies with the weather, so grids need storage or flexible demand to use it fully."
+    },
+    {
+      "id": "p55",
+      "lang": "de",
+      "title": "REM-Schlaf",
+      "text": "Im REM-Schlaf ist das Gehirn fast so aktiv wie im Wachzustand, während die Muskeln erschlaffen. In dieser Phase treten die intensivsten Träume auf."
+    },
+    {
+      "id": "p56",
+      "lang": "en",
+      "title": "Multitasking",
+      "text": "Switching between tasks costs time and increases errors, because the mind must reload the rules for each task. Heavy media multitaskers perform worse on tests of focus than light multitaskers."
+    },
+    {
+      "id": "p57",
+      "lang": "de",
+      "title": "Stichprobenverfahren",
+      "text": "Bei einer Zufallsstichprobe hat jede Person der Grundgesamtheit die gleiche Chance, ausgewählt zu werden. Online-Umfragen ohne Zufallsauswahl bilden die Bevölkerung häufig verzerrt ab."
+    },
+    {
+      "id": "p58",
+      "lang": "en",
+      "title": "Visual illusions",
+      "text": "Optical illusions such as the Müller-Lyer figure show that perception is constructed by the brain from context, not a direct copy of the retinal image."
+    },
+    {
+      "id": "p59",
+      "lang": "de",
+      "title": "Archivrecherche",
+      "text": "Wer in Archiven arbeitet, sucht zuerst in Findbüchern nach Beständen und bestellt Akten zur Einsicht. Viele Archive erlauben inzwischen Fotografien der Dokumente für die private Forschung."
+    },
+    {
+      "id": "p60",
+      "lang": "en",
+      "title": "Reference managers",
+      "text": "Reference managers store bibliographic records, attach PDFs and format citations in a chosen style. Many researchers also use them to share a library with co-authors."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q01",
+      "lang": "de",
+      "kind": "lexical",
+      "q": "Luhmann Kommunikation Systemgrenze",
+      "expect": "p01"
+    },
+    {
+      "id": "q02",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Warum lassen sich psychologische Studien oft nicht wiederholen?",
+      "expect": "p03"
+    },
+    {
+      "id": "q03",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Wie funktioniert ein Notizsystem mit Querverweisen?",
+      "expect": "p05"
+    },
+    {
+      "id": "q04",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Warum haben wir in der modernen Gesellschaft immer weniger Zeit?",
+      "expect": "p07"
+    },
+    {
+      "id": "q05",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Schwellenwerte im Klimasystem, nach denen es kein Zurück gibt",
+      "expect": "p09"
+    },
+    {
+      "id": "q06",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Welche Auswirkungen hat ein gesetzlicher Mindestverdienst auf Jobs?",
+      "expect": "p13"
+    },
+    {
+      "id": "q07",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Was bedeutet ein Wort laut dem späten Wittgenstein?",
+      "expect": "p15"
+    },
+    {
+      "id": "q08",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Warum erinnert man sich besser, wenn man nach dem Lernen schläft?",
+      "expect": "p19"
+    },
+    {
+      "id": "q09",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Algorithmen, die nur bestätigende Inhalte anzeigen",
+      "expect": "p21"
+    },
+    {
+      "id": "q10",
+      "lang": "de",
+      "kind": "paraphrase",
+      "q": "Befragungen mit anschließenden Gesprächen kombinieren",
+      "expect": "p23"
+    },
+    {
+      "id": "q11",
+      "lang": "en",
+      "kind": "lexical",
+      "q": "guide RNA nuclease DNA sequence",
+      "expect": "p10"
+    },
+    {
+      "id": "q12",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "why do cities get hotter than rural areas",
+      "expect": "p08"
+    },
+    {
+      "id": "q13",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "how does a model weigh every word against all other words in a sentence",
+      "expect": "p04"
+    },
+    {
+      "id": "q14",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "expectations about future prices and wage demands",
+      "expect": "p12"
+    },
+    {
+      "id": "q15",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "is it morally permitted to make a false promise",
+      "expect": "p14"
+    },
+    {
+      "id": "q16",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "battery degradation after many charge cycles",
+      "expect": "p18"
+    },
+    {
+      "id": "q17",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "free to read journal articles and who pays for them",
+      "expect": "p22"
+    },
+    {
+      "id": "q18",
+      "lang": "en",
+      "kind": "paraphrase",
+      "q": "what does a significant p-value actually mean",
+      "expect": "p36"
+    },
+    {
+      "id": "q19",
+      "lang": "en",
+      "kind": "cross",
+      "q": "children learning to speak without being taught",
+      "expect": "p30"
+    },
+    {
+      "id": "q20",
+      "lang": "en",
+      "kind": "cross",
+      "q": "medieval merchant league around the Baltic",
+      "expect": "p17"
+    }
+  ]
+}
