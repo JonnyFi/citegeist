@@ -1,4 +1,5 @@
 import {
+  Block,
   CardBody,
   CardFrontmatter,
   CardKind,
@@ -11,6 +12,7 @@ import {
   Link,
   Locator,
   NoteFrontmatter,
+  Pages,
   ProjectFrontmatter,
   ProjectSlug,
   Relation,
@@ -41,6 +43,9 @@ const ItemSummary = z.object({
   type: z.string(),
   status: z.string(),
   inbox: z.boolean(),
+  /** Who added an inbox item and why (D7). */
+  inboxBy: z.string().optional(),
+  inboxWhy: z.string().optional(),
 });
 
 // Library -----------------------------------------------------------------------------------------
@@ -55,6 +60,10 @@ export const libraryStatus = defineContract({
     cards: z.number(),
     notes: z.number(),
     problems: z.array(z.object({ path: z.string(), code: z.string(), message: z.string() })),
+    /** Library defaults from citegeist.json, e.g. the AI language used when nothing overrides it. */
+    defaults: z
+      .object({ ai_language: z.string(), style: z.string(), locale: z.string() })
+      .optional(),
   }),
 });
 export const libraryReindex = defineContract({
@@ -173,6 +182,22 @@ export const documentsConfirmPages = defineContract({
     labels: z.record(z.string(), z.string()).optional(),
   }),
   output: z.object({ cardsUpdated: z.number() }),
+});
+
+export const documentsAssets = defineContract({
+  name: "documents.assets",
+  summary: "Everything the reader needs for one source: PDF URL, reader HTML, blocks and pages",
+  access: "read",
+  input: ItemRef.extend({ source: z.string().optional() }),
+  output: z.object({
+    source: z.string(),
+    kind: z.string(),
+    /** Path on the core's HTTP server, e.g. /files/<citekey>/sources/<hash>.pdf; needs the session token. */
+    pdfUrl: z.string().optional(),
+    html: z.string().optional(),
+    blocks: z.array(Block).default([]),
+    pages: Pages.optional(),
+  }),
 });
 
 // Cards ---------------------------------------------------------------------------------------------
@@ -474,7 +499,17 @@ export const settingsUpdate = defineContract({
   summary: "Change routing, contact address or UI language; API keys go to the Keychain",
   access: "admin",
   input: z.object({
-    patch: Settings.partial(),
+    // Explicit optional fields: Settings.partial() would re-apply defaults and reset uiLanguage.
+    patch: z.object({
+      ai: z
+        .object({
+          routing: z.record(z.string(), z.string()),
+          apiKeys: z.record(z.string(), z.boolean()).optional(),
+        })
+        .optional(),
+      mailto: z.string().optional(),
+      uiLanguage: z.enum(["de", "en"]).optional(),
+    }),
     apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
   }),
   output: z.object({ settings: Settings }),
@@ -512,6 +547,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   documentsRead,
   documentsConvert,
   documentsConfirmPages,
+  documentsAssets,
   cardsCreate,
   cardsUpdate,
   cardsList,
