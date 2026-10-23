@@ -1,9 +1,8 @@
 name: CI
 
+# Manual only: the gate is the local pre-push hook (pnpm verify), so no Actions minutes are used.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   verify:
