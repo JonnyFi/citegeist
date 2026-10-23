@@ -1,4 +1,4 @@
-import { type Dirent, readdirSync, readFileSync, statSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { type Classified, classify, type FileKind, SKIPPED_DIRS } from "./classify.js";
 import { sha256Hex } from "./hash.js";
@@ -40,7 +40,7 @@ export class Indexer {
 
   /** Reads `rel` (or uses `content`) and brings the index in line with it. */
   indexFile(rel: string, content?: Buffer): IndexResult {
-    const c = classify(rel);
+    const c = classify(rel, (o) => existsSync(join(this.root, ...o.split("/"))));
     if (!c) return { rel, status: "ignored" };
     const abs = join(this.root, ...rel.split("/"));
 

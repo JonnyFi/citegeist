@@ -337,7 +337,7 @@ export class Library extends EventEmitter {
 
   /** Reads and validates one indexed file from disk (the folder is the source of truth). */
   readParsed(rel: string): Parsed {
-    const c = classify(rel);
+    const c = classify(rel, (o) => existsSync(join(this.root, ...o.split("/"))));
     if (!c || c.kind === "conflict" || c.kind === "placeholder") {
       throw problem("INTERNAL", `${rel} is not a library file`, "Report this as a bug.");
     }

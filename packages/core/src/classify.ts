@@ -45,11 +45,15 @@ function classifyKnown(rel: string): Classified | null {
 }
 
 /** Classifies a root-relative path with forward slashes. Null means: not an indexed file. */
-export function classify(rel: string): Classified | null {
+export function classify(
+  rel: string,
+  originalExists: (originalRel: string) => boolean = () => true,
+): Classified | null {
   const c = CONFLICT.exec(rel);
   if (c) {
     const original = `${c[1] ?? ""}${c[2] ?? ""}${c[4] ?? ""}`;
-    if (classifyKnown(original)) return { kind: "conflict", original };
+    // "Kapitel 2.md" is only a conflict copy if "Kapitel.md" exists next to it.
+    if (classifyKnown(original) && originalExists(original)) return { kind: "conflict", original };
   }
   const known = classifyKnown(rel);
   if (known) return known;
