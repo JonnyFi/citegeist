@@ -11,6 +11,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@citegeist/ai": "workspace:*",
+    "@citegeist/anchoring": "workspace:*",
+    "@citegeist/cite": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
     "@orama/stemmers": "^3.1.18",

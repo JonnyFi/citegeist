@@ -138,6 +138,15 @@ importers:
 
   packages/core:
     dependencies:
+      '@citegeist/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@citegeist/anchoring':
+        specifier: workspace:*
+        version: link:../anchoring
+      '@citegeist/cite':
+        specifier: workspace:*
+        version: link:../cite
       '@citegeist/ops':
         specifier: workspace:*
         version: link:../ops
