@@ -144,7 +144,7 @@ export function QuickInsertPalette({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: key handling for the whole palette, the focus stays in the input
     <div
-      className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-2xl"
+      className="flex h-full flex-col overflow-hidden border border-line bg-surface text-ink"
       onKeyDown={onKeyDown}
     >
       <div className="flex items-center gap-2 border-b border-line px-3">
@@ -210,7 +210,7 @@ export function QuickInsertPalette({
           {notice.kind === "no-permission" ? (
             <button
               type="button"
-              className="shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-xs"
+              className="shrink-0 border border-line bg-surface px-2 py-1 text-xs"
               onClick={() => {
                 clearCloseTimer();
                 bridge.requestAccessibility();
@@ -260,7 +260,7 @@ function ResultRow({
       data-testid="palette-result"
       onMouseMove={onHover}
       onClick={(e) => onChoose(e.shiftKey ? "indirect" : "direct")}
-      className={cn("cursor-pointer rounded-lg px-2.5 py-2", selected && "bg-accent-soft")}
+      className={cn("cursor-pointer px-2.5 py-2", selected && "bg-accent-soft")}
     >
       <p className="line-clamp-3 font-serif text-[14.5px] leading-snug">{result.card.body.quote}</p>
       <p className="mt-1 flex items-baseline gap-2 text-xs text-muted">

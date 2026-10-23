@@ -24,11 +24,7 @@ export function CardList({
         const { frontmatter: fm, body } = card;
         const locator = locatorText(i18n, fm.locator);
         return (
-          <li
-            key={fm.id}
-            data-testid="card"
-            className="rounded-lg border border-line bg-surface p-4"
-          >
+          <li key={fm.id} data-testid="card" className="border border-line bg-surface p-4">
             <div className="mb-2 flex items-center gap-2">
               <Badge tone="accent">{t(`kind.${fm.kind}`)}</Badge>
               {locator ? <span className="text-xs text-muted">{locator}</span> : null}

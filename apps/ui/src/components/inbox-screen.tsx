@@ -146,9 +146,7 @@ export function InboxScreen() {
                           {t("inbox.addedBy", { who: actorLabel(i18n, inbox.by) })}
                         </Badge>
                         {inbox.why ? (
-                          <p className="rounded-md bg-accent-soft px-2.5 py-1 text-accent">
-                            {inbox.why}
-                          </p>
+                          <p className="bg-accent-soft px-2.5 py-1 text-accent">{inbox.why}</p>
                         ) : null}
                       </div>
                     ) : null}

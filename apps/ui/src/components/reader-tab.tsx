@@ -268,7 +268,7 @@ function ReaderLoaded({
       {create.error ? (
         <p
           role="alert"
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-danger px-3 py-2 text-white"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-danger px-3 py-2 text-white"
         >
           {describeError(create.error).message}
         </p>

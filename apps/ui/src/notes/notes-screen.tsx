@@ -44,7 +44,7 @@ function NotesList({ activeId }: { activeId: string | undefined }) {
                   params={{ id: note.id }}
                   data-testid="note-row"
                   aria-current={note.id === activeId ? "page" : undefined}
-                  className="block truncate rounded-md px-2.5 py-1.5 text-muted hover:bg-sunken hover:text-ink aria-[current=page]:bg-sunken aria-[current=page]:font-medium aria-[current=page]:text-ink"
+                  className="block truncate px-2.5 py-1.5 text-muted hover:bg-sunken hover:text-ink aria-[current=page]:bg-sunken aria-[current=page]:font-medium aria-[current=page]:text-ink"
                 >
                   {note.title}
                 </Link>

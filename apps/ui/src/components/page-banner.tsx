@@ -43,14 +43,14 @@ export function PageBanner({ citekey, pages }: { citekey: string; pages: Pages }
             setPdfPage(Math.min(Math.max(Number(e.target.value) || 1, 1), pages.pages.length));
             setPrinted(null);
           }}
-          className="h-7 w-16 rounded-md border border-line bg-surface px-2"
+          className="h-7 w-16 border border-line bg-surface px-2"
         />
         <label htmlFor={printedId}>{t("pages.printedPage")}</label>
         <input
           id={printedId}
           value={shown}
           onChange={(e) => setPrinted(e.target.value)}
-          className="h-7 w-20 rounded-md border border-line bg-surface px-2"
+          className="h-7 w-20 border border-line bg-surface px-2"
         />
       </span>
       <Button

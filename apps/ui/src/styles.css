@@ -182,6 +182,16 @@ body {
   box-shadow: 0 0 0 2px var(--line-soft);
 }
 
+/* Icons: Lucide at 20px with a 1.5 stroke, never filled. */
+svg.lucide {
+  stroke-width: 1.5;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ink);
+}
+
 /* Uppercase micro labels for panel heads, table heads, card kinds. */
 .label {
   font-size: 11px;
@@ -210,23 +220,42 @@ body {
 .cg-reader {
   background: var(--bg);
 }
+/* The reader toolbar is the 44px sub bar of the reading tab: tabs left, language and view right. */
 .cg-toolbar {
-  background: var(--surface);
+  box-sizing: border-box;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0 32px;
+  gap: 16px;
+  background: var(--bg);
   color: var(--ink);
   border-bottom: 1px solid var(--line);
   font: inherit;
   font-size: 13px;
 }
-.cg-toolbar label {
-  color: var(--muted);
+.cg-toolbar-spacer {
+  display: none;
 }
-.cg-toolbar select {
+.cg-toolbar > label {
+  order: 2;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.cg-toolbar > select {
+  order: 2;
+  margin-left: -8px;
   height: 26px;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
+  font: inherit;
+  font-size: 12px;
   padding: 0 8px;
+}
+.cg-toolbar > .cg-view-switch {
+  order: 3;
 }
 .cg-reflow-body {
   color: var(--ink);
@@ -251,10 +280,20 @@ body {
   border-top: 1px solid var(--line-soft);
 }
 .cg-hl {
+  /* The reader draws one box per line. The box stays empty; the 2px underline sits 4px under it. */
   mix-blend-mode: normal;
-  background: transparent;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-  text-decoration-color: var(--cg-hl-color, var(--card-quote));
+  border-radius: 0;
+  background:
+    linear-gradient(var(--cg-hl-color, var(--card-quote)), var(--cg-hl-color, var(--card-quote)))
+    no-repeat 0 100% / 100% 2px;
+  transform: translateY(3px);
+}
+.cg-page {
+  box-shadow: none;
+  border: 1px solid var(--line-soft);
+}
+.cg-status {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
 }

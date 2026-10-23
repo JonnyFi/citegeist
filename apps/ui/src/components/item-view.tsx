@@ -136,7 +136,7 @@ export function ItemView({
             ) : null}
           </p>
           {fm.inbox?.why ? (
-            <p className="mt-3 rounded-md bg-accent-soft px-3 py-2 text-accent">
+            <p className="mt-3 bg-accent-soft px-3 py-2 text-accent">
               {t("item.suggestedBy", { who: actorLabel(i18n, fm.inbox.by), why: fm.inbox.why })}
             </p>
           ) : null}

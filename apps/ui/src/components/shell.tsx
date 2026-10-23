@@ -22,8 +22,7 @@ import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-const NAV_ITEM =
-  "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-muted hover:bg-sunken hover:text-ink";
+const NAV_ITEM = "flex items-center gap-2 px-2.5 py-1.5 text-muted hover:bg-sunken hover:text-ink";
 const NAV_ACTIVE = "bg-sunken text-ink font-medium";
 
 function SearchBar() {
@@ -196,7 +195,7 @@ export function Shell() {
                 key={p.slug}
                 to="/projects/$slug"
                 params={{ slug: p.slug }}
-                className="truncate rounded px-2 py-1 text-muted hover:text-ink"
+                className="truncate px-2 py-1 text-muted hover:text-ink"
                 activeProps={{ className: "text-ink font-medium" }}
               >
                 {p.title}

@@ -59,7 +59,7 @@ function SavedField({
         onBlur={() => {
           if (draft !== value) onSave(draft);
         }}
-        className="w-full resize-y rounded-md border border-line bg-surface p-2 font-serif text-[15px] leading-relaxed"
+        className="w-full resize-y border border-line bg-surface p-2 font-serif text-[15px] leading-relaxed"
       />
     </div>
   );
@@ -86,8 +86,8 @@ function AiText({
       </div>
       {pending && !text ? (
         <div role="status" aria-label={t("card.pending")} className="flex flex-col gap-1.5">
-          <div className="h-3.5 w-11/12 animate-pulse rounded bg-sunken" />
-          <div className="h-3.5 w-7/12 animate-pulse rounded bg-sunken" />
+          <div className="h-3.5 w-11/12 animate-pulse bg-sunken" />
+          <div className="h-3.5 w-7/12 animate-pulse bg-sunken" />
         </div>
       ) : text ? (
         <>
@@ -245,7 +245,7 @@ export function CardEditor({
           onKeyDown={(e) => {
             if (e.key === "Enter") saveTags();
           }}
-          className="h-8 w-full rounded-md border border-line bg-surface px-2.5 text-sm placeholder:text-muted"
+          className="h-8 w-full border border-line bg-surface px-2.5 text-sm placeholder:text-muted"
         />
       </div>
 

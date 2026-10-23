@@ -37,7 +37,7 @@ export function ProjectsScreen() {
               <Link
                 to="/projects/$slug"
                 params={{ slug: p.slug }}
-                className="block h-full rounded-lg border border-line bg-surface p-4 hover:border-accent"
+                className="block h-full border border-line bg-surface p-4 hover:border-accent"
               >
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="font-serif text-lg font-semibold">{p.title}</h2>
@@ -101,7 +101,7 @@ function BriefEditor({ slug, brief }: { slug: string; brief: string }) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={12}
-        className="w-full rounded-md border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed"
+        className="w-full border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed"
       />
       <div className="mt-2 flex items-center gap-2">
         <Button type="submit" variant="primary" size="sm" disabled={update.isPending}>
