@@ -1,6 +1,16 @@
 import { itemsList, projectsList, settingsUpdate } from "@citegeist/ops";
 import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FolderOpen, Inbox, Monitor, Moon, Search, Settings, Sun } from "lucide-react";
+import {
+  BookOpen,
+  FolderOpen,
+  Inbox,
+  Monitor,
+  Moon,
+  NotebookPen,
+  Search,
+  Settings,
+  Sun,
+} from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
@@ -158,6 +168,10 @@ export function Shell() {
             {inboxCount > 0 ? (
               <span className="ml-auto text-xs tabular-nums text-accent">{inboxCount}</span>
             ) : null}
+          </Link>
+          <Link to="/notes" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
+            <NotebookPen className="size-4" />
+            {t("nav.notes")}
           </Link>
           <Link
             to="/projects"

@@ -12,6 +12,7 @@ import { type ItemFilters, ItemsScreen } from "./components/items-screen";
 import { ProjectsScreen, ProjectView } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
+import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SettingsScreen } from "./routes/settings";
 
 const STATUSES = ["unread", "reading", "read"] as const;
@@ -97,6 +98,27 @@ const projectRoute = createRoute({
   },
 });
 
+const notesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/notes",
+  component: NotesLayout,
+});
+
+const notesIndexRoute = createRoute({
+  getParentRoute: () => notesRoute,
+  path: "/",
+  component: NotesIndex,
+});
+
+const noteRoute = createRoute({
+  getParentRoute: () => notesRoute,
+  path: "$id",
+  component: function NoteRoute() {
+    const { id } = noteRoute.useParams();
+    return <NoteView key={id} id={id} />;
+  },
+});
+
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
@@ -121,6 +143,7 @@ const routeTree = rootRoute.addChildren([
   itemRoute,
   projectsRoute,
   projectRoute,
+  notesRoute.addChildren([notesIndexRoute, noteRoute]),
   searchRoute,
   settingsRoute,
 ]);
