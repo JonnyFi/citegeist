@@ -20,7 +20,7 @@ export interface ClaudeCodeCliOptions {
   runner?: ProcessRunner;
   /** Executable name or path. */
   command?: string;
-  /** Exact version to require. `null` turns the check off. */
+  /** Minimum CLI version that was tested (flags such as --json-schema). `null` turns the check off. */
   pinnedVersion?: string | null;
   models?: { fast: string; smart: string };
   timeoutMs?: number;
@@ -106,7 +106,11 @@ export class ClaudeCodeCliBackend implements InferenceBackend {
       throw aiErrors.backendFailed(this.id, "preflight", `claude --version failed: ${v.stderr}`);
     }
     const found = parseClaudeVersion(v.stdout);
-    if (this.pinned && found !== this.pinned) {
+    // Claude Code updates itself often, so the pin is a minimum version, not an exact match.
+    if (
+      this.pinned &&
+      (found === undefined || found === null || compareVersions(found, this.pinned) < 0)
+    ) {
       throw aiErrors.cliVersion("claude", found ?? snippet(v.stdout, 40), this.pinned);
     }
     const a = await this.runner({ ...base, args: ["auth", "status"] });
@@ -187,4 +191,15 @@ export class ClaudeCodeCliBackend implements InferenceBackend {
       },
     });
   }
+}
+
+/** Compares dotted numeric versions; returns negative, zero or positive. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
 }

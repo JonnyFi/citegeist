@@ -169,8 +169,10 @@ describe("ClaudeCodeCliBackend", () => {
     expect(err.detail.code).toBe("AI_CLI_LOGGED_OUT");
   });
 
-  it("rejects a CLI version other than the pin", async () => {
-    const runner = fakeRunner((s) => claudeProbe(s, "2.2.0") ?? {});
+  it("rejects a CLI version below the minimum and accepts newer ones", async () => {
+    const newer = fakeRunner((s) => claudeProbe(s, "2.2.0") ?? { stdout: recorded });
+    await expect(new ClaudeCodeCliBackend({ runner: newer }).complete(req)).resolves.toBeDefined();
+    const runner = fakeRunner((s) => claudeProbe(s, "2.0.9") ?? {});
     const err = await errorOf(new ClaudeCodeCliBackend({ runner }).complete(req));
     expect(err.detail.code).toBe("AI_CLI_VERSION_MISMATCH");
     expect(err.detail.fix).toContain("2.1.307");
