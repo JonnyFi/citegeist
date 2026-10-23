@@ -1,0 +1,13 @@
+{
+  "name": "citegeist",
+  "version": "0.1.0",
+  "description": "Search, read, quote and cite sources in a citegeist research library, as a skill plus a stdio MCP server (cg mcp).",
+  "keywords": ["research", "citations", "library", "zotero", "mcp"],
+  "skills": "./skills",
+  "mcpServers": {
+    "citegeist": {
+      "command": "cg",
+      "args": ["mcp"]
+    }
+  }
+}
