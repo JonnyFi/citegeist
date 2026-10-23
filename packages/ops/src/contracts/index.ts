@@ -438,6 +438,66 @@ export const researchStart = defineContract({
   output: JobHandle,
 });
 
+// Settings and setup ----------------------------------------------------------------------------------
+const BackendStatus = z.object({
+  id: z.string(),
+  kind: z.enum(["subscription-cli", "api-key", "local"]),
+  label: z.string(),
+  available: z.boolean(),
+  detail: z.string().optional(),
+});
+export const Settings = z.object({
+  ai: z.object({
+    routing: z.record(z.string(), z.string()),
+    apiKeys: z.record(z.string(), z.boolean()).default({}),
+  }),
+  mailto: z.string().optional(),
+  uiLanguage: z.enum(["de", "en"]).default("de"),
+});
+export const settingsGet = defineContract({
+  name: "settings.get",
+  summary: "Machine-local settings, available AI backends and worker status",
+  access: "read",
+  input: z.object({}),
+  output: z.object({
+    settings: Settings,
+    backends: z.array(BackendStatus),
+    worker: z.object({
+      ready: z.boolean(),
+      engines: z.record(z.string(), z.string()),
+      detail: z.string().optional(),
+    }),
+  }),
+});
+export const settingsUpdate = defineContract({
+  name: "settings.update",
+  summary: "Change routing, contact address or UI language; API keys go to the Keychain",
+  access: "admin",
+  input: z.object({
+    patch: Settings.partial(),
+    apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
+  }),
+  output: z.object({ settings: Settings }),
+});
+export const aiTestBackend = defineContract({
+  name: "ai.testBackend",
+  summary: "Run one short paraphrase on a backend and report latency or the error",
+  access: "admin",
+  input: z.object({ backend: z.string() }),
+  output: z.object({
+    ok: z.boolean(),
+    latencyMs: z.number().optional(),
+    error: z.object({ code: z.string(), message: z.string(), fix: z.string() }).optional(),
+  }),
+});
+export const workerSetup = defineContract({
+  name: "worker.setup",
+  summary: "Install or update the Python conversion environment and models",
+  access: "admin",
+  input: z.object({ force: z.boolean().default(false) }),
+  output: JobHandle,
+});
+
 export const CONTRACTS: readonly OperationContract[] = [
   libraryStatus,
   libraryReindex,
@@ -473,4 +533,8 @@ export const CONTRACTS: readonly OperationContract[] = [
   jobsGet,
   jobsList,
   researchStart,
+  settingsGet,
+  settingsUpdate,
+  aiTestBackend,
+  workerSetup,
 ];
