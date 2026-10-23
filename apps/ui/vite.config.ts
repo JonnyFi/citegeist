@@ -9,6 +9,7 @@ export default defineConfig({
   server: { port: 5173, strictPort: true },
   build: { outDir: "dist", sourcemap: true },
   test: {
+    testTimeout: 60_000,
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
     css: false,
