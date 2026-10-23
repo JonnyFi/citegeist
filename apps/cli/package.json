@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@citegeist/core": "workspace:*",
     "@citegeist/mcp": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",

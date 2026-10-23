@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@citegeist/ai": "workspace:*",
+    "@citegeist/anchoring": "workspace:*",
     "@citegeist/cite": "workspace:*",
     "@citegeist/metadata": "workspace:*",
     "@citegeist/ops": "workspace:*",

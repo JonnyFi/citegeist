@@ -29,6 +29,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@citegeist/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@citegeist/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
@@ -257,6 +260,12 @@ importers:
 
   packages/core:
     dependencies:
+      '@citegeist/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@citegeist/anchoring':
+        specifier: workspace:*
+        version: link:../anchoring
       '@citegeist/cite':
         specifier: workspace:*
         version: link:../cite
