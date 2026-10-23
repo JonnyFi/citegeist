@@ -1,0 +1,103 @@
+{
+  "duration_api_ms": 3153,
+  "stop_reason": "tool_use",
+  "session_id": "redacted",
+  "total_cost_usd": 0.0004335,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 753,
+    "cache_read_input_tokens": 750,
+    "output_tokens": 268,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 753,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 268,
+        "cache_read_input_tokens": 750,
+        "cache_creation_input_tokens": 753,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 753
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "modelUsage": {
+    "claude-haiku-5-5": {
+      "inputTokens": 1309,
+      "outputTokens": 289,
+      "cacheReadInputTokens": 750,
+      "cacheCreationInputTokens": 753,
+      "webSearchRequests": 0,
+      "costUSD": 0.0004335,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "safety_stops": 0,
+  "is_error": false,
+  "num_turns": 2,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "{\"paraphrase\":\"Response rates dropped over the course of the 14 panel waves, from 61 percent in the first to 38 percent in the last. The dropout was selective: lower-income and less formally educated respondents tended to leave sooner, which may push mobility estimates upward. The authors apply inverse probability weights to adjust, but those weights only use observed characteristics, so they cannot fix dropout caused by unobserved factors.\",\"core\":\"Attrition across the 14 panel waves was non-random, with lower-income and less-educated respondents leaving earlier, and the inverse probability weights used to correct it can only account for observed characteristics.\"}",
+  "structured_output": {
+    "paraphrase": "Response rates dropped over the course of the 14 panel waves, from 61 percent in the first to 38 percent in the last. The dropout was selective: lower-income and less formally educated respondents tended to leave sooner, which may push mobility estimates upward. The authors apply inverse probability weights to adjust, but those weights only use observed characteristics, so they cannot fix dropout caused by unobserved factors.",
+    "core": "Attrition across the 14 panel waves was non-random, with lower-income and less-educated respondents leaving earlier, and the inverse probability weights used to correct it can only account for observed characteristics."
+  },
+  "ttft_ms": 2362,
+  "type": "result",
+  "duration_ms": 2370,
+  "uuid": "redacted",
+  "ttft_stream_ms": 1225,
+  "time_to_request_ms": 18,
+  "first_content_frame_ms": 1225,
+  "queued_turn_count": 0,
+  "result_index": 0
+}
