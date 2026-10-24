@@ -9,6 +9,7 @@ import {
   documentsConfirmPages,
   inboxAccept,
   inboxReject,
+  itemsAdd,
   itemsGet,
   itemsList,
   itemsUpdate,
@@ -20,16 +21,13 @@ import {
   Registry,
   searchQuery,
 } from "@citegeist/ops";
-import {
-  CardFrontmatter,
-  type ItemFrontmatter,
-  type Job,
-  ProjectFrontmatter,
-} from "@citegeist/schema";
+import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
 import { bindChatMock } from "../chat/mock";
 import { bindConnectionsMock } from "../connections/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
+import { classifyIdentifier } from "../lib/identifier";
 import { bindNotesMock } from "../notes/mock";
+import { bindPlanningMock } from "../planning/mock";
 import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
 import { createFixtures, type MockData } from "./fixtures";
 
@@ -235,6 +233,62 @@ export function createMockRegistry(
         items: page.map(summary),
         ...(all.length > input.limit && last ? { next: last.citekey } : {}),
       };
+    })
+    .bind(itemsAdd, async (_ctx, input) => {
+      const { kind, value } = classifyIdentifier(input.identifier);
+      if (kind === "unknown") {
+        throw new Error(
+          `UNRECOGNIZED_IDENTIFIER: '${input.identifier}' is no DOI, arXiv id, ISBN, PMID, URL or file path`,
+        );
+      }
+      const doi = kind === "doi" ? value.replace(/^.*?(10\.)/i, "$1").toLowerCase() : undefined;
+      const duplicate = [...data.items.values()].find((i) =>
+        doi ? i.frontmatter.DOI?.toLowerCase() === doi : i.frontmatter.URL === value,
+      );
+      const stamp = new Date().toISOString();
+      const job: MockJob = {
+        id: randomId("j_"),
+        status: "running",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      jobs.set(job.id, job);
+      setTimeout(() => {
+        job.status = "succeeded";
+        job.updatedAt = new Date().toISOString();
+      }, aiDelayMs);
+      if (duplicate) {
+        const key = duplicate.frontmatter.citekey;
+        return { citekey: key, job: job.id, duplicateOf: key };
+      }
+      const stem = value
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/\.pdf$/i, "")
+        .replace(/[^a-z0-9]+/gi, "")
+        .toLowerCase();
+      let citekey = `${kind}${(doi ?? stem ?? "").replace(/[^a-z0-9]+/g, "").slice(-12)}`;
+      for (let n = 2; data.items.has(citekey); n++) citekey = `${citekey}${n}`;
+      data.items.set(citekey, {
+        note: "",
+        frontmatter: ItemFrontmatter.parse({
+          id: randomId(""),
+          citekey,
+          type: kind === "isbn" ? "book" : "article",
+          title: kind === "path" ? (stem ?? value) : `Quelle ${value}`,
+          ...(doi ? { DOI: doi } : {}),
+          ...(kind === "url" ? { URL: value } : {}),
+          tags: input.tags,
+          projects: input.projects,
+          status: "unread",
+          created: { at: stamp, by: "human" },
+          ...(input.target === "inbox"
+            ? { inbox: { by: "human", ...(input.why ? { why: input.why } : {}) } }
+            : {}),
+        }),
+      });
+      changed(`items/${citekey}/${citekey}.md`);
+      return { citekey, job: job.id };
     })
     .bind(itemsGet, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
@@ -560,6 +614,7 @@ export function createMockRegistry(
   // The browser preview has a working backend and worker, so it never asks for the setup.
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
   bindNotesMock(registry, data, emit);
+  bindPlanningMock(registry, data, emit);
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
   bindChatMock(registry, data, emit, {
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),

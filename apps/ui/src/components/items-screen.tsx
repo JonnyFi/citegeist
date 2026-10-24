@@ -2,6 +2,7 @@ import { projectsList } from "@citegeist/ops";
 import { BookOpen } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
+import { AddField } from "./add-field";
 import { ItemsTable } from "./items-table";
 import { HeaderSlot, SubBar } from "./layout";
 import { Button } from "./ui/button";
@@ -43,6 +44,8 @@ export function ItemsScreen({
             {tn("items.count", items.length)}
           </span>
         ) : null}
+        <span className="flex-1" />
+        <AddField project={filters.project} />
       </HeaderSlot>
       <SubBar className="items-center">
         <div className="flex items-center gap-5 text-[12px]">

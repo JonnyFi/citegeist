@@ -38,6 +38,11 @@ export interface CitegeistBridge {
   onNavigate(listener: (path: string) => void): () => void;
   /** Settings of the quick-insert palette. Absent where there is no palette. */
   quickInsert?: QuickInsertSettingsBridge;
+  /**
+   * Absolute path of a file dropped onto the window (Electron's `webUtils.getPathForFile`). The
+   * renderer cannot read it from the `File`; items.add takes the path.
+   */
+  pathForFile?(file: File): string;
   platform: string;
 }
 
