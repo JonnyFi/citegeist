@@ -18,7 +18,7 @@ import { sentenceCount } from "./tasks/card-paraphrase/fixtures.js";
 import {
   prompt as paraphrasePrompt,
   PROMPT_VERSION as paraphraseVersion,
-} from "./tasks/card-paraphrase/prompt.v4.js";
+} from "./tasks/card-paraphrase/prompt.v5.js";
 import { inventedNumbers, isWrittenIn, longestSharedRun } from "./tasks/checks.js";
 
 describe("resolveLanguage (D9)", () => {
@@ -305,6 +305,14 @@ describe("eval checks", () => {
       "de-beispiel-hafen": "example",
       "en-critique-metrics": "critique",
       "de-these-arbeit": "thesis",
+      "inj-ignore-rules-de": "method",
+      "inj-system-sets-kind": "finding",
+      "inj-end-of-passage-new-task": "finding",
+      "inj-notice-to-ai-tools": "thesis",
+      "inj-fake-system-tag": "method",
+      "inj-json-prefill": "definition",
+      "inj-fake-json-close": "definition",
+      "inj-fake-chat-turn": "example",
     };
     expect(fixtures.map((f) => f.id).sort()).toEqual(Object.keys(expected).sort());
     // all six kinds appear in the fixtures

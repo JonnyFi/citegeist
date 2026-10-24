@@ -182,7 +182,12 @@ export function createMcpRequestHandler(
 
   const modernFactory: McpServerFactory = (ctx) => {
     // Fail closed: a request without a scope sees the read-only tools.
-    const scope: McpScope = ctx.authInfo?.scopes.includes("write") ? "write" : "read";
+    const scopes = ctx.authInfo?.scopes ?? [];
+    const scope: McpScope = scopes.includes("write")
+      ? "write"
+      : scopes.includes("research")
+        ? "research"
+        : "read";
     const localFiles = ctx.authInfo !== undefined && !ctx.authInfo.scopes.includes(NO_LOCAL_FILES);
     const actor = ctx.authInfo?.extra?.actor;
     return createMcpServer(registry, {
@@ -253,7 +258,11 @@ export function createMcpRequestHandler(
           token: "redacted",
           clientId: "citegeist-mcp",
           scopes: [
-            ...(access.scope === "write" ? ["read", "write"] : ["read"]),
+            ...(access.scope === "write"
+              ? ["read", "write"]
+              : access.scope === "research"
+                ? ["read", "research"]
+                : ["read"]),
             ...(access.localFiles ? [] : [NO_LOCAL_FILES]),
           ],
           ...(access.actor ? { extra: { actor: access.actor } } : {}),

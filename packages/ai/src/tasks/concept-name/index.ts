@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTask } from "../types.js";
 import { conceptNameFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v1.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v2.js";
 
 export const ConceptNameInput = z.object({
   /** The verbatim quote of a card of kind definition. */

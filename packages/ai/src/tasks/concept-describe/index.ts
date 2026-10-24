@@ -4,7 +4,7 @@ import { normRef } from "../matrix-fill-cell/index.js";
 import { verifyQuote } from "../matrix-fill-cell/verify.js";
 import { defineTask } from "../types.js";
 import { conceptDescribeFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v1.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v2.js";
 
 export const ConceptPassage = z.object({
   /** Card id (`c_01JB...`). The only values `evidence.ref` may take. */

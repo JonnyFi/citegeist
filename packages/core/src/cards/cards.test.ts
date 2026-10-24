@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { AiRouter, MockBackend } from "@citegeist/ai";
+import { AiRouter, MockBackend, mark } from "@citegeist/ai";
 import { exportCards } from "@citegeist/cite";
 import { Registry } from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
@@ -237,7 +237,7 @@ describe("language", () => {
     cards.create("human", { citekey: CITEKEY, anchor: pdfAnchor(0), quote, language: "en" });
     await cards.detached?.idle();
     expect(mock.calls.at(-1)?.language).toBe("en");
-    expect(mock.calls.at(-1)?.prompt).toContain(quote);
+    expect(mock.calls.at(-1)?.prompt).toContain(mark(quote));
   });
 
   it("regenerates in another language and keeps the note and a kind the reader set", async () => {

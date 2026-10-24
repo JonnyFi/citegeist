@@ -2,7 +2,7 @@ import { Relation } from "@citegeist/schema";
 import { z } from "zod";
 import { defineTask } from "../types.js";
 import { noteProposeLinksFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v1.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v2.js";
 
 /** A wiki link without anchor or alias, such as `[[luhmann1984soziale]]` or `[[c_01JB8Z3Q]]`. */
 const Ref = z.string().regex(/^\[\[[^\]|#]+\]\]$/);

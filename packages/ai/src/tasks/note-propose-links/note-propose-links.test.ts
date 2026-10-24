@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockBackend } from "../../backends/mock.js";
+import { mark } from "../../untrusted.js";
 import { runTask, TASKS } from "../registry.js";
 import {
   type NoteProposeLinksInput,
@@ -43,6 +44,21 @@ const GOOD: Record<string, NoteProposeLinksOutput> = {
       },
     ],
   },
+  "inj-note-and-summary": {
+    proposals: [
+      {
+        to: "[[mayring2015qualitative]]",
+        rel: "uses-method-of",
+        why: "The note codes the interviews with the scheme described in this book.",
+      },
+      {
+        to: "[[kessler2019aging]]",
+        rel: "qualifies",
+        why: "The sample is limited to active seniors, which narrows what the findings are valid for.",
+        evidence: "[[c_01JB8Z3Q0003]]",
+      },
+    ],
+  },
   "de-skips-existing-link": {
     proposals: [
       {
@@ -55,8 +71,8 @@ const GOOD: Record<string, NoteProposeLinksOutput> = {
 };
 
 describe("note.proposeLinks task", () => {
-  it("ships three fixtures whose checks pass a good answer", () => {
-    expect(task.fixtures).toHaveLength(3);
+  it("ships four fixtures whose checks pass a good answer", () => {
+    expect(task.fixtures).toHaveLength(4);
     for (const f of task.fixtures) {
       expect(f.check(GOOD[f.id] as NoteProposeLinksOutput, f.input), f.id).toEqual([]);
     }
@@ -118,10 +134,10 @@ describe("note.proposeLinks task", () => {
     const mock = new MockBackend({ "note.proposeLinks": GOOD[f.id] });
     const res = await runTask(mock, "note.proposeLinks", f.input, { language: "de" });
     expect(res.output.proposals).toHaveLength(2);
-    expect(res.promptVersion).toBe(1);
+    expect(res.promptVersion).toBe(2);
     expect(res.stamp.language).toBe("de");
     const call = mock.calls[0];
-    expect(call?.prompt).toContain("Soziale Systeme reproduzieren sich");
+    expect(call?.prompt).toContain(mark("Soziale Systeme reproduzieren sich"));
     expect(call?.prompt).toContain("ref: [[maturana1980autopoiesis]]");
     expect(call?.prompt).toContain("ref: [[c_01JB8Z3Q0002]]");
     expect(call?.system).toContain("Never invent a citekey");

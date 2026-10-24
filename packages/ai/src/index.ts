@@ -98,3 +98,4 @@ export type {
   ModelClass,
   SessionRequest,
 } from "./types.js";
+export { DATAMARK, mark, unmark, untrustedRules } from "./untrusted.js";
