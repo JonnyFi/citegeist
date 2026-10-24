@@ -1,0 +1,46 @@
+# Known deviations from the MCP conformance suite on the 2025 wire (stateful sessions).
+# citegeist exposes only its own operations as tools. It has no resources, prompts, logging,
+# completions, sampling or elicitation, and the suite's reference fixture (test_simple_text and
+# friends) is not part of it. Each scenario below needs that fixture, so it fails by design.
+server:
+  # Needs the tool test_simple_text, which citegeist does not have.
+  - tools-call-simple-text
+  # Needs the tool test_image_content, which citegeist does not have.
+  - tools-call-image
+  # Needs the tool test_audio_content, which citegeist does not have.
+  - tools-call-audio
+  # Needs the tool test_embedded_resource, which citegeist does not have.
+  - tools-call-embedded-resource
+  # Needs the tool test_multiple_content_types, which citegeist does not have.
+  - tools-call-mixed-content
+  # Needs the tool test_tool_with_logging, which citegeist does not have.
+  - tools-call-with-logging
+  # Needs the tool test_error_handling, which citegeist does not have.
+  - tools-call-error
+  # Needs the tool test_tool_with_progress, which citegeist does not have.
+  - tools-call-with-progress
+  # Needs the tool test_sampling, and citegeist never asks the client to run a model.
+  - tools-call-sampling
+  # Needs the tool test_elicitation, and citegeist never asks the client for input.
+  - tools-call-elicitation
+  # Needs the tool test_elicitation_sep1034_defaults, which citegeist does not have.
+  - elicitation-sep1034-defaults
+  # Needs the tool test_elicitation_sep1330_enums, which citegeist does not have.
+  - elicitation-sep1330-enums
+  # citegeist declares no logging capability.
+  - logging-set-level
+  # citegeist declares no completions capability.
+  - completion-complete
+  # citegeist declares no resources capability.
+  - resources-list
+  - resources-read-text
+  - resources-read-binary
+  - resources-templates-read
+  - resources-subscribe
+  - resources-unsubscribe
+  # citegeist declares no prompts capability.
+  - prompts-list
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-embedded-resource
+  - prompts-get-with-image
