@@ -18,6 +18,7 @@ import type { Library } from "./library.js";
 import { bindLinkOperations } from "./links/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
+import { bindPlanningOperations } from "./planning/index.js";
 import {
   type AttachSemanticOptions,
   type ModelEmbedder,
@@ -149,6 +150,9 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     search: async (input) => (semantic ? semantic.search(input) : lib.search(input)),
   });
   bindNoteOperations(registry, lib);
+  bindPlanningOperations(registry, lib, {
+    rank: async (query, texts) => semantic?.rank(query, texts),
+  });
   const worker = opts.worker ?? defaultWorker();
   const localBase = opts.settings?.localBase ?? dirname(lib.local.dir);
   const workerSource = opts.settings?.workerSource ?? join(repoRoot(), "workers", "convert");

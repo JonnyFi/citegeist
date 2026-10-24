@@ -71,6 +71,23 @@ export class SemanticController {
     return status;
   }
 
+  /**
+   * Cosine similarity of each text to the query, or undefined when no model is ready. Used by the
+   * planning tools to rank insights after their link stage.
+   */
+  async rank(query: string, texts: string[]): Promise<number[] | undefined> {
+    const e = this.state === "ready" ? this.embedder : undefined;
+    if (!e || texts.length === 0) return undefined;
+    const [q, docs] = await Promise.all([e.embedQuery(query), e.embedDocuments(texts)]);
+    const norm = (v: Float32Array) => Math.sqrt(v.reduce((a, x) => a + x * x, 0)) || 1;
+    const nq = norm(q);
+    return docs.map((d) => {
+      let dot = 0;
+      for (let i = 0; i < d.length; i++) dot += (d[i] ?? 0) * (q[i] ?? 0);
+      return dot / (norm(d) * nq);
+    });
+  }
+
   /** Hybrid search when the model is ready, full-text search otherwise. */
   async search(input: SearchInput, signal?: AbortSignal): Promise<SearchHit[]> {
     if (this.attached) return this.attached.semantic.search(input, signal);
