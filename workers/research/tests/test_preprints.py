@@ -13,7 +13,7 @@ from conftest import FIXTURES, SCRIPTS
 def test_list_json_collects_the_preprints_of_runs_and_imports(library_dir):
     # protects: the app's preprint tab sees every preprint of every run plus imported references, with their origins
     # fails_when: a run's preprint is missed, a peer-reviewed paper is tracked, or an import is not merged
-    # no_claim: no network; the published check (OpenAlex, Crossref, DataCite) is not exercised
+    # no_claim: no network; the OpenReview lookup is not exercised, and the published check lives in the core
     runs = library_dir / "runs"
     runs.mkdir()
     shutil.copytree(os.path.join(FIXTURES, "run-sample"), runs / "run-sample")
@@ -31,8 +31,8 @@ def test_list_json_collects_the_preprints_of_runs_and_imports(library_dir):
     by_id = {it["id"]: it for it in out["items"]}
     assert set(by_id) == {"arxiv:2601.01234", "arxiv:2602.00001"}
     assert sorted(by_id["arxiv:2601.01234"]["origins"]) == ["import:refs.bib", "run:run-sample"]
-    assert by_id["arxiv:2602.00001"]["status"] == "preprint"
-    assert out["last_check"] is None
+    # whether a preprint is published is the core's business: the list carries no verdict
+    assert not {"status", "published", "hints", "last_checked"} & set(by_id["arxiv:2602.00001"])
 
 
 def _write_run(runs, name, arxiv):

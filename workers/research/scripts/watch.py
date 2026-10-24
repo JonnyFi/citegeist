@@ -390,15 +390,16 @@ def run_watch(wid, scheduled=False):
         record(wid, run_id, status, notify_user=True)
     finally:
         update(wid, running_pid=None, running_host=None)
-    # preprint tracking rides along with every weekly run
+    # preprint tracking rides along with every weekly run: the list and the OpenReview status. Whether
+    # a preprint has been published is decided by the core (graph/versions.ts) while the app is open.
     try:
         preprints.sync_from_runs(RUNS_DIR)
-        found = preprints.check()
+        found = preprints.check_openreview()
         for item in found:
-            log("preprint published: " + preprints.report(item))
+            log("preprint accepted: " + preprints.report(item))
         if found:
             notify("citegeist", preprints.report(found[0]) if len(found) == 1 else
-                   f"{len(found)} Preprints sind jetzt erschienen oder angenommen", subtitle="Preprint-Tracking")
+                   f"{len(found)} Preprints sind jetzt angenommen", subtitle="Preprint-Tracking")
     except Exception as e:  # the watch run itself is done; do not fail it over the preprint check
         log(f"preprint check failed: {type(e).__name__}: {e}")
     return 0 if status == "done" else 1

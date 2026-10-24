@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Preprint tracking of the citegeist literature search: has a tracked preprint been published?
+"""The list of preprints the citegeist literature search tracks, and their OpenReview status.
 
 Usage:
   python3 preprints.py sync                    # collect the preprints of all runs
   python3 preprints.py import FILE [FILE ...]  # a references.bib or a Markdown reference list
-  python3 preprints.py check [--all]           # check due preprints (weekly with every watchlist run)
-  python3 preprints.py list [--json]          # --json: syncs the runs first, for the app
+  python3 preprints.py openreview [--all]      # OpenReview status of due preprints (weekly with every watchlist run)
+  python3 preprints.py list [--json]           # --json: syncs the runs first, for the app
 
-Evidence, per preprint: OpenAlex (a merged work whose DOI or locations point to a journal or
-conference, or a separate work with the same title and an author in common), Crossref
-"is-preprint-of" relations, DataCite relations for arXiv DOIs, and Semantic Scholar's venue and
-DOI. A candidate DOI counts only after it resolves at Crossref or DataCite. Without a verified
-DOI a venue is kept as a hint, not as a publication.
+This script keeps only what the core cannot know: which preprints the runs and the imported
+reference lists mention, and where an OpenReview decision stands. Whether a preprint has a
+published version is decided by the core (packages/core, graph/versions.ts), which stores the
+relation in the library graph or, for papers outside the library, in its own check cache.
 """
 
 import argparse
@@ -23,7 +22,6 @@ import json
 import os
 import re
 import sys
-import urllib.parse
 
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(SKILL_DIR, "scripts"))
@@ -31,18 +29,15 @@ import settings  # noqa: E402  (data folders; imports nothing of ours)
 
 import extra_sources  # noqa: E402
 import miniyaml  # noqa: E402
-import net  # noqa: E402
-import sources  # noqa: E402
 
 RUNS_DIR = settings.RUNS_DIR
 WATCH_DIR = settings.WATCH_DIR
 STORE = os.path.join(WATCH_DIR, "preprints.json")
-RECHECK_DAYS = 6  # a weekly run checks every unpublished preprint once
+RECHECK_DAYS = 6  # a weekly run looks every preprint up at OpenReview once
 PREPRINT_DOI_PREFIXES = ("10.48550/", "10.2139/", "10.21203/", "10.1101/", "10.20944/", "10.36227/",
                          "10.22541/", "10.31219/", "10.31234/", "10.31235/", "10.5281/", "10.6084/", "10.17605/")
 PREPRINT_VENUES = re.compile(r"arxiv|ssrn|preprint|research square|biorxiv|medrxiv|techrxiv|authorea|"
                              r"chemrxiv|openreview|zenodo|osf|figshare|social science research network", re.I)
-WORK_SELECT = "id,doi,title,publication_year,type,authorships,locations,primary_location"
 DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\"'<>{}]+", re.I)
 ARXIV_RE = re.compile(r"(?:arxiv\.org/(?:abs|pdf)/|arxiv[:\s]+|10\.48550/arxiv\.)(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?/\d{7})", re.I)
 
@@ -90,16 +85,16 @@ def dump(store):
     return json.dumps(store, sort_keys=True)
 
 
+def bare_doi(doi):
+    return re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:)", "", (doi or "").strip(), flags=re.I).lower()
+
+
 def is_preprint_doi(doi):
-    return sources.bare_doi(doi).startswith(PREPRINT_DOI_PREFIXES)
+    return bare_doi(doi).startswith(PREPRINT_DOI_PREFIXES)
 
 
 def clean_doi(doi):
-    return sources.bare_doi(doi).rstrip(".,;)]}")
-
-
-def norm_title(t):
-    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", (t or "").lower())).strip()
+    return bare_doi(doi).rstrip(".,;)]}")
 
 
 def item_id(doi, arxiv):
@@ -120,8 +115,7 @@ def add(store, *, title, doi="", arxiv="", openalex_id="", year=None, authors=()
     if new:
         item = store["items"][iid] = {"id": iid, "title": title or "", "doi": doi or (f"10.48550/arxiv.{arxiv}" if arxiv else ""),
                                       "arxiv_id": arxiv, "openalex_id": openalex_id, "year": year,
-                                      "authors": list(authors)[:5], "origins": [], "status": "preprint",
-                                      "published": None, "hints": [], "first_seen": now(), "last_checked": None}
+                                      "authors": list(authors)[:5], "origins": [], "first_seen": now()}
     for k, v in (("title", title), ("openalex_id", openalex_id), ("year", year)):
         if v and not item.get(k):
             item[k] = v
@@ -209,145 +203,7 @@ def import_text(name, text):
     return {"entries": len(entries), "preprints": preprints_found, "new": added}
 
 
-# --- checking ---------------------------------------------------------------------------------
-
-def _doi_from_url(url):
-    m = re.match(r"https?://(?:dx\.)?doi\.org/(10\..+)$", url or "", re.I)
-    return clean_doi(m.group(1)) if m else ""
-
-
-def _openalex_batch(filter_key, values):
-    out = []
-    for i in range(0, len(values), 50):
-        chunk = values[i:i + 50]
-        try:
-            data = net.fetch(f"{sources.OPENALEX}/works", sources._oa(
-                {"filter": f"{filter_key}:{'|'.join(chunk)}", "select": WORK_SELECT, "per-page": 50}))
-            out += data.get("results") or []
-        except Exception as e:
-            print(f"  [warn] OpenAlex batch failed: {e}", file=sys.stderr)
-    return out
-
-
-def openalex_evidence(item, work):
-    """Published version inside the (possibly merged) OpenAlex work."""
-    ev, hints = [], []
-    wdoi = clean_doi(work.get("doi"))
-    venue = ((work.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
-    if wdoi and not is_preprint_doi(wdoi) and wdoi != item["doi"]:
-        ev.append({"doi": wdoi, "venue": venue, "via": "OpenAlex (Versionen zusammengeführt)"})
-    for loc in work.get("locations") or []:
-        src = loc.get("source") or {}
-        name = src.get("display_name") or ""
-        if not name or PREPRINT_VENUES.search(name) or src.get("type") not in ("journal", "conference", "book series"):
-            continue
-        doi = _doi_from_url(loc.get("landing_page_url"))
-        if doi and not is_preprint_doi(doi):
-            ev.append({"doi": doi, "venue": name, "via": "OpenAlex-Location"})
-        else:
-            hints.append(f"OpenAlex führt eine Version in {name} (ohne DOI)")
-    return ev, hints
-
-
-def openalex_title_match(item):
-    """A separate OpenAlex work with the same title, a non-preprint DOI and an author in common."""
-    title = norm_title(item["title"])
-    if len(title) < 20:
-        return []
-    try:
-        data = net.fetch(f"{sources.OPENALEX}/works", sources._oa(
-            {"filter": f"title.search:{title[:200]}", "select": WORK_SELECT, "per-page": 15}))
-    except Exception:
-        return []
-    fams = {a.lower() for a in item.get("authors") or []}
-    ev = []
-    for w in data.get("results") or []:
-        doi = clean_doi(w.get("doi"))
-        if norm_title(w.get("title")) != title or not doi or is_preprint_doi(doi) or w.get("type") == "preprint":
-            continue
-        names = {((a.get("author") or {}).get("display_name") or "").split(" ")[-1].lower() for a in w.get("authorships") or []}
-        if fams and not fams & names:
-            continue
-        venue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
-        if PREPRINT_VENUES.search(venue):
-            continue
-        ev.append({"doi": doi, "venue": venue, "year": w.get("publication_year"), "via": "OpenAlex (gleicher Titel)"})
-    return ev
-
-
-def registry_evidence(item):
-    """Crossref is-preprint-of for registered preprints; DataCite version relations for arXiv DOIs."""
-    doi = item["doi"]
-    if not doi:
-        return []
-    q = urllib.parse.quote(doi, safe="/")
-    ev = []
-    try:
-        if doi.startswith("10.48550/"):
-            attrs = net.fetch(f"https://api.datacite.org/dois/{q}")["data"]["attributes"]
-            for rel in attrs.get("relatedIdentifiers") or []:
-                target = clean_doi(rel.get("relatedIdentifier"))
-                if (rel.get("relatedIdentifierType") == "DOI" and target and not is_preprint_doi(target)
-                        and rel.get("relationType") in ("IsVersionOf", "IsPreviousVersionOf", "IsIdenticalTo")):
-                    ev.append({"doi": target, "venue": "", "via": f"DataCite ({rel['relationType']})"})
-        else:
-            msg = net.fetch(f"https://api.crossref.org/works/{q}", net.with_mailto({}))["message"]
-            for rel in (msg.get("relation") or {}).get("is-preprint-of") or []:
-                target = clean_doi(rel.get("id"))
-                if rel.get("id-type") == "doi" and target:
-                    ev.append({"doi": target, "venue": "", "via": "Crossref (is-preprint-of)"})
-    except net.NotFound:
-        pass
-    except Exception as e:
-        print(f"  [warn] registry lookup failed for {doi}: {e}", file=sys.stderr)
-    return ev
-
-
-def s2_evidence(items):
-    """Semantic Scholar venue and DOI, one batch request."""
-    ids = {}
-    for it in items:
-        ids[f"ARXIV:{it['arxiv_id']}" if it["arxiv_id"] else f"DOI:{it['doi']}"] = it["id"]
-    out = {}
-    keys = list(ids)
-    for i in range(0, len(keys), 400):
-        chunk = keys[i:i + 400]
-        try:
-            data = net.fetch("https://api.semanticscholar.org/graph/v1/paper/batch",
-                             {"fields": "venue,publicationVenue,externalIds,journal,year"}, data={"ids": chunk})
-        except Exception as e:
-            print(f"  [warn] Semantic Scholar unavailable: {e}", file=sys.stderr)
-            return out
-        for key, rec in zip(chunk, data):
-            if not rec:
-                continue
-            venue = (rec.get("publicationVenue") or {}).get("name") or rec.get("venue") or (rec.get("journal") or {}).get("name") or ""
-            doi = clean_doi((rec.get("externalIds") or {}).get("DOI"))
-            ev, hints = [], []
-            if doi and not is_preprint_doi(doi):
-                ev.append({"doi": doi, "venue": "" if PREPRINT_VENUES.search(venue) else venue, "via": "Semantic Scholar"})
-            elif venue and not PREPRINT_VENUES.search(venue):
-                hints.append(f"Semantic Scholar nennt die Venue {venue} (ohne DOI)")
-            out[ids[key]] = (ev, hints)
-    return out
-
-
-def doi_details(doi):
-    """Venue and year of a verified DOI (OpenAlex, else Crossref)."""
-    try:
-        w = net.fetch(f"{sources.OPENALEX}/works/doi:{doi}", sources._oa({"select": "publication_year,primary_location,title"}))
-        venue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name")
-        if venue:
-            return venue, w.get("publication_year")
-    except Exception:
-        pass
-    try:
-        msg = net.fetch(f"https://api.crossref.org/works/{urllib.parse.quote(doi, safe='/')}", net.with_mailto({}))["message"]
-        year = ((msg.get("issued") or {}).get("date-parts") or [[None]])[0][0]
-        return (msg.get("container-title") or [""])[0], year
-    except Exception:
-        return "", None
-
+# --- OpenReview ---------------------------------------------------------------------------------
 
 def openreview_enabled():
     cfg = miniyaml.load(os.path.join(SKILL_DIR, "config.yaml")) or {}
@@ -355,106 +211,48 @@ def openreview_enabled():
 
 
 def due(item, force=False):
-    if item["status"] == "published":
-        return False
-    if force or not item.get("last_checked"):
+    if force or not item.get("or_checked"):
         return True
-    return (datetime.datetime.now() - datetime.datetime.fromisoformat(item["last_checked"])).days >= RECHECK_DAYS
+    return (datetime.datetime.now() - datetime.datetime.fromisoformat(item["or_checked"])).days >= RECHECK_DAYS
 
 
-def check(force=False, log=lambda m: print(m, file=sys.stderr)):
-    """Check due preprints; returns the items newly found to be published."""
-    store = load()
-    items = [it for it in store["items"].values() if due(it, force)]
+def check_openreview(force=False, log=lambda m: print(m, file=sys.stderr)):
+    """Look up the OpenReview decision of due preprints; returns the ones newly found accepted."""
+    if not openreview_enabled():
+        return []
+    items = [it for it in load()["items"].values() if it.get("title") and due(it, force)]
     if not items:
         return []
-    log(f"checking {len(items)} preprints")
-    works = {}
-    for w in _openalex_batch("openalex", [it["openalex_id"] for it in items if it.get("openalex_id")]):
-        works[w["id"].rsplit("/", 1)[-1]] = w
-    by_doi = {clean_doi(w.get("doi")): w for w in
-              _openalex_batch("doi", [it["doi"] for it in items if it["doi"] and not it.get("openalex_id")])}
-    s2 = s2_evidence(items)
-    use_or = openreview_enabled()
-    or_cache = extra_sources.Cache("openreview")
+    log(f"checking {len(items)} preprints at OpenReview")
+    cache = extra_sources.Cache("openreview")
     found = []
     for it in items:
-        work = works.get(it.get("openalex_id")) or by_doi.get(it["doi"])
-        ev, hints = [], []
-        if work:
-            it["openalex_id"] = it.get("openalex_id") or work["id"].rsplit("/", 1)[-1]
-            it["title"] = it["title"] or work.get("title") or ""
-            it["year"] = it.get("year") or work.get("publication_year")
-            if not it.get("authors"):
-                it["authors"] = [((a.get("author") or {}).get("display_name") or "").split(" ")[-1]
-                                 for a in (work.get("authorships") or [])[:5]]
-            e, h = openalex_evidence(it, work)
-            ev += e
-            hints += h
-        ev += registry_evidence(it)
-        e, h = s2.get(it["id"], ([], []))
-        ev += e
-        hints += h
-        if not ev:
-            ev += openalex_title_match(it)
-        it["last_checked"] = now()
-        it["hints"] = sorted(set(hints))
-        ev = [c for c in ev if clean_doi(c["doi"]) != it["doi"]]  # the preprint's own DOI is no new version
-        verified = None
-        for cand in ev:
-            vdoi, reg = sources.verify_doi(cand["doi"])
-            if vdoi:
-                verified = {**cand, "doi": vdoi, "registry": reg}
-                break
-        if verified:
-            venue, year = doi_details(verified["doi"])
-            if PREPRINT_VENUES.search(verified.get("venue") or ""):  # a merged work's primary location can be arXiv
-                verified["venue"] = ""
-            if PREPRINT_VENUES.search(venue or ""):
-                venue = ""
-            verified.update(venue=verified.get("venue") or venue or "unbekannter Venue", year=verified.get("year") or year,
-                            via=sorted({c["via"] for c in ev if clean_doi(c["doi"]) == verified["doi"]}) or [verified["via"]],
-                            found=now())
-            it["status"], it["published"] = "published", verified
+        try:
+            r = extra_sources.openreview_lookup(it["title"], cache, it.get("year"))
+        except Exception as e:
+            print(f"  [warn] OpenReview lookup failed: {e}", file=sys.stderr)
+            continue
+        was = (it.get("openreview") or {}).get("status")
+        it["openreview"] = r
+        it["or_checked"] = now()
+        if r and r["status"] == "accepted" and was != "accepted":
             found.append(it)
-        elif use_or and it.get("title"):
-            try:
-                r = extra_sources.openreview_lookup(it["title"], or_cache, it.get("year"))
-            except Exception as e:
-                r = None
-                print(f"  [warn] OpenReview lookup failed: {e}", file=sys.stderr)
-            was = (it.get("openreview") or {}).get("status")
-            it["openreview"] = r
-            if r and r["status"] == "accepted":
-                it["status"] = "accepted"
-                if was != "accepted":
-                    found.append(it)
-            elif hints:
-                it["status"] = "hint"
-        elif hints:
-            it["status"] = "hint"
-    or_cache.save()
-    # the checks took minutes: merge into the store as it is now, so a sync or import meanwhile is kept
+    cache.save()
+    # the lookups took minutes: merge into the store as it is now, so a sync or import meanwhile is kept
     with locked():
         current = load()
         before = dump(current)
         for it in items:
             seen = current["items"].get(it["id"])
-            if seen:
-                it["origins"] = list(dict.fromkeys(it["origins"] + seen.get("origins", [])))
-            current["items"][it["id"]] = it
+            if not seen:
+                continue
+            seen["openreview"], seen["or_checked"] = it.get("openreview"), it.get("or_checked")
         save(current, before)
     return found
 
 
 def report(it):
-    if it["status"] == "accepted":
-        r = it["openreview"]
-        return f"Preprint „{it['title'] or it['doi']}“ ist jetzt angenommen: {r['venue']} (OpenReview, noch ohne DOI)"
-    p = it["published"]
-    title = it["title"] or it["doi"]
-    year = f" ({p['year']})" if p.get("year") else ""
-    return f"Preprint „{title}“ ist jetzt erschienen in {p['venue']}{year} – DOI {p['doi']}"
+    return f"Preprint „{it['title'] or it['doi']}“ ist jetzt angenommen: {it['openreview']['venue']} (OpenReview, noch ohne DOI)"
 
 
 def main():
@@ -463,8 +261,8 @@ def main():
     sub.add_parser("sync")
     imp = sub.add_parser("import")
     imp.add_argument("files", nargs="+")
-    c = sub.add_parser("check")
-    c.add_argument("--all", action="store_true", help="also preprints checked in the last days")
+    c = sub.add_parser("openreview")
+    c.add_argument("--all", action="store_true", help="also preprints looked up in the last days")
     sub.add_parser("list").add_argument("--json", action="store_true")
     args = ap.parse_args()
     if args.cmd == "sync":
@@ -473,17 +271,15 @@ def main():
         for f in args.files:
             with open(f, encoding="utf-8") as fh:
                 print(f, import_text(os.path.basename(f), fh.read()))
-    elif args.cmd == "check":
-        for it in check(force=args.all):
+    elif args.cmd == "openreview":
+        for it in check_openreview(force=args.all):
             print(report(it))
     elif args.json:
         sync_from_runs()
-        items = list(load()["items"].values())
-        checked = [it["last_checked"] for it in items if it.get("last_checked")]
-        print(json.dumps({"items": items, "last_check": max(checked) if checked else None}, ensure_ascii=False))
+        print(json.dumps({"items": list(load()["items"].values())}, ensure_ascii=False))
     else:
-        for it in sorted(load()["items"].values(), key=lambda i: i["status"]):
-            print(f"[{it['status']}] {it['title'][:80]} · {it['doi']} · {', '.join(it['origins'])}")
+        for it in load()["items"].values():
+            print(f"{it['title'][:80]} · {it['doi']} · {', '.join(it['origins'])}")
 
 
 if __name__ == "__main__":
