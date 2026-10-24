@@ -109,7 +109,7 @@ fi
 if ! has claude && ! has codex && ! has cursor-agent && ! has agent; then
   say ""
   say "Missing: an agent CLI for the chat. Install at least one and log in:"
-  say "  Claude Code:  npm install -g @anthropic-ai/claude-code   then: claude auth login"
+  say "  Claude Code:  curl -fsSL https://claude.ai/install.sh | bash   then: claude (log in once)"
   say "  Codex:        npm install -g @openai/codex               then: codex login"
   say "  Cursor:       curl https://cursor.com/install -fsS | bash  then: cursor-agent login"
 fi
