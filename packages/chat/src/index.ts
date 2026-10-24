@@ -2,6 +2,7 @@ export const name = "@citegeist/chat";
 
 export { AcpConnection, AcpDriver, AcpPool } from "./acp.js";
 export {
+  adapterLaunch,
   agentEnv,
   type BackendDefinition,
   type BackendStatus,
@@ -14,6 +15,7 @@ export {
   DEFAULT_BACKENDS,
   findExecutable,
   type LoginCheck,
+  resolveAdapterEntry,
 } from "./backends.js";
 export type { AgentDriver, DriverEvent, DriverFactory, DriverRequest } from "./driver.js";
 export { createDrivers, type DriverFactoryOptions, type Drivers } from "./drivers.js";

@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 
 /**
  * The agents the chat can talk to. Every user brings an own subscription through the official CLI
@@ -9,9 +10,45 @@ import { delimiter, join } from "node:path";
  * its environment through a scrub, and checks the login with the CLI's own status command.
  */
 
-/** Adapter versions, pinned because ACP and its adapters change quickly (research note, section 4.5). */
-export const CLAUDE_ACP_PACKAGE = "@agentclientprotocol/claude-agent-acp@0.95.0";
-export const CODEX_ACP_PACKAGE = "@agentclientprotocol/codex-acp@2.2.2";
+/**
+ * The ACP adapters ship with citegeist as dependencies of this package, pinned in package.json
+ * because ACP and its adapters change quickly (research note, section 4.5). Nothing is fetched at
+ * run time.
+ */
+export const CLAUDE_ACP_PACKAGE = "@agentclientprotocol/claude-agent-acp";
+export const CODEX_ACP_PACKAGE = "@agentclientprotocol/codex-acp";
+
+/**
+ * Entry script of a bundled adapter package, or undefined when it is not installed. In the
+ * packaged app the package sits inside app.asar; a child process cannot run it from there, so the
+ * path points into the unpacked copy (electron-builder `asarUnpack`).
+ */
+export function resolveAdapterEntry(pkg: string): string | undefined {
+  try {
+    const require = createRequire(import.meta.url);
+    const manifest = require.resolve(`${pkg}/package.json`);
+    const meta = require(manifest) as { bin?: string | Record<string, string> };
+    const bin = typeof meta.bin === "string" ? meta.bin : Object.values(meta.bin ?? {})[0];
+    if (!bin) return undefined;
+    return join(dirname(manifest), bin).replace(/\.asar([\\/])/, ".asar.unpacked$1");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Command line that runs a bundled adapter with the Node of this process. Inside Electron that
+ * is the app binary itself, which acts as plain Node with ELECTRON_RUN_AS_NODE.
+ */
+export function adapterLaunch(pkg: string): AcpLaunch | undefined {
+  const entry = resolveAdapterEntry(pkg);
+  if (!entry) return undefined;
+  return {
+    command: process.execPath,
+    args: [entry],
+    ...(process.versions.electron ? { env: { ELECTRON_RUN_AS_NODE: "1" } } : {}),
+  };
+}
 
 export interface AcpLaunch {
   command: string;
@@ -67,9 +104,8 @@ export const CLAUDE_CODE: BackendDefinition = {
       hint: "Run `claude auth login` in a terminal, then retry.",
     },
   },
-  launch(find) {
-    const npx = find("npx");
-    return npx ? { command: npx, args: ["-y", CLAUDE_ACP_PACKAGE] } : undefined;
+  launch() {
+    return adapterLaunch(CLAUDE_ACP_PACKAGE);
   },
   // Read by claude-agent-acp: no personal ~/.claude config, only the MCP servers citegeist passes,
   // no shell (the research notes, section 4.5, points 3 and 4).
@@ -98,9 +134,8 @@ export const CODEX: BackendDefinition = {
       hint: "Run `codex login` in a terminal, then retry.",
     },
   },
-  launch(find) {
-    const npx = find("npx");
-    return npx ? { command: npx, args: ["-y", CODEX_ACP_PACKAGE] } : undefined;
+  launch() {
+    return adapterLaunch(CODEX_ACP_PACKAGE);
   },
 };
 
@@ -257,8 +292,7 @@ export async function checkBackend(
     return {
       ...base,
       available: false,
-      detail:
-        "Node.js (npx) was not found, which starts the ACP adapter. Install Node.js 22 or later.",
+      detail: "The bundled ACP adapter was not found. Reinstall citegeist.",
     };
   }
   if (def.cli.login) {

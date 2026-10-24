@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createRuntime, defaultLocalBase, Library, LocalPaths } from "@citegeist/core";
-import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/server";
 import { CONTRACTS, defineContract, Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
+import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/server";
 import { z } from "zod";
 import { actorNotForwardable, findRunningCore, forwardCall, type RunningCore } from "./forward.js";
 import { resolveLibraryPath } from "./library-path.js";

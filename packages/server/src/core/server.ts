@@ -25,6 +25,7 @@ import {
   readLibraryId,
   releaseLock,
 } from "../shared/lockfile.js";
+import { type ChatOptions, type ChatRuntime, startChat } from "./chat.js";
 import { FILES_PREFIX, serveLibraryFile } from "./files.js";
 
 export { LockHeldError };
@@ -51,6 +52,11 @@ export interface CoreServerOptions {
   connector?: boolean;
   /** Receives messages of the connector listener. */
   log?: (message: string) => void;
+  /**
+   * The agent chat of the library. On by default with Claude Code, Codex and Cursor; pass options
+   * to swap the backends (tests) or false to leave the chat out.
+   */
+  chat?: ChatOptions | false;
 }
 
 export interface CoreServer {
@@ -59,6 +65,8 @@ export interface CoreServer {
   library: Library;
   runtime: Runtime;
   registry: Registry;
+  /** The chat of this library. Absent when `chat: false`. */
+  chat?: ChatRuntime;
   close(): Promise<void>;
 }
 
@@ -195,6 +203,16 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     ...opts.runtime,
   });
   const registry = runtime.registry;
+  // The chat binds its operations to the registry, so it starts before the router is built.
+  let chat: ChatRuntime | undefined;
+  try {
+    chat = opts.chat === false ? undefined : await startChat(library, runtime, opts.chat);
+  } catch (err) {
+    await runtime.close();
+    await library.close();
+    releaseLock(dir);
+    throw err;
+  }
   const rpc = new RPCHandler(buildRouter(registry));
   const token = randomBytes(32).toString("hex");
   const sockets = new Set<import("ws").WebSocket>();
@@ -294,6 +312,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     });
   } catch (err) {
     library.off("change", onChange);
+    await chat?.close();
     await runtime.close();
     await library.close();
     releaseLock(dir);
@@ -317,6 +336,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     library,
     runtime,
     registry,
+    ...(chat ? { chat } : {}),
     close() {
       closing ??= (async () => {
         await connector?.stop();
@@ -325,6 +345,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
         wss.close();
         server.closeAllConnections();
         await new Promise<void>((resolve) => server.close(() => resolve()));
+        await chat?.close();
         await runtime.close();
         await library.close();
         releaseLock(dir);

@@ -1,6 +1,6 @@
-import { type UtilityProcess, utilityProcess } from "electron";
 import { type Connection, connectionFor, findRunningCore } from "@citegeist/server/connect";
 import { defaultLocalBase, localDir, readLibraryId } from "@citegeist/server/lockfile";
+import { type UtilityProcess, utilityProcess } from "electron";
 
 export interface RunningCore {
   connection: Connection;

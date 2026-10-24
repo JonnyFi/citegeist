@@ -19,7 +19,7 @@ export interface WorkerSourceOptions {
   exists?: (path: string) => boolean;
 }
 
-/** Repo root when running from source: apps/desktop/src/setup -> four levels up. */
+/** Repo root when running from source: packages/server/src/setup -> four levels up. */
 function repoRoot(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 }
