@@ -36,7 +36,7 @@ open apps/desktop/dist/mac-arm64/citegeist.app
 
 `pnpm package` baut die Oberfläche und die Electron-Bündel und schreibt danach `citegeist.app` für arm64. Die App ist nicht notarisiert und ad hoc signiert. Auf dem Rechner, auf dem sie gebaut wurde, startet sie ohne Rückfrage. Auf einem anderen Mac sperrt Gatekeeper sie, bis du sie über Rechtsklick und Öffnen freigibst.
 
-Im Paket liegen die Quellen des Python-Workers (`Contents/Resources/workers/convert`), die CSL-Stile, die nativen Module und die beiden ACP-Adapter mit den Programmen von Claude Code und Codex.
+Im Paket liegen die Quellen des Python-Workers (`Contents/Resources/workers/convert`), die CSL-Stile, die nativen Module und die beiden ACP-Adapter mit den Programmen von Claude Code und Codex. Im Chat startet jeder Adapter zuerst das Programm `claude` oder `codex`, das du selbst installiert hast (ein natives Programm im PATH oder unter `~/.local/bin`, `/opt/homebrew/bin` und ähnlichen Orten). Fehlt es, oder ist es ein npm-Skript, das ein Node im PATH braucht, läuft das mitgelieferte Programm.
 
 Ob der Kern läuft, zeigt der Health-Aufruf. Port und Token stehen in der Sperrdatei der Bibliothek:
 
