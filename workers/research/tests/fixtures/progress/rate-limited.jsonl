@@ -1,0 +1,120 @@
+{"type": "plan", "t": 0, "stages": [{"id": "search", "label": "Search OpenAlex and arXiv"}, {"id": "resolve", "label": "Resolve arXiv hits in OpenAlex"}, {"id": "filter", "label": "Dedup, filter, relevance gate"}, {"id": "authors", "label": "Author h-index (OpenAlex)"}, {"id": "orcid", "label": "Merge split author profiles (ORCID)"}, {"id": "s2", "label": "Semantic Scholar"}, {"id": "score", "label": "Score"}, {"id": "dblp", "label": "Venues and tracks (DBLP)"}, {"id": "openreview", "label": "Review status (OpenReview)"}, {"id": "verify", "label": "Verify DOIs"}, {"id": "snowball", "label": "Snowballing"}, {"id": "snowball_authors", "label": "Author h-index (snowball papers)"}, {"id": "snowball_orcid", "label": "Merge split author profiles (snowball papers)"}, {"id": "snowball_s2", "label": "Semantic Scholar (snowball papers)"}, {"id": "snowball_dblp", "label": "DBLP (snowball papers)"}, {"id": "snowball_openreview", "label": "OpenReview (snowball papers)"}, {"id": "snowball_verify", "label": "Re-score and verify"}, {"id": "write", "label": "Write outputs"}]}
+{"type": "log", "t": 0, "msg": "OpenAlex: no API key; 2 queries"}
+{"type": "stage", "t": 0, "stage": "search", "status": "started"}
+{"type": "log", "t": 0, "msg": "OpenAlex: \"agent communication protocol\""}
+{"type": "log", "t": 0, "msg": "arXiv:    \"agent communication protocol\""}
+{"type": "counter", "t": 0, "stage": "search", "done": 1, "total": 2, "label": "queries (15 OpenAlex, 15 arXiv records)"}
+{"type": "log", "t": 0, "msg": "OpenAlex: \"multi-agent communication\" LLM"}
+{"type": "log", "t": 0, "msg": "arXiv:    \"multi-agent communication\" LLM"}
+{"type": "counter", "t": 0, "stage": "search", "done": 2, "total": 2, "label": "queries (30 OpenAlex, 30 arXiv records)"}
+{"type": "stage", "t": 0, "stage": "search", "status": "finished", "seconds": 5.0}
+{"type": "stage", "t": 0, "stage": "resolve", "status": "started"}
+{"type": "log", "t": 0, "msg": "OpenAlex: resolving 30 arXiv hits"}
+{"type": "counter", "t": 0, "stage": "resolve", "done": 28, "total": 30, "label": "arXiv hits found in OpenAlex"}
+{"type": "stage", "t": 0, "stage": "resolve", "status": "finished", "seconds": 0.7}
+{"type": "stage", "t": 0, "stage": "filter", "status": "started"}
+{"type": "log", "t": 0, "msg": "Candidates: 60 retrieved, 48 after dedup, 0 excluded by type/year, 4 failed the relevance gate, 44 kept"}
+{"type": "counter", "t": 0, "stage": "filter", "done": 44, "total": 48, "label": "candidates kept"}
+{"type": "stage", "t": 0, "stage": "filter", "status": "finished", "seconds": 0.0}
+{"type": "stage", "t": 0, "stage": "authors", "status": "started"}
+{"type": "log", "t": 0, "msg": "authors: 0 cached, 195 to fetch"}
+{"type": "counter", "t": 0, "stage": "authors", "done": 0, "total": 195, "label": "authors fetched (0 cached)"}
+{"type": "counter", "t": 0, "stage": "authors", "done": 50, "total": 195, "label": "authors fetched (0 cached)"}
+{"type": "counter", "t": 0, "stage": "authors", "done": 100, "total": 195, "label": "authors fetched (0 cached)"}
+{"type": "counter", "t": 0, "stage": "authors", "done": 150, "total": 195, "label": "authors fetched (0 cached)"}
+{"type": "counter", "t": 0, "stage": "authors", "done": 195, "total": 195, "label": "authors fetched (0 cached)"}
+{"type": "stage", "t": 0, "stage": "authors", "status": "finished", "seconds": 2.4}
+{"type": "stage", "t": 0, "stage": "orcid", "status": "started"}
+{"type": "log", "t": 0, "msg": "ORCID: checking 175 authors for split OpenAlex profiles"}
+{"type": "warning", "t": 0, "msg": "ORCID merge failed (RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h. Mit einem kostenlosen OpenAlex-API-Key ist das Limit viel höher: https://openalex.org/settings/api, dann in citegeist unter Einstellungen > Quellen eintragen.); h-indices stay unmerged"}
+{"type": "stage", "t": 0, "stage": "orcid", "status": "finished", "seconds": 20.9}
+{"type": "stage", "t": 0, "stage": "s2", "status": "started"}
+{"type": "log", "t": 0, "msg": "Semantic Scholar: 43 papers"}
+{"type": "counter", "t": 0, "stage": "s2", "done": 23, "total": 43, "label": "papers found"}
+{"type": "stage", "t": 0, "stage": "s2", "status": "finished", "seconds": 1.2}
+{"type": "stage", "t": 0, "stage": "score", "status": "started"}
+{"type": "stage", "t": 0, "stage": "score", "status": "finished", "seconds": 0.0}
+{"type": "stage", "t": 0, "stage": "dblp", "status": "started"}
+{"type": "counter", "t": 0, "stage": "dblp", "done": 20, "total": 42, "label": "papers looked up"}
+{"type": "counter", "t": 0, "stage": "dblp", "done": 40, "total": 42, "label": "papers looked up"}
+{"type": "counter", "t": 0, "stage": "dblp", "done": 42, "total": 42, "label": "papers looked up"}
+{"type": "log", "t": 0, "msg": "DBLP: 4 of 42 papers found, 1 venues corrected"}
+{"type": "stage", "t": 0, "stage": "dblp", "status": "finished", "seconds": 5.4}
+{"type": "stage", "t": 0, "stage": "openreview", "status": "started"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 1, "total": 30, "label": "papers looked up (0 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 2, "total": 30, "label": "papers looked up (0 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 3, "total": 30, "label": "papers looked up (0 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 4, "total": 30, "label": "papers looked up (0 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 5, "total": 30, "label": "papers looked up (0 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 6, "total": 30, "label": "papers looked up (1 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 7, "total": 30, "label": "papers looked up (1 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 8, "total": 30, "label": "papers looked up (1 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 9, "total": 30, "label": "papers looked up (2 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 10, "total": 30, "label": "papers looked up (2 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 11, "total": 30, "label": "papers looked up (2 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 12, "total": 30, "label": "papers looked up (3 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 13, "total": 30, "label": "papers looked up (3 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 14, "total": 30, "label": "papers looked up (4 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 15, "total": 30, "label": "papers looked up (5 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 16, "total": 30, "label": "papers looked up (5 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 17, "total": 30, "label": "papers looked up (5 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 18, "total": 30, "label": "papers looked up (5 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 19, "total": 30, "label": "papers looked up (5 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 20, "total": 30, "label": "papers looked up (6 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 21, "total": 30, "label": "papers looked up (7 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 22, "total": 30, "label": "papers looked up (8 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 23, "total": 30, "label": "papers looked up (8 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 24, "total": 30, "label": "papers looked up (8 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 25, "total": 30, "label": "papers looked up (8 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 26, "total": 30, "label": "papers looked up (9 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 27, "total": 30, "label": "papers looked up (10 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 28, "total": 30, "label": "papers looked up (10 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 29, "total": 30, "label": "papers looked up (10 found)"}
+{"type": "counter", "t": 0, "stage": "openreview", "done": 30, "total": 30, "label": "papers looked up (10 found)"}
+{"type": "log", "t": 0, "msg": "OpenReview: 10 of 30 papers found"}
+{"type": "stage", "t": 0, "stage": "openreview", "status": "finished", "seconds": 107.3}
+{"type": "stage", "t": 0, "stage": "verify", "status": "started"}
+{"type": "log", "t": 0, "msg": "Verifying DOIs"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 1, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 2, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 3, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 4, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 5, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 6, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 7, "total": 32, "label": "verified (0 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 8, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 9, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 10, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 11, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 12, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 13, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 14, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 15, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 16, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 17, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 18, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 19, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 20, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 21, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 22, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 23, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 24, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 25, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 26, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 27, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 28, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 29, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 30, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 31, "total": 32, "label": "verified (1 rejected)"}
+{"type": "counter", "t": 0, "stage": "verify", "done": 32, "total": 32, "label": "verified (1 rejected)"}
+{"type": "stage", "t": 0, "stage": "verify", "status": "finished", "seconds": 9.2}
+{"type": "stage", "t": 0, "stage": "snowball", "status": "started"}
+{"type": "log", "t": 0, "msg": "Snowballing: 8 seeds, 19 references, up to 100 citing works each"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 0, "total": 9, "label": "requests: references + citing works per seed"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 1, "total": 9, "label": "references fetched"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 2, "total": 9, "label": "citing works of seed 1/8"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 3, "total": 9, "label": "citing works of seed 2/8"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 4, "total": 9, "label": "citing works of seed 3/8"}
+{"type": "counter", "t": 0, "stage": "snowball", "done": 5, "total": 9, "label": "citing works of seed 4/8"}
+{"type": "stage", "t": 0, "stage": "snowball", "status": "failed"}
+{"type": "error", "t": 0, "msg": "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h. Mit einem kostenlosen OpenAlex-API-Key ist das Limit viel höher: https://openalex.org/settings/api, dann in citegeist unter Einstellungen > Quellen eintragen."}

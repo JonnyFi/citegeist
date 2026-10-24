@@ -30,6 +30,7 @@ export {
   type OpenOptions,
 } from "./library.js";
 export * from "./links/index.js";
+export * from "./litsearch/index.js";
 export * from "./matrix/index.js";
 export {
   bindNoteOperations,

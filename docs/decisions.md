@@ -149,3 +149,9 @@ Die Art „Zitat“ entfällt, weil jede Karte ein Zitat enthält. Die Arten sin
 Datum: 2026-10-24. Status: entschieden.
 
 Der Abschnitt heißt im Dateikörper `## Note`. Alte Karten mit beiden Abschnitten werden beim Lesen zusammengeführt: eigene Worte, eine Leerzeile, dann der Kommentar. Die Datei ändert sich erst, wenn die Karte neu geschrieben wird. Die Exportregel `own-else-ai` nimmt für sinngemäße Zitate die Notiz, sofern es eine gibt, sonst die Paraphrase. Die Kopieraktionen der Karte heißen „Wörtlich zitieren“ (Zitat mit Beleg) und „Sinngemäß zitieren“ („vgl.“-Beleg mit Paraphrase oder Notiz).
+
+## D18: Die Literatursuche der research-pipeline wird Teil von citegeist
+
+Datum: 2026-10-24. Status: entschieden (Issue #50).
+
+Die Skripte der research-pipeline liegen als `workers/research` im Repo, nur mit der Python-Standardbibliothek, und laufen mit uv in einer eigenen Umgebung unter dem maschinenlokalen Ordner. Der Webserver und die Weboberfläche der Pipeline kommen nicht mit: core startet `pipeline.py` für jeden Lauf als Job und schreibt `run.json`, die Oberfläche ist ein Reiter „Literatursuche“ über die Operationen `litsearch.*`. Läufe, Beobachtungen und Preprint-Listen liegen pro Bibliothek unter `research/`; Suchcache, OpenAlex-Datensätze und Log eines Laufs stehen in der Ignore-Liste. Wo citegeist eine Funktion schon hat, gilt die citegeist-Fassung: Funde gehen wie die Kandidaten des Zitationsgraphen in die Inbox (D7), die Literaturmatrix und die Rückruf-Warnungen sind die von citegeist, die Leseliste der Pipeline entfällt, ebenso scite. Suchvorschläge laufen über das eingestellte Modell. Der OpenAlex-Schlüssel liegt im Schlüsselbund im Fach `openalex`. Wöchentliche Läufe im Hintergrund gibt es nur, wenn der Nutzer sie pro Beobachtung einschaltet.

@@ -7,7 +7,8 @@ import { detectGitDir, type GitDirState } from "./location.js";
 /**
  * Derived files that the worker can rebuild stay out of git. `idmap.json` (stable block ids) and
  * `blocks.jsonl` are kept on purpose: ids would change if they were regenerated. `pages.json`
- * holds page labels that the user confirmed, so it stays as well.
+ * holds page labels that the user confirmed, so it stays as well. Of a literature search run only
+ * the results are kept; the query cache, the cached OpenAlex records and the log can be refetched.
  */
 export const IGNORE_LINES = [
   ".DS_Store",
@@ -21,6 +22,9 @@ export const IGNORE_LINES = [
   "items/*/derived/*/refs.jsonl",
   "items/*/derived/*/assets/",
   "projects/*/exports/",
+  "research/runs/*/query-cache/",
+  "research/runs/*/stderr.log",
+  "research/runs/*/works/",
 ];
 
 export const LFS_LINES = ["items/*/sources/* filter=lfs diff=lfs merge=lfs -text"];

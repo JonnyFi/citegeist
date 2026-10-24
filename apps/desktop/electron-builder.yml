@@ -35,6 +35,17 @@ extraResources:
       - uv.lock
       - README.md
       - src/**
+  # the literature search (issue #50): standard-library Python, run with uv in its own environment
+  - from: ../../workers/research
+    to: workers/research
+    filter:
+      - pyproject.toml
+      - uv.lock
+      - NOTICE.md
+      - "*.yaml"
+      - scripts/**
+      - vendor/**
+      - "!**/__pycache__/**"
 asar: true
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
