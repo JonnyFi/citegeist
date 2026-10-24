@@ -49,6 +49,7 @@ import {
   type SettingsService,
 } from "./settings/index.js";
 import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
+import { bindTextsOperations } from "./texts/index.js";
 
 export interface RuntimeOptions {
   /**
@@ -323,6 +324,14 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   service = bindSettingsOperations(registry, { ...deps, backends: provider });
   applyResolverSettings(deps.store.load());
   readNcbiKey();
+  bindTextsOperations(registry, lib, {
+    localBase,
+    queue: ingest.queue,
+    // A one-shot process (the CLI) never runs the queue, so the setup downloads right away.
+    inline: opts.autoStart === false,
+    ...(opts.settings?.runner ? { runner: opts.settings.runner } : {}),
+    ...(opts.settings?.fetch ? { fetch: opts.settings.fetch } : {}),
+  });
 
   // AI work (cards, links, matrix fills) runs as real jobs, so jobs.get answers for the ids the
   // operations return and shows the progress of a fill. A one-shot process (the CLI) does not run
