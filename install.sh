@@ -7,7 +7,10 @@
 # com.apple.quarantine attribute, so Gatekeeper does not block it. The same script runs from the
 # in-app update notice. It never installs uv or the agent CLIs, it only says how.
 #
-# Overrides (for tests): CITEGEIST_RELEASE_API, CITEGEIST_INSTALL_DIR.
+# It also links ~/.local/bin/cg to the launcher inside the app, so `cg mcp` and `cg concepts ...`
+# work from a shell and for local agents.
+#
+# Overrides (for tests): CITEGEIST_RELEASE_API, CITEGEIST_INSTALL_DIR, CITEGEIST_BIN_DIR.
 set -eu
 
 REPO="JonnyFi/citegeist"
@@ -88,6 +91,38 @@ mv "$DEST.new" "$DEST"
 xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
 
 say "citegeist $TAG is installed."
+
+# The cg command ---------------------------------------------------------------------------------
+
+LAUNCHER="$DEST/Contents/Resources/bin/cg"
+BIN_DIR="${CITEGEIST_BIN_DIR:-$HOME/.local/bin}"
+LINK="$BIN_DIR/cg"
+if [ -x "$LAUNCHER" ]; then
+  mkdir -p "$BIN_DIR"
+  LINK_TARGET="$(readlink "$LINK" 2>/dev/null || true)"
+  CAN_LINK=0
+  case "$LINK_TARGET" in
+    */citegeist.app/Contents/Resources/bin/cg) CAN_LINK=1 ;;
+    "") [ -e "$LINK" ] || CAN_LINK=1 ;;
+  esac
+  if [ "$CAN_LINK" = 1 ]; then
+    ln -sfn "$LAUNCHER" "$LINK"
+    say "Linked $LINK to the cg command of the app."
+    case ":$PATH:" in
+      *":$BIN_DIR:"*) ;;
+      *)
+        say ""
+        say "$BIN_DIR is not on your PATH. Add this line to ~/.zshrc, then open a new terminal:"
+        say "  export PATH=\"$BIN_DIR:\$PATH\""
+        ;;
+    esac
+  else
+    say ""
+    say "Skipped the cg command: $LINK exists and is not the one of citegeist. The app's own is"
+    say "  $LAUNCHER"
+    say "Remove or rename $LINK and run the installer again, or call the path above."
+  fi
+fi
 
 # Requirements that citegeist does not install ---------------------------------------------------
 

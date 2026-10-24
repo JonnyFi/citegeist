@@ -2,24 +2,26 @@
 
 Dieses Dokument sagt, wie ein Agent an citegeist kommt. Es gibt drei Wege: Agents auf deinem Mac sprechen mit `cg mcp`, der Chat in der Seitenleiste braucht keine Einrichtung, und Agents in der Cloud erreichen citegeist über einen Tunnel und einen Connector. Die Hintergründe zu Connectors, Signatur und Tunnel stehen in [webhooks.md](webhooks.md).
 
-Die Befehle und Dateiformate der Clients stammen aus deren Dokumentation (Stand Oktober 2026): [Claude Code](https://code.claude.com/docs/en/mcp), [Cursor](https://cursor.com/docs/context/mcp), [Codex](https://developers.openai.com/codex/mcp) und [Claude Desktop](https://modelcontextprotocol.io/quickstart/user). Der Start von `cg mcp` aus einem Checkout ist mit diesem Repo geprüft (die Antwort auf `initialize` kommt). Die Clients selbst wurden nicht durchgespielt. Prüfe die Befehle gegen deine installierte Version.
+Die Befehle und Dateiformate der Clients stammen aus deren Dokumentation (Stand Oktober 2026): [Claude Code](https://code.claude.com/docs/en/mcp), [Cursor](https://cursor.com/docs/context/mcp), [Codex](https://developers.openai.com/codex/mcp) und [Claude Desktop](https://modelcontextprotocol.io/quickstart/user). Der Start von `cg mcp` aus der verpackten App und aus einem Checkout ist mit diesem Repo geprüft (die Antwort auf `initialize` kommt). Die Clients selbst wurden nicht durchgespielt. Prüfe die Befehle gegen deine installierte Version.
 
 ## Lokal
 
 Ein Agent auf deinem Mac startet citegeist als stdio-Server. Der Server heißt `cg mcp`. Läuft die App, leitet er an sie weiter, sonst öffnet er die Bibliothek selbst. Welche Bibliothek er nimmt, bestimmt `--library <Ordner>` vor `mcp`, danach `CITEGEIST_LIBRARY`, danach `~/Citegeist`. Mit `--scope read` bekommt der Agent nur lesende Werkzeuge.
 
-Die App liefert `cg` noch nicht mit. Aus einem Checkout startest du es so, mit dem absoluten Pfad des Checkouts (`<repo>` unten):
+Die App liefert `cg` mit. Das Kommando liegt unter `/Applications/citegeist.app/Contents/Resources/bin/cg` (bei einer Installation ohne Schreibrecht in `/Applications` unter `~/Applications`). `install.sh` verlinkt es als `~/.local/bin/cg`. Liegt dieser Ordner in deinem PATH, genügt `cg mcp`. Programme mit Oberfläche wie Claude Desktop und Cursor erben deinen PATH aus der Shell nicht, dort steht der volle Pfad in der Konfiguration. Das Kommando startet das Programm der App als Node und braucht deshalb kein Node auf dem Mac.
+
+Aus einem Checkout startest du es so, mit dem absoluten Pfad des Checkouts (`<repo>` unten):
 
 ```
 <repo>/apps/cli/node_modules/.bin/tsx <repo>/apps/cli/src/bin.ts mcp
 ```
 
-Der Start braucht ein vorheriges `pnpm install` im Checkout. Hast du `cg` im PATH, steht in den Beispielen unten einfach `cg mcp` statt dieser zwei Pfade.
+Der Start braucht ein vorheriges `pnpm install` im Checkout. Die Beispiele unten zeigen die installierte App. Wer am Checkout arbeitet, ersetzt `cg` durch die zwei Pfade oben.
 
 ### Claude Code
 
 ```
-claude mcp add --scope user citegeist -- <repo>/apps/cli/node_modules/.bin/tsx <repo>/apps/cli/src/bin.ts mcp
+claude mcp add --scope user citegeist -- /Applications/citegeist.app/Contents/Resources/bin/cg mcp
 ```
 
 Das `--` trennt die Optionen von Claude Code vom Startbefehl des Servers. Mit `--scope user` gilt der Eintrag für alle Projekte. `claude mcp list` zeigt, ob der Server verbunden ist.
@@ -32,8 +34,8 @@ Trage den Server in `~/.cursor/mcp.json` ein (global) oder in `.cursor/mcp.json`
 {
   "mcpServers": {
     "citegeist": {
-      "command": "<repo>/apps/cli/node_modules/.bin/tsx",
-      "args": ["<repo>/apps/cli/src/bin.ts", "mcp"]
+      "command": "/Applications/citegeist.app/Contents/Resources/bin/cg",
+      "args": ["mcp"]
     }
   }
 }
@@ -44,15 +46,15 @@ Trage den Server in `~/.cursor/mcp.json` ein (global) oder in `.cursor/mcp.json`
 Der Befehl legt den Eintrag in `~/.codex/config.toml` an:
 
 ```
-codex mcp add citegeist -- <repo>/apps/cli/node_modules/.bin/tsx <repo>/apps/cli/src/bin.ts mcp
+codex mcp add citegeist -- /Applications/citegeist.app/Contents/Resources/bin/cg mcp
 ```
 
 Oder du schreibst den Eintrag selbst in die Datei:
 
 ```toml
 [mcp_servers.citegeist]
-command = "<repo>/apps/cli/node_modules/.bin/tsx"
-args = ["<repo>/apps/cli/src/bin.ts", "mcp"]
+command = "/Applications/citegeist.app/Contents/Resources/bin/cg"
+args = ["mcp"]
 ```
 
 ### Claude Desktop
@@ -63,8 +65,8 @@ args = ["<repo>/apps/cli/src/bin.ts", "mcp"]
 {
   "mcpServers": {
     "citegeist": {
-      "command": "<repo>/apps/cli/node_modules/.bin/tsx",
-      "args": ["<repo>/apps/cli/src/bin.ts", "mcp"]
+      "command": "/Applications/citegeist.app/Contents/Resources/bin/cg",
+      "args": ["mcp"]
     }
   }
 }
@@ -74,7 +76,7 @@ Danach beendest du Claude Desktop ganz und startest es neu. Eine Alternative ist
 
 ## Der Chat in der Seitenleiste
 
-Der Chat in citegeist startet Claude Code oder Codex selbst und gibt jeder Sitzung ein eigenes Zugriffstoken für den MCP-Server. Dafür ist nichts einzurichten. Du brauchst nur das angemeldete `claude` oder `codex` auf dem Mac (siehe [run.md](run.md)).
+Der Chat in citegeist startet Claude Code oder Codex selbst und gibt jeder Sitzung ein eigenes Zugriffstoken für den MCP-Server. Dafür ist nichts einzurichten, und `cg` steht in der Shell des Agents im PATH (der Agent ruft damit zum Beispiel `cg concepts list` auf). Du brauchst nur das angemeldete `claude` oder `codex` auf dem Mac (siehe [run.md](run.md)).
 
 ## Agents in der Cloud
 

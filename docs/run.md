@@ -68,16 +68,18 @@ Das Skript `install.sh` macht Folgendes:
 1. Es prüft macOS auf Apple Silicon und liest über die GitHub-API (`/releases/latest`) das neueste Release.
 2. Es lädt `citegeist-<Version>-arm64.zip` mit `curl` und vergleicht die Prüfsumme mit der Datei `.sha256` des Releases. Bei einer Abweichung bricht es ab, ohne etwas zu installieren.
 3. Es beendet ein laufendes citegeist, ersetzt `/Applications/citegeist.app` (ohne Schreibrecht dort `~/Applications/citegeist.app`) und startet die App.
-4. Es prüft `uv` und mindestens eine der CLIs `claude`, `codex` und `cursor-agent` und nennt für Fehlendes den Installationsbefehl. Es installiert davon nichts.
+4. Es legt `~/.local/bin/cg` als Symlink auf `Contents/Resources/bin/cg` in der App an. Das ist die Kommandozeile `cg`, mit der lokale Agents über `cg mcp` an citegeist kommen. Das Verzeichnis wird bei Bedarf angelegt. Ein vorhandenes `cg`, das nicht von citegeist stammt, bleibt unangetastet, und das Skript sagt es. Liegt `~/.local/bin` nicht im PATH, nennt es die Zeile für `~/.zshrc`.
+5. Es prüft `uv` und mindestens eine der CLIs `claude`, `codex` und `cursor-agent` und nennt für Fehlendes den Installationsbefehl. Es installiert davon nichts.
 
 Bibliothek und Einstellungen liegen außerhalb der App und bleiben bei einem Update erhalten. Entfernen lässt sich citegeist mit:
 
 ```
 rm -rf /Applications/citegeist.app ~/Applications/citegeist.app
+rm -f ~/.local/bin/cg
 rm -rf ~/Library/Application\ Support/citegeist
 ```
 
-Die zweite Zeile löscht Index und Python-Umgebung. Die Bibliothek mit deinen PDFs und Notizen bleibt unberührt.
+Die dritte Zeile löscht Index und Python-Umgebung. Die Bibliothek mit deinen PDFs und Notizen bleibt unberührt.
 
 Das Repository muss öffentlich sein (oder das Release muss in einem öffentlichen Repository liegen), damit `curl` ohne Token die API, das Skript und die Release-Dateien erreicht. Das Repository ist zurzeit privat, bis dahin liefert `install.sh` die Meldung, dass es kein lesbares Release gibt.
 

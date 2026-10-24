@@ -1,9 +1,10 @@
-import { chmodSync, existsSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   adapterLaunch,
+  agentEnv,
   CLAUDE_CODE,
   CODEX,
   checkBackend,
@@ -13,6 +14,24 @@ import {
   resolveAdapterEntry,
 } from "./backends.js";
 import { createDrivers } from "./drivers.js";
+
+describe("agent environment", () => {
+  it("puts the cg launcher folder of the app first on the PATH", () => {
+    const resources = mkdtempSync(join(tmpdir(), "cg-res-"));
+    mkdirSync(join(resources, "bin"));
+    writeFileSync(join(resources, "bin", "cg"), "#!/bin/sh\n");
+    chmodSync(join(resources, "bin", "cg"), 0o755);
+    const env = agentEnv({}, { PATH: "/usr/bin" }, resources);
+    expect(env.PATH?.split(":")[0]).toBe(join(resources, "bin"));
+    expect(env.PATH).toContain("/usr/bin");
+  });
+
+  it("leaves the PATH alone outside an app bundle", () => {
+    const env = agentEnv({}, { PATH: "/usr/bin" }, mkdtempSync(join(tmpdir(), "cg-res-")));
+    expect(env.PATH?.split(":")[0]).toBe("/usr/bin");
+    expect(agentEnv({}, { PATH: "/usr/bin" }, undefined).PATH?.split(":")[0]).toBe("/usr/bin");
+  });
+});
 
 describe("installed CLI", () => {
   const dir = mkdtempSync(join(tmpdir(), "cg-cli-"));

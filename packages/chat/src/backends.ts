@@ -268,17 +268,39 @@ export function findExecutable(name: string, dirs: string[] = searchPath()): str
   return undefined;
 }
 
-/** Environment for spawned agents: session variables and API keys removed, PATH widened. */
+/**
+ * Folder of the `cg` launcher inside the packaged app (Contents/Resources/bin), or undefined when
+ * the process does not run from an app bundle (development, tests).
+ */
+export function bundledBinDir(resourcesPath: string | undefined): string | undefined {
+  if (!resourcesPath) return undefined;
+  const dir = join(resourcesPath, "bin");
+  try {
+    accessSync(join(dir, "cg"), constants.X_OK);
+    return dir;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Environment for spawned agents: session variables and API keys removed, PATH widened. The
+ * launcher folder of the app comes first, so `cg` in the shell of an agent is the one that belongs
+ * to the running app.
+ */
 export function agentEnv(
   extra: Record<string, string> = {},
   base: NodeJS.ProcessEnv = process.env,
+  resourcesPath: string | undefined = (process as NodeJS.Process & { resourcesPath?: string })
+    .resourcesPath,
 ): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(base)) {
     if (v === undefined || ENV_BLOCKLIST.test(k)) continue;
     env[k] = v;
   }
-  env.PATH = searchPath(base).join(delimiter);
+  const bundled = bundledBinDir(resourcesPath);
+  env.PATH = [...new Set([...(bundled ? [bundled] : []), ...searchPath(base)])].join(delimiter);
   return { ...env, ...extra };
 }
 
