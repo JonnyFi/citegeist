@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Research Pipeline watchlists: weekly re-runs of a saved search, via a launchd LaunchAgent.
+"""Watchlists of the citegeist literature search: saved searches, re-run weekly by launchd if wanted.
 
 Usage:
-  python3 watch.py list
+  python3 watch.py list [--json]
+  python3 watch.py save [--id ID] [--from-run RUN] --topic T --query Q ... --weekday 1 --time 08:00
+                        [--since YEAR] [--top N]                      # prints the watchlist as JSON
+  python3 watch.py background ID on|off          # install or remove the weekly LaunchAgent
+  python3 watch.py seen ID                       # the user looked at the new papers
   python3 watch.py run ID [--scheduled]          # one re-run now (what the LaunchAgent calls)
-  python3 watch.py schedule ID --weekday 1 --time 08:00
-  python3 watch.py pause ID | resume ID | delete ID
+  python3 watch.py record ID RUN                 # book a run the app started on the watchlist
+  python3 watch.py delete ID
 
-Each watchlist stores a run's topic, queries and settings. A re-run writes a normal run folder
-to the runs directory, compares it with the watchlist's previous run (watch.json: new and dropped
-papers), checks all tracked preprints for a published version, and posts a macOS notification
-when something new turned up. The LaunchAgent runs `zsh -l -c ...`, so OPENALEX_API_KEY and
-OPENDRAFT_CONTACT_EMAIL from the login profile are set.
+Each watchlist stores a topic, queries and settings in <library>/research/watches/watchlists.json.
+A new watchlist runs only on request: the weekly LaunchAgent exists only while "background" is on
+(stored as paused = false, the field research-pipeline used). A re-run writes a normal run folder,
+compares it with the watchlist's previous run (watch.json: new and dropped papers), checks tracked
+preprints, and posts a macOS notification when something new turned up. The agent reads the
+OpenAlex key from the Keychain (settings.py); no secret is written into its plist.
 """
 
 import argparse
@@ -38,8 +43,12 @@ SCRIPT = os.path.join(SKILL_DIR, "scripts", "pipeline.py")
 RUNS_DIR = settings.RUNS_DIR
 WATCH_DIR = settings.WATCH_DIR
 AGENTS_DIR = os.path.expanduser("~/Library/LaunchAgents")
-LABEL_PREFIX = "com.research-pipeline.watch."
-LEGACY_LABEL_PREFIX = "com.lit-scout.watch."
+# one label namespace per library, so two libraries with a watchlist of the same name do not collide
+LIBRARY_ID = re.sub(r"[^A-Za-z0-9-]", "", os.environ.get("CITEGEIST_LIBRARY_ID", "")) or "library"
+LABEL_PREFIX = f"app.citegeist.litsearch.{LIBRARY_ID}."
+# what a LaunchAgent needs to find the library and the key (never the key itself)
+AGENT_ENV = ("CITEGEIST_LITSEARCH_DIR", "CITEGEIST_LITSEARCH_CACHE", "CITEGEIST_KEYCHAIN_SERVICE",
+             "CITEGEIST_LIBRARY_ID", "OPENDRAFT_CONTACT_EMAIL", "SSL_CERT_FILE")
 SCHEDULER = sys.platform == "darwin"  # weekly re-runs and notifications need launchd and osascript
 WEEKDAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]  # launchd: 0 = Sunday
 
@@ -105,24 +114,34 @@ def update(wid, **fields):
     return None
 
 
-def create(run_id, weekday, at):
-    """Save a finished run's topic, queries and settings as a watchlist and install its LaunchAgent."""
-    meta = read_json(os.path.join(RUNS_DIR, run_id, "run.json")) or {}
-    if not meta.get("queries"):
-        raise ValueError("Lauf ohne gespeicherte Suchanfragen")
+def save(wid=None, from_run=None, topic=None, queries=None, since=None, top=None, weekday=1, at="08:00"):
+    """Create a watchlist (background off) or change one; a running agent follows a new schedule."""
     weekday, at = check_schedule(weekday, at)
+    if from_run and not queries:
+        meta = read_json(os.path.join(RUNS_DIR, from_run, "run.json")) or {}
+        topic, queries = topic or meta.get("topic"), meta.get("queries")
+        since, top = since if since is not None else meta.get("since"), top if top is not None else meta.get("top")
+    queries = [" ".join(q.split()) for q in queries or [] if q and q.strip()]
+    if not topic or not queries:
+        raise ValueError("Thema und mindestens eine Suchanfrage nötig")
+    fields = {"topic": topic, "queries": queries, "since": since, "top": top, "weekday": weekday, "time": at}
+    if wid:
+        wl = update(wid, **fields)
+        if not wl:
+            raise ValueError(f"keine Beobachtung {wid}")
+        if not wl["paused"]:
+            install(wl)
+        return wl
     with locked() as data:
-        base, n, ids = slugify(meta.get("topic") or run_id, 40), 2, {w["id"] for w in data["watchlists"]}
+        base, n, ids = slugify(topic, 40), 2, {w["id"] for w in data["watchlists"]}
         wid = base
         while wid in ids:
             wid, n = f"{base}-{n}", n + 1
-        wl = {"id": wid, "topic": meta.get("topic") or run_id, "queries": meta["queries"],
-              "since": meta.get("since"), "top": meta.get("top"), "weekday": weekday, "time": at,
-              "paused": False, "created": now(), "base_run": run_id, "runs": [], "last_run": None,
-              "last_status": None, "last_new": None, "last_visit": now(), "running_pid": None}
+        wl = {"id": wid, **fields, "paused": True, "created": now(), "base_run": from_run, "runs": [],
+              "last_run": None, "last_status": None, "last_new": None, "last_visit": now(), "running_pid": None}
         data["watchlists"].append(wl)
-    install(wl)
-    preprints.sync_from_runs(RUNS_DIR)
+    if from_run:
+        preprints.sync_from_runs(RUNS_DIR)
     return wl
 
 
@@ -136,24 +155,19 @@ def check_schedule(weekday, at):
     return weekday, f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
-def schedule(wid, weekday, at):
-    weekday, at = check_schedule(weekday, at)
-    wl = update(wid, weekday=weekday, time=at)
-    if wl and not wl["paused"]:
-        install(wl)
-    return wl
-
-
-def pause(wid):
+def background(wid, on):
+    """Turn the weekly LaunchAgent on (install) or off (remove)."""
+    if on:
+        wl = update(wid, paused=False)
+        if wl:
+            install(wl)
+        return wl
     uninstall(wid)
     return update(wid, paused=True)
 
 
-def resume(wid):
-    wl = update(wid, paused=False)
-    if wl:
-        install(wl)
-    return wl
+def seen(wid):
+    return update(wid, last_visit=now())
 
 
 def delete(wid):
@@ -186,7 +200,7 @@ def install(wl):
     os.makedirs(AGENTS_DIR, exist_ok=True)
     os.makedirs(os.path.join(WATCH_DIR, "logs"), exist_ok=True)
     hour, minute = map(int, wl["time"].split(":"))
-    env = "".join(f"{k}={_sh(os.environ[k])} " for k in ("RESEARCH_PIPELINE_DATA_DIR", "RESEARCH_PIPELINE_RUNS_DIR", "RESEARCH_PIPELINE_WATCH_DIR", "LIT_SCOUT_RUNS_DIR", "LIT_SCOUT_WATCH_DIR", "SSL_CERT_FILE") if os.environ.get(k))
+    env = "".join(f"{k}={_sh(os.environ[k])} " for k in AGENT_ENV if os.environ.get(k))
     cmd = f"exec env {env}{_sh(sys.executable)} {_sh(os.path.abspath(__file__))} run {_sh(wl['id'])} --scheduled"
     logf = os.path.join(WATCH_DIR, "logs", f"{wl['id']}.log")
     plist = {"Label": label(wl["id"]), "ProgramArguments": ["/bin/zsh", "-l", "-c", cmd],
@@ -206,24 +220,6 @@ def uninstall(wid, keep_file=False):
     _launchctl("bootout", f"gui/{os.getuid()}/{label(wid)}")  # fails harmlessly when not loaded
     if not keep_file and os.path.exists(plist_path(wid)):
         os.remove(plist_path(wid))
-
-
-def migrate_agents():
-    """Replace LaunchAgents from before the rename (com.lit-scout.watch.*) with ones under the new label."""
-    if not SCHEDULER or not os.path.isdir(AGENTS_DIR):
-        return []
-    moved = []
-    for name in sorted(os.listdir(AGENTS_DIR)):
-        if not (name.startswith(LEGACY_LABEL_PREFIX) and name.endswith(".plist")):
-            continue
-        wid = name[len(LEGACY_LABEL_PREFIX):-len(".plist")]
-        _launchctl("bootout", f"gui/{os.getuid()}/{LEGACY_LABEL_PREFIX}{wid}")
-        os.remove(os.path.join(AGENTS_DIR, name))
-        wl = get(wid)
-        if wl and not wl["paused"]:
-            install(wl)
-            moved.append(wid)
-    return moved
 
 
 def agent_loaded(wid):
@@ -316,6 +312,45 @@ def execute(wl):
     return run_id, status
 
 
+def record(wid, run_id, status=None, notify_user=False):
+    """Book a finished run on its watchlist: watch.json with new and dropped papers, last_* fields."""
+    wl = get(wid)
+    if not wl:
+        raise ValueError(f"keine Beobachtung {wid}")
+    meta = read_json(os.path.join(RUNS_DIR, run_id, "run.json")) or {}
+    status = status or meta.get("status") or "failed"
+    prev = next((r for r in reversed(wl["runs"]) if r != run_id and (read_json(os.path.join(RUNS_DIR, r, "run.json")) or {})
+                 .get("status") == "done"), wl.get("base_run"))
+    result = {"watchlist": wid, "created": now(), "status": status}
+    if status == "done" and prev and prev != run_id and os.path.isdir(os.path.join(RUNS_DIR, prev)):
+        result.update(diff(prev, run_id))
+    write_json(os.path.join(RUNS_DIR, run_id, "watch.json"), result)
+    n_new = len(result.get("new") or [])
+    with locked() as data:
+        for w in data["watchlists"]:
+            if w["id"] == wid:
+                if run_id not in w["runs"]:
+                    w["runs"].append(run_id)
+                w.update(last_run=now(), last_status=status, last_new=n_new if status == "done" else None)
+    log(f"{wid}: {status}, {n_new} new, {len(result.get('dropped') or [])} dropped (vs {prev})")
+    if notify_user and status == "done" and n_new:
+        notify("citegeist", f"{n_new} neue{'s' if n_new == 1 else ''} Paper zu {wl['topic']}",
+               subtitle="Literatursuche · Beobachtung")
+    elif notify_user and status != "done":
+        notify("citegeist", f"Beobachtung „{wl['topic']}“: Lauf fehlgeschlagen", subtitle="Details in der Literatursuche")
+    return result
+
+
+def unseen(wl):
+    """New papers in the watchlist's runs since the user last looked."""
+    total = 0
+    for r in wl.get("runs") or []:
+        w = read_json(os.path.join(RUNS_DIR, r, "watch.json")) or {}
+        if w.get("created", "") > (wl.get("last_visit") or ""):
+            total += len(w.get("new") or [])
+    return total
+
+
 def notify(title, message, subtitle=""):
     """macOS notification through osascript (works from a LaunchAgent in the user session)."""
     if not SCHEDULER:
@@ -344,25 +379,8 @@ def run_watch(wid, scheduled=False):
     update(wid, running_pid=os.getpid(), running_since=now())
     status = "failed"
     try:
-        prev = next((r for r in reversed(wl["runs"]) if (read_json(os.path.join(RUNS_DIR, r, "run.json")) or {})
-                     .get("status") == "done"), wl.get("base_run"))
         run_id, status = execute(wl)
-        result = {"watchlist": wid, "created": now(), "status": status}
-        if status == "done" and prev and os.path.isdir(os.path.join(RUNS_DIR, prev)):
-            result.update(diff(prev, run_id))
-        write_json(os.path.join(RUNS_DIR, run_id, "watch.json"), result)
-        n_new = len(result.get("new") or [])
-        with locked() as data:
-            for w in data["watchlists"]:
-                if w["id"] == wid:
-                    w["runs"].append(run_id)
-                    w.update(last_run=now(), last_status=status, last_new=n_new if status == "done" else None)
-        log(f"{wid}: {status}, {n_new} new, {len(result.get('dropped') or [])} dropped (vs {prev})")
-        if status == "done" and n_new:
-            notify("Research Pipeline", f"{n_new} neue{'s' if n_new == 1 else ''} Paper zu {wl['topic']}",
-                   subtitle="Beobachtung · wöchentlicher Lauf")
-        elif status != "done":
-            notify("Research Pipeline", f"Beobachtung „{wl['topic']}“: Lauf fehlgeschlagen", subtitle="Details im Laufordner")
+        record(wid, run_id, status, notify_user=True)
     finally:
         update(wid, running_pid=None)
     # preprint tracking rides along with every weekly run
@@ -372,7 +390,7 @@ def run_watch(wid, scheduled=False):
         for item in found:
             log("preprint published: " + preprints.report(item))
         if found:
-            notify("Research Pipeline", preprints.report(found[0]) if len(found) == 1 else
+            notify("citegeist", preprints.report(found[0]) if len(found) == 1 else
                    f"{len(found)} Preprints sind jetzt erschienen oder angenommen", subtitle="Preprint-Tracking")
     except Exception as e:  # the watch run itself is done; do not fail it over the preprint check
         log(f"preprint check failed: {type(e).__name__}: {e}")
@@ -390,27 +408,52 @@ def _alive(pid):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("list")
+    sub.add_parser("list").add_argument("--json", action="store_true")
+    sv = sub.add_parser("save")
+    sv.add_argument("--id")
+    sv.add_argument("--from-run")
+    sv.add_argument("--topic")
+    sv.add_argument("--query", action="append")
+    sv.add_argument("--since", type=int)
+    sv.add_argument("--top", type=int)
+    sv.add_argument("--weekday", type=int, required=True, help="0 = Sunday ... 6 = Saturday")
+    sv.add_argument("--time", required=True, help="HH:MM")
+    bg = sub.add_parser("background")
+    bg.add_argument("id")
+    bg.add_argument("state", choices=["on", "off"])
     r = sub.add_parser("run")
     r.add_argument("id")
     r.add_argument("--scheduled", action="store_true", help="called by launchd: skip if paused")
-    s = sub.add_parser("schedule")
-    s.add_argument("id")
-    s.add_argument("--weekday", type=int, required=True, help="0 = Sunday ... 6 = Saturday")
-    s.add_argument("--time", required=True, help="HH:MM")
-    for name in ("pause", "resume", "delete"):
+    rec = sub.add_parser("record")
+    rec.add_argument("id")
+    rec.add_argument("run")
+    for name in ("seen", "delete"):
         sub.add_parser(name).add_argument("id")
     args = ap.parse_args()
-    if args.cmd == "list":
-        for w in load():
-            state = "paused" if w["paused"] else "active" if agent_loaded(w["id"]) else "agent missing"
-            print(f"{w['id']}: {w['topic']} · {WEEKDAYS[w['weekday']]} {w['time']} · {state} · {len(w['runs'])} runs")
-    elif args.cmd == "run":
-        sys.exit(run_watch(args.id, args.scheduled))
-    elif args.cmd == "schedule":
-        print(schedule(args.id, args.weekday, args.time))
-    else:
-        print({"pause": pause, "resume": resume, "delete": delete}[args.cmd](args.id))
+    try:
+        if args.cmd == "list":
+            items = [{**w, "agent": agent_loaded(w["id"]), "unseen": unseen(w)} for w in load()]
+            if args.json:
+                print(json.dumps({"watchlists": items}, ensure_ascii=False))
+            for w in items if not args.json else []:
+                state = "background off" if w["paused"] else "active" if w["agent"] else "agent missing"
+                print(f"{w['id']}: {w['topic']} · {WEEKDAYS[w['weekday']]} {w['time']} · {state} · {len(w['runs'])} runs")
+        elif args.cmd == "save":
+            print(json.dumps(save(args.id, args.from_run, args.topic, args.query, args.since, args.top,
+                                  args.weekday, args.time), ensure_ascii=False))
+        elif args.cmd == "background":
+            print(json.dumps(background(args.id, args.state == "on"), ensure_ascii=False))
+        elif args.cmd == "run":
+            sys.exit(run_watch(args.id, args.scheduled))
+        elif args.cmd == "record":
+            print(json.dumps(record(args.id, args.run), ensure_ascii=False))
+        elif args.cmd == "seen":
+            print(json.dumps(seen(args.id), ensure_ascii=False))
+        else:
+            print(json.dumps({"deleted": delete(args.id)}))
+    except (ValueError, RuntimeError) as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,10 @@ export interface LitsearchEnv {
   cacheDir: string;
   openalexKey?: string | undefined;
   mailto?: string | undefined;
+  /** Part of the launchd labels of the library's watchlists. */
+  libraryId?: string | undefined;
+  /** Keychain service a launchd agent reads the OpenAlex key from. */
+  keychainService?: string | undefined;
 }
 
 export function scriptEnv(e: LitsearchEnv): Record<string, string> {
@@ -56,6 +60,8 @@ export function scriptEnv(e: LitsearchEnv): Record<string, string> {
     CITEGEIST_LITSEARCH_CACHE: e.cacheDir,
     ...(e.openalexKey ? { OPENALEX_API_KEY: e.openalexKey } : {}),
     ...(e.mailto ? { OPENDRAFT_CONTACT_EMAIL: e.mailto } : {}),
+    ...(e.libraryId ? { CITEGEIST_LIBRARY_ID: e.libraryId } : {}),
+    ...(e.keychainService ? { CITEGEIST_KEYCHAIN_SERVICE: e.keychainService } : {}),
   };
 }
 

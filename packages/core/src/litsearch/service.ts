@@ -6,6 +6,7 @@ import type {
   LitsearchPaper,
   LitsearchRunMeta,
   LitsearchRunSummary,
+  LitsearchWatch,
 } from "@citegeist/ops";
 import { type Actor, CitegeistError, type Job } from "@citegeist/schema";
 import { writeFileAtomic } from "../fsutil.js";
@@ -140,6 +141,8 @@ export interface LitsearchDeps {
   scriptsDir?: string;
   /** Machine-local lookup cache. */
   cacheDir?: string;
+  /** Keychain service of the app; watchlist agents read the OpenAlex key from it. */
+  keychainService?: string;
   /** OpenAlex key from the Keychain and the contact address from the settings, read per run. */
   credentials?: () => Promise<{ openalexKey?: string | undefined; mailto?: string | undefined }>;
   now?: () => Date;
@@ -222,7 +225,7 @@ export class LitsearchService {
     return {
       run: { ...meta, ...(meta.error || !error ? {} : { error }) },
       stages,
-      papers: this.mark(readRunPapers(dir), dir),
+      papers: withNewInWatch(this.mark(readRunPapers(dir), dir), dir),
     };
   }
 
@@ -503,6 +506,162 @@ export class LitsearchService {
     return { path, filename: `${runId}-report.html`, html: readFileSync(path, "utf8") };
   }
 
+  /** Environment of a short script: folders, library id, Keychain service, contact address. */
+  private async env() {
+    type Creds = Awaited<ReturnType<NonNullable<LitsearchDeps["credentials"]>>>;
+    const creds: Creds = (await this.deps.credentials?.().catch(() => ({}))) ?? {};
+    return {
+      dataDir: this.lib.paths.researchDir,
+      cacheDir: this.deps.cacheDir ?? join(this.lib.local.cacheDir, "litsearch"),
+      libraryId: this.lib.manifest.id,
+      keychainService: this.deps.keychainService,
+      mailto: creds.mailto,
+    };
+  }
+
+  /** Runs watch.py with arguments and parses its JSON answer. Exit 2 carries a user message. */
+  private async watchScript(args: string[]): Promise<unknown> {
+    const { command, scriptsDir } = this.deps;
+    if (!command || !scriptsDir) throw unavailable("watchlists are kept by the citegeist app");
+    const res = await runScript({
+      command,
+      script: join(scriptsDir, "watch.py"),
+      args,
+      env: await this.env(),
+    });
+    if (res.code !== 0) {
+      throw new CitegeistError({
+        code: res.code === 2 ? "LITSEARCH_WATCH_INVALID" : "LITSEARCH_WATCH_FAILED",
+        message: res.stderr.trim().split("\n").pop() || `watch.py exited with ${res.code}`,
+        fix: "Check the watchlist's topic, queries, weekday (0 to 6) and time (HH:MM).",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    const line = res.stdout.trim().split("\n").pop() ?? "null";
+    return JSON.parse(line) as unknown;
+  }
+
+  private toWatch(raw: RawWatch): LitsearchWatch {
+    const pid = typeof raw.running_pid === "number" ? raw.running_pid : undefined;
+    const running =
+      pidAlive(pid) ||
+      Boolean(
+        this.deps.queue
+          ?.open()
+          .some(
+            (j) => j.kind === JOB_KIND && (j.input as RunJobInput | null)?.request.watch === raw.id,
+          ),
+      );
+    const int = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? v : undefined);
+    const lastStatus = raw.last_status as LitsearchWatch["lastStatus"] | null | undefined;
+    return {
+      id: raw.id,
+      topic: raw.topic,
+      queries: raw.queries,
+      ...(int(raw.since) !== undefined ? { since: int(raw.since) } : {}),
+      ...(int(raw.top) !== undefined ? { top: int(raw.top) } : {}),
+      weekday: raw.weekday,
+      time: raw.time,
+      background: raw.paused === false,
+      agentLoaded: raw.agent === true,
+      running,
+      runs: raw.runs ?? [],
+      ...(raw.last_run ? { lastRun: raw.last_run } : {}),
+      ...(lastStatus ? { lastStatus } : {}),
+      ...(int(raw.last_new) !== undefined ? { lastNew: int(raw.last_new) } : {}),
+      unseen: int(raw.unseen) ?? 0,
+    };
+  }
+
+  async watches(): Promise<{ watches: LitsearchWatch[] }> {
+    if (!existsSync(join(this.lib.paths.litsearchWatchesDir, "watchlists.json"))) {
+      return { watches: [] };
+    }
+    const out = (await this.watchScript(["list", "--json"])) as { watchlists: RawWatch[] };
+    return { watches: out.watchlists.map((w) => this.toWatch(w)) };
+  }
+
+  private async watch(id: string): Promise<LitsearchWatch> {
+    const found = (await this.watches()).watches.find((w) => w.id === id);
+    if (!found) {
+      throw new CitegeistError({
+        code: "LITSEARCH_WATCH_NOT_FOUND",
+        message: `There is no watchlist "${id}".`,
+        fix: "Take the id from litsearch.watches.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    return found;
+  }
+
+  async watchSave(input: {
+    id?: string | undefined;
+    fromRun?: string | undefined;
+    topic: string;
+    queries: string[];
+    since?: number | undefined;
+    top?: number | undefined;
+    weekday: number;
+    time: string;
+  }): Promise<{ watch: LitsearchWatch }> {
+    if (input.fromRun) this.meta(input.fromRun);
+    const args = [
+      "save",
+      ...(input.id ? ["--id", input.id] : []),
+      ...(input.fromRun ? ["--from-run", input.fromRun] : []),
+      "--topic",
+      input.topic,
+      ...input.queries.flatMap((q) => ["--query", q]),
+      ...(input.since !== undefined ? ["--since", String(input.since)] : []),
+      ...(input.top !== undefined ? ["--top", String(input.top)] : []),
+      "--weekday",
+      String(input.weekday),
+      "--time",
+      input.time,
+    ];
+    const raw = (await this.watchScript(args)) as RawWatch;
+    return { watch: await this.watch(raw.id) };
+  }
+
+  async watchDelete(id: string): Promise<{ ok: true }> {
+    await this.watch(id);
+    await this.watchScript(["delete", id]);
+    return { ok: true };
+  }
+
+  async watchBackground(id: string, enabled: boolean): Promise<{ watch: LitsearchWatch }> {
+    await this.watch(id);
+    await this.watchScript(["background", id, enabled ? "on" : "off"]);
+    return { watch: await this.watch(id) };
+  }
+
+  async watchSeen(id: string): Promise<{ watch: LitsearchWatch }> {
+    await this.watch(id);
+    await this.watchScript(["seen", id]);
+    return { watch: await this.watch(id) };
+  }
+
+  /** Runs a watchlist now as a normal run job; the job books the run on the watchlist when it ends. */
+  async watchRun(actor: Actor, id: string): Promise<{ runId: string; job: string }> {
+    const w = await this.watch(id);
+    if (w.running) {
+      throw new CitegeistError({
+        code: "LITSEARCH_RUN_ACTIVE",
+        message: `Watchlist "${id}" is running already.`,
+        fix: "Wait for its run to finish.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    return this.start(
+      actor,
+      { topic: w.topic, queries: w.queries, since: w.since, top: w.top, disableSources: [] },
+      id,
+    );
+  }
+
   private requireQueue(): JobQueue {
     if (!this.deps.queue || !this.deps.command || !this.deps.scriptsDir) {
       throw unavailable("a literature search runs in the citegeist app, not in a one-shot process");
@@ -541,6 +700,8 @@ export class LitsearchService {
         cacheDir: this.deps.cacheDir ?? join(this.lib.local.cacheDir, "litsearch"),
         openalexKey: creds.openalexKey,
         mailto: creds.mailto,
+        libraryId: this.lib.manifest.id,
+        keychainService: this.deps.keychainService,
       },
       dir,
       runId,
@@ -555,6 +716,10 @@ export class LitsearchService {
         ctx.progress(progressOf(stages), current?.label);
       },
     });
+    if (request.watch) {
+      // the watchlist learns about its run either way; a failure here must not hide the run's own result
+      await this.watchScript(["record", request.watch, runId]).catch(() => undefined);
+    }
     if (outcome.status === "failed") {
       throw new CitegeistError({
         code: "LITSEARCH_RUN_FAILED",
@@ -566,6 +731,39 @@ export class LitsearchService {
     }
     return { runId, status: outcome.status, counts: outcome.counts };
   }
+}
+
+/** One watchlist as watch.py's `list --json` prints it. */
+interface RawWatch {
+  id: string;
+  topic: string;
+  queries: string[];
+  since?: number | null;
+  top?: number | null;
+  weekday: number;
+  time: string;
+  paused?: boolean;
+  agent?: boolean;
+  running_pid?: number | null;
+  runs?: string[];
+  last_run?: string | null;
+  last_status?: string | null;
+  last_new?: number | null;
+  unseen?: number;
+}
+
+/** Marks the papers <run>/watch.json lists as new against the watchlist's previous run. */
+function withNewInWatch(papers: LitsearchPaper[], dir: string): LitsearchPaper[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(join(dir, "watch.json"), "utf8"));
+  } catch {
+    return papers;
+  }
+  const list = (raw as { new?: Array<{ key?: unknown }> } | null)?.new;
+  if (!Array.isArray(list)) return papers;
+  const keys = new Set(list.map((p) => p.key).filter((k): k is string => typeof k === "string"));
+  return papers.map((p) => (keys.has(p.key) ? { ...p, newInWatch: true } : p));
 }
 
 /** <run>/inbox.json: which paper key became which library item. */

@@ -39,6 +39,7 @@ import {
   bindSettingsOperations,
   createSettingsDeps,
   type DefaultSettingsOptions,
+  KEYCHAIN_SERVICE,
   NCBI_KEY_PROVIDER,
   OPENALEX_KEY_PROVIDER,
   type SettingsService,
@@ -349,6 +350,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
         }
       : {}),
     addItem: (actor, input) => ingest.addItem(actor, input),
+    keychainService: KEYCHAIN_SERVICE,
     openAlexDoi: async (openalex) => graphLookup.openAlexDoi(openalex),
     credentials: async () => ({
       openalexKey: await deps.keychain.get(OPENALEX_KEY_PROVIDER).catch(() => undefined),

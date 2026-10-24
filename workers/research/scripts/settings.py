@@ -6,6 +6,8 @@ citegeist starts these scripts and passes the folders through the environment:
   CITEGEIST_LITSEARCH_CACHE   machine-local lookup cache (DBLP, OpenReview, ORCID, h-index)
   OPENALEX_API_KEY            optional, from the citegeist settings
   OPENDRAFT_CONTACT_EMAIL     the citegeist "mailto" setting, sent to OpenAlex and Crossref
+  CITEGEIST_KEYCHAIN_SERVICE  Keychain service to read OPENALEX_API_KEY from when it is not set
+  CITEGEIST_LIBRARY_ID        id of the library, part of the launchd labels of its watchlists
 
 Without CITEGEIST_LITSEARCH_DIR the scripts refuse to run, so nothing lands outside a library.
 
@@ -31,6 +33,30 @@ def _required_dir():
 # SSL_CERT_FILE when urllib builds its default context.
 if not os.environ.get("SSL_CERT_FILE") and os.path.isfile("/etc/ssl/cert.pem"):
     os.environ["SSL_CERT_FILE"] = "/etc/ssl/cert.pem"
+
+
+def _keychain(account):
+    """A key from the macOS Keychain slot citegeist stores it in, or "" when there is none.
+
+    A launchd agent has no app to hand it the key, so it reads the Keychain itself; the key never
+    lands in the agent's plist.
+    """
+    service = os.environ.get("CITEGEIST_KEYCHAIN_SERVICE", "").strip()
+    if not service or not os.path.exists("/usr/bin/security"):
+        return ""
+    import subprocess
+    try:
+        res = subprocess.run(["/usr/bin/security", "find-generic-password", "-s", service, "-a", account, "-w"],
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return res.stdout.strip() if res.returncode == 0 else ""
+
+
+if not os.environ.get("OPENALEX_API_KEY", "").strip():
+    _key = _keychain("openalex")
+    if _key:
+        os.environ["OPENALEX_API_KEY"] = _key
 
 DATA_DIR = _required_dir()
 RUNS_DIR = os.path.join(DATA_DIR, "runs")
