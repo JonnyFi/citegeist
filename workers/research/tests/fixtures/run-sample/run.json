@@ -1,0 +1,18 @@
+{
+  "id": "run-sample",
+  "topic": "agent communication protocols",
+  "queries": ["\"agent communication protocol\"", "\"multi-agent communication\" LLM"],
+  "dropped_queries": [],
+  "since": 2022,
+  "top": 10,
+  "created": "2026-10-24T14:30:00",
+  "status": "done",
+  "counts": {
+    "main": 2,
+    "preprint": 1,
+    "grey": 1,
+    "rejected": 1
+  },
+  "attempts": 1,
+  "finished": "2026-10-24T14:34:12"
+}

@@ -10,6 +10,7 @@ import {
   jobsGet,
 } from "@citegeist/ops";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -26,7 +27,7 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 
 const INTERVALS = [6, 12, 24, 72, 168] as const;
 
-function everyLabel(hours: number, t: Translate): string {
+export function everyLabel(hours: number, t: Translate): string {
   if (hours === 24) return t("alerts.every.daily");
   if (hours === 168) return t("alerts.every.weekly");
   if (hours % 24 === 0) return t("alerts.every.days", { n: hours / 24 });
@@ -119,6 +120,11 @@ function AlertRow({ alert, showScope }: { alert: Alert; showScope: boolean }) {
         {" · "}
         {t("alerts.limit", { n: alert.limit })}
       </p>
+      {alert.source.pipeline ? (
+        <p className="truncate font-mono text-[12px] text-muted">
+          {alert.source.pipeline.queries.join("  ·  ")}
+        </p>
+      ) : null}
       {last ? (
         <p className="text-sm" data-testid="alert-last-run">
           {last.ok ? (
@@ -127,6 +133,14 @@ function AlertRow({ alert, showScope }: { alert: Alert; showScope: boolean }) {
               {". "}
               {t("alerts.result", { found: last.found, added: last.added })}
               {last.ranked ? ` (${t("alerts.ranked")})` : ""}
+              {last.runId ? (
+                <>
+                  {" "}
+                  <Link to="/litsearch/$runId" params={{ runId: last.runId }} className="underline">
+                    {t("alerts.openRun")}
+                  </Link>
+                </>
+              ) : null}
             </>
           ) : (
             <span className="text-danger">
@@ -229,7 +243,7 @@ function CreateForm({ project }: { project: string | undefined }) {
             label={t("alerts.create.kind")}
             value={kind}
             onChange={(next) => setKind(next as AlertSourceKind)}
-            options={ALERT_SOURCE_KINDS.map((k) => ({
+            options={ALERT_SOURCE_KINDS.filter((k) => k !== "pipeline").map((k) => ({
               value: k,
               label: t(`alerts.kind.${k}` as MessageKey),
             }))}

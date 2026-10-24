@@ -13,7 +13,9 @@
       "!**/*.md",
       "!spikes",
       "!.claude",
-      "!docs/design/boards"
+      "!docs/design/boards",
+      "!workers/research/vendor",
+      "!workers/research/*.yaml"
     ]
   },
   "formatter": {

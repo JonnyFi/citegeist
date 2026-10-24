@@ -40,6 +40,57 @@ function entriesOf(value: unknown): VersionEntry[] {
     : [];
 }
 
+/** The `versions` entries of an item, as saved in its frontmatter. */
+export function versionsOf(lib: Library, citekey: string): VersionEntry[] {
+  return entriesOf(loadItem(lib, citekey).file.data?.versions);
+}
+
+/** The published version of a preprint that the library holds too, read from the graph links. */
+export function publishedVersionOf(
+  lib: Library,
+  citekey: string,
+): { citekey: string; doi: string; venue?: string; year?: number } | undefined {
+  for (const entry of versionsOf(lib, citekey)) {
+    if (entry.relation !== "preprint-of") continue;
+    const target = /^\[\[([^\]|#]+)/.exec(entry.item)?.[1]?.trim();
+    if (!target) continue;
+    let fm: ReturnType<Library["getItem"]>["frontmatter"];
+    try {
+      fm = lib.getItem(target).frontmatter;
+    } catch {
+      continue;
+    }
+    const doi = fm.DOI ? normalizeDoi(fm.DOI) : entry.doi;
+    if (!doi) continue;
+    const year = Number.parseInt(String(fm.issued ?? "").slice(0, 4), 10);
+    return {
+      citekey: target,
+      doi,
+      ...(fm["container-title"] ? { venue: fm["container-title"] } : {}),
+      ...(Number.isInteger(year) ? { year } : {}),
+    };
+  }
+  return undefined;
+}
+
+/**
+ * The published version of a preprint that is not necessarily in the library: the first link of
+ * `findVersions` that names a DOI for the preprint. Same sources and same order as `linkVersions`.
+ */
+export async function findPublished(
+  lookup: Pick<GraphLookup, "findVersions">,
+  key: { doi?: string | undefined; arxiv?: string | undefined },
+): Promise<{ link?: VersionLink & { doi: string }; errors: string[] }> {
+  const result = await lookup.findVersions({
+    ...(key.doi ? { doi: key.doi } : {}),
+    ...(key.arxiv ? { arxiv: key.arxiv } : {}),
+  });
+  const link = result.links.find(
+    (l): l is VersionLink & { doi: string } => l.relation === "preprint-of" && !!l.doi,
+  );
+  return { ...(link ? { link } : {}), errors: result.errors };
+}
+
 function findOther(lib: Library, link: VersionLink, self: string): string | undefined {
   if (link.doi) {
     const row = lib.index.get<{ citekey: string }>(

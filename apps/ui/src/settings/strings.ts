@@ -26,6 +26,12 @@ export const settingsDe = {
   "settings.sources.keySave": "NCBI-Schlüssel speichern",
   "settings.sources.keyStored": "Der NCBI-Schlüssel liegt in der Keychain.",
   "settings.sources.keyRemove": "NCBI-Schlüssel entfernen",
+  "settings.sources.openalexKey": "OpenAlex-API-Schlüssel",
+  "settings.sources.openalexKeySave": "OpenAlex-Schlüssel speichern",
+  "settings.sources.openalexKeyStored": "Der OpenAlex-Schlüssel liegt in der Keychain.",
+  "settings.sources.openalexKeyRemove": "OpenAlex-Schlüssel entfernen",
+  "settings.sources.openalexKeyHint":
+    "Für die Literatursuche. Ohne Schlüssel ist das Tageslimit von OpenAlex schnell erreicht. Kostenlos unter openalex.org/settings/api.",
 
   "sync.title": "Sync und Verlauf",
   "sync.desc":
@@ -164,6 +170,12 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
   "settings.sources.keySave": "Save NCBI key",
   "settings.sources.keyStored": "The NCBI key is stored in the Keychain.",
   "settings.sources.keyRemove": "Remove NCBI key",
+  "settings.sources.openalexKey": "OpenAlex API key",
+  "settings.sources.openalexKeySave": "Save OpenAlex key",
+  "settings.sources.openalexKeyStored": "The OpenAlex key is stored in the Keychain.",
+  "settings.sources.openalexKeyRemove": "Remove OpenAlex key",
+  "settings.sources.openalexKeyHint":
+    "For the literature search. Without a key, the OpenAlex daily limit is reached quickly. Free at openalex.org/settings/api.",
 
   "sync.title": "Sync and history",
   "sync.desc":

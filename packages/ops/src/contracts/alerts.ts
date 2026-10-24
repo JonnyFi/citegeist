@@ -1,11 +1,16 @@
 import { Citekey, JobId, ProjectSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
+import { LitsearchRunId } from "./litsearch.js";
 
 // Alerts: saved watches that look for new works on a schedule and put the best ones into the
 // inbox (D7, actor "system", why "Alert: <name>"). The definitions are plain files:
 // projects/<slug>/alerts.yaml for the alerts of a project, alerts.yaml at the library root for
 // the others. When an alert ran, what it found and a cursor stay machine-local.
+//
+// The kind `pipeline` is a saved literature search (D19): each check runs the pipeline of
+// workers/research as a litsearch.run job, compares the run with the alert's previous one and
+// puts the new papers, best score first, into the inbox.
 
 export const ALERT_SOURCE_KINDS = [
   "arxiv-category",
@@ -14,6 +19,7 @@ export const ALERT_SOURCE_KINDS = [
   "openalex-search",
   "author",
   "cites",
+  "pipeline",
 ] as const;
 export const AlertSourceKind = z.enum(ALERT_SOURCE_KINDS);
 export type AlertSourceKind = z.infer<typeof AlertSourceKind>;
@@ -28,11 +34,25 @@ const OPENALEX_TOPIC = /(?:^|\/)T\d+\/?$/i;
 const OPENALEX_AUTHOR = /(?:^|\/)A\d+\/?$/i;
 const ORCID = /\d{4}-\d{4}-\d{4}-\d{3}[\dX]/i;
 
-/** What an alert watches. `value` is read by `kind`: a category, a query, an id or a citekey. */
+/** The search a `pipeline` alert repeats: the queries, the year filter and the size of the result. */
+export const PipelineSpec = z.object({
+  queries: z.array(z.string().trim().min(1)).min(1).max(20),
+  since: z.number().int().min(1900).max(2100).optional(),
+  top: z.number().int().min(1).max(500).optional(),
+  /** The run the alert was saved from. The first check compares with it. */
+  fromRun: LitsearchRunId.optional(),
+});
+export type PipelineSpec = z.infer<typeof PipelineSpec>;
+
+/**
+ * What an alert watches. `value` is read by `kind`: a category, a query, an id, a citekey or, for
+ * `pipeline`, the topic of the search (its queries are in `pipeline`).
+ */
 export const AlertSource = z
   .object({
     kind: AlertSourceKind,
     value: z.string().trim().min(1).max(500),
+    pipeline: PipelineSpec.optional(),
   })
   .superRefine((s, ctx) => {
     const bad = (message: string) => ctx.addIssue({ code: "custom", path: ["value"], message });
@@ -51,6 +71,15 @@ export const AlertSource = z
       case "cites":
         if (!Citekey.safeParse(s.value).success) bad("the citekey of an item in the library");
         break;
+      case "pipeline":
+        if (!s.pipeline) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["pipeline"],
+            message: "a pipeline alert needs the queries of the search",
+          });
+        }
+        break;
       default:
         break;
     }
@@ -65,11 +94,11 @@ export const AlertDef = z.object({
   id: AlertId,
   name: z.string().trim().min(1).max(120),
   source: AlertSource,
-  /** Hours between two runs. Default one day. */
+  /** Hours between two runs. Default one day, one week for a `pipeline` alert (a run is expensive). */
   intervalHours: Interval.default(24),
   /** How many of the new works go into the inbox per run. */
   limit: Limit.default(5),
-  /** Rank the new works against the project brief with the local embedder, best first. */
+  /** Rank the new works against the project brief with the local embedder, best first. A `pipeline` alert ranks by its own score. */
   rank: z.boolean().default(true),
   enabled: z.boolean().default(true),
   created: z.string(),
@@ -88,6 +117,8 @@ export const AlertRun = z.object({
   added: z.number().int().nonnegative(),
   /** True when the order of `added` comes from the similarity to the project brief. */
   ranked: z.boolean(),
+  /** The literature search run behind the check of a `pipeline` alert. */
+  runId: LitsearchRunId.optional(),
   error: z.string().optional(),
 });
 export type AlertRun = z.infer<typeof AlertRun>;
@@ -132,7 +163,7 @@ export const alertsList = defineContract({
 export const alertsCreate = defineContract({
   name: "alerts.create",
   summary:
-    "Create an alert: a saved watch of an arXiv category or query, an OpenAlex topic or search, an author, or the works that cite an item. It runs on its interval and adds the best new works to the inbox",
+    "Create an alert: a saved watch of an arXiv category or query, an OpenAlex topic or search, an author, the works that cite an item, or a literature search (pipeline). It runs on its interval and adds the best new works to the inbox",
   access: "write",
   input: AlertFields.partial({
     intervalHours: true,

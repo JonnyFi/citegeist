@@ -36,6 +36,12 @@ export {
 } from "./tasks/concept-describe/index.js";
 export { ConceptNameInput, ConceptNameOutput } from "./tasks/concept-name/index.js";
 export {
+  LitsearchSuggestQueriesInput,
+  LitsearchSuggestQueriesOutput,
+  planSuggestedQueries,
+  queryKey,
+} from "./tasks/litsearch-suggest-queries/index.js";
+export {
   MAX_EVIDENCE,
   MatrixFillCellInput,
   MatrixFillCellOutput,

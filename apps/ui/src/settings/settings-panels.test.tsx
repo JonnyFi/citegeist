@@ -72,6 +72,25 @@ describe("metadata sources", () => {
     await waitFor(() => expect(state.apiKeys.ncbi).toBe(false));
     expect(await screen.findByLabelText("NCBI-API-Schlüssel")).toBeVisible();
   });
+
+  it("stores the OpenAlex key in its own Keychain slot, apart from the NCBI key", async () => {
+    // protects: the literature search key lands in slot "openalex" and stays masked
+    // fails_when: the key goes to another slot, shows again in clear text or touches the NCBI slot
+    // no_claim: the mock core stands in for the Keychain; the real MacKeychain is not touched
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />);
+    const field = await screen.findByLabelText("OpenAlex-API-Schlüssel");
+    expect(field).toHaveAttribute("type", "password");
+    await user.type(field, "oa-secret-key");
+    await user.click(screen.getByRole("button", { name: "OpenAlex-Schlüssel speichern" }));
+    expect(await screen.findByText("Der OpenAlex-Schlüssel liegt in der Keychain.")).toBeVisible();
+    expect(screen.queryByDisplayValue("oa-secret-key")).toBeNull();
+    expect(state.apiKeys.openalex).toBe(true);
+    expect(state.apiKeys.ncbi).toBe(false);
+    expect(calls.find((c) => c.name === "settings.update")?.input).toMatchObject({
+      apiKey: { provider: "openalex", key: "oa-secret-key" },
+    });
+  });
 });
 
 describe("sections", () => {

@@ -1,0 +1,74 @@
+# Venue tiers per field. Format:  Canonical name: [aliases]   (quote aliases containing commas)
+# Matching is case-insensitive after normalisation: "&" = "and", punctuation, years,
+# ordinals ("36th", "Thirty-Second"), "Proceedings" and "Annual" are ignored. Add aliases as OpenAlex spells venue names.
+
+ai_ml:
+  tier1:
+    NeurIPS: [NIPS, Neural Information Processing Systems, Advances in Neural Information Processing Systems, Conference on Neural Information Processing Systems]
+    ICML: [International Conference on Machine Learning]
+    ICLR: [International Conference on Learning Representations]
+    AAAI: [AAAI Conference on Artificial Intelligence, Proceedings of the AAAI Conference on Artificial Intelligence, National Conference on Artificial Intelligence]
+    IJCAI: [International Joint Conference on Artificial Intelligence]
+    ACL: [Annual Meeting of the Association for Computational Linguistics, Meeting of the Association for Computational Linguistics]
+    EMNLP: [Empirical Methods in Natural Language Processing, Conference on Empirical Methods in Natural Language Processing]
+    NAACL: [North American Chapter of the Association for Computational Linguistics, Conference of the North American Chapter of the Association for Computational Linguistics, NAACL-HLT, Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies]
+    AAMAS: [Adaptive Agents and Multi-Agents Systems, Adaptive Agents and Multi-Agent Systems, Autonomous Agents and Multi-Agent Systems, International Conference on Autonomous Agents and Multiagent Systems, International Joint Conference on Autonomous Agents and Multiagent Systems]
+    JMLR: [Journal of Machine Learning Research]
+    IEEE TPAMI: [TPAMI, IEEE Transactions on Pattern Analysis and Machine Intelligence]
+    Artificial Intelligence (journal): [Artificial Intelligence]
+    JAIR: [Journal of Artificial Intelligence Research]
+    Nature Machine Intelligence: []
+  tier2:
+    TMLR: [Transactions on Machine Learning Research]
+    COLM: [Conference on Language Modeling]
+    AISTATS: [International Conference on Artificial Intelligence and Statistics]
+    UAI: [Uncertainty in Artificial Intelligence, Conference on Uncertainty in Artificial Intelligence]
+    EACL: [European Chapter of the Association for Computational Linguistics, Conference of the European Chapter of the Association for Computational Linguistics]
+    COLING: [International Conference on Computational Linguistics]
+    ECAI: [European Conference on Artificial Intelligence]
+    KR: [Principles of Knowledge Representation and Reasoning, International Conference on Principles of Knowledge Representation and Reasoning]
+    CoRL: [Conference on Robot Learning]
+    Machine Learning (journal): [Machine Learning]
+
+is_business:
+  tier1:
+    MIS Quarterly: [MISQ, Management Information Systems Quarterly]
+    Information Systems Research: [ISR]
+    Journal of Management Information Systems: [JMIS]
+    Journal of the AIS: [JAIS, Journal of the Association for Information Systems]
+    European Journal of Information Systems: [EJIS]
+    Information Systems Journal: [ISJ]
+    Journal of Information Technology: [JIT]
+    Journal of Strategic Information Systems: [JSIS, The Journal of Strategic Information Systems]
+    Management Science: []
+    Organization Science: []
+    Strategic Management Journal: [SMJ]
+    ICIS: [International Conference on Information Systems, ICIS Proceedings]
+  tier2:
+    Business & Information Systems Engineering: [BISE]
+    Decision Support Systems: [DSS]
+    Information & Management: [Information and Management]
+    ECIS: [European Conference on Information Systems, ECIS Proceedings]
+    HICSS: [Hawaii International Conference on System Sciences]
+    AMCIS: [Americas Conference on Information Systems, AMCIS Proceedings]
+    Wirtschaftsinformatik (WI): [Wirtschaftsinformatik, Internationale Tagung Wirtschaftsinformatik, Wirtschaftsinformatik Proceedings]
+
+ethics_governance:
+  tier1:
+    Nature: []
+    Science: []
+    PNAS: [Proceedings of the National Academy of Sciences, Proceedings of the National Academy of Sciences of the United States of America]
+    Nature Human Behaviour: [Nature Human Behavior]
+    FAccT: ["ACM Conference on Fairness, Accountability, and Transparency", "Conference on Fairness, Accountability, and Transparency", FAT*]
+    AIES: ["AAAI/ACM Conference on AI, Ethics, and Society"]
+    Philosophy & Technology: []
+    Minds and Machines: []
+    Ethics and Information Technology: []
+    Big Data & Society: []
+  tier2:
+    AI & Society: [AI and Society]
+    Science and Engineering Ethics: []
+    AI and Ethics: []
+    Regulation & Governance: []
+    Government Information Quarterly: [GIQ]
+    Policy & Internet: []
