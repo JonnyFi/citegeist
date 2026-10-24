@@ -669,6 +669,9 @@ importers:
       '@citegeist/schema':
         specifier: workspace:*
         version: link:../schema
+      '@citegeist/webhooks':
+        specifier: workspace:*
+        version: link:../webhooks
       '@orpc/server':
         specifier: ^1.16.1
         version: 1.16.1(@opentelemetry/api@1.10.0)(ws@8.22.0)

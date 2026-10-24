@@ -83,8 +83,10 @@ export interface MetadataConfig {
   ncbiApiKey?: string;
   /** `tool` parameter NCBI asks for with every E-utilities call. Default "citegeist". */
   ncbiTool?: string;
-  /** Ask Unpaywall for open-access PDFs (default true). Needs `mailto`: Unpaywall requires an email. */
+  /** Ask Unpaywall for open-access PDFs (default true). Needs an email: `unpaywallEmail` or `mailto`. */
   unpaywall?: boolean;
+  /** Address sent to Unpaywall. Default: `mailto`. */
+  unpaywallEmail?: string;
   /** Enrich with OpenAlex (default true). */
   openalex?: boolean;
   /** Resolve the published DOI named by an arXiv record (default true). */

@@ -54,10 +54,14 @@ export const BACKEND_CATALOG: readonly CatalogEntry[] = [
 ];
 
 export const BACKEND_IDS: readonly string[] = BACKEND_CATALOG.map((b) => b.id);
-/** Providers whose API key can be stored. */
-export const KEY_PROVIDERS: readonly string[] = BACKEND_CATALOG.flatMap((b) =>
-  b.keyProvider ? [b.keyProvider] : [],
-);
+/** Key slot of the free NCBI E-utilities key (PubMed). It raises the rate limit of PMID lookups. */
+export const NCBI_KEY_PROVIDER = "ncbi";
+
+/** Providers whose API key can be stored: the AI backends and the NCBI key of the resolver. */
+export const KEY_PROVIDERS: readonly string[] = [
+  ...BACKEND_CATALOG.flatMap((b) => (b.keyProvider ? [b.keyProvider] : [])),
+  NCBI_KEY_PROVIDER,
+];
 
 /** Hands out inference backends by id. */
 export interface BackendProvider {

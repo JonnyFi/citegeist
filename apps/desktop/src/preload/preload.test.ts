@@ -11,4 +11,9 @@ describe("main preload", () => {
     // A sandboxed preload cannot require a shared chunk, so no local module may be imported.
     expect(source).not.toMatch(/from "\.\.?\//);
   });
+
+  it("exposes pathForFile through webUtils for dropped files", () => {
+    const source = readFileSync(join(import.meta.dirname, "index.ts"), "utf8");
+    expect(source).toMatch(/pathForFile:\s*\(file\)\s*=>\s*webUtils\.getPathForFile\(file\)/);
+  });
 });

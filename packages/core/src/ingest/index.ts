@@ -6,12 +6,14 @@ import {
   itemsAdd,
   itemsAttach,
   itemsRename,
+  itemsResolve,
   itemsTrash,
   itemsUpdate,
   type Registry,
 } from "@citegeist/ops";
 import { bindJobOperations } from "../jobs/index.js";
 import type { Library } from "../library.js";
+import { resolveItem } from "./resolve.js";
 import { type IngestDeps, IngestService } from "./service.js";
 
 export { parseDocMd, type ReadInput, type ReadResult, readDocument } from "./documents.js";
@@ -24,6 +26,7 @@ export {
   type PdfText,
   type PdfTextExtractor,
 } from "./pdf-text.js";
+export { resolveItem } from "./resolve.js";
 export {
   type AddInput,
   type AddResult,
@@ -42,7 +45,7 @@ export {
 } from "./worker.js";
 
 /**
- * Binds items.add, items.attach, items.update, items.rename, items.trash, inbox.accept, inbox.reject,
+ * Binds items.add, items.attach, items.update, items.resolve, items.rename, items.trash, inbox.accept, inbox.reject,
  * documents.read, documents.convert, jobs.get and jobs.list. Returns the service, which owns the
  * job queue and the conversion worker: call `service.close()` when the library closes.
  */
@@ -57,6 +60,9 @@ export function bindIngestOperations(
     .bind(itemsAdd, async (ctx, input) => svc.addItem(ctx.actor, input))
     .bind(itemsAttach, async (ctx, input) => svc.attachFile(ctx.actor, input))
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
+    .bind(itemsResolve, async (ctx, input) =>
+      resolveItem({ lib, resolver: svc.deps.resolver }, ctx.actor, input.citekey),
+    )
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
     .bind(itemsTrash, async (ctx, input) => {
       svc.trashItem(ctx.actor, input.citekey);

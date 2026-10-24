@@ -33,6 +33,8 @@ export function bindChatOperations<R extends Registry>(registry: R, deps: ChatOp
         backend: input.backend,
         title: input.title,
         project: input.project,
+        plan: input.plan,
+        node: input.node,
         item: input.item,
         selection: input.selection,
       }),

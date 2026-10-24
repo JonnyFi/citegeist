@@ -41,6 +41,16 @@ export function instructions(opts: {
 export function renderContext(ctx: ChatContext): string {
   const lines: string[] = [];
   if (ctx.project) lines.push(`Project: ${ctx.project} (get_project has the brief)`);
+  if (ctx.plan) {
+    lines.push(
+      `Open plan: ${ctx.plan} (get_project with this plan has the outline; edit_outline, edit_plan_doc, find_insights and note_insight take it as plan)`,
+    );
+  }
+  if (ctx.node) {
+    lines.push(
+      `Open outline node: ${ctx.node} (pass it as the node or target of the planning tools)`,
+    );
+  }
   if (ctx.item) lines.push(`Open source: ${ctx.item}`);
   if (ctx.selection) {
     const s = ctx.selection;
@@ -96,6 +106,7 @@ export function transcriptMarkdown(opts: {
     `backend: ${session.backend}`,
     `date: ${opts.date}`,
     ...(context.project ? [`project: ${context.project}`] : []),
+    ...(context.plan ? [`plan: ${context.plan}`] : []),
     ...(context.item ? [`item: "[[${context.item}]]"`] : []),
     "---",
   ];

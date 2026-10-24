@@ -29,6 +29,7 @@ export {
 } from "./sign.js";
 export { type ConnectorRecord, ConnectorStore, type SecretStore } from "./store.js";
 export {
+  isWebhookTaskInput,
   type JobQueueLike,
   memoryTaskTracker,
   queueTaskTracker,

@@ -168,6 +168,8 @@ export class ChatService {
     title?: string | undefined;
     kind?: "chat" | "research" | undefined;
     project?: string | undefined;
+    plan?: string | undefined;
+    node?: string | undefined;
     item?: string | undefined;
     selection?: ChatContext["selection"];
     job?: string | undefined;
@@ -190,6 +192,8 @@ export class ChatService {
     const id = newId("ch_", this.now().getTime());
     const context: ChatContext = {
       ...(input.project ? { project: input.project } : {}),
+      ...(input.plan ? { plan: input.plan } : {}),
+      ...(input.node ? { node: input.node } : {}),
       ...(input.item ? { item: input.item } : {}),
       ...(input.selection ? { selection: input.selection } : {}),
     };

@@ -21,6 +21,7 @@
     "@citegeist/metadata": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
+    "@citegeist/webhooks": "workspace:*",
     "@orpc/server": "^1.16.1",
     "ws": "^8.22.0",
     "zod": "^4.0.0"

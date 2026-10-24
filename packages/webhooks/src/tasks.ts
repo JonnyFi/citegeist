@@ -36,9 +36,10 @@ function failure(message: string): CitegeistError {
 type Outcome = { ok: true; result: unknown } | { ok: false; message: string };
 
 /**
- * The part of core's `JobQueue` the tracker uses; `runtime.ingest.queue` fits. The tracker
- * registers a handler for one job kind (default "research") that waits for the callback, so the
- * kind must not have another handler.
+ * The part of core's `JobQueue` the tracker uses. The tracker registers a handler for the job
+ * kind "research" that waits for the callback. The queue keeps one handler per kind, so pass a
+ * port of a shared kind (`shareKind` from @citegeist/core) when other code, such as the research
+ * jobs of the chat, uses the kind too. `isWebhookTaskInput` tells the jobs of the tracker apart.
  */
 export interface JobQueueLike {
   newId(): string;
@@ -68,6 +69,11 @@ function taskInput(input: unknown): TaskInput["webhook"] | undefined {
   const w = (input as Partial<TaskInput>).webhook;
   if (!w || typeof w.connector !== "string" || typeof w.prompt !== "string") return undefined;
   return w;
+}
+
+/** True for the input of a job that `queueTaskTracker` created. */
+export function isWebhookTaskInput(input: unknown): boolean {
+  return taskInput(input) !== undefined;
 }
 
 /** Tracks tasks as jobs in core's job queue. A job waits for its callback for `timeoutMs`. */

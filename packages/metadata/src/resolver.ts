@@ -216,7 +216,8 @@ export class MetadataResolver implements GraphLookup {
     doi: string,
     errors: ResolveResult["errors"],
   ): Promise<SourceRecord | undefined> {
-    if (this.config.unpaywall === false || !this.config.mailto) return undefined;
+    if (this.config.unpaywall === false || !(this.config.unpaywallEmail ?? this.config.mailto))
+      return undefined;
     try {
       return await fetchUnpaywall(this.ctx, doi);
     } catch (err) {

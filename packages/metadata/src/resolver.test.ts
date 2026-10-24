@@ -207,6 +207,30 @@ describe("configuration", () => {
     for (const u of replay.calls) expect(u).not.toMatch(/mailto|api_key/);
   });
 
+  it("asks Unpaywall with its own address, and with the contact address when it has none", async () => {
+    const asked = async (config: MetadataConfig): Promise<string[]> => {
+      const seen: string[] = [];
+      const notFound: FetchLike = async (url) => {
+        seen.push(url);
+        return new Response("{}", { status: 404 });
+      };
+      await createResolver({ config, fetch: notFound, now: () => NOW, sleep: async () => {} })
+        .findOpenAccess("10.1086/225469")
+        .catch(() => undefined);
+      return seen.filter((u) => u.includes("api.unpaywall.org"));
+    };
+    const own = await asked({ mailto: TEST_MAILTO, unpaywallEmail: "oa@example.org" });
+    expect(own).toHaveLength(1);
+    expect(own[0]).toContain(`email=${encodeURIComponent("oa@example.org")}`);
+
+    const fallback = await asked({ mailto: TEST_MAILTO });
+    expect(fallback[0]).toContain(`email=${encodeURIComponent(TEST_MAILTO)}`);
+
+    // an Unpaywall address alone is enough, a missing address means no request at all
+    expect(await asked({ unpaywallEmail: "oa@example.org" })).toHaveLength(1);
+    expect(await asked({})).toEqual([]);
+  });
+
   it("sends no mailto when none is configured", async () => {
     const seen: string[] = [];
     const replay = createReplayFetch(HTTP_DIR);

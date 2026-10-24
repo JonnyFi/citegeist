@@ -137,6 +137,8 @@ export class SettingsService {
     return {
       ai: { routing: stored.ai.routing, apiKeys },
       ...(stored.mailto ? { mailto: stored.mailto } : {}),
+      ...(stored.unpaywallEmail ? { unpaywallEmail: stored.unpaywallEmail } : {}),
+      ...(stored.ncbiTool ? { ncbiTool: stored.ncbiTool } : {}),
       uiLanguage: stored.uiLanguage,
       semantic: { ...stored.semantic },
       connector: { ...stored.connector },
@@ -214,6 +216,22 @@ export class SettingsService {
       }
       if (mail) stored.mailto = mail;
       else delete stored.mailto;
+    }
+    if (patch.unpaywallEmail !== undefined) {
+      const mail = patch.unpaywallEmail.trim();
+      if (mail && !EMAIL.test(mail)) {
+        throw invalid(
+          "The Unpaywall address is not an email address.",
+          "Enter an address like name@example.org, or leave it empty to use the contact address.",
+        );
+      }
+      if (mail) stored.unpaywallEmail = mail;
+      else delete stored.unpaywallEmail;
+    }
+    if (patch.ncbiTool !== undefined) {
+      const tool = patch.ncbiTool.trim();
+      if (tool) stored.ncbiTool = tool;
+      else delete stored.ncbiTool;
     }
     if (patch.uiLanguage) stored.uiLanguage = patch.uiLanguage;
     if (patch.semantic) {

@@ -7,16 +7,16 @@ import {
   type RunTaskOptions,
   type TaskName,
 } from "@citegeist/ai";
-import { createResolver, type GraphLookup } from "@citegeist/metadata";
+import { createResolver, type GraphLookup, type MetadataConfig } from "@citegeist/metadata";
 import { Registry } from "@citegeist/ops";
 import { bindCardOperations } from "./cards/index.js";
-import type { CardJobQueue } from "./cards/jobs.js";
 import { bindGraphOperations, type GraphService } from "./graph/index.js";
 import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
 import { bindLinkOperations } from "./links/index.js";
+import { aiTaskJobs, bindMatrixOperations } from "./matrix/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
 import { bindPlanningOperations } from "./planning/index.js";
@@ -33,6 +33,7 @@ import {
   bindSettingsOperations,
   createSettingsDeps,
   type DefaultSettingsOptions,
+  NCBI_KEY_PROVIDER,
   type SettingsService,
 } from "./settings/index.js";
 import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
@@ -128,15 +129,36 @@ function fixedBackends(list: InferenceBackend[]): BackendProvider {
   };
 }
 
-/** Metadata resolver that follows the contact address in the settings. */
-function followingResolver(initial: string | undefined): {
+/** What the metadata resolver takes from the machine settings. */
+interface ResolverSettings {
+  /** Contact address (Crossref, OpenAlex). */
+  mailto?: string | undefined;
+  /** Address for Unpaywall; `mailto` when unset. */
+  unpaywallEmail?: string | undefined;
+  /** `tool` parameter of NCBI E-utilities. */
+  ncbiTool?: string | undefined;
+  /** Free NCBI key from the Keychain. */
+  ncbiApiKey?: string | undefined;
+}
+
+function resolverConfig(s: ResolverSettings): MetadataConfig {
+  return {
+    ...(s.mailto ? { mailto: s.mailto } : {}),
+    ...(s.unpaywallEmail ? { unpaywallEmail: s.unpaywallEmail } : {}),
+    ...(s.ncbiTool ? { ncbiTool: s.ncbiTool } : {}),
+    ...(s.ncbiApiKey ? { ncbiApiKey: s.ncbiApiKey } : {}),
+  };
+}
+
+/** Metadata resolver that follows the contact address, Unpaywall address and NCBI settings. */
+function followingResolver(initial: ResolverSettings): {
   lookup: MetadataLookup;
   graph: GraphLookup;
-  use(mailto: string | undefined): void;
+  use(next: ResolverSettings): void;
 } {
-  const make = (mailto: string | undefined) => createResolver(mailto ? { config: { mailto } } : {});
+  const make = (s: ResolverSettings) => createResolver({ config: resolverConfig(s) });
   let current = make(initial);
-  let mailto = initial;
+  let applied = JSON.stringify(resolverConfig(initial));
   return {
     lookup: {
       resolve: (input, options) => current.resolve(input, options),
@@ -151,8 +173,9 @@ function followingResolver(initial: string | undefined): {
       findVersions: (key) => current.findVersions(key),
     },
     use(next) {
-      if (next === mailto) return;
-      mailto = next;
+      const key = JSON.stringify(resolverConfig(next));
+      if (key === applied) return;
+      applied = key;
       current = make(next);
     },
   };
@@ -217,7 +240,9 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     },
   };
 
-  const resolver = opts.resolver ? undefined : followingResolver(opts.mailto);
+  const resolver = opts.resolver
+    ? undefined
+    : followingResolver(opts.mailto ? { mailto: opts.mailto } : {});
   // Sync is bound last, but ingest asks it for evicted iCloud files while converting.
   let sync: SyncService | undefined;
   const ingest = bindIngestOperations(registry, lib, {
@@ -227,6 +252,29 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     ensureLocal: async (rel) => (sync ? sync.ensureLocal(rel) : true),
     ...(opts.autoStart === undefined ? {} : { autoStart: opts.autoStart }),
   });
+
+  // The resolver follows the settings. The NCBI key sits in the Keychain, which answers
+  // asynchronously, so it joins the resolver as soon as it is read.
+  let ncbiApiKey: string | undefined;
+  let latest: ResolverSettings = {};
+  const applyResolverSettings = (s: ResolverSettings): void => {
+    latest = {
+      mailto: s.mailto ?? opts.mailto,
+      unpaywallEmail: s.unpaywallEmail,
+      ncbiTool: s.ncbiTool,
+    };
+    resolver?.use({ ...latest, ncbiApiKey });
+  };
+  const readNcbiKey = (): void => {
+    if (!resolver) return;
+    void deps.keychain.get(NCBI_KEY_PROVIDER).then(
+      (key) => {
+        ncbiApiKey = key;
+        resolver.use({ ...latest, ncbiApiKey });
+      },
+      () => undefined,
+    );
+  };
 
   const deps = createSettingsDeps({
     localBase,
@@ -238,46 +286,28 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     ...(opts.settings?.fetch ? { fetch: opts.settings.fetch } : {}),
     onChange: (settings) => {
       router = undefined;
-      resolver?.use(settings.mailto);
+      applyResolverSettings(settings);
+      readNcbiKey();
       void semantic?.configure(settings.semantic.enabled, settings.semantic.model);
     },
   });
   provider = fixed ? fixedBackends(fixed) : (opts.settings?.backends ?? deps.backends);
   service = bindSettingsOperations(registry, { ...deps, backends: provider });
-  if (!opts.mailto) resolver?.use(deps.store.load().mailto);
+  applyResolverSettings(deps.store.load());
+  readNcbiKey();
 
-  // Card AI work runs as real jobs, so jobs.get answers for the ids cards.create returns. A
-  // one-shot process (the CLI) does not run the queue and keeps the detached fallback.
-  let cardJobs: CardJobQueue | undefined;
-  if (opts.autoStart !== false) {
-    const runs = new Map<string, () => Promise<unknown>>();
-    ingest.queue.register(
-      "ai-task",
-      async (ctx) => {
-        const run = runs.get(ctx.job.id);
-        runs.delete(ctx.job.id);
-        if (!run) throw new Error("the AI job was queued by an earlier session and cannot resume");
-        await run();
-      },
-      { concurrency: 2, maxAttempts: 1 },
-    );
-    cardJobs = {
-      enqueue(spec) {
-        const id = ingest.queue.newId();
-        runs.set(id, () => spec.run());
-        ingest.queue.enqueue({
-          id,
-          kind: spec.kind,
-          by: spec.by,
-          input: { label: spec.label, ...(spec.input as object) },
-          maxAttempts: 1,
-        });
-        return id;
-      },
-    };
-  }
-  bindCardOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
-  bindLinkOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
+  // AI work (cards, links, matrix fills) runs as real jobs, so jobs.get answers for the ids the
+  // operations return and shows the progress of a fill. A one-shot process (the CLI) does not run
+  // the queue and keeps the detached fallback.
+  const jobs = opts.autoStart !== false ? aiTaskJobs(ingest.queue) : undefined;
+  bindCardOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  bindLinkOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  bindMatrixOperations(registry, lib, {
+    ai,
+    ...(jobs ? { jobs } : {}),
+    search: async (input) => (semantic ? semantic.search(input) : lib.search(input)),
+    rank: async (query, texts) => semantic?.rank(query, texts),
+  });
 
   const graphLookup: GraphLookup =
     resolver?.graph ??

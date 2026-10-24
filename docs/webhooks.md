@@ -227,7 +227,10 @@ Um einen Auftrag von citegeist zu prüfen, bildet der Bot dieselbe Signatur übe
 
 ## Einbau im Kern
 
-`packages/webhooks` exportiert `attachWebhooks(host, options)`. Der Einbau in `packages/server` gehört dem Lead, er braucht zwei Stellen in `startCoreServer`:
+`packages/webhooks` exportiert `attachWebhooks(host, options)`. `startCoreServer` in `packages/server` ruft es auf, bevor der RPC-Router gebaut wird, damit `webhooks.*` im Router steht:
 
-1. `attachWebhooks(core, { dir, secrets, port, publicBaseUrl, tasks })` aufrufen, bevor `buildRouter(registry)` läuft, damit `webhooks.*` im RPC-Router steht. `dir` ist der maschinenlokale Ordner der Bibliothek (`localDir(localBase, id)`), `secrets` ein `MacKeychain`, `port` eine Funktion, die den gebundenen Port liefert, `publicBaseUrl` aus `CITEGEIST_PUBLIC_URL`, `tasks` aus `queueTaskTracker(runtime.ingest.queue)`.
-2. Im Request-Listener des HTTP-Servers als allererste Zeile `if (await hooks.handle(req, res)) return;`, vor den Prüfungen von Host, Origin und Token.
+1. `dir` ist der maschinenlokale Ordner der Bibliothek, `secrets` der Keychain (`MacKeychain`, auf anderen Systemen der Arbeitsspeicher), `port` liefert den gebundenen Port, `publicBaseUrl` stammt aus `CITEGEIST_PUBLIC_URL`.
+2. Der Request-Listener fragt zuerst `hooks.handle(req, res)`. Pfade unter `/hooks/` beantwortet der Webhook-Dienst nach Signatur, alle anderen Pfade laufen weiter durch die Prüfungen von Host, Origin und Token.
+3. Aufträge an externe Agenten sind Jobs der Art `research`. Dieselbe Art nutzen die Recherche-Jobs des Chats (`research.start`). Die Warteschlange hält pro Art einen Handler, deshalb teilen sich beide Nutzer die Art über `shareKind` aus `@citegeist/core`: Jeder bekommt einen eigenen Zugang (Port) mit eigenem Handler und eigener Parallelitätsgrenze. Jobs des Webhook-Dienstes tragen `webhook` im Input, alle anderen gehören dem Chat. Die Jobliste der App zeigt beide als Recherche.
+
+Mit `startCoreServer({ webhooks: false })` entfallen Empfänger und Operationen, `webhooks: { secrets, publicBaseUrl, fetch }` ersetzt Keychain, Adresse und HTTP-Client (Tests).
