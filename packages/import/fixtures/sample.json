@@ -1,0 +1,27 @@
+[
+  {
+    "id": "latour2005reassembling",
+    "type": "book",
+    "title": "Reassembling the Social",
+    "author": [{ "family": "Latour", "given": "Bruno" }],
+    "issued": { "date-parts": [[2005]] },
+    "publisher": "Oxford University Press",
+    "ISBN": "978-0-19-925604-4"
+  },
+  {
+    "id": "Bourdieu1984",
+    "type": "book",
+    "title": "Distinction",
+    "author": [{ "family": "Bourdieu", "given": "Pierre" }],
+    "issued": { "date-parts": [[1984]] },
+    "keyword": "sociology, taste"
+  },
+  {
+    "id": "weber1922",
+    "type": "chapter",
+    "title": "Wirtschaft und Gesellschaft",
+    "author": [{ "literal": "Weber, Max" }],
+    "issued": { "date-parts": [[1922, 3]] },
+    "DOI": "10.9999/weber.1922"
+  }
+]

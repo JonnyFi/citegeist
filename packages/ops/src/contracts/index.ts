@@ -21,6 +21,7 @@ import {
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 import { CHAT_CONTRACTS } from "./chat.js";
+import { IMPORT_CONTRACTS } from "./import.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
 
@@ -53,6 +54,7 @@ const ItemSummary = z.object({
 });
 
 export * from "./chat.js";
+export * from "./import.js";
 export * from "./planning.js";
 export * from "./sync.js";
 
@@ -699,6 +701,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   aiTestBackend,
   workerSetup,
   ...CHAT_CONTRACTS,
+  ...IMPORT_CONTRACTS,
   ...PLANNING_CONTRACTS,
   ...SYNC_CONTRACTS,
 ];
