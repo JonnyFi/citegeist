@@ -1,6 +1,6 @@
 # Lizenzen
 
-Stand: 2026-10-24. Grundlage ist Entscheidung D1 (citegeist bleibt Open-Source-fähig). Das hier ist eine technische Bestandsaufnahme, kein Rechtsrat. Die Namensnennungen stehen in der Datei `NOTICE` im Wurzelverzeichnis. Eine `LICENSE`-Datei gibt es bewusst noch nicht, die Wahl trifft Jonny.
+Stand: 2026-10-24. Grundlage ist Entscheidung D1 (citegeist bleibt Open-Source-fähig). Das hier ist eine technische Bestandsaufnahme, kein Rechtsrat. Die Namensnennungen stehen in der Datei `NOTICE` im Wurzelverzeichnis. Die `LICENSE`-Datei im Wurzelverzeichnis enthält den Apache-2.0-Text.
 
 ## Empfehlung für den Kern
 
@@ -28,7 +28,7 @@ Keine Komponente steht unter GPL oder AGPL und läuft im Prozess von citegeist. 
 | Nr. | Komponente | Lizenz | Wirkung | Isolierung oder Namensnennung | Offene Aktion |
 |---|---|---|---|---|---|
 | 1 | `citeproc` (citeproc-js) 2.4.63, über `@citation-js/plugin-csl` | CPAL-1.0 oder AGPL (Doppellizenz) | CPAL ist Copyleft auf Dateiebene mit Namensnennung. AGPL wäre für den Kern unverträglich | citegeist nutzt die CPAL-Option, unverändert, als npm-Paket. Das mitgelieferte `LICENSE` nennt keinen Exhibit-B-Text, es gibt also keinen festen Anzeigetext. Der Lizenztext liegt im Paket und steht in `NOTICE` | Vor 1.0 prüfen, ob die CPAL-Regel zur Netzwerknutzung ein späteres gehostetes Angebot betrifft (ungeprüft). Fallback ist hayagriva (Apache-2.0) |
-| 2 | `@anthropic-ai/claude-agent-sdk` 0.3.309 | proprietär ("SEE LICENSE IN README", Anthropic Legal Agreements) | Keine Open-Source-Lizenz. Kommt als Abhängigkeit von `@agentclientprotocol/claude-agent-acp` (Apache-2.0) ins Paket | `electron-builder.yml` schließt nur die nativen Binaries aus. Das JavaScript des SDK bleibt in der App | **Blocker für eine verteilte App**, nicht für den Quelltext. Vor dem Binär-Release klären, ob Anthropic die Weitergabe erlaubt, oder das SDK beim ersten Start installieren statt mitliefern |
+| 2 | `@anthropic-ai/claude-agent-sdk` 0.3.309 | proprietär ("SEE LICENSE IN README", Anthropic Legal Agreements) | Keine Open-Source-Lizenz. Kommt als Abhängigkeit von `@agentclientprotocol/claude-agent-acp` (Apache-2.0) ins App-Paket. Laut Anthropic fällt die Nutzung des Agent SDK, auch in Produkten für eigene Endnutzer, unter die Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview, https://code.claude.com/docs/en/legal-and-compliance) | Das JavaScript des SDK bleibt im Paket und wird unverändert mitgeliefert. `electron-builder.yml` schließt nur die nativen Claude-Code-Binaries (`@anthropic-ai/claude-agent-sdk-*`) aus: Das Binary läuft unverändert so, wie Anthropic es veröffentlicht, und der Nutzer installiert es selbst. `NOTICE` nennt das SDK als proprietäre Komponente unter Anthropics Bedingungen | Kein Blocker für den Release. Der Name "Claude Code" und Namen oder Logos von Anthropic dürfen weder im Namen noch im Logo von citegeist vorkommen |
 | 3 | EmbeddingGemma 300M (`onnx-community/embeddinggemma-300m-ONNX`) | Gemma Terms of Use und Prohibited Use Policy | Keine OSI-Lizenz. Nutzungsbeschränkungen müssen an Dritte weitergegeben werden | Die Gewichte liegen nicht im Repository. Sie werden zur Laufzeit von Hugging Face geladen (fester Commit). Es ist aktuell das Standardmodell (`DEFAULT_MODEL` in `packages/embed/src/models.ts`) | Für den Release entweder Qwen3-Embedding-0.6B als Standard setzen (Apache-2.0) oder vor dem ersten Download einen Hinweis mit Link auf die Gemma-Bedingungen zeigen |
 | 4 | CSL-Stile und -Locales (3 Stile, 2 Locales) | CC BY-SA 3.0 | Namensnennung. Bearbeitete Stile müssen unter derselben Lizenz stehen | Die Dateien liegen unverändert und getrennt vom Code in `packages/cite/src/vendor`. Kopfzeilen mit Autoren bleiben erhalten. `NOTICE` nennt Quelle und Autoren | Keine, solange kein Stil geändert wird. Ein geänderter Stil bekommt CC BY-SA und eine eigene Zeile in `NOTICE` |
 | 5 | `@img/sharp-libvips-darwin-arm64` 1.3.4 (libvips, über sharp, optional für Transformers.js) | LGPL-3.0-or-later | LGPL verlangt Lizenztext, Quellhinweis und die Möglichkeit, die Bibliothek auszutauschen | Dynamisch geladene Bibliothek, unverändert. `electron-builder.yml` entfernt nur die Varianten für Linux, Windows und Intel | Prüfen, ob `sharp` im gebauten Bundle überhaupt gebraucht wird. Für Text-Embeddings ist es nicht nötig, der Ausschluss würde die LGPL-Pflicht entfallen lassen |
@@ -70,12 +70,12 @@ Die Qwen3-Lizenz sollte vor dem Release gegen die Modellkarte des Ursprungsmodel
 
 ## Agenten-CLIs
 
-Claude Code, Codex und Cursor installiert der Nutzer selbst und meldet sich selbst an (D1). citegeist ruft sie nur auf. Die Adapter `claude-agent-acp` und `codex-acp` stehen unter Apache-2.0. Das Codex-Binary (`@openai/codex`, Apache-2.0) und das Claude-Code-Binary sind aus dem App-Paket ausgeschlossen. Offen bleibt allein das JavaScript des Claude Agent SDK, siehe Punkt 2.
+Claude Code, Codex und Cursor installiert der Nutzer selbst und meldet sich selbst an (D1). citegeist ruft sie nur auf. Die Adapter `claude-agent-acp` und `codex-acp` stehen unter Apache-2.0. Das Codex-Binary (`@openai/codex`, Apache-2.0) und das Claude-Code-Binary sind aus dem App-Paket ausgeschlossen. Das JavaScript des Claude Agent SDK, das der Claude-Adapter mitbringt, ist proprietär und bleibt im Paket. Es fällt nach Anthropics Angaben unter die Commercial Terms, siehe Punkt 2. Der Codex-Adapter hängt nur von Apache-2.0-Paketen ab und braucht keine Sonderbehandlung.
 
 ## Pflichten beim Release
 
-1. `LICENSE` anlegen (Apache-2.0 empfohlen) und `NOTICE` im Wurzelverzeichnis und im App-Paket mitliefern.
-2. Punkt 2 klären (Claude Agent SDK) oder das SDK aus dem Paket nehmen.
+1. `LICENSE` (Apache-2.0) liegt im Wurzelverzeichnis. `LICENSE` und `NOTICE` auch im App-Paket mitliefern.
+2. Punkt 2 beachten: Das Claude Agent SDK ist proprietär, seine Nutzung in einem verteilten Produkt fällt unter Anthropics Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview, https://code.claude.com/docs/en/legal-and-compliance). `NOTICE` nennt es. Das Claude-Code-Binary bleibt aus dem Paket ausgeschlossen. "Claude Code" und Anthropic-Namen oder -Logos kommen weder im Namen noch im Logo der App vor.
 3. Punkt 3 entscheiden (Standardmodell der Semantischen Suche).
 4. Lizenzdateien der drei Schriftpakete und von citeproc im App-Paket belassen. Electron liefert `LICENSES.chromium.html` mit, `afterPack` darf sie nicht löschen.
 5. `spikes/*/out` aus dem Repository nehmen.

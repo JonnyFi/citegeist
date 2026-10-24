@@ -2,8 +2,8 @@ citegeist
 Copyright 2026 the citegeist authors
 
 This file lists third-party material that citegeist ships or loads, and the attribution that
-material asks for. The license of citegeist itself is not part of this file; it will be named in
-LICENSE once the maintainers have chosen it. The audit behind this list is docs/licenses.md.
+material asks for. The license of citegeist itself (Apache-2.0) is in LICENSE. The audit behind
+this list is docs/licenses.md.
 
 --------------------------------------------------------------------------------
 1. Citation Style Language styles and locales
@@ -95,7 +95,10 @@ citegeist does not redistribute them.
   @agentclientprotocol/claude-agent-acp and @agentclientprotocol/codex-acp (Apache-2.0).
   The adapter for Claude Code depends on @anthropic-ai/claude-agent-sdk, which is published under
   Anthropic's legal agreements (https://code.claude.com/docs/en/legal-and-compliance) and not
-  under an open source license.
+  under an open source license. It is a proprietary component under Anthropic's terms. citegeist
+  ships its JavaScript unchanged in the app, and use of the Agent SDK in a distributed product is
+  covered by the Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview). The Claude
+  Code binary is not shipped: the user installs it. citegeist is not affiliated with Anthropic.
   Zotero Connector: the user's browser extension, AGPL-3.0, talks to citegeist over the Connector
   protocol. citegeist contains no Zotero code. "Zotero" is a trademark of the Corporation for
   Digital Scholarship.
