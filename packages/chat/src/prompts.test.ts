@@ -23,6 +23,15 @@ describe("renderContext", () => {
     expect(text.indexOf("Open outline node:")).toBeLessThan(text.indexOf("Open source:"));
   });
 
+  it("points the agent to the file of the open text and the way to cite", () => {
+    const text = renderContext({ project: "phd", text: "kapitel-2" });
+    expect(text).toContain("Open text: projects/phd/texts/kapitel-2.md");
+    expect(text).toContain("[@citekey, S. 12]");
+    expect(text).toContain("cg texts export");
+    // without a project the screen names no folder, so the text is left out
+    expect(renderContext({ text: "kapitel-2" })).toBe("");
+  });
+
   it("puts the context in front of the message of the turn", () => {
     const prompt = turnPrompt({
       first: undefined,
