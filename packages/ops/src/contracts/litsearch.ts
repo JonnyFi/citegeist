@@ -132,15 +132,24 @@ export const LitsearchWatch = z.object({
 export type LitsearchWatch = z.infer<typeof LitsearchWatch>;
 
 export const LitsearchPreprint = z.object({
+  id: z.string(),
   title: z.string(),
   doi: z.string().optional(),
   arxiv: z.string().optional(),
-  /** The run or reference list it came from. */
-  from: z.string(),
+  /**
+   * preprint: nothing found yet; hint: a venue without a verified DOI; accepted: accepted at
+   * OpenReview, no DOI yet; published: a peer-reviewed version with a DOI that resolves.
+   */
+  status: z.enum(["preprint", "hint", "accepted", "published"]),
+  /** The runs and reference lists it came from ("run:<id>", "import:<file>"). */
+  from: z.array(z.string()),
   checked: z.string().optional(),
   published: z
     .object({ doi: z.string(), venue: z.string(), year: z.number().int().optional() })
     .optional(),
+  /** Accepted at OpenReview: the venue. */
+  acceptedAt: z.string().optional(),
+  hints: z.array(z.string()).default([]),
 });
 export type LitsearchPreprint = z.infer<typeof LitsearchPreprint>;
 
