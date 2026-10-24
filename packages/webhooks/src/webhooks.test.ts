@@ -388,6 +388,61 @@ describe("inbound payloads", () => {
     expect((res.body as any).results[1].ok).toBe(true);
   });
 
+  it("refuses local files and private addresses without calling items.add", async () => {
+    const { h, secret } = await connected();
+    const bad = [
+      "/Users/me/Documents/taxes.pdf",
+      "~/secret.html",
+      "../notes/page.html",
+      "file:///etc/passwd",
+      "secret.epub",
+      "http://127.0.0.1:41234/health",
+      "http://localhost:11434/api/tags",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://[::1]/",
+      "http://2130706433/",
+      "https://192.168.1.1/admin",
+      "http://printer.local/status.html",
+      "http://intranet/wiki",
+      "ftp://example.org/a.pdf",
+    ];
+    const res = await deliver(h, "grok", secret, { event: "papers.add", papers: bad });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(false);
+    const results = (res.body as any).results as Array<{ ok: boolean; error?: { code: string } }>;
+    expect(results).toHaveLength(bad.length);
+    for (const r of results)
+      expect(r).toMatchObject({ ok: false, error: { code: "WEBHOOK_INPUT_REFUSED" } });
+    expect(h.calls.items).toEqual([]);
+  });
+
+  it("still accepts DOIs, ids, public URLs and BibTeX", async () => {
+    const { h, secret } = await connected();
+    const good = [
+      "10.1000/abc.pdf",
+      "doi:10.1000/xyz",
+      "arXiv:2401.00001",
+      "https://arxiv.org/abs/2401.00001",
+      "http://example.org/paper.pdf",
+      "@article{k, title={T}, year={2020}}",
+    ];
+    const res = await deliver(h, "grok", secret, { event: "papers.add", papers: good });
+    expect(res.body.ok).toBe(true);
+    expect(h.calls.items.map((i: any) => i.identifier)).toEqual(good);
+  });
+
+  it("refuses a local file inside a note's sources as well", async () => {
+    const { h, secret } = await connected();
+    const res = await deliver(h, "grok", secret, {
+      event: "note.add",
+      title: "t",
+      text: "body",
+      sources: ["/Users/me/secret.pdf"],
+    });
+    expect(res.status).toBe(200);
+    expect(h.calls.items).toEqual([]);
+  });
+
   it("rejects an invalid payload with 400 and a list of problems", async () => {
     const { h, secret } = await connected();
     const empty = await deliver(h, "grok", secret, { event: "papers.add", papers: [] });

@@ -60,7 +60,7 @@ Nach `webhooks.rotateSecret` gilt das alte Secret noch `graceMinutes` Minuten (S
 }
 ```
 
-Ein Paper ist eine Kennung (DOI, arXiv-Id, ISBN, PMID, URL) oder ein Objekt mit `identifier` oder `url` und eigenem `why`. Bis zu 50 pro Anfrage. Die Antwort listet pro Paper `citekey`, `job` und gegebenenfalls `duplicateOf` oder einen Fehler. Ein fehlgeschlagenes Paper hindert die anderen nicht.
+Ein Paper ist eine Kennung (DOI, arXiv-Id, ISBN, PMID, URL) oder ein Objekt mit `identifier` oder `url` und eigenem `why`. Bis zu 50 pro Anfrage. Die Antwort listet pro Paper `citekey`, `job` und gegebenenfalls `duplicateOf` oder einen Fehler. Ein fehlgeschlagenes Paper hindert die anderen nicht. Lokale Dateipfade (`/Users/...`, `~/...`, `file://`, `*.pdf` ohne DOI-Präfix) und Adressen dieses Macs oder privater Netze (`localhost`, `127.0.0.1`, `192.168.x.x`, `169.254.x.x`, `*.local`) lehnt der Empfänger mit `WEBHOOK_INPUT_REFUSED` ab, denn der Absender sitzt im Internet.
 
 **Notiz oder Einsicht hinzufügen** (`note.add`):
 
