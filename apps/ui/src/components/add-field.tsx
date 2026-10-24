@@ -1,4 +1,5 @@
-import { itemsAdd } from "@citegeist/ops";
+import { itemsAdd, jobsGet } from "@citegeist/ops";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { FileUp } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -23,6 +24,8 @@ const KIND_KEY = {
   path: "add.kind.path",
 } as const satisfies Record<string, MessageKey>;
 
+const TERMINAL = ["succeeded", "failed", "cancelled"];
+
 /** Files dragged over the window carry "Files" in their data transfer types. */
 function hasFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
@@ -45,6 +48,29 @@ export function AddField({ project }: { project?: string | undefined }) {
   const textField = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // A PDF is sometimes recognised only after its conversion: the job then names the item the file
+  // ended up in, which can differ from the one items.add answered with.
+  const [followed, setFollowed] = useState<{ job: string; citekey: string } | null>(null);
+  const followedJob = useQuery({
+    queryKey: ["op", jobsGet.name, followed?.job],
+    enabled: followed !== null,
+    queryFn: () => core.call(jobsGet, { job: followed?.job ?? "" }),
+    refetchInterval: (q) => (TERMINAL.includes(q.state.data?.status ?? "") ? false : 600),
+  });
+  const followedResult = followedJob.data;
+  useEffect(() => {
+    if (!followed || followedResult?.status !== "succeeded") return;
+    const result = followedResult.result as { citekey?: unknown; merged?: unknown } | undefined;
+    setFollowed(null);
+    if (typeof result?.citekey !== "string" || result.citekey === followed.citekey) return;
+    const citekey = result.citekey;
+    setOutcome((current) =>
+      current?.kind === "added" && current.citekey === followed.citekey
+        ? { kind: result.merged ? "duplicate" : "added", citekey }
+        : current,
+    );
+  }, [followed, followedResult]);
+
   const detected = classifyIdentifier(value);
   const hint =
     detected.kind in KIND_KEY ? t(KIND_KEY[detected.kind as keyof typeof KIND_KEY]) : null;
@@ -59,12 +85,14 @@ export function AddField({ project }: { project?: string | undefined }) {
     add.mutate(
       { identifier, target: "library", ...(project ? { projects: [project] } : {}) },
       {
-        onSuccess: (out) =>
+        onSuccess: (out) => {
           setOutcome(
             out.duplicateOf
               ? { kind: "duplicate", citekey: out.duplicateOf }
               : { kind: "added", citekey: out.citekey },
-          ),
+          );
+          if (!out.duplicateOf) setFollowed({ job: out.job, citekey: out.citekey });
+        },
         onError: (err) => setOutcome({ kind: "error", message: describeError(err).message }),
       },
     );

@@ -1,11 +1,31 @@
+import { ItemFrontmatter } from "@citegeist/schema";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createFixtures } from "../mock/fixtures";
 import { createReflowFixtures, renderApp } from "../test-utils";
 
 afterEach(() => localStorage.clear());
 
 const addField = () => screen.findByRole("textbox", { name: "Hinzufügen" });
+
+describe("library table", () => {
+  it("marks an item whose full text lookup found nothing as 'ohne Volltext'", async () => {
+    const data = createFixtures();
+    const item = data.items.get("latour2005reassembling");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      fulltext: { status: "missing", checked_at: "2026-10-24T10:00:00.000Z", tried: [] },
+    });
+    renderApp("/", data);
+    const rows = await screen.findAllByTestId("item-row");
+    const row = rows.find((r) => within(r).queryByText("latour2005reassembling"));
+    if (!row) throw new Error("row missing");
+    expect(within(row).getByText("ohne Volltext")).toBeVisible();
+    expect(screen.getAllByText("ohne Volltext")).toHaveLength(1);
+  });
+});
 
 describe("add field", () => {
   it("adds an item by DOI to the library and links to it", async () => {
@@ -54,6 +74,17 @@ describe("add field", () => {
     await user.type(await addField(), "doi:10.48550/arXiv.1706.03762{Enter}");
     expect(await screen.findByText("Ist schon in der Bibliothek:")).toBeVisible();
     expect(screen.getByRole("link", { name: "vaswani2017attention" })).toBeVisible();
+  });
+
+  it("follows the job to the item a new PDF was merged into", async () => {
+    const user = userEvent.setup();
+    renderApp("/", undefined, { mergeNewInto: "vaswani2017attention" });
+    await user.type(await addField(), "10.1000/xyz123{Enter}");
+    // items.add answers with the new item; the job result names the one that exists in the end
+    expect(await screen.findByRole("link", { name: "doi101000xyz123" })).toBeVisible();
+    expect(await screen.findByRole("link", { name: "vaswani2017attention" })).toBeVisible();
+    expect(screen.getByText("Ist schon in der Bibliothek:")).toBeVisible();
+    expect(screen.queryByRole("link", { name: "doi101000xyz123" })).toBeNull();
   });
 
   it("shows the message of the core when it refuses the input", async () => {

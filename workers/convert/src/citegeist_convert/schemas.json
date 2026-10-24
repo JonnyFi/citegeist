@@ -287,6 +287,75 @@
         },
         "required": ["code", "message", "at"]
       },
+      "fulltext": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["found", "missing"]
+          },
+          "tried": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": ["ok", "none", "failed"]
+                },
+                "url": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              },
+              "required": ["source", "outcome"]
+            }
+          },
+          "checked_at": {
+            "type": "string"
+          }
+        },
+        "required": ["status", "checked_at"]
+      },
+      "proposal": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "default": "needs-review",
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": ["string", "null"]
+                },
+                "DOI": {
+                  "type": ["string", "null"]
+                },
+                "similarity": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
       "sources": {
         "default": [],
         "type": "array",
@@ -770,7 +839,7 @@
             "status": {
               "default": "accepted",
               "type": "string",
-              "enum": ["proposed", "accepted"]
+              "enum": ["proposed", "accepted", "rejected"]
             }
           },
           "required": ["to", "by"]

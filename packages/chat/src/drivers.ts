@@ -1,6 +1,12 @@
 import { mkdirSync } from "node:fs";
 import { AcpConnection, AcpDriver, AcpPool } from "./acp.js";
-import { agentEnv, type BackendDefinition, DEFAULT_BACKENDS, findExecutable } from "./backends.js";
+import {
+  agentEnv,
+  type BackendDefinition,
+  cliProblem,
+  DEFAULT_BACKENDS,
+  findExecutable,
+} from "./backends.js";
 import type { AgentDriver, DriverFactory, DriverRequest } from "./driver.js";
 import { ClaudePrintDriver } from "./print-driver.js";
 import { chatError, oneLine } from "./util.js";
@@ -35,17 +41,39 @@ export function createDrivers(opts: DriverFactoryOptions): Drivers {
   const env = opts.env ?? (() => agentEnv());
   mkdirSync(opts.workspaceRoot, { recursive: true });
 
-  const pool = new AcpPool(async (def) => {
-    const launch = def.launch(find);
-    if (!launch) {
-      throw chatError(
-        "CHAT_AGENT_UNAVAILABLE",
-        `The ${def.label} adapter cannot be started because its launcher was not found.`,
-        def.cli.installHint,
+  /** The agent-ready error for a backend that cannot start: what is missing and the commands to fix it. */
+  const unavailable = (def: BackendDefinition) => {
+    const problem = cliProblem(def, find);
+    if (problem?.kind === "needs-node") {
+      return chatError(
+        "CHAT_CLI_NEEDS_NODE",
+        `${def.cli.command} at ${problem.path} is a Node script, and no \`node\` was found to run it.`,
+        `Install Node.js, or install ${def.label} with its native installer, then retry.`,
         "do-first",
-        { backend: def.id },
+        { backend: def.id, cli: def.cli.command, path: problem.path },
       );
     }
+    if (problem?.kind === "missing") {
+      return chatError(
+        "CHAT_CLI_MISSING",
+        `The \`${def.cli.command}\` command of ${def.label} was not found on PATH or in the usual install folders (~/.local/bin, ~/.claude/local, /opt/homebrew/bin, /usr/local/bin).`,
+        def.cli.installHint,
+        "do-first",
+        { backend: def.id, cli: def.cli.command },
+      );
+    }
+    return chatError(
+      "CHAT_AGENT_UNAVAILABLE",
+      `${def.label} is not available: the ACP adapter cannot be launched.`,
+      "Reinstall citegeist.",
+      "do-first",
+      { backend: def.id },
+    );
+  };
+
+  const pool = new AcpPool(async (def) => {
+    const launch = def.launch(find);
+    if (!launch) throw unavailable(def);
     return AcpConnection.open(
       def.id,
       def.label,
@@ -83,13 +111,7 @@ export function createDrivers(opts: DriverFactoryOptions): Drivers {
     if (!def.launch(find)) {
       const fallback = def.fallback === "claude-print" ? printDriver(def, req, "") : undefined;
       if (fallback) return fallback;
-      throw chatError(
-        "CHAT_AGENT_UNAVAILABLE",
-        `${def.label} is not available: the ACP adapter cannot be launched.`,
-        def.cli.installHint,
-        "do-first",
-        { backend },
-      );
+      throw unavailable(def);
     }
     try {
       const conn = await pool.get(def);

@@ -138,6 +138,8 @@ Citekeys folgen einer Formel im Stil von Better BibTeX (Standard: Nachname, Jahr
 
 Ein Eintrag, dessen Import scheitert, bleibt mit dem Feld `incomplete` (Code, Meldung, Zeitpunkt, Job) im Frontmatter stehen. `items.get`, `items.list`, die Problemliste, die Oberfläche und MCP zeigen ihn an. Ein Anhängen oder erneutes Hinzufügen einer funktionierenden Datei, `documents.convert` oder das Löschen beseitigen den Zustand. Eine erfolgreiche Konvertierung entfernt das Feld.
 
+Zwei weitere Zustände eines Eintrags sind getippte Felder im Frontmatter. `fulltext` (`status: found | missing`, `tried` mit den geprüften Quellen, `checked_at`) hält fest, ob die Volltextsuche nach dem Hinzufügen per DOI eine Datei gefunden hat; `items.list` meldet es als Flag, und die Tabelle zeigt bei `missing` den Hinweis „ohne Volltext“. `proposal` (`status`, `source`, `reason`, `candidates`) markiert Metadaten, die nur geraten sind (erste Seite, Dateiname, Webseite) und auf eine Prüfung warten. Ältere Dateien, die `fulltext` noch als `status: none` mit `at` führen, liest der Kern in der neuen Form und schreibt sie beim nächsten Speichern um.
+
 ### Dokument
 
 `blocks.jsonl` ist die kanonische Form eines konvertierten Dokuments. Jeder Block trägt eine einmal vergebene ID, Typ, Abschnitt, Text und Spans mit PDF-Seite, gedruckter Seite, Zeichenbereich und Koordinaten im Koordinatensystem des Original-PDFs:
@@ -203,10 +205,10 @@ links:
     why: Kap. 1 begründet …
     evidence: "[[c_01JB8Z3Q]]"
     by: agent:claude-code
-    status: proposed         # proposed | accepted
+    status: proposed         # proposed | accepted | rejected
 ```
 
-Verbindungen dürfen untypisiert bleiben. Ein Typ wird vorgeschlagen und vom Nutzer angenommen. Das Vokabular ist klein und auf die Zitations-Ontologie CiTO abbildbar:
+Verbindungen dürfen untypisiert bleiben. Ein Typ wird vorgeschlagen und vom Nutzer angenommen. Eine abgelehnte Verbindung bleibt mit `status: rejected` in der Datei, damit `links.propose` sie nicht noch einmal vorschlägt. Der Index kennt sie nicht, sie erscheint weder in Rückverweisen noch im Graphen. Das Vokabular ist klein und auf die Zitations-Ontologie CiTO abbildbar:
 
 | Gruppe | Relationen |
 |---|---|

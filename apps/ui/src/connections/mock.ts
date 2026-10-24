@@ -63,6 +63,7 @@ export function bindConnectionsMock(
     for (const n of notes.values()) {
       const from = n.frontmatter.id;
       for (const link of n.frontmatter.links) {
+        if (link.status === "rejected") continue;
         const to = resolve(typedTarget(link));
         if (to) {
           edges.push({ from, to: to.id, rel: link.rel ?? "related", status: link.status });
@@ -177,9 +178,13 @@ export function bindConnectionsMock(
           throw new Error(`LINK_NOT_PROPOSED: link ${i} is already accepted`);
         }
       }
-      const next = links
-        .map((l, i) => (input.accept.includes(i) ? { ...l, status: "accepted" as const } : l))
-        .filter((_, i) => !input.reject.includes(i));
+      const next = links.map((l, i) =>
+        input.accept.includes(i)
+          ? { ...l, status: "accepted" as const }
+          : input.reject.includes(i)
+            ? { ...l, status: "rejected" as const }
+            : l,
+      );
       note.frontmatter = {
         ...note.frontmatter,
         links: next,

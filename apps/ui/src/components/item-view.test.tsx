@@ -41,8 +41,8 @@ describe("item view", () => {
     item.frontmatter = ItemFrontmatter.parse({
       ...item.frontmatter,
       fulltext: {
-        status: "none",
-        at: "2026-10-24T10:00:00.000Z",
+        status: "missing",
+        checked_at: "2026-10-24T10:00:00.000Z",
         tried: [
           { source: "unpaywall", outcome: "none" },
           { source: "openalex", outcome: "failed", detail: "HTTP 500" },

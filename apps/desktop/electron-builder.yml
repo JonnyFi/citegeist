@@ -13,10 +13,11 @@ npmRebuild: false
 files:
   - out/**
   - package.json
-  # Only the platform of this build (macOS arm64) stays; the optional packages of the others are
-  # several hundred MB each.
-  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-{darwin-x64,linux-*,win32-*}/**"
-  - "!**/node_modules/@openai/codex-{darwin-x64,linux-*,win32-*}/**"
+  # The Claude Code and Codex binaries (about 560 MB) do not ship with the app: the chat adapters
+  # run the `claude` and `codex` the user installed. Only the JavaScript of the adapters and of
+  # the Agent SDK stays.
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**"
+  - "!**/node_modules/@openai/codex-*/**"
   - "!**/node_modules/@napi-rs/canvas-{android-*,darwin-x64,linux-*,win32-*}/**"
   - "!**/node_modules/@img/*{linux,win32,darwin-x64}*/**"
   - "!**/node_modules/sqlite-vec-{darwin-x64,linux-*,windows-*}/**"
@@ -26,8 +27,6 @@ files:
   # onnxruntime-web (145 MB of WASM) is bundled into transformers.node.mjs already; the runtime
   # loads onnxruntime-node, never this package
   - "!**/node_modules/onnxruntime-web/**"
-  # Codex voice host, only used for realtime voice
-  - "!**/node_modules/@openai/codex-darwin-arm64/vendor/*/codex-resources/voice/**"
   # pdf.js: the core imports legacy/build/pdf.mjs only; the viewer, the browser build and the
   # image decoders belong to the UI bundle in apps/ui/dist
   - "!**/node_modules/pdfjs-dist/{build,web,types,image_decoders,legacy/web,legacy/image_decoders}/**"
@@ -61,7 +60,7 @@ asarUnpack:
   - "**/node_modules/onnxruntime-node/**"
   - "**/node_modules/sqlite-vec/**"
   - "**/node_modules/sqlite-vec-*/**"
-  # the chat agents run as child processes: the ACP adapters and the native binaries behind them
+  # the chat agents run as child processes: the ACP adapters and the JavaScript they import
   - "**/node_modules/@agentclientprotocol/**"
   - "**/node_modules/@anthropic-ai/**"
   - "**/node_modules/@openai/**"

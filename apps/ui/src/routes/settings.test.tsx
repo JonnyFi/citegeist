@@ -22,7 +22,9 @@ describe("settings screen", () => {
     expect(claude.getByText("Bereit")).toBeVisible();
     const codex = await backendRow("codex-exec");
     expect(codex.getByText("Nicht installiert")).toBeVisible();
+    // the hint names the install and the login command of the CLI the user has to bring
     expect(codex.getByText(/npm install -g @openai\/codex/)).toBeVisible();
+    expect(codex.getByText(/codex login/)).toBeVisible();
     const ollama = await backendRow("ollama");
     expect(ollama.getByText("Nicht erreichbar")).toBeVisible();
     expect(ollama.getByText("Starte Ollama und prüfe erneut.")).toBeVisible();

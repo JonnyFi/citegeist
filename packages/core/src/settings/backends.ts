@@ -19,6 +19,8 @@ export interface BackendStatus {
   label: string;
   available: boolean;
   detail?: string;
+  /** For a missing or logged-out CLI: the agent-ready error with the install or login command. */
+  error?: { code: string; message: string; fix: string; recovery: string };
 }
 
 /**
@@ -169,10 +171,20 @@ export class BackendRegistry implements BackendProvider {
 
   private async probe(entry: CatalogEntry): Promise<BackendStatus> {
     const base = { id: entry.id, kind: entry.kind, label: entry.label };
-    const result = (available: boolean, detail: string): BackendStatus => ({
+    const result = (available: boolean, detail: string, error?: CitegeistError): BackendStatus => ({
       ...base,
       available,
       detail,
+      ...(error
+        ? {
+            error: {
+              code: error.detail.code,
+              message: error.detail.message,
+              fix: error.detail.fix,
+              recovery: error.detail.recovery,
+            },
+          }
+        : {}),
     });
     try {
       if (entry.id === "claude-code-cli" || entry.id === "codex-exec") {
@@ -182,8 +194,13 @@ export class BackendRegistry implements BackendProvider {
           return result(true, BACKEND_DETAIL.ready);
         } catch (err) {
           const code = codeOf(err);
-          if (code === "AI_CLI_MISSING") return result(false, BACKEND_DETAIL.notInstalled);
-          if (code === "AI_CLI_LOGGED_OUT") return result(false, BACKEND_DETAIL.loggedOut);
+          const agentError = err instanceof CitegeistError ? err : undefined;
+          if (code === "AI_CLI_MISSING") {
+            return result(false, BACKEND_DETAIL.notInstalled, agentError);
+          }
+          if (code === "AI_CLI_LOGGED_OUT") {
+            return result(false, BACKEND_DETAIL.loggedOut, agentError);
+          }
           if (code === "AI_CLI_VERSION_MISMATCH") {
             const d = err instanceof CitegeistError ? err.detail.context : undefined;
             return result(false, `${BACKEND_DETAIL.outdated}: ${String(d?.found ?? "?")}`);

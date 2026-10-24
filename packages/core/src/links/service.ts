@@ -196,7 +196,7 @@ export class LinkService {
     return { proposed: added };
   }
 
-  /** Accepts proposed links (status becomes accepted) and rejects others (the link is removed). */
+  /** Accepts proposed links (status becomes accepted) and rejects others (status becomes rejected). */
   decide(
     actor: Actor,
     input: { note: string; accept: number[]; reject: number[] },
@@ -214,9 +214,13 @@ export class LinkService {
       if (link.status !== "proposed") throw linkErrors.notProposed(input.note, i);
     }
     if (accept.size === 0 && reject.size === 0) return row;
-    const next = links
-      .map((l, i) => (accept.has(i) ? { ...l, status: "accepted" } : l))
-      .filter((_, i) => !reject.has(i));
+    const next = links.map((l, i) =>
+      accept.has(i)
+        ? { ...l, status: "accepted" }
+        : reject.has(i)
+          ? { ...l, status: "rejected" }
+          : l,
+    );
     file.patch({ links: next, modified: this.lib.stamp(actor) });
     this.lib.writeFile(rel, file.toString());
     return this.lib.getNote(input.note);

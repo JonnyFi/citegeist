@@ -1120,14 +1120,14 @@ export class IngestService {
       // the record of where it looked, so that the user can attach a PDF.
       if (input.remote?.doi) {
         saveItem(this.lib, "system", item, {
-          fulltext: { status: "none", tried, at: this.lib.stamp("system").at },
+          fulltext: { status: "missing", tried, checked_at: this.lib.stamp("system").at },
         });
       }
       return {
         citekey,
         sources: 0,
         converted: false,
-        ...(input.remote?.doi ? { fulltext: "none", tried } : {}),
+        ...(input.remote?.doi ? { fulltext: "missing", tried } : {}),
         message: `no source file available${notes.length ? ` (${notes.join(", ")})` : ""}`,
       };
     }
@@ -1162,12 +1162,23 @@ export class IngestService {
         { citekey, convertJob: child.id },
       );
     }
-    const finalKey = (done.result as { citekey?: string } | undefined)?.citekey ?? citekey;
+    // The conversion may have renamed the item or merged it into one the library already had:
+    // the result names the key that exists now, which items.add could not know at the time.
+    const out = done.result as
+      | {
+          citekey?: string;
+          renamed?: { from: string; to: string };
+          merged?: { from: string; into: string; job: string };
+        }
+      | undefined;
+    const finalKey = out?.citekey ?? citekey;
     return {
       citekey: finalKey,
       sources: item.fm.sources.length,
       converted: true,
       convertJob: child.id,
+      ...(out?.renamed ? { renamed: out.renamed } : {}),
+      ...(out?.merged ? { merged: out.merged } : {}),
       notes,
     };
   }

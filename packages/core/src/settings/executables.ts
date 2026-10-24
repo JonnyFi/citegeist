@@ -10,6 +10,8 @@ import { delimiter, join } from "node:path";
 export function extraBinDirs(home = homedir()): string[] {
   return [
     join(home, ".local", "bin"),
+    // the "local" install of Claude Code (`claude migrate-installer`)
+    join(home, ".claude", "local"),
     "/opt/homebrew/bin",
     "/usr/local/bin",
     join(home, ".npm-global", "bin"),

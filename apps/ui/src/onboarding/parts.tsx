@@ -103,7 +103,9 @@ export function BackendRow({
   const tr = useI18n();
   const { t } = tr;
   const { code } = splitDetail(backend.detail);
-  const hint = lookup(tr, `backend.hint.${backend.id}.${code}`);
+  // the translated hint names the install and login commands; an error from the core stands in
+  // for backends without a translation
+  const hint = lookup(tr, `backend.hint.${backend.id}.${code}`) ?? backend.error?.fix;
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
 

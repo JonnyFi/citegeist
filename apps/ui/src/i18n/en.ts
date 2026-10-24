@@ -293,12 +293,12 @@ export const en: Record<MessageKey, string> = {
   "backend.status.unreachable": "Not reachable",
   "backend.status.unknown": "Unavailable",
   "backend.hint.claude-code-cli.not-installed":
-    "Install Claude Code with npm install -g @anthropic-ai/claude-code.",
-  "backend.hint.claude-code-cli.logged-out": "Run claude auth login in Terminal.",
+    "citegeist uses the Claude Code you installed. Install it with npm install -g @anthropic-ai/claude-code, then log in with claude auth login in Terminal.",
+  "backend.hint.claude-code-cli.logged-out": "Run claude auth login in Terminal, then check again.",
   "backend.hint.claude-code-cli.outdated": "Update Claude Code, then check again.",
   "backend.hint.codex-exec.not-installed":
-    "Install the Codex CLI with npm install -g @openai/codex.",
-  "backend.hint.codex-exec.logged-out": "Run codex login in Terminal.",
+    "citegeist uses the Codex CLI you installed. Install it with npm install -g @openai/codex, then log in with codex login in Terminal.",
+  "backend.hint.codex-exec.logged-out": "Run codex login in Terminal, then check again.",
   "backend.hint.ollama.unreachable": "Start Ollama, then check again.",
   "task.card.paraphrase": "Paraphrase and kind",
   "task.card.verify": "Check quotes",

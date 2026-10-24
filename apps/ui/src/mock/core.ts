@@ -50,6 +50,11 @@ export interface MockOptions {
   aiDelayMs?: number;
   /** Seeds the job list with finished and running conversions, so the top bar has something to show. */
   demoJobs?: boolean;
+  /**
+   * Items added by items.add are recognised as the work of this citekey only after the job ran:
+   * the new item disappears and the job result names this one, as after a late PDF merge.
+   */
+  mergeNewInto?: string;
 }
 
 function authorsOf(fm: ItemFrontmatter): string | undefined {
@@ -73,6 +78,7 @@ function summary(fm: ItemFrontmatter) {
     ...(fm.incomplete
       ? { incomplete: true, incompleteReason: `${fm.incomplete.code}: ${fm.incomplete.message}` }
       : {}),
+    ...(fm.fulltext ? { fulltext: fm.fulltext.status } : {}),
     ...(retraction ? { retraction } : {}),
   };
 }
@@ -98,6 +104,7 @@ interface MockJob {
   updatedAt: string;
   /** Share of the work done, 0 to 1. Without it a running job reports one half. */
   progress?: number;
+  result?: unknown;
 }
 
 function surname(fm: ItemFrontmatter): string {
@@ -281,7 +288,9 @@ export function createMockRegistry(
         updatedAt: stamp,
       };
       jobs.set(job.id, job);
+      let onDone: (() => void) | undefined;
       setTimeout(() => {
+        onDone?.();
         job.status = "succeeded";
         job.updatedAt = new Date().toISOString();
       }, aiDelayMs);
@@ -316,6 +325,14 @@ export function createMockRegistry(
         }),
       });
       changed(`items/${citekey}/${citekey}.md`);
+      const into = options.mergeNewInto;
+      if (into && data.items.has(into)) {
+        onDone = () => {
+          data.items.delete(citekey);
+          changed(`items/${citekey}/${citekey}.md`);
+          job.result = { citekey: into, merged: { from: citekey, into, job: randomId("j_") } };
+        };
+      }
       return { citekey, job: job.id };
     })
     .bind(itemsGet, async (_ctx, input) => {
@@ -664,6 +681,7 @@ export function createMockRegistry(
         by: "human" as const,
         createdAt: job.createdAt,
         updatedAt: job.updatedAt,
+        ...(job.result !== undefined ? { result: job.result } : {}),
       };
     })
     .bind(searchQuery, async (_ctx, input) => {

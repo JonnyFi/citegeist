@@ -433,6 +433,11 @@ describe("ai.testBackend", () => {
     expect(bad.ok).toBe(false);
     expect(bad.error?.code).toBe("AI_CLI_LOGGED_OUT");
     expect(bad.error?.fix).toContain("claude auth login");
+    // the status list carries the same agent-ready error for the settings and onboarding screens
+    const status = (await backends.status()).find((b) => b.id === "claude-code-cli");
+    expect(status).toMatchObject({ available: false, detail: "logged-out" });
+    expect(status?.error).toMatchObject({ code: "AI_CLI_LOGGED_OUT", recovery: "do-first" });
+    expect(status?.error?.fix).toContain("claude auth login");
     const missing = (await t.registry.call("ai.testBackend", human, { backend: "openai" })) as {
       error: { code: string };
     };

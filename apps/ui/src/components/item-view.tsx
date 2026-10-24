@@ -1,4 +1,5 @@
 import { cardsList, itemsGet, itemsResolve, projectsList } from "@citegeist/ops";
+import type { ItemFrontmatter } from "@citegeist/schema";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Quote } from "lucide-react";
 import type { ReactNode } from "react";
@@ -24,22 +25,16 @@ import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
 /** The marker ingest leaves when no open source delivered a PDF: which sources it tried. */
-function readNoFulltext(fm: Record<string, unknown>): { tried: string[] } | undefined {
-  const raw = fm.fulltext as { status?: unknown; tried?: unknown } | undefined;
-  if (!raw || raw.status !== "none") return undefined;
+function readNoFulltext(fm: ItemFrontmatter): { tried: string[] } | undefined {
+  const marker = fm.fulltext;
+  if (marker?.status !== "missing") return undefined;
   const names: Record<string, string> = {
     unpaywall: "Unpaywall",
     openalex: "OpenAlex",
     arxiv: "arXiv",
     publisher: "Verlagsseite",
   };
-  const tried = Array.isArray(raw.tried)
-    ? raw.tried
-        .map((a) => (a as { source?: unknown }).source)
-        .filter((x): x is string => typeof x === "string")
-        .map((x) => names[x] ?? x)
-    : [];
-  return { tried };
+  return { tried: marker.tried.map((a) => names[a.source] ?? a.source) };
 }
 
 export type ItemTab = "overview" | "read";
