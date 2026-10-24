@@ -1,10 +1,13 @@
 import {
   type InsightHit,
   insightsFind,
+  insightsList,
   insightsNote,
+  itemsResolve,
   type NumberedNode,
   outlineApply,
   outlineGet,
+  planDocsGet,
   planDocsUpdate,
   plansCreate,
   plansList,
@@ -13,7 +16,6 @@ import {
 import type { NodeStatus, OutlineNode, PlanTemplate } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
-import { itemsResolve, planDocsGet } from "./contracts";
 import { linkTargets, parseInsights } from "./insights";
 import { childrenOf, normalizeOrder, numberNodes, slugify, subtreeIds } from "./outline";
 
@@ -692,6 +694,30 @@ export function bindPlanningMock(
         }
       }
       hits.sort((a, b) => b.score - a.score || (b.date ?? "").localeCompare(a.date ?? ""));
+      return { hits: hits.slice(0, input.limit) };
+    })
+    .bind(insightsList, async (_ctx, input) => {
+      requireProject(input.project);
+      const plans = plansOf(store, input.project);
+      const plan = plans.length > 0 ? pickPlan(store, input.project, input.plan) : undefined;
+      const nodes = plan ? numbered(input.project, plan) : [];
+      const hits: InsightHit[] = allInsights(store, input.project, plan?.slug).map((p) => {
+        const home = nodes.find((n) => n.doc === p.path);
+        return {
+          path: p.path,
+          block: p.block,
+          ...(p.date ? { date: p.date } : {}),
+          text: `${p.date ? `${p.date}: ` : ""}${p.text} ^${p.block}`,
+          stage: "links" as const,
+          why: home
+            ? `${home.number} ${home.title}`
+            : p.path.endsWith("/plan.md")
+              ? "Planungsdokument"
+              : "Einsichten des Projekts",
+          score: 0,
+        };
+      });
+      hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       return { hits: hits.slice(0, input.limit) };
     })
     .bind(itemsResolve, async (_ctx, input) => {

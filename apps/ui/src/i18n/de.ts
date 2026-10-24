@@ -2,6 +2,8 @@ import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
+import { matrixDe } from "./matrix";
+import { relatedDe } from "./related";
 
 /**
  * German strings, the default language of the UI. `en.ts` must define the same keys. Keys with a
@@ -434,6 +436,8 @@ export const de = {
   ...planningDe,
   ...settingsDe,
   ...importDe,
+  ...relatedDe,
+  ...matrixDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",

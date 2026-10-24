@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { z } from "zod";
 import { useI18n } from "../i18n";
 import { statusLabel, typeLabel } from "../lib/format";
+import { RetractionBadge, useRetractionMarkers } from "../related";
 import { Badge, Stamp, StatusSquare } from "./ui/badge";
 
 export type ItemSummary = z.output<typeof itemsList.output>["items"][number];
@@ -16,6 +17,7 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
   const i18n = useI18n();
   const { t } = i18n;
   const navigate = useNavigate();
+  const markers = useRetractionMarkers(items.map((i) => i.citekey));
   return (
     <table className="w-full border-collapse text-left text-[13px]">
       <caption className="sr-only">{t("table.caption")}</caption>
@@ -42,49 +44,53 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
         </tr>
       </thead>
       <tbody>
-        {items.map((item) => (
-          <tr
-            key={item.citekey}
-            data-testid="item-row"
-            onClick={() =>
-              void navigate({ to: "/items/$citekey", params: { citekey: item.citekey } })
-            }
-            className="cursor-default hover:bg-sunken"
-          >
-            <td className={`${TD} pl-8`}>
-              <StatusSquare filled={item.status !== "unread"} />
-            </td>
-            <td className={`${TD} max-w-0`}>
-              <div className="flex items-baseline gap-3">
-                <Link
-                  to="/items/$citekey"
-                  params={{ citekey: item.citekey }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="min-w-0 truncate font-medium hover:underline"
-                >
-                  {item.title}
-                </Link>
-                <span className="hidden shrink-0 font-mono text-[11px] text-muted xl:inline">
-                  {item.citekey}
-                </span>
-              </div>
-            </td>
-            <td className={`${TD} hidden truncate md:table-cell`}>{item.authors ?? ""}</td>
-            <td className={`${TD} font-mono text-[12px]`}>{item.year ?? ""}</td>
-            <td className={`${TD} hidden lg:table-cell`}>{typeLabel(i18n, item.type)}</td>
-            <td className={`${TD} pr-8`}>
-              <div className="flex items-center gap-2">
-                <span>{statusLabel(i18n, item.status)}</span>
-                {item.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
-                {item.incomplete ? (
-                  <span title={item.incompleteReason}>
-                    <Stamp tone="danger">{t("item.incomplete")}</Stamp>
+        {items.map((item) => {
+          const marker = markers.get(item.citekey);
+          return (
+            <tr
+              key={item.citekey}
+              data-testid="item-row"
+              onClick={() =>
+                void navigate({ to: "/items/$citekey", params: { citekey: item.citekey } })
+              }
+              className="cursor-default hover:bg-sunken"
+            >
+              <td className={`${TD} pl-8`}>
+                <StatusSquare filled={item.status !== "unread"} />
+              </td>
+              <td className={`${TD} max-w-0`}>
+                <div className="flex items-baseline gap-3">
+                  <Link
+                    to="/items/$citekey"
+                    params={{ citekey: item.citekey }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="min-w-0 truncate font-medium hover:underline"
+                  >
+                    {item.title}
+                  </Link>
+                  {marker ? <RetractionBadge marker={marker} className="shrink-0" /> : null}
+                  <span className="hidden shrink-0 font-mono text-[11px] text-muted xl:inline">
+                    {item.citekey}
                   </span>
-                ) : null}
-              </div>
-            </td>
-          </tr>
-        ))}
+                </div>
+              </td>
+              <td className={`${TD} hidden truncate md:table-cell`}>{item.authors ?? ""}</td>
+              <td className={`${TD} font-mono text-[12px]`}>{item.year ?? ""}</td>
+              <td className={`${TD} hidden lg:table-cell`}>{typeLabel(i18n, item.type)}</td>
+              <td className={`${TD} pr-8`}>
+                <div className="flex items-center gap-2">
+                  <span>{statusLabel(i18n, item.status)}</span>
+                  {item.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
+                  {item.incomplete ? (
+                    <span title={item.incompleteReason}>
+                      <Stamp tone="danger">{t("item.incomplete")}</Stamp>
+                    </span>
+                  ) : null}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

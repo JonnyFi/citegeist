@@ -5,8 +5,7 @@ import { useSyncExternalStore } from "react";
  * it as a chip and hands it to the agent, as the reader does with a marked passage. It lives
  * outside React state so the two panels need no shared parent.
  *
- * `ChatContext` in `@citegeist/ops` has no plan field yet; until it has one the core drops it and
- * the agent works from the project alone.
+ * `ChatContext` in `@citegeist/ops` carries the plan and the node, so the agent knows where Jonny is.
  */
 export interface PlanContext {
   project: string;

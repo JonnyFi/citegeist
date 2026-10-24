@@ -127,7 +127,6 @@ export const planningDe = {
   "resolve.running": "Löst auf",
   "resolve.changed": "Aktualisiert: {fields}",
   "resolve.unchanged": "Nichts Neues gefunden",
-  "resolve.unsupported": "Dieser Core kann Metadaten noch nicht neu auflösen.",
   "reading.resume": "Weiterlesen, S. {page}",
   "reading.start": "Lesen beginnen",
 
@@ -269,7 +268,6 @@ export const planningEn: Record<keyof typeof planningDe, string> = {
   "resolve.running": "Resolving",
   "resolve.changed": "Updated: {fields}",
   "resolve.unchanged": "Nothing new found",
-  "resolve.unsupported": "This core cannot resolve metadata again yet.",
   "reading.resume": "Continue reading, p. {page}",
   "reading.start": "Start reading",
 

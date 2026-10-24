@@ -1,5 +1,5 @@
 import type { NumberedNode } from "@citegeist/ops";
-import { planDocsUpdate } from "@citegeist/ops";
+import { planDocsGet, planDocsUpdate } from "@citegeist/ops";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../components/ui/button";
@@ -9,7 +9,6 @@ import { useCore, useOp } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { EditorField } from "../notes/editor-field";
 import { useLibraryLinks } from "../notes/library-links";
-import { planDocsGet } from "./contracts";
 import { withNodeLinks } from "./node-links";
 
 type SaveState = "saved" | "dirty" | "saving" | "failed";

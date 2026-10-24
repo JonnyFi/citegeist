@@ -3,6 +3,8 @@ import { importEn } from "../import/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import type { MessageKey } from "./de";
+import { matrixEn } from "./matrix";
+import { relatedEn } from "./related";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
 export const en: Record<MessageKey, string> = {
@@ -429,6 +431,8 @@ export const en: Record<MessageKey, string> = {
   ...planningEn,
   ...settingsEn,
   ...importEn,
+  ...relatedEn,
+  ...matrixEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",

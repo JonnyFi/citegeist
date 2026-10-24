@@ -129,18 +129,16 @@ describe("Metadaten neu auflösen", () => {
     expect(await screen.findByText("Nichts Neues gefunden")).toBeVisible();
   });
 
-  it("explains it when the core has no such operation yet", async () => {
+  it("shows the reason when the lookup fails", async () => {
     const user = userEvent.setup();
     const view = renderApp("/items/luhmann1984soziale");
     const original = view.core.call.bind(view.core);
     view.core.call = ((contract, input) =>
       contract.name === "items.resolve"
-        ? Promise.reject(new Error("UNKNOWN_OPERATION: No operation named items.resolve"))
+        ? Promise.reject(new Error("RESOLVE_FAILED: Crossref did not answer"))
         : original(contract, input)) as typeof view.core.call;
     await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
-    expect(
-      await screen.findByText("Dieser Core kann Metadaten noch nicht neu auflösen."),
-    ).toBeVisible();
+    expect(await screen.findByText("RESOLVE_FAILED: Crossref did not answer")).toBeVisible();
   });
 });
 
