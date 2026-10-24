@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } from "electron";
@@ -8,6 +9,13 @@ import { ensureCore, type RunningCore, stopCore } from "./core-process.js";
 import { buildMenu } from "./menu.js";
 import { openDialogOptions, type PickPathsRequest } from "./pick-paths.js";
 import { loadSettings, saveSettings } from "./settings.js";
+import {
+  CHECK_INTERVAL_MS,
+  checkForUpdate,
+  RELEASES_API,
+  type UpdateInfo,
+  writeInstallCommand,
+} from "./update-check.js";
 
 // Test and dev switches, all optional.
 //   CITEGEIST_LIBRARY      library to open at start (also --library=<path>)
@@ -224,6 +232,44 @@ ipcMain.handle("citegeist:pick-paths", (event, request: PickPathsRequest) =>
   fromRenderer(event) ? pickPaths(request) : [],
 );
 
+// Updates ----------------------------------------------------------------------------------------------
+
+let availableUpdate: UpdateInfo | null = loadSettings().update?.available ?? null;
+
+/**
+ * Asks the releases API (at most once a day, see checkForUpdate) and tells the window when the
+ * answer changed. Only the packaged app checks; CITEGEIST_UPDATE_API points a dev build at a test
+ * endpoint.
+ */
+async function refreshUpdate(): Promise<void> {
+  const api = process.env.CITEGEIST_UPDATE_API;
+  if (!app.isPackaged && !api) return;
+  const before = loadSettings().update ?? {};
+  const next = await checkForUpdate({
+    current: app.getVersion(),
+    state: before,
+    ...(api ? { api } : { api: RELEASES_API }),
+  });
+  await saveSettings({ update: next });
+  const info = next.available ?? null;
+  if (info?.version === availableUpdate?.version) return;
+  availableUpdate = info;
+  window?.webContents.send("citegeist:update-changed", info);
+}
+
+/** Opens Terminal on a script that runs install.sh. The script quits this app and replaces it. */
+function installUpdate(): void {
+  const script = writeInstallCommand(app.getPath("userData"));
+  execFile("open", ["-a", "Terminal", script], (err) => {
+    if (err) fail("Could not open Terminal for the update", err);
+  });
+}
+
+ipcMain.handle("citegeist:update-get", (event) => (fromRenderer(event) ? availableUpdate : null));
+ipcMain.handle("citegeist:update-install", (event) => {
+  if (fromRenderer(event) && availableUpdate) installUpdate();
+});
+
 // Lifecycle ------------------------------------------------------------------------------------------------
 
 app.on("before-quit", (event) => {
@@ -292,6 +338,8 @@ async function start(): Promise<void> {
   });
   const link = findDeepLink(process.argv);
   if (link) handleDeepLink(link);
+  void refreshUpdate();
+  setInterval(() => void refreshUpdate(), CHECK_INTERVAL_MS / 4).unref();
   if (core) window?.setTitle(`citegeist - ${core.connection.library.split("/").pop()}`);
 }
 

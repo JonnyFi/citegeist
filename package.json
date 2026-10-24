@@ -2,6 +2,7 @@
   "name": "citegeist",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "packageManager": "pnpm@10.33.2",
   "engines": {
@@ -16,7 +17,8 @@
     "test:convert": "uv run --directory workers/convert pytest",
     "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest",
     "prepare": "git config core.hooksPath .githooks || true",
-    "app:update": "sh scripts/update-app.sh"
+    "app:update": "sh scripts/update-app.sh",
+    "release": "sh scripts/release.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
