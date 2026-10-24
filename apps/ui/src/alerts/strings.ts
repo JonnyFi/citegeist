@@ -8,7 +8,7 @@ export const alertsDe = {
 
   "alerts.title": "Alerts",
   "alerts.descLibrary":
-    "Ein Alert sucht in regelmäßigen Abständen nach neuen Werken und legt die besten in die Inbox. Hier stehen die Alerts der ganzen Bibliothek und die der Projekte.",
+    "Ein Alert sucht in regelmäßigen Abständen nach neuen Werken und legt die besten in die Inbox. Hier stehen die Alerts der ganzen Bibliothek und die der Projekte. Eine Pipeline-Suche legst du in der Literatursuche an, mit „Als Alert speichern“ bei einem fertigen Lauf.",
   "alerts.descProject":
     "Ein Alert sucht in regelmäßigen Abständen nach neuen Werken und legt die besten in die Inbox. Ist die semantische Suche an, ordnet der lokale Embedder sie nach dem Briefing dieses Projekts.",
   "alerts.loading": "Alerts werden geladen",
@@ -21,6 +21,7 @@ export const alertsDe = {
   "alerts.kind.openalex-search": "OpenAlex-Suche",
   "alerts.kind.author": "Autor:in",
   "alerts.kind.cites": "Zitiert ein Werk",
+  "alerts.kind.pipeline": "Pipeline-Suche",
   "alerts.hint.arxiv-category": "Zum Beispiel cs.CL oder hep-th",
   "alerts.hint.arxiv-query": "Zum Beispiel retrieval augmented generation",
   "alerts.hint.openalex-topic": "OpenAlex-Themen-ID, zum Beispiel T10181",
@@ -44,6 +45,7 @@ export const alertsDe = {
   "alerts.runFailed": "Der letzte Lauf ist fehlgeschlagen: {error}",
   "alerts.next": "Nächster Lauf: {at}",
 
+  "alerts.openRun": "Lauf öffnen",
   "alerts.run": "Jetzt ausführen",
   "alerts.running": "Läuft",
   "alerts.runDone": "Der Lauf ist fertig.",
@@ -73,7 +75,7 @@ export const alertsEn: Record<keyof typeof alertsDe, string> = {
 
   "alerts.title": "Alerts",
   "alerts.descLibrary":
-    "An alert looks for new works at regular intervals and puts the best ones into the inbox. This list holds the alerts of the whole library and those of the projects.",
+    "An alert looks for new works at regular intervals and puts the best ones into the inbox. This list holds the alerts of the whole library and those of the projects. You create a pipeline search in the literature search, with “Save as alert” on a finished run.",
   "alerts.descProject":
     "An alert looks for new works at regular intervals and puts the best ones into the inbox. When semantic search is on, the local embedder orders them by the brief of this project.",
   "alerts.loading": "Loading alerts",
@@ -86,6 +88,7 @@ export const alertsEn: Record<keyof typeof alertsDe, string> = {
   "alerts.kind.openalex-search": "OpenAlex search",
   "alerts.kind.author": "Author",
   "alerts.kind.cites": "Cites a work",
+  "alerts.kind.pipeline": "Pipeline search",
   "alerts.hint.arxiv-category": "For example cs.CL or hep-th",
   "alerts.hint.arxiv-query": "For example retrieval augmented generation",
   "alerts.hint.openalex-topic": "OpenAlex topic id, for example T10181",
@@ -109,6 +112,7 @@ export const alertsEn: Record<keyof typeof alertsDe, string> = {
   "alerts.runFailed": "The last run failed: {error}",
   "alerts.next": "Next run: {at}",
 
+  "alerts.openRun": "Open the run",
   "alerts.run": "Run now",
   "alerts.running": "Running",
   "alerts.runDone": "The run is done.",

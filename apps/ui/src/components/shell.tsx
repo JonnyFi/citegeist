@@ -24,6 +24,7 @@ import {
   Search,
   Settings,
   Sun,
+  Telescope,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
@@ -33,6 +34,7 @@ import { type ThemeChoice, useTheme } from "../lib/theme";
 import { cn } from "../lib/utils";
 import { JobStatus } from "./job-status";
 import { LayoutProvider, RightColumn, useHeaderRef, useLayout } from "./layout";
+import { UpdateNotice } from "./update-notice";
 
 const RAIL_KEY = "citegeist.rail";
 
@@ -268,19 +270,21 @@ function ShellFrame() {
       <header className="drag-region flex h-topbar shrink-0 items-stretch border-b border-line">
         <div
           className={cn(
-            "no-drag flex shrink-0 items-center border-r border-line",
-            open ? "w-rail-open gap-3 px-4" : "w-rail justify-center",
+            "flex shrink-0 items-center border-r border-line",
+            open
+              ? "w-rail-open gap-3 px-4"
+              : cn(darwin ? "w-rail-mac" : "w-rail", "justify-center"),
             darwin && open && "pl-[84px]",
           )}
         >
           {open ? (
             <>
-              <span
+              <img
+                src={`${import.meta.env.BASE_URL}icon.svg`}
+                alt=""
                 aria-hidden="true"
-                className={cn("font-serif text-[22px] font-medium", darwin && "hidden")}
-              >
-                c
-              </span>
+                className={cn("size-8", darwin && "hidden")}
+              />
               <span className="text-[13px] font-semibold">citegeist</span>
               <span className="flex-1" />
               <button
@@ -306,12 +310,10 @@ function ShellFrame() {
             </button>
           )}
         </div>
-        <div
-          ref={headerRef}
-          className="no-drag flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]"
-        >
+        <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]">
           {fallback ? <div className="font-medium">{t(fallback[1])}</div> : null}
         </div>
+        <UpdateNotice />
         <JobStatus />
       </header>
 
@@ -320,7 +322,7 @@ function ShellFrame() {
           aria-label={t("nav.main")}
           className={cn(
             "flex shrink-0 flex-col justify-between overflow-y-auto border-r border-line py-3",
-            open ? "w-rail-open" : "w-rail items-center",
+            open ? "w-rail-open" : cn(darwin ? "w-rail-mac" : "w-rail", "items-center"),
           )}
         >
           <div className={cn("flex flex-col", !open && "items-center gap-1")}>
@@ -370,6 +372,17 @@ function ShellFrame() {
                 label={t("nav.inbox")}
                 badge={inboxCount}
                 badgeLabel={inboxCount > 0 ? t("nav.inboxNew", { n: inboxCount }) : t("nav.inbox")}
+              />
+            </Link>
+            <Link
+              to="/litsearch"
+              aria-current={pathname.startsWith("/litsearch") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/litsearch"))}
+            >
+              <NavBody
+                open={open}
+                icon={<Telescope className={ICON} />}
+                label={t("nav.litsearch")}
               />
             </Link>
             <Link

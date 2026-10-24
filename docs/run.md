@@ -34,7 +34,7 @@ pnpm package
 open apps/desktop/dist/mac-arm64/citegeist.app
 ```
 
-`pnpm package` baut die Oberfläche und die Electron-Bündel und schreibt danach `citegeist.app` für arm64. Die App ist nicht notarisiert und ad hoc signiert. Auf dem Rechner, auf dem sie gebaut wurde, startet sie ohne Rückfrage. Auf einem anderen Mac sperrt Gatekeeper sie, bis du sie über Rechtsklick und Öffnen freigibst.
+`pnpm package` baut die Oberfläche und die Electron-Bündel und schreibt danach `citegeist.app` für arm64. Die App ist nicht notarisiert und ad hoc signiert. Auf dem Rechner, auf dem sie gebaut wurde, startet sie ohne Rückfrage. Auf einem anderen Mac sperrt Gatekeeper sie, bis du sie über Rechtsklick und Öffnen freigibst. Der Abschnitt "Installation ohne Developer ID" zeigt den Weg, der Gatekeeper gar nicht erst auslöst.
 
 Im Paket liegen die Quellen des Python-Workers (`Contents/Resources/workers/convert`), die CSL-Stile, die nativen Module und die beiden ACP-Adapter als JavaScript. Die Programme von Claude Code und Codex gehören nicht dazu. Im Chat und für die AI-Aufgaben startet citegeist das `claude` und das `codex`, das du selbst installiert hast. Es sucht im PATH und unter `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin` und ähnlichen Orten. Ein npm-Skript funktioniert, sobald ein `node` in einem dieser Ordner liegt. Fehlt das Programm, zeigen Einrichtung und Einstellungen den Installationsbefehl (`npm install -g @anthropic-ai/claude-code`, `npm install -g @openai/codex`) und den Anmeldebefehl (`claude auth login`, `codex login`), und der Chat antwortet mit demselben Fehler (`CHAT_CLI_MISSING`).
 
@@ -54,6 +54,43 @@ pnpm app:update
 ```
 
 Der Befehl holt den neuesten Stand von `main`, baut die App, beendet die laufende citegeist-App, ersetzt `/Applications/citegeist.app` und startet sie neu. Deine Bibliothek und die Einstellungen bleiben dabei unberührt, weil sie außerhalb der App liegen.
+
+## Installation ohne Developer ID
+
+citegeist ist ad hoc signiert und nicht notarisiert. Eine Datei, die `curl` herunterlädt, bekommt kein `com.apple.quarantine`-Attribut, und Gatekeeper prüft sie deshalb nicht. Darauf beruht die Installation, die ohne Apple Developer ID auskommt:
+
+```
+curl -fsSL https://raw.githubusercontent.com/JonnyFi/citegeist/main/install.sh | sh
+```
+
+Das Skript `install.sh` macht Folgendes:
+
+1. Es prüft macOS auf Apple Silicon und liest über die GitHub-API (`/releases/latest`) das neueste Release.
+2. Es lädt `citegeist-<Version>-arm64.zip` mit `curl` und vergleicht die Prüfsumme mit der Datei `.sha256` des Releases. Bei einer Abweichung bricht es ab, ohne etwas zu installieren.
+3. Es beendet ein laufendes citegeist, ersetzt `/Applications/citegeist.app` (ohne Schreibrecht dort `~/Applications/citegeist.app`) und startet die App.
+4. Es prüft `uv` und mindestens eine der CLIs `claude`, `codex` und `cursor-agent` und nennt für Fehlendes den Installationsbefehl. Es installiert davon nichts.
+
+Bibliothek und Einstellungen liegen außerhalb der App und bleiben bei einem Update erhalten. Entfernen lässt sich citegeist mit:
+
+```
+rm -rf /Applications/citegeist.app ~/Applications/citegeist.app
+rm -rf ~/Library/Application\ Support/citegeist
+```
+
+Die zweite Zeile löscht Index und Python-Umgebung. Die Bibliothek mit deinen PDFs und Notizen bleibt unberührt.
+
+Das Repository muss öffentlich sein (oder das Release muss in einem öffentlichen Repository liegen), damit `curl` ohne Token die API, das Skript und die Release-Dateien erreicht. Das Repository ist zurzeit privat, bis dahin liefert `install.sh` die Meldung, dass es kein lesbares Release gibt.
+
+**Hinweis in der App.** Die App fragt höchstens einmal am Tag die Releases-API ab und vergleicht den Tag mit ihrer eigenen Version. Gibt es eine neuere Version, erscheint oben in der Leiste "Update verfügbar". Ein Klick öffnet das Terminal, das `install.sh` ausführt und citegeist ersetzt und neu startet. Squirrel.Mac (electron-updater) kommt nicht infrage, weil es eine signierte App voraussetzt.
+
+**Release bauen.** Releases entstehen lokal, die CI-Minuten bleiben unberührt. Die Version steht in `apps/desktop/package.json`.
+
+```
+pnpm release --dry-run   # prüft alles und zeigt die Schritte
+pnpm release             # baut, packt, schreibt die Prüfsumme, legt das GitHub-Release an
+```
+
+`scripts/release.sh` verweigert die Arbeit bei einem unsauberen Arbeitsbaum, bei einem vorhandenen Tag und bei einem Commit, der nicht auf `origin` liegt.
 
 ## Erster Start
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { InMemoryKeychain, JobQueue } from "@citegeist/core";
 import { Registry } from "@citegeist/ops";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDesktopSettingsDeps, resolveWorkerSource } from "./index.js";
+import { createDesktopSettingsDeps, resolveResearchSource, resolveWorkerSource } from "./index.js";
 
 const dirs: string[] = [];
 const tmp = () => {
@@ -31,6 +31,25 @@ describe("resolveWorkerSource", () => {
       }),
     ).toBe("/res/workers/convert");
     expect(resolveWorkerSource({ exists: () => false })).toMatch(/workers[/\\]convert$/);
+  });
+});
+
+describe("resolveResearchSource", () => {
+  it("finds workers/research in the packaged resources, else falls back to the repo", () => {
+    // protects: citegeist.app starts pipeline.py from Resources/workers/research
+    // fails_when: the packaged path is ignored, or the override wins although it has no pipeline.py
+    // no_claim: electron-builder copying the folder is not exercised; see electron-builder.yml
+    const has = (dirs: string[]) => (p: string) =>
+      dirs.some((d) => p === join(d, "scripts", "pipeline.py"));
+    expect(
+      resolveResearchSource({
+        override: "/x",
+        resourcesPath: "/res",
+        exists: has(["/res/workers/research"]),
+      }),
+    ).toBe("/res/workers/research");
+    expect(resolveResearchSource({ override: "/x", exists: has(["/x"]) })).toBe("/x");
+    expect(resolveResearchSource({ exists: () => false })).toMatch(/workers[/\\]research$/);
   });
 });
 

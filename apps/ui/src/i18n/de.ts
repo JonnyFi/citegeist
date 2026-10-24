@@ -1,6 +1,7 @@
 import { alertsDe } from "../alerts/strings";
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
+import { litsearchDe } from "../litsearch/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { textsDe } from "../texts/strings";
@@ -453,6 +454,7 @@ export const de = {
   ...relatedDe,
   ...matrixDe,
   ...conceptsDe,
+  ...litsearchDe,
   ...textsDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
@@ -466,6 +468,10 @@ export const de = {
   "theme.mode.light": "Hellmodus",
   "theme.mode.dark": "Dunkelmodus",
   "theme.mode.system": "Systemmodus",
+  "update.available": "Update verfügbar",
+  "update.hint":
+    "Version {version} ist erschienen. Das Terminal öffnet sich, lädt das Update und startet citegeist neu.",
+  "update.started": "Update läuft im Terminal",
   "job.idle": "Keine Hintergrundarbeit",
   "job.list": "Hintergrundarbeit",
   "job.count.one": "{n} Job",

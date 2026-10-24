@@ -38,6 +38,20 @@ export function resolveWorkerSource(opts: WorkerSourceOptions = {}): string {
   return join(repoRoot(), "workers", "convert");
 }
 
+/**
+ * Directory of workers/research (the literature search). Order: explicit override (normally
+ * CITEGEIST_RESEARCH_DIR), the packaged resources, then the repository checkout (development).
+ */
+export function resolveResearchSource(opts: WorkerSourceOptions = {}): string {
+  const exists = opts.exists ?? existsSync;
+  const candidates = [
+    opts.override,
+    opts.resourcesPath ? join(opts.resourcesPath, "workers", "research") : undefined,
+  ].filter((c): c is string => Boolean(c));
+  for (const dir of candidates) if (exists(join(dir, "scripts", "pipeline.py"))) return dir;
+  return join(repoRoot(), "workers", "research");
+}
+
 /** The conversion worker running inside the machine-local Python environment. */
 export function createManagedWorker(localBase: string, workerSource: string): ConvertWorker {
   return new ChildProcessConvertWorker(

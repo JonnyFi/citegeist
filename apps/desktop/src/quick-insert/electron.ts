@@ -79,7 +79,12 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
       },
     });
     created.setAlwaysOnTop(true, "pop-up-menu");
-    created.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // skipTransformProcessType: without it, Electron turns the whole app into a UIElement on macOS,
+    // which removes citegeist from the Dock and makes a click on its icon look like a crash.
+    created.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
     created.webContents.setWindowOpenHandler(({ url }) => {
       if (/^https?:\/\//.test(url)) void shell.openExternal(url);
       return { action: "deny" };

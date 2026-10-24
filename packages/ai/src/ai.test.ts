@@ -149,6 +149,7 @@ describe("task registry", () => {
       "card.verify",
       "concept.describe",
       "concept.name",
+      "litsearch.suggestQueries",
       "matrix.fillCell",
       "metadata.fromFirstPage",
       "note.proposeLinks",

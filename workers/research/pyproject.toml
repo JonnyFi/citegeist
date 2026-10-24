@@ -1,0 +1,20 @@
+[project]
+name = "citegeist-research"
+version = "0.1.0"
+description = "Literature search worker for citegeist (from research-pipeline): search, rank and verify papers"
+requires-python = ">=3.12,<3.13"
+# Standard library only: the scripts run as they are.
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "network: needs network access (OpenAlex, Crossref)",
+]
+addopts = "-m 'not network'"

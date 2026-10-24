@@ -1426,7 +1426,9 @@
           "import",
           "export",
           "alerts",
-          "worker-setup"
+          "worker-setup",
+          "litsearch.run",
+          "litsearch.preprints"
         ]
       },
       "status": {

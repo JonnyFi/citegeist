@@ -1,6 +1,7 @@
 import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
+import { litsearchEn } from "../litsearch/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import { textsEn } from "../texts/strings";
@@ -446,6 +447,7 @@ export const en: Record<MessageKey, string> = {
   ...relatedEn,
   ...matrixEn,
   ...conceptsEn,
+  ...litsearchEn,
   ...textsEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
@@ -459,6 +461,10 @@ export const en: Record<MessageKey, string> = {
   "theme.mode.light": "Light mode",
   "theme.mode.dark": "Dark mode",
   "theme.mode.system": "System mode",
+  "update.available": "Update available",
+  "update.hint":
+    "Version {version} is out. Terminal opens, downloads the update and restarts citegeist.",
+  "update.started": "Update running in Terminal",
   "job.idle": "No background work",
   "job.list": "Background work",
   "job.count.one": "{n} job",

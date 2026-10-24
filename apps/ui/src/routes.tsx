@@ -15,6 +15,13 @@ import { Shell } from "./components/shell";
 import { ConceptsIndex, ConceptsLayout, ConceptView } from "./concepts";
 import { type GraphDepth, GraphScreen } from "./graph";
 import { ImportScreen } from "./import";
+import {
+  LitsearchCompareScreen,
+  LitsearchNewScreen,
+  LitsearchPreprintsScreen,
+  LitsearchRunScreen,
+  LitsearchRunsScreen,
+} from "./litsearch";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SETTINGS_SECTIONS, SettingsScreen, type SettingsSection } from "./routes/settings";
 
@@ -231,9 +238,54 @@ const importRoute = createRoute({
   component: ImportScreen,
 });
 
+const litsearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch",
+  component: LitsearchRunsScreen,
+});
+
+const litsearchNewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/new",
+  component: LitsearchNewScreen,
+});
+
+const litsearchPreprintsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/preprints",
+  component: LitsearchPreprintsScreen,
+});
+
+const litsearchCompareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/compare",
+  validateSearch: (search: Record<string, unknown>): { a: string; b: string } => ({
+    a: typeof search.a === "string" ? search.a : "",
+    b: typeof search.b === "string" ? search.b : "",
+  }),
+  component: function LitsearchCompare() {
+    const { a, b } = litsearchCompareRoute.useSearch();
+    return <LitsearchCompareScreen a={a} b={b} />;
+  },
+});
+
+const litsearchRunRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/$runId",
+  component: function LitsearchRun() {
+    const { runId } = litsearchRunRoute.useParams();
+    return <LitsearchRunScreen key={runId} runId={runId} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   libraryRoute,
   inboxRoute,
+  litsearchRoute,
+  litsearchNewRoute,
+  litsearchCompareRoute,
+  litsearchPreprintsRoute,
+  litsearchRunRoute,
   itemRoute,
   projectsRoute,
   projectRoute,

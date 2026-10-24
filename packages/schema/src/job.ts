@@ -14,6 +14,10 @@ export const JobKind = z.enum([
   "export",
   "alerts",
   "worker-setup",
+  /** A literature search run (workers/research pipeline.py). */
+  "litsearch.run",
+  /** Preprint check of the literature search. */
+  "litsearch.preprints",
   "pandoc-setup",
 ]);
 export const JobStatus = z.enum(["queued", "running", "succeeded", "failed", "cancelled"]);

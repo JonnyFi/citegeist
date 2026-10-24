@@ -113,7 +113,7 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Agents | Fragen an die Bibliothek mit belegten Antworten | v0.2 | Vorschlag |
 | Agents | Schneeballsuche über Referenzen und zitierende Arbeiten (OpenAlex) | v0.3 | Vorschlag |
 | Agents | Externe Agents per Webhook, etwa ein Grok-Bot | v0.3 | Jonny |
-| Agents | Alerts: gespeicherte Suchen (arXiv-Kategorie oder -Suche, OpenAlex-Thema oder -Suche, Autor:in, zitierende Arbeiten) laufen im Intervall und legen die besten neuen Paper als Absender „system“ mit „Alert: <Name>“ in die Inbox, auf Wunsch nach dem Projektbrief geordnet | v0.3 | Vorschlag, D7 |
+| Agents | Alerts: gespeicherte Suchen (arXiv-Kategorie oder -Suche, OpenAlex-Thema oder -Suche, Autor:in, zitierende Arbeiten, Pipeline-Suche) laufen im Intervall, solange die App offen ist, und legen die besten neuen Paper als Absender „system“ mit „Alert: <Name>“ in die Inbox, auf Wunsch nach dem Projektbrief geordnet. Eine Pipeline-Suche ist eine gespeicherte Literatursuche: sie läuft wöchentlich als Lauf der Literatursuche und legt die gegenüber ihrem vorigen Lauf neuen Paper nach Score in die Inbox | v0.3 | Vorschlag, D7, D19 |
 | Schnittstellen | MCP-Server, CLI `cg`, `AGENTS.md` im Bibliotheksordner, portabler Skill | v0.1 (lesen), v0.2 (schreiben) | Jonny |
 | Inferenz | Claude Code mit eigenem Abo | v0.1 | Jonny |
 | Inferenz | Codex und Cursor mit eigenem Abo, API-Keys, lokale Modelle, Routing pro Aufgabe | v0.2 | Jonny |

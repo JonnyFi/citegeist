@@ -1,0 +1,6 @@
+# Institutions that earn a small bonus on the author/institution signal
+# (see scoring.institution_bonus in config.yaml).
+# Names are matched case-insensitively against OpenAlex institution display names,
+# e.g. "Stanford University", "University of Mannheim", "Google (United States)".
+# Empty by default: no institution gets a bonus.
+institutions: []

@@ -25,7 +25,7 @@ import { RPCHandler } from "@orpc/server/node";
 import { WebSocketServer } from "ws";
 import { ZodError } from "zod";
 import { manageConnector } from "../connector/manager.js";
-import { createManagedWorker, resolveWorkerSource } from "../setup/index.js";
+import { createManagedWorker, resolveResearchSource, resolveWorkerSource } from "../setup/index.js";
 import {
   acquireLock,
   defaultLocalBase,
@@ -222,8 +222,15 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     override: process.env.CITEGEIST_WORKER_DIR,
     resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
   });
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   const runtime = createRuntime(library, {
     settings: { localBase, workerSource },
+    litsearch: {
+      sourceDir: resolveResearchSource({
+        override: process.env.CITEGEIST_RESEARCH_DIR,
+        resourcesPath,
+      }),
+    },
     ...(process.env.CITEGEIST_WORKER_CMD
       ? {}
       : { worker: createManagedWorker(localBase, workerSource) }),

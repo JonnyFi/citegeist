@@ -5,6 +5,7 @@ import { cardParaphrase } from "./card-paraphrase/index.js";
 import { cardVerify } from "./card-verify/index.js";
 import { conceptDescribe } from "./concept-describe/index.js";
 import { conceptName } from "./concept-name/index.js";
+import { litsearchSuggestQueries } from "./litsearch-suggest-queries/index.js";
 import { matrixFillCell } from "./matrix-fill-cell/index.js";
 import { metadataFromFirstPage } from "./metadata-from-first-page/index.js";
 import { noteProposeLinks } from "./note-propose-links/index.js";
@@ -15,6 +16,7 @@ export const TASKS = {
   "card.verify": cardVerify,
   "concept.describe": conceptDescribe,
   "concept.name": conceptName,
+  "litsearch.suggestQueries": litsearchSuggestQueries,
   "matrix.fillCell": matrixFillCell,
   "metadata.fromFirstPage": metadataFromFirstPage,
   "note.proposeLinks": noteProposeLinks,

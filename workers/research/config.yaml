@@ -1,0 +1,68 @@
+# Research Pipeline configuration. Edit freely; command-line flags override these values.
+
+# Relative weights of the four scoring signals (normalised to 100).
+weights:
+  relevance: 30   # rank within each query's OpenAlex results (best across queries)
+  venue: 30       # venue tier from venues.yaml
+  author: 20      # max author h-index, OpenAlex or Semantic Scholar (+ institutions.yaml bonus)
+  citations: 20   # FWCI if OpenAlex has it, else citations per year
+
+# Relevance (0-100) for papers without a query rank: snowballed papers and arXiv-only hits.
+# They have passed the relevance gate; 50 = the median rank.
+unranked_relevance: 50
+
+max_queries: 10         # search queries per run; plural/case variants are dropped first
+results_per_query: 40   # candidates fetched per query from OpenAlex and from arXiv
+since: null             # earliest publication year, e.g. 2022 (null = no limit)
+max_results: 40         # peer-reviewed papers in the final list
+max_preprints: 20       # preprints in the separate preprint section
+max_grey: 20            # records in the grey-literature section
+
+# Snowballing: after scoring, take the most relevant main-list papers as seeds, fetch
+# their references and citing works from OpenAlex, and run them through the same gate,
+# dedup and scoring. They are marked "found via snowballing" in papers.md.
+snowball:
+  seeds: 8                # 0 disables snowballing
+  citing_per_seed: 100    # most-cited citing works fetched per seed
+
+# Relevance gate: keep a paper only if its title+abstract contains every quoted phrase
+# and every other word of at least one search query (light stemming: "agents" also matches
+# "agent"/"agentic", "self-improvement" also matches "self-improvements").
+relevance_gate: true
+
+# OpenAlex work types that are not papers and are never included.
+exclude_types: [software, dataset, erratum, paratext]
+
+# Grey literature: records hosted only on these (matched as words in the OpenAlex source
+# name) get their own section. This wins over the preprint rule, so OSF-hosted preprint
+# servers (PsyArXiv, SocArXiv, EdArXiv) count as grey literature.
+grey_literature_hosts: [zenodo, open science framework, osf, figshare, psyarxiv, socarxiv, edarxiv]
+
+# Preprints: OpenAlex type "preprint" (unless a tiered venue is listed), or records found
+# only on these servers (matched as words in the source name). Other repository-only
+# records (PubMed, university repositories) stay in the main list with venue unknown.
+preprint_servers: [arxiv, ssrn, social science research network, preprints.org, research square, biorxiv, medrxiv, techrxiv, authorea, chemrxiv, engrxiv, eartharxiv]
+
+# Scoring details.
+scoring:
+  tier1_score: 100
+  tier2_score: 60
+  unlisted_score: 20
+  h_index_cap: 60               # h-index is log-scaled up to this cap
+  institution_bonus: 10         # added to the author score (max 100)
+  fwci_cap: 20                  # FWCI is log-scaled up to this cap (1.0 = field average)
+  citations_per_year_cap: 200   # used when FWCI is missing
+
+# Optional sources. Each can be switched off; all lookups are cached for 30 days.
+sources:
+  dblp:                 # venue and track (main / workshop / journal) for CS papers; DBLP wins over OpenAlex
+    enabled: true
+    max_papers: 120     # best-scored candidates looked up per pass (batched SPARQL queries)
+  openreview:           # review status (accepted / rejected / under review / withdrawn); also in preprint tracking
+    enabled: true
+    max_papers: 30      # title searches per pass; OpenReview search is slow (~5 s each) and rate-limited
+  unpaywall:            # open-access PDF links when OpenAlex has none (needs OPENDRAFT_CONTACT_EMAIL)
+    enabled: true
+  orcid:                # merge split OpenAlex author profiles confirmed by an ORCID record before the h-index
+    enabled: true
+    max_authors: 300    # authors of the most relevant papers checked per pass (papers already at h_index_cap are skipped)

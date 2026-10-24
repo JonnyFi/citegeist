@@ -58,10 +58,13 @@ export {
   scheduleLibraryChecks,
 } from "./schedule.js";
 export {
+  findPublished,
   type LinkVersionsOptions,
   linkVersions,
+  publishedVersionOf,
   type VersionEntry,
   type VersionReport,
+  versionsOf,
 } from "./versions.js";
 
 export interface GraphDeps {

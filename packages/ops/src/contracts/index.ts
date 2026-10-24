@@ -25,6 +25,7 @@ import { CHAT_CONTRACTS } from "./chat.js";
 import { CONCEPT_CONTRACTS } from "./concepts.js";
 import { GRAPH_CONTRACTS, RetractionSummary } from "./graph.js";
 import { IMPORT_CONTRACTS } from "./import.js";
+import { LITSEARCH_CONTRACTS } from "./litsearch.js";
 import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
@@ -71,6 +72,7 @@ export * from "./chat.js";
 export * from "./concepts.js";
 export * from "./graph.js";
 export * from "./import.js";
+export * from "./litsearch.js";
 export * from "./matrix.js";
 export * from "./planning.js";
 export * from "./sync.js";
@@ -780,6 +782,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   ...CHAT_CONTRACTS,
   ...CONCEPT_CONTRACTS,
   ...IMPORT_CONTRACTS,
+  ...LITSEARCH_CONTRACTS,
   ...MATRIX_CONTRACTS,
   ...PLANNING_CONTRACTS,
   ...SYNC_CONTRACTS,
