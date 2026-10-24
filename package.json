@@ -15,7 +15,8 @@
     "test": "turbo run test",
     "test:convert": "uv run --directory workers/convert pytest",
     "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "app:update": "sh scripts/update-app.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
