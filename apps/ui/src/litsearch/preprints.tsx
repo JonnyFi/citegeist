@@ -15,7 +15,7 @@ import { EmptyState, ErrorState, Loading } from "../components/ui/states";
 import { useI18n } from "../i18n";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { ErrorLine, FieldLabel, useGuarded } from "../settings/parts";
-import { LitsearchTabs } from "./watches";
+import { LitsearchTabs } from "./tabs";
 
 const origin = (o: string) => o.replace(/^run:/, "").replace(/^import:/, "");
 

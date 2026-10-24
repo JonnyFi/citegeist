@@ -3,7 +3,6 @@ import {
   type LitsearchPreprint,
   type LitsearchRunMeta,
   type LitsearchStage,
-  type LitsearchWatch,
   litsearchCancel,
   litsearchCompare,
   litsearchExport,
@@ -17,12 +16,6 @@ import {
   litsearchStart,
   litsearchSuggest,
   litsearchToInbox,
-  litsearchWatchBackground,
-  litsearchWatchDelete,
-  litsearchWatches,
-  litsearchWatchRun,
-  litsearchWatchSave,
-  litsearchWatchSeen,
   type Registry,
 } from "@citegeist/ops";
 import type { CoreEvent } from "../lib/core";
@@ -134,7 +127,7 @@ export const MOCK_PAPERS: readonly LitsearchPaper[] = [
 
 interface MockRun {
   meta: LitsearchRunMeta;
-  /** Papers the watchlist run found that its previous run lacked. */
+  /** Papers the alert's run found that its previous run lacked. */
   newKeys?: string[];
   /** What the run found; MOCK_PAPERS when absent. */
   papers?: readonly LitsearchPaper[];
@@ -147,7 +140,6 @@ interface MockRun {
 
 export interface LitsearchMockState {
   runs: Map<string, MockRun>;
-  watches: Map<string, LitsearchWatch>;
   preprints: Map<string, LitsearchPreprint>;
   lastCheck?: string;
 }
@@ -157,9 +149,10 @@ export function createLitsearchMockState(): LitsearchMockState {
   const runs = new Map<string, MockRun>();
   runs.set("2026-10-20-agent-communication-protocols", {
     step: MOCK_STAGES.length,
-    newKeys: ["W4600000003"],
+    newKeys: ["W4400000001"],
     meta: {
       id: "2026-10-20-agent-communication-protocols",
+      alert: "agent-communication-protocols",
       topic: "agent communication protocols",
       status: "done",
       queries: ['"agent communication protocol"', '"multi-agent communication" LLM'],
@@ -217,23 +210,6 @@ export function createLitsearchMockState(): LitsearchMockState {
         "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h. Mit einem kostenlosen OpenAlex-API-Key ist das Limit viel höher.",
     },
   });
-  const watches = new Map<string, LitsearchWatch>();
-  watches.set("agent-communication-protocols", {
-    id: "agent-communication-protocols",
-    topic: "agent communication protocols",
-    queries: ['"agent communication protocol"', '"multi-agent communication" LLM'],
-    since: 2022,
-    weekday: 1,
-    time: "08:00",
-    background: true,
-    agentLoaded: true,
-    running: false,
-    runs: ["2026-10-20-agent-communication-protocols"],
-    lastRun: "2026-10-20T10:16:40",
-    lastStatus: "done",
-    lastNew: 1,
-    unseen: 1,
-  });
   const preprints = new Map<string, LitsearchPreprint>([
     [
       "arxiv:2601.01234",
@@ -260,7 +236,7 @@ export function createLitsearchMockState(): LitsearchMockState {
       },
     ],
   ]);
-  return { runs, watches, preprints, lastCheck: "2026-10-23T08:00:00" };
+  return { runs, preprints, lastCheck: "2026-10-23T08:00:00" };
 }
 
 function stagesOf(run: MockRun): LitsearchStage[] {
@@ -343,19 +319,7 @@ export function bindLitsearchMock(
             finished: new Date().toISOString().slice(0, 19),
             counts: { main: 2, preprint: 1, grey: 0, rejected: 1 },
           };
-          const watch = run.meta.watch ? state.watches.get(run.meta.watch) : undefined;
-          if (watch) {
-            run.newKeys = ["W4400000001"];
-            state.watches.set(watch.id, {
-              ...watch,
-              running: false,
-              runs: [...watch.runs, run.meta.id],
-              lastRun: run.meta.finished as string,
-              lastStatus: "done",
-              lastNew: 1,
-              unseen: watch.unseen + 1,
-            });
-          }
+          if (run.meta.alert) run.newKeys = ["W4400000001"];
         } else tick(run);
       }
       changed(run.meta.id);
@@ -552,67 +516,6 @@ export function bindLitsearchMock(
         }),
       };
     })
-    .bind(litsearchWatches, async () => ({ watches: [...state.watches.values()] }))
-    .bind(litsearchWatchSave, async (_ctx, input) => {
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time)) {
-        throw fail("LITSEARCH_WATCH_INVALID", "Uhrzeit als HH:MM");
-      }
-      // like watch.py: a new watchlist never replaces one of the same name
-      let id = input.id ?? slug(input.topic).slice(0, 40);
-      if (!input.id) {
-        const base = id;
-        for (let n = 2; state.watches.has(id); n++) id = `${base}-${n}`;
-      }
-      const old = state.watches.get(id);
-      const watch: LitsearchWatch = {
-        id,
-        topic: input.topic,
-        queries: input.queries,
-        ...(input.since !== undefined ? { since: input.since } : {}),
-        ...(input.top !== undefined ? { top: input.top } : {}),
-        weekday: input.weekday,
-        time: input.time,
-        background: old?.background ?? false,
-        agentLoaded: old?.agentLoaded ?? false,
-        running: false,
-        runs: old?.runs ?? [],
-        unseen: old?.unseen ?? 0,
-        ...(old?.lastRun ? { lastRun: old.lastRun } : {}),
-      };
-      state.watches.set(id, watch);
-      return { watch };
-    })
-    .bind(litsearchWatchDelete, async (_ctx, input) => {
-      state.watches.delete(input.id);
-      return { ok: true as const };
-    })
-    .bind(litsearchWatchBackground, async (_ctx, input) => {
-      const w = state.watches.get(input.id);
-      if (!w) throw fail("LITSEARCH_WATCH_NOT_FOUND", `There is no watchlist "${input.id}".`);
-      const watch = { ...w, background: input.enabled, agentLoaded: input.enabled };
-      state.watches.set(w.id, watch);
-      return { watch };
-    })
-    .bind(litsearchWatchSeen, async (_ctx, input) => {
-      const w = state.watches.get(input.id);
-      if (!w) throw fail("LITSEARCH_WATCH_NOT_FOUND", `There is no watchlist "${input.id}".`);
-      const watch = { ...w, unseen: 0 };
-      state.watches.set(w.id, watch);
-      return { watch };
-    })
-    .bind(litsearchWatchRun, async (_ctx, input) => {
-      const w = state.watches.get(input.id);
-      if (!w) throw fail("LITSEARCH_WATCH_NOT_FOUND", `There is no watchlist "${input.id}".`);
-      const out = (await registry.call(
-        "litsearch.start",
-        { actor: "human" },
-        { topic: w.topic, queries: w.queries, disableSources: [] },
-      )) as { runId: string; job: string };
-      const run = state.runs.get(out.runId);
-      if (run) run.meta = { ...run.meta, watch: w.id };
-      state.watches.set(w.id, { ...w, running: true });
-      return out;
-    })
     .bind(litsearchPreprints, async () => {
       const all = [...state.preprints.values()];
       return {
@@ -659,7 +562,7 @@ export function bindLitsearchMock(
           run.meta.status === "done"
             ? (run.papers ?? MOCK_PAPERS).map((p) => ({
                 ...marked(p),
-                ...(run.newKeys?.includes(p.key) ? { newInWatch: true } : {}),
+                ...(run.newKeys?.includes(p.key) ? { newInAlert: true } : {}),
               }))
             : [],
       };
