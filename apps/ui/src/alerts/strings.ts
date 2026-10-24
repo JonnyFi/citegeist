@@ -1,0 +1,133 @@
+/**
+ * Strings of the alerts: the section in the project view and the settings tab. They are spread
+ * into the catalogs in `i18n/de.ts` and `i18n/en.ts`.
+ */
+export const alertsDe = {
+  "settings.tab.alerts": "Alerts",
+  "job.kind.alerts": "Alert sucht",
+
+  "alerts.title": "Alerts",
+  "alerts.descLibrary":
+    "Ein Alert sucht in regelmäßigen Abständen nach neuen Werken und legt die besten in die Inbox. Hier stehen die Alerts der ganzen Bibliothek und die der Projekte.",
+  "alerts.descProject":
+    "Ein Alert sucht in regelmäßigen Abständen nach neuen Werken und legt die besten in die Inbox. Ist die semantische Suche an, ordnet der lokale Embedder sie nach dem Briefing dieses Projekts.",
+  "alerts.loading": "Alerts werden geladen",
+  "alerts.empty": "Noch keine Alerts.",
+  "alerts.list": "Alerts",
+
+  "alerts.kind.arxiv-category": "arXiv-Kategorie",
+  "alerts.kind.arxiv-query": "arXiv-Suche",
+  "alerts.kind.openalex-topic": "OpenAlex-Thema",
+  "alerts.kind.openalex-search": "OpenAlex-Suche",
+  "alerts.kind.author": "Autor:in",
+  "alerts.kind.cites": "Zitiert ein Werk",
+  "alerts.hint.arxiv-category": "Zum Beispiel cs.CL oder hep-th",
+  "alerts.hint.arxiv-query": "Zum Beispiel retrieval augmented generation",
+  "alerts.hint.openalex-topic": "OpenAlex-Themen-ID, zum Beispiel T10181",
+  "alerts.hint.openalex-search": "Zum Beispiel citation graph",
+  "alerts.hint.author": "ORCID oder OpenAlex-ID, zum Beispiel 0000-0002-9322-3515",
+  "alerts.hint.cites": "Citekey eines Werks der Bibliothek",
+
+  "alerts.every.hours": "alle {n} Stunden",
+  "alerts.every.days": "alle {n} Tage",
+  "alerts.every.daily": "täglich",
+  "alerts.every.weekly": "wöchentlich",
+  "alerts.limit": "bis zu {n} Werke pro Lauf",
+  "alerts.scope.library": "Bibliothek",
+  "alerts.scope.project": "Projekt {project}",
+  "alerts.paused": "Pausiert",
+
+  "alerts.neverRun": "Noch nicht gelaufen.",
+  "alerts.lastRun": "Letzter Lauf: {at}",
+  "alerts.result": "{found} neu gefunden, {added} in die Inbox",
+  "alerts.ranked": "nach dem Briefing geordnet",
+  "alerts.runFailed": "Der letzte Lauf ist fehlgeschlagen: {error}",
+  "alerts.next": "Nächster Lauf: {at}",
+
+  "alerts.run": "Jetzt ausführen",
+  "alerts.running": "Läuft",
+  "alerts.runDone": "Der Lauf ist fertig.",
+  "alerts.runError": "Der Lauf ist fehlgeschlagen: {error}",
+  "alerts.pause": "Pausieren",
+  "alerts.resume": "Fortsetzen",
+  "alerts.delete": "Löschen",
+  "alerts.delete.ask": "Alert {name} löschen? Werke, die er in die Inbox gelegt hat, bleiben dort.",
+  "alerts.delete.confirm": "Endgültig löschen",
+
+  "alerts.create.title": "Neuer Alert",
+  "alerts.create.name": "Name",
+  "alerts.create.kind": "Quelle",
+  "alerts.create.value": "Suchwert",
+  "alerts.create.interval": "Intervall",
+  "alerts.create.limit": "Werke pro Lauf",
+  "alerts.create.rank": "Nach dem Briefing des Projekts ordnen",
+  "alerts.create.submit": "Alert anlegen",
+  "alerts.create.nameMissing": "Gib dem Alert einen Namen.",
+  "alerts.create.valueMissing": "Gib einen Suchwert ein.",
+  "alerts.create.limitInvalid": "Die Zahl der Werke liegt zwischen 1 und 50.",
+} as const;
+
+export const alertsEn: Record<keyof typeof alertsDe, string> = {
+  "settings.tab.alerts": "Alerts",
+  "job.kind.alerts": "Alert searching",
+
+  "alerts.title": "Alerts",
+  "alerts.descLibrary":
+    "An alert looks for new works at regular intervals and puts the best ones into the inbox. This list holds the alerts of the whole library and those of the projects.",
+  "alerts.descProject":
+    "An alert looks for new works at regular intervals and puts the best ones into the inbox. When semantic search is on, the local embedder orders them by the brief of this project.",
+  "alerts.loading": "Loading alerts",
+  "alerts.empty": "No alerts yet.",
+  "alerts.list": "Alerts",
+
+  "alerts.kind.arxiv-category": "arXiv category",
+  "alerts.kind.arxiv-query": "arXiv search",
+  "alerts.kind.openalex-topic": "OpenAlex topic",
+  "alerts.kind.openalex-search": "OpenAlex search",
+  "alerts.kind.author": "Author",
+  "alerts.kind.cites": "Cites a work",
+  "alerts.hint.arxiv-category": "For example cs.CL or hep-th",
+  "alerts.hint.arxiv-query": "For example retrieval augmented generation",
+  "alerts.hint.openalex-topic": "OpenAlex topic id, for example T10181",
+  "alerts.hint.openalex-search": "For example citation graph",
+  "alerts.hint.author": "ORCID or OpenAlex id, for example 0000-0002-9322-3515",
+  "alerts.hint.cites": "Citekey of a work in the library",
+
+  "alerts.every.hours": "every {n} hours",
+  "alerts.every.days": "every {n} days",
+  "alerts.every.daily": "daily",
+  "alerts.every.weekly": "weekly",
+  "alerts.limit": "up to {n} works per run",
+  "alerts.scope.library": "Library",
+  "alerts.scope.project": "Project {project}",
+  "alerts.paused": "Paused",
+
+  "alerts.neverRun": "Has not run yet.",
+  "alerts.lastRun": "Last run: {at}",
+  "alerts.result": "{found} new found, {added} added to the inbox",
+  "alerts.ranked": "ordered by the brief",
+  "alerts.runFailed": "The last run failed: {error}",
+  "alerts.next": "Next run: {at}",
+
+  "alerts.run": "Run now",
+  "alerts.running": "Running",
+  "alerts.runDone": "The run is done.",
+  "alerts.runError": "The run failed: {error}",
+  "alerts.pause": "Pause",
+  "alerts.resume": "Resume",
+  "alerts.delete": "Delete",
+  "alerts.delete.ask": "Delete alert {name}? Works it put into the inbox stay there.",
+  "alerts.delete.confirm": "Delete for good",
+
+  "alerts.create.title": "New alert",
+  "alerts.create.name": "Name",
+  "alerts.create.kind": "Source",
+  "alerts.create.value": "Search value",
+  "alerts.create.interval": "Interval",
+  "alerts.create.limit": "Works per run",
+  "alerts.create.rank": "Order by the brief of the project",
+  "alerts.create.submit": "Create alert",
+  "alerts.create.nameMissing": "Give the alert a name.",
+  "alerts.create.valueMissing": "Enter a search value.",
+  "alerts.create.limitInvalid": "The number of works is between 1 and 50.",
+};

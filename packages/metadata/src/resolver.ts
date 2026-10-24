@@ -3,6 +3,7 @@
  * Agents and the MCP server call this, never the remote APIs directly.
  */
 
+import type { AlertLookup, AlertQuery, AlertWork } from "./alert-types.js";
 import type {
   CitingPage,
   GraphLookup,
@@ -21,6 +22,7 @@ import {
 import { detectIdentifier, type Identifier } from "./identifiers.js";
 import { type MatchResult, matchTitle, type TitleQuery, titleSimilarity } from "./match.js";
 import { type MergeResult, mergeRecords } from "./merge.js";
+import { fetchAlertWorks } from "./sources/alerts.js";
 import { fetchArxiv } from "./sources/arxiv.js";
 import {
   fetchCrossrefReferences,
@@ -82,7 +84,7 @@ export interface TitleResolveResult {
 
 const SAME_WORK_TITLE = 0.85;
 
-export class MetadataResolver implements GraphLookup {
+export class MetadataResolver implements GraphLookup, AlertLookup {
   readonly http: HttpClient;
   private readonly ctx: SourceContext;
   private readonly config: MetadataConfig;
@@ -256,6 +258,11 @@ export class MetadataResolver implements GraphLookup {
 
   openAlexDoi(openalex: string): Promise<string | undefined> {
     return fetchOpenAlexDoi(this.ctx, openalex);
+  }
+
+  /** New works of an alert source: arXiv category or query, OpenAlex topic, search, author, citing. */
+  alertWorks(query: AlertQuery): Promise<AlertWork[]> {
+    return fetchAlertWorks(this.ctx, query);
   }
 
   retractionStatus(doi: string): Promise<RetractionStatus> {
