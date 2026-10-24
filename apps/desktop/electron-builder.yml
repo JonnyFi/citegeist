@@ -23,6 +23,22 @@ files:
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/x64/**"
   - "!**/node_modules/better-sqlite3/prebuilds/{win32-*,linux*,darwin-x64}.node"
+  # onnxruntime-web (145 MB of WASM) is bundled into transformers.node.mjs already; the runtime
+  # loads onnxruntime-node, never this package
+  - "!**/node_modules/onnxruntime-web/**"
+  # Codex voice host, only used for realtime voice
+  - "!**/node_modules/@openai/codex-darwin-arm64/vendor/*/codex-resources/voice/**"
+  # pdf.js: the core imports legacy/build/pdf.mjs only; the viewer, the browser build and the
+  # image decoders belong to the UI bundle in apps/ui/dist
+  - "!**/node_modules/pdfjs-dist/{build,web,types,image_decoders,legacy/web,legacy/image_decoders}/**"
+  # workspace packages: core, ops, schema, server and the packages behind them are bundled into
+  # out/main, so their sources, tests and fixtures stay out of the archive
+  - "!**/node_modules/@citegeist/**"
+  - "!**/node_modules/zod/src/**"
+  # source maps, type declarations, docs, tests and CI files of every dependency
+  - "!**/node_modules/**/*.{map,d.ts,d.mts,d.cts,tsbuildinfo}"
+  - "!**/node_modules/**/{README,CHANGELOG,HISTORY,CONTRIBUTING}{,.md,.markdown,.txt}"
+  - "!**/node_modules/**/{test,tests,__tests__,docs,example,examples,.github}/**"
 extraResources:
   # the built renderer of apps/ui, loaded from file://; main/index.ts looks in Resources/ui/dist
   - from: ../ui/dist
@@ -35,6 +51,8 @@ extraResources:
       - uv.lock
       - README.md
       - src/**
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
 asar: true
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
@@ -52,6 +70,11 @@ asarUnpack:
   - "**/node_modules/diff/**"
   # CSL styles and locales that @citegeist/cite reads next to the bundle
   - out/main/vendor/**
+# Chromium locale packs of languages the UI does not offer (German and English only)
+electronLanguages:
+  - en
+  - de
+afterPack: ./scripts/after-pack.cjs
 mac:
   category: public.app-category.productivity
   target:

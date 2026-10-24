@@ -14,6 +14,7 @@ const bridge: CitegeistBridge = {
   connection,
   openLibrary: () => ipcRenderer.invoke("citegeist:open-library") as Promise<boolean>,
   createLibrary: () => ipcRenderer.invoke("citegeist:create-library") as Promise<boolean>,
+  pickPaths: (options) => ipcRenderer.invoke("citegeist:pick-paths", options) as Promise<string[]>,
   onNavigate(listener) {
     const handler = (_event: Electron.IpcRendererEvent, path: string) => listener(path);
     ipcRenderer.on("citegeist:navigate", handler);

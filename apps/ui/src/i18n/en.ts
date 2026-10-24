@@ -3,6 +3,7 @@ import { importEn } from "../import/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import type { MessageKey } from "./de";
+import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
 import { relatedEn } from "./related";
 
@@ -431,6 +432,7 @@ export const en: Record<MessageKey, string> = {
   ...planningEn,
   ...settingsEn,
   ...importEn,
+  ...manageEn,
   ...relatedEn,
   ...matrixEn,
   "agent.tab": "Agent",

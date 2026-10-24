@@ -4,6 +4,7 @@ import type { RouterHistory } from "@tanstack/react-router";
 import { RouterProvider } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import type { CitegeistBridge } from "./bridge";
+import { ToastProvider } from "./components/ui/toast";
 import { Welcome } from "./components/welcome";
 import { I18nProvider, type Lang, useI18n } from "./i18n";
 import type { Core } from "./lib/core";
@@ -59,10 +60,12 @@ export function App({
       ) : (
         <QueryClientProvider client={queryClient}>
           <CoreProvider core={core}>
-            <LanguageSync />
-            <OnboardingGate>
-              <RouterProvider router={router} />
-            </OnboardingGate>
+            <ToastProvider>
+              <LanguageSync />
+              <OnboardingGate>
+                <RouterProvider router={router} />
+              </OnboardingGate>
+            </ToastProvider>
           </CoreProvider>
         </QueryClientProvider>
       )}

@@ -111,6 +111,153 @@ describe("add field", () => {
   });
 });
 
+describe("add menu and native file picker", () => {
+  const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+    await addField();
+    await user.click(screen.getByRole("button", { name: "+ Hinzufügen" }));
+  };
+
+  it("offers PDF wählen and a typed identifier in the menu", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    await openMenu(user);
+    expect(await screen.findByRole("menuitem", { name: "PDF wählen" })).toBeVisible();
+    await user.click(screen.getByRole("menuitem", { name: "DOI, arXiv, ISBN oder URL eingeben" }));
+    await waitFor(async () => expect(await addField()).toHaveFocus());
+  });
+
+  it("takes a PDF from the file input in the browser preview", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/");
+    await openMenu(user);
+    await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+    const file = new File(["%PDF-1.4"], "latour.pdf", { type: "application/pdf" });
+    await user.upload(screen.getByTestId("pdf-file-input"), file);
+    await waitFor(() =>
+      expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
+        identifier: "latour.pdf",
+      }),
+    );
+  });
+
+  it("adds the PDFs chosen in the native dialog", async () => {
+    const user = userEvent.setup();
+    const pickPaths = vi.fn(async () => ["/Users/jonny/Papers/latour.pdf"]);
+    window.citegeist = { pickPaths, onNavigate: () => () => {}, platform: "test" } as never;
+    try {
+      const { calls } = renderApp("/");
+      await openMenu(user);
+      await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+      expect(pickPaths).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "file", multiple: true, extensions: ["pdf"] }),
+      );
+      await waitFor(() =>
+        expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
+          identifier: "/Users/jonny/Papers/latour.pdf",
+        }),
+      );
+    } finally {
+      delete window.citegeist;
+    }
+  });
+
+  it("adds nothing when the dialog is cancelled", async () => {
+    const user = userEvent.setup();
+    window.citegeist = {
+      pickPaths: async () => [],
+      onNavigate: () => () => {},
+      platform: "test",
+    } as never;
+    try {
+      const { calls } = renderApp("/");
+      await openMenu(user);
+      await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+      expect(calls.some((c) => c.name === "items.add")).toBe(false);
+    } finally {
+      delete window.citegeist;
+    }
+  });
+});
+
+describe("delete with undo", () => {
+  it("deletes from the row menu and brings the item back with Rückgängig", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/");
+    const rows = await screen.findAllByTestId("item-row");
+    expect(rows).toHaveLength(11);
+    const title = within(rows[0] as HTMLElement).getByRole("link").textContent ?? "";
+    await user.click(
+      within(rows[0] as HTMLElement).getByRole("button", { name: `Aktionen für ${title}` }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Löschen" }));
+    await waitFor(() => expect(calls.some((c) => c.name === "items.trash")).toBe(true));
+    await waitFor(async () => expect(await screen.findAllByTestId("item-row")).toHaveLength(10));
+
+    await user.click(await screen.findByRole("button", { name: "Rückgängig" }));
+    await waitFor(() => expect(calls.some((c) => c.name === "items.restore")).toBe(true));
+    await waitFor(async () => expect(await screen.findAllByTestId("item-row")).toHaveLength(11));
+  });
+
+  it("deletes from the source overview and returns to the library", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/items/latour2005reassembling");
+    await user.click(await screen.findByRole("button", { name: "Löschen" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.name === "items.trash")?.input).toEqual({
+        citekey: "latour2005reassembling",
+      }),
+    );
+    expect(await screen.findByText("latour2005reassembling gelöscht.")).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 1, name: "Bibliothek" })).toBeVisible();
+  });
+});
+
+describe("PDF anhängen", () => {
+  it("shows the action only on a source without a file and attaches the PDF", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/");
+    await user.type(await addField(), "10.1000/xyz123{Enter}");
+    await user.click(await screen.findByRole("link", { name: "doi101000xyz123" }));
+
+    expect(await screen.findByText("Kein Volltext vorhanden")).toBeVisible();
+    const file = new File(["%PDF-1.4"], "xyz.pdf", { type: "application/pdf" });
+    await user.upload(screen.getByTestId("attach-file-input"), file);
+    await waitFor(() =>
+      expect(calls.find((c) => c.name === "items.attach")?.input).toEqual({
+        citekey: "doi101000xyz123",
+        path: "xyz.pdf",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByText("Kein Volltext vorhanden")).toBeNull());
+  });
+
+  it("uses the native dialog in the desktop app", async () => {
+    const user = userEvent.setup();
+    const pickPaths = vi.fn(async () => ["/Users/jonny/Papers/xyz.pdf"]);
+    window.citegeist = { pickPaths, onNavigate: () => () => {}, platform: "test" } as never;
+    try {
+      const { calls } = renderApp("/");
+      await user.type(await addField(), "10.1000/xyz123{Enter}");
+      await user.click(await screen.findByRole("link", { name: "doi101000xyz123" }));
+      await user.click(await screen.findByRole("button", { name: "PDF anhängen" }));
+      await waitFor(() =>
+        expect(calls.find((c) => c.name === "items.attach")?.input).toEqual({
+          citekey: "doi101000xyz123",
+          path: "/Users/jonny/Papers/xyz.pdf",
+        }),
+      );
+    } finally {
+      delete window.citegeist;
+    }
+  });
+
+  it("is absent on a source that has a file", async () => {
+    renderApp("/items/luhmann1984soziale");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Kein Volltext vorhanden")).toBeNull();
+  });
+});
+
 describe("Metadaten neu auflösen", () => {
   it("looks the metadata up again and names the fields that changed", async () => {
     const user = userEvent.setup();

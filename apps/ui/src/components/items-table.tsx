@@ -1,10 +1,13 @@
 import type { itemsList } from "@citegeist/ops";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { MoreHorizontal } from "lucide-react";
 import type { z } from "zod";
 import { useI18n } from "../i18n";
 import { statusLabel, typeLabel } from "../lib/format";
-import { RetractionBadge, useRetractionMarkers } from "../related";
+import { useTrashItem } from "../lib/trash";
+import { RetractionBadge } from "../related";
 import { Badge, Stamp, StatusSquare } from "./ui/badge";
+import { Menu } from "./ui/menu";
 
 export type ItemSummary = z.output<typeof itemsList.output>["items"][number];
 
@@ -17,7 +20,7 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
   const i18n = useI18n();
   const { t } = i18n;
   const navigate = useNavigate();
-  const markers = useRetractionMarkers(items.map((i) => i.citekey));
+  const trash = useTrashItem();
   return (
     <table className="w-full border-collapse text-left text-[13px]">
       <caption className="sr-only">{t("table.caption")}</caption>
@@ -38,21 +41,26 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
           <th scope="col" className={`${TH} hidden w-[110px] lg:table-cell`}>
             {t("table.type")}
           </th>
-          <th scope="col" className={`${TH} w-[150px] pr-8`}>
+          <th scope="col" className={`${TH} w-[150px]`}>
             {t("table.status")}
+          </th>
+          <th scope="col" className={`${TH} w-14 pr-8`}>
+            <span className="sr-only">{t("table.actions")}</span>
           </th>
         </tr>
       </thead>
       <tbody>
         {items.map((item) => {
-          const marker = markers.get(item.citekey);
           return (
             <tr
               key={item.citekey}
               data-testid="item-row"
-              onClick={() =>
-                void navigate({ to: "/items/$citekey", params: { citekey: item.citekey } })
-              }
+              onClick={(e) => {
+                // the row menu and its popup (a portal, whose clicks still bubble) do not open the item
+                const target = e.target as HTMLElement;
+                if (!e.currentTarget.contains(target) || target.closest("button")) return;
+                void navigate({ to: "/items/$citekey", params: { citekey: item.citekey } });
+              }}
               className="cursor-default hover:bg-sunken"
             >
               <td className={`${TD} pl-8`}>
@@ -68,7 +76,9 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
                   >
                     {item.title}
                   </Link>
-                  {marker ? <RetractionBadge marker={marker} className="shrink-0" /> : null}
+                  {item.retraction ? (
+                    <RetractionBadge marker={item.retraction} className="shrink-0" />
+                  ) : null}
                   <span className="hidden shrink-0 font-mono text-[11px] text-muted xl:inline">
                     {item.citekey}
                   </span>
@@ -77,7 +87,7 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
               <td className={`${TD} hidden truncate md:table-cell`}>{item.authors ?? ""}</td>
               <td className={`${TD} font-mono text-[12px]`}>{item.year ?? ""}</td>
               <td className={`${TD} hidden lg:table-cell`}>{typeLabel(i18n, item.type)}</td>
-              <td className={`${TD} pr-8`}>
+              <td className={TD}>
                 <div className="flex items-center gap-2">
                   <span>{statusLabel(i18n, item.status)}</span>
                   {item.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
@@ -87,6 +97,21 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
                     </span>
                   ) : null}
                 </div>
+              </td>
+              <td className={`${TD} pr-8 text-right`}>
+                <Menu
+                  label={t("row.menu", { title: item.title })}
+                  trigger={<MoreHorizontal className="size-4" />}
+                  align="end"
+                  className="inline-flex size-6 items-center justify-center text-muted hover:bg-sunken hover:text-ink"
+                  entries={[
+                    {
+                      label: t("item.delete"),
+                      danger: true,
+                      onSelect: () => void trash(item.citekey),
+                    },
+                  ]}
+                />
               </td>
             </tr>
           );

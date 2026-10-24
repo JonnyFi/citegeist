@@ -5,6 +5,7 @@ import { type QuickInsertHandle, registerQuickInsert } from "../quick-insert/ele
 import { deepLinkToPath, findDeepLink, PROTOCOL } from "../shared/deeplink.js";
 import { ensureCore, type RunningCore, stopCore } from "./core-process.js";
 import { buildMenu } from "./menu.js";
+import { openDialogOptions, type PickPathsRequest } from "./pick-paths.js";
 import { loadSettings, saveSettings } from "./settings.js";
 
 // Test and dev switches, all optional.
@@ -129,6 +130,14 @@ async function chooseLibrary(create: boolean): Promise<boolean> {
   return answer.response === 0 ? useLibrary(path, true) : false;
 }
 
+async function pickPaths(request: PickPathsRequest): Promise<string[]> {
+  const options = openDialogOptions(request);
+  const result = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options);
+  return result.canceled ? [] : result.filePaths;
+}
+
 function startupLibrary(): string | undefined {
   const arg = process.argv.find((a) => a.startsWith("--library="))?.slice("--library=".length);
   const candidates = [arg, process.env.CITEGEIST_LIBRARY, loadSettings().lastLibrary];
@@ -195,6 +204,7 @@ ipcMain.on("citegeist:navigate-ready", () => {
 });
 ipcMain.handle("citegeist:open-library", () => chooseLibrary(false));
 ipcMain.handle("citegeist:create-library", () => chooseLibrary(true));
+ipcMain.handle("citegeist:pick-paths", (_event, request: PickPathsRequest) => pickPaths(request));
 
 // Lifecycle ------------------------------------------------------------------------------------------------
 

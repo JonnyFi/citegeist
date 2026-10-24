@@ -1,5 +1,5 @@
 import { cardsList, itemsGet, itemsResolve, projectsList } from "@citegeist/ops";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Quote } from "lucide-react";
 import type { ReactNode } from "react";
 import { ConnectionsPanel } from "../connections";
@@ -8,8 +8,10 @@ import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { useReadingPosition } from "../lib/reading-position";
+import { useTrashItem } from "../lib/trash";
 import { cn, describeError } from "../lib/utils";
 import { markerOf, RelatedWorks, RetractionBadge, RetractionNote } from "../related";
+import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
@@ -105,6 +107,8 @@ export function ItemView({
   const item = useOp(itemsGet, { citekey });
   const cards = useOp(cardsList, itemCardsInput(citekey));
   const projects = useOp(projectsList, {});
+  const trash = useTrashItem();
+  const navigate = useNavigate();
 
   if (item.isPending) return <Loading label={t("item.loading")} />;
   if (item.isError) return <ErrorState error={item.error} />;
@@ -166,6 +170,16 @@ export function ItemView({
       <span className="flex-1" />
       {retraction ? <RetractionBadge marker={retraction} /> : null}
       <span className="font-mono text-[12px] text-muted">{fm.citekey}</span>
+      <Button
+        size="sm"
+        onClick={() => {
+          void trash(citekey).then((done) => {
+            if (done) void navigate({ to: "/", search: {} });
+          });
+        }}
+      >
+        {t("item.delete")}
+      </Button>
     </HeaderSlot>
   );
 
@@ -300,6 +314,11 @@ export function ItemView({
                   <span className="font-mono text-[12px] text-muted">
                     {fm.incomplete.code}: {fm.incomplete.message}
                   </span>
+                </div>
+              ) : null}
+              {fm.sources.length === 0 ? (
+                <div className="mb-3">
+                  <AttachPdf citekey={citekey} />
                 </div>
               ) : null}
               <h1 className="font-serif text-[34px] font-medium leading-[1.15] tracking-[-0.01em]">
