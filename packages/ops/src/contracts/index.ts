@@ -22,6 +22,7 @@ import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 import { CHAT_CONTRACTS } from "./chat.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
+import { SYNC_CONTRACTS } from "./sync.js";
 
 const Paged = z.object({
   limit: z.number().int().positive().max(500).default(50),
@@ -53,6 +54,7 @@ const ItemSummary = z.object({
 
 export * from "./chat.js";
 export * from "./planning.js";
+export * from "./sync.js";
 
 // Library -----------------------------------------------------------------------------------------
 export const libraryStatus = defineContract({
@@ -698,4 +700,5 @@ export const CONTRACTS: readonly OperationContract[] = [
   workerSetup,
   ...CHAT_CONTRACTS,
   ...PLANNING_CONTRACTS,
+  ...SYNC_CONTRACTS,
 ];
