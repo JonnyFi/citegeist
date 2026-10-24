@@ -13,6 +13,8 @@ export interface DuplicateQuery {
   year?: string | number | undefined;
   /** Family name (or literal name) of the first author. */
   firstAuthor?: string | undefined;
+  /** An item that never counts as the duplicate: the one the query is made for. */
+  except?: string | undefined;
 }
 
 /** Lower-case, accent-free text with single spaces, for comparing titles and names. */
@@ -37,35 +39,44 @@ export function yearOf(issued: string | number | undefined): string | undefined 
  */
 export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefined {
   const idx = lib.index;
+  const except = q.except ?? "";
   if (q.doi) {
     const row = idx.get<{ citekey: string }>(
-      "SELECT citekey FROM items WHERE lower(doi) = ?",
+      "SELECT citekey FROM items WHERE lower(doi) = ? AND citekey <> ?",
       q.doi.toLowerCase(),
+      except,
     );
     if (row) return row.citekey;
   }
   if (q.arxiv) {
     const row = idx.get<{ citekey: string }>(
-      "SELECT citekey FROM items WHERE lower(json_extract(frontmatter_json, '$.ids.arxiv')) = ?",
+      "SELECT citekey FROM items WHERE lower(json_extract(frontmatter_json, '$.ids.arxiv')) = ? AND citekey <> ?",
       q.arxiv.toLowerCase(),
+      except,
     );
     if (row) return row.citekey;
   }
   if (q.pmid) {
     const row = idx.get<{ citekey: string }>(
-      "SELECT citekey FROM items WHERE json_extract(frontmatter_json, '$.ids.pmid') = ?",
+      "SELECT citekey FROM items WHERE json_extract(frontmatter_json, '$.ids.pmid') = ? AND citekey <> ?",
       q.pmid,
+      except,
     );
     if (row) return row.citekey;
   }
   if (q.url) {
-    const row = idx.get<{ citekey: string }>("SELECT citekey FROM items WHERE url = ?", q.url);
+    const row = idx.get<{ citekey: string }>(
+      "SELECT citekey FROM items WHERE url = ? AND citekey <> ?",
+      q.url,
+      except,
+    );
     if (row) return row.citekey;
   }
   if (q.hash) {
     const row = idx.get<{ citekey: string }>(
-      "SELECT citekey FROM items WHERE instr(frontmatter_json, ?) > 0",
+      "SELECT citekey FROM items WHERE instr(frontmatter_json, ?) > 0 AND citekey <> ?",
       `"hash":"${q.hash}"`,
+      except,
     );
     if (row) return row.citekey;
   }
@@ -73,7 +84,8 @@ export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefin
     const wanted = normalizeIsbn(q.isbn);
     if (wanted) {
       const rows = idx.all<{ citekey: string; isbn: string }>(
-        "SELECT citekey, isbn FROM items WHERE isbn IS NOT NULL",
+        "SELECT citekey, isbn FROM items WHERE isbn IS NOT NULL AND citekey <> ?",
+        except,
       );
       for (const r of rows) {
         const tokens = r.isbn.split(/[,;\s]+/).filter(Boolean);
@@ -89,8 +101,9 @@ export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefin
     const author = normalizeText(q.firstAuthor);
     if (!title || !year || !author) return undefined;
     const rows = idx.all<{ citekey: string; title: string }>(
-      "SELECT citekey, title FROM items WHERE year = ?",
+      "SELECT citekey, title FROM items WHERE year = ? AND citekey <> ?",
       year,
+      except,
     );
     for (const r of rows) {
       if (normalizeText(r.title) !== title) continue;

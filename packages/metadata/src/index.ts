@@ -8,6 +8,7 @@ export * from "./merge.js";
 export * from "./replay.js";
 export * from "./resolver.js";
 export { arxivFromDoi, mapCrossrefReference, mapOpenAlexRef } from "./sources/citations.js";
+export { openAccessPdfUrls } from "./sources/openalex.js";
 export { parsePubmedXml, pubmedUrl } from "./sources/pubmed.js";
 export { mapUnpaywall } from "./sources/unpaywall.js";
 export type {

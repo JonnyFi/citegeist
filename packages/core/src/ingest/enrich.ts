@@ -1,16 +1,23 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { AiRouter } from "@citegeist/ai";
 import { generateCitekey } from "@citegeist/cite";
 import {
-  extractIdentifiers,
-  pickPrimary,
+  type Identifier,
+  normalizeDoi,
   type TitleQuery,
   type TitleResolveResult,
 } from "@citegeist/metadata";
 import type { Actor, ItemFrontmatter, Source } from "@citegeist/schema";
 import type { Library } from "../library.js";
+import { findDuplicate } from "./dupes.js";
 import { isCited, loadItem, renameItem, saveItem } from "./items.js";
-import { guessHeader, type HeaderGuess, type PdfTextExtractor } from "./pdf-text.js";
+import {
+  guessHeader,
+  type HeaderGuess,
+  type PdfTextExtractor,
+  pdfIdentifiers,
+} from "./pdf-text.js";
 import type { MetadataLookup } from "./service.js";
 
 export interface EnrichDeps {
@@ -23,13 +30,53 @@ export interface EnrichDeps {
 
 export interface EnrichResult {
   /** "resolved": a metadata source confirmed the work. "proposal": read from the page, to review. */
-  applied: "resolved" | "proposal" | "none";
+  applied: "resolved" | "proposal" | "duplicate" | "none";
+  /** Set with "duplicate": the item is the same work as this one. Nothing was written to the item. */
+  duplicateOf?: string;
   /** Set when the placeholder citekey was replaced. */
   renamed?: { from: string; to: string };
 }
 
 /** Provenance prefixes of values that came from a guess and may be replaced by better data. */
-const WEAK_PROVENANCE = /^(filename|pdf-text|web|html|ai-first-page)@/;
+const WEAK_PROVENANCE = /^(filename|pdf-text|grobid|web|html|ai-first-page)@/;
+
+/** What GROBID read from the head of the paper (header.json of the conversion). */
+export interface GrobidHeader {
+  title?: string;
+  authors: string[];
+  doi?: string;
+  year?: number;
+}
+
+/** The header GROBID left next to the converted source, when it ran and found a title or a DOI. */
+export function readGrobidHeader(
+  lib: Library,
+  citekey: string,
+  hash: string,
+): GrobidHeader | undefined {
+  try {
+    const raw = JSON.parse(
+      readFileSync(join(lib.paths.derivedDir(citekey, hash), "header.json"), "utf8"),
+    ) as Record<string, unknown>;
+    const str = (v: unknown): string | undefined =>
+      typeof v === "string" && v.trim() !== "" ? v.replace(/\s+/g, " ").trim() : undefined;
+    const authors = Array.isArray(raw.authors)
+      ? raw.authors.map(str).filter((a): a is string => a !== undefined)
+      : [];
+    const doi = normalizeDoi(str(raw.doi) ?? "") ?? undefined;
+    const year = Number(str(raw.date)?.slice(0, 4));
+    const title = str(raw.title);
+    if (!title && !doi) return undefined;
+    return {
+      ...(title ? { title } : {}),
+      authors,
+      ...(doi ? { doi } : {}),
+      ...(Number.isInteger(year) && year > 0 ? { year } : {}),
+    };
+  } catch {
+    return undefined;
+  }
+}
 
 export function splitName(name: string): { family: string; given?: string } {
   const parts = name.trim().split(/\s+/);
@@ -124,10 +171,18 @@ export async function enrichAfterConvert(
   if (source.kind !== "pdf") return { applied: "none" };
   const before = loadItem(lib, citekey);
   const old = before.fm as Fm;
-  if (!isWeakMetadata(old, wasIncomplete)) return { applied: "none" };
+  const grobid = readGrobidHeader(lib, citekey, source.hash);
+  // GROBID reads the head of the paper even when the text layer gives the first page reader
+  // nothing: a bare file name as title and no author is what it improves.
+  const grobidWeak =
+    grobid !== undefined &&
+    !old.DOI &&
+    !old.ISBN &&
+    (old.proposal !== undefined || !hasCreators(old));
+  if (!isWeakMetadata(old, wasIncomplete) && !grobidWeak) return { applied: "none" };
 
   const text = await deps.pdfText(sourcePath);
-  if (!text.firstPage && !text.leading) return { applied: "none" };
+  if (!text.firstPage && !text.leading && !grobid) return { applied: "none" };
   const today = lib.stamp(actor).at.slice(0, 10);
 
   let resolved:
@@ -138,22 +193,58 @@ export async function enrichAfterConvert(
   let reason = "";
   let candidates: unknown[] = [];
 
-  const found = pickPrimary(extractIdentifiers(text.leading));
-  if (found) {
+  // Identifiers: the file's XMP and the first pages first, then what GROBID read from the header.
+  const found: Identifier[] = pdfIdentifiers(text)
+    .filter((i) => i.kind !== "url")
+    .slice(0, 2);
+  if (grobid?.doi && !found.some((i) => i.kind === "doi" && i.value === grobid.doi)) {
+    found.push({ kind: "doi", value: grobid.doi, raw: grobid.doi });
+  }
+  const same = (query: Parameters<typeof findDuplicate>[1]): string | undefined =>
+    findDuplicate(lib, { ...query, except: citekey });
+  for (const id of found) {
+    const hit =
+      id.kind === "doi"
+        ? same({ doi: id.value })
+        : id.kind === "arxiv"
+          ? same({ arxiv: id.value })
+          : id.kind === "isbn"
+            ? same({ isbn: id.value })
+            : id.kind === "pmid"
+              ? same({ pmid: id.value })
+              : undefined;
+    if (hit) return { applied: "duplicate", duplicateOf: hit };
+  }
+  for (const id of found) {
     try {
-      const res = await deps.resolver.resolve(found);
+      const res = await deps.resolver.resolve(id);
       if (res.status === "resolved" && res.fields.title) {
         const { ids, ...fields } = res.fields;
         resolved = { fields, provenance: res.provenance, ids: ids ?? {} };
+        break;
       }
     } catch {
-      // fall through to the page header
+      // try the next identifier, then the page header
     }
   }
   if (!resolved) {
-    if (deps.ai) header = await headerFromAi(deps.ai, text.firstPage, source.filename);
-    if (header) headerBy = "ai-first-page";
-    header ??= guessHeader(text.firstPage);
+    const grobidAuthor = grobid?.authors[0];
+    if (grobid?.title) {
+      header = {
+        title: grobid.title,
+        ...(grobidAuthor ? { firstAuthor: grobidAuthor } : {}),
+        ...(grobid.year !== undefined ? { year: grobid.year } : {}),
+      };
+      headerBy = "grobid";
+    }
+    if (!header && deps.ai && text.firstPage) {
+      header = await headerFromAi(deps.ai, text.firstPage, source.filename);
+      if (header) headerBy = "ai-first-page";
+    }
+    if (!header && text.firstPage) {
+      header = guessHeader(text.firstPage);
+      if (header) headerBy = "pdf-text";
+    }
     if (header) {
       const query: TitleQuery = {
         title: header.title,
@@ -186,6 +277,24 @@ export async function enrichAfterConvert(
   }
   if (!resolved && !header) return { applied: "none" };
 
+  // The same work is already in the library: the caller attaches this file there.
+  const idsOf = (resolved?.ids ?? {}) as Record<string, string | undefined>;
+  const lead: { family?: string; literal?: string } | undefined = resolved
+    ? (resolved.fields.author as { family?: string; literal?: string }[] | undefined)?.[0]
+    : header?.firstAuthor
+      ? splitName(header.firstAuthor)
+      : undefined;
+  const twin = same({
+    doi: resolved?.fields.DOI as string | undefined,
+    arxiv: idsOf.arxiv,
+    pmid: idsOf.pmid,
+    isbn: resolved?.fields.ISBN as string | undefined,
+    title: (resolved?.fields.title as string | undefined) ?? header?.title,
+    year: (resolved?.fields.issued as string | number | undefined) ?? header?.year,
+    firstAuthor: lead?.family ?? lead?.literal,
+  });
+  if (twin) return { applied: "duplicate", duplicateOf: twin };
+
   const provenance: Record<string, string> = { ...old.provenance };
   const patch: Record<string, unknown> = {};
   const set = (key: string, value: unknown, prov: string): void => {
@@ -203,9 +312,14 @@ export async function enrichAfterConvert(
     patch.proposal = undefined;
   } else if (header) {
     const prov = `${headerBy}@${today}`;
-    const author = header.firstAuthor ? splitName(header.firstAuthor) : undefined;
+    const authors =
+      headerBy === "grobid" && grobid && grobid.authors.length > 0
+        ? grobid.authors.map(splitName)
+        : header.firstAuthor
+          ? [splitName(header.firstAuthor)]
+          : undefined;
     set("title", header.title, prov);
-    if (author) set("author", [author], prov);
+    if (authors) set("author", authors, prov);
     if (header.year !== undefined) set("issued", header.year, prov);
     set("type", header.type ?? "document", prov);
     patch.proposal = {

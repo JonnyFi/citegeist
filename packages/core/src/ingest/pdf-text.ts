@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { extractFromXmp, extractIdentifiers, type Identifier } from "@citegeist/metadata";
 
 export interface PdfText {
   /** Text of the first page, one line per visual line. */
@@ -6,6 +7,10 @@ export interface PdfText {
   /** Text of the first pages (up to `maxPages`) for identifier extraction. */
   leading: string;
   pages: number;
+  /** The XMP packet of the file, for identifiers. */
+  xmp?: string;
+  /** The string values of the document info dictionary (title, subject, keywords), for identifiers. */
+  info?: string;
 }
 
 export type PdfTextExtractor = (path: string) => Promise<PdfText>;
@@ -29,6 +34,21 @@ export const extractPdfText: PdfTextExtractor = async (path) => {
     });
     const doc = await task.promise;
     const texts: string[] = [];
+    let xmp = "";
+    let info = "";
+    try {
+      const md = (await doc.getMetadata()) as {
+        info?: Record<string, unknown>;
+        metadata?: { getRaw?: () => unknown } | null;
+      };
+      const raw = md.metadata?.getRaw?.();
+      xmp = typeof raw === "string" ? raw : "";
+      info = Object.values(md.info ?? {})
+        .filter((v): v is string => typeof v === "string")
+        .join("\n");
+    } catch {
+      // A damaged metadata stream costs the identifiers in it, not the page text.
+    }
     try {
       for (let n = 1; n <= Math.min(maxPages, doc.numPages); n++) {
         const page = await doc.getPage(n);
@@ -44,11 +64,40 @@ export const extractPdfText: PdfTextExtractor = async (path) => {
     } finally {
       await task.destroy();
     }
-    return { firstPage: texts[0] ?? "", leading: texts.join("\n\n"), pages: doc.numPages };
+    return {
+      firstPage: texts[0] ?? "",
+      leading: texts.join("\n\n"),
+      pages: doc.numPages,
+      xmp,
+      info,
+    };
   } catch {
     return { firstPage: "", leading: "", pages: 0 };
   }
 };
+
+/**
+ * DOI, arXiv id, ISBN and PMID of a PDF, best first: the XMP packet and the info dictionary, then
+ * the first pages. Metadata the publisher wrote is more reliable than a number found in running text.
+ */
+export function pdfIdentifiers(text: PdfText): Identifier[] {
+  const found: Identifier[] = [
+    ...extractFromXmp(text.xmp ?? ""),
+    ...extractIdentifiers(text.info ?? "", { stopAtReferences: false }),
+  ];
+  const fromMeta = new Set(found.map((i) => `${i.kind}:${i.value}`));
+  for (const id of extractIdentifiers(text.leading)) {
+    if (!fromMeta.has(`${id.kind}:${id.value}`)) found.push(id);
+  }
+  const rank = (i: Identifier): number => KIND_ORDER.indexOf(i.kind);
+  // Stable: within one kind, the XMP identifiers stay in front of the page text ones.
+  return found
+    .map((id, n) => ({ id, n }))
+    .sort((a, b) => rank(a.id) - rank(b.id) || a.n - b.n)
+    .map((x) => x.id);
+}
+
+const KIND_ORDER = ["doi", "arxiv", "isbn", "pmid", "url"];
 
 export interface HeaderGuess {
   title: string;

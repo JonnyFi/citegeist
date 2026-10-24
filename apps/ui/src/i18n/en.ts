@@ -19,6 +19,9 @@ export const en: Record<MessageKey, string> = {
   "item.incomplete": "incomplete",
   "item.incomplete.text":
     "The import did not finish. The item has no readable text. Attach a matching file or delete the item.",
+  "item.noFulltext": "no full text",
+  "item.noFulltext.text": "No PDF was found for this item. Attach the file to read it.",
+  "item.noFulltext.tried": "Checked:",
   "nav.projects": "Projects",
   "shell.mockLibrary": "Mock library",
   "theme.label": "Theme",

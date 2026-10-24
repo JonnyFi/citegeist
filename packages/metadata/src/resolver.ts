@@ -32,7 +32,7 @@ import type { SourceContext } from "./sources/context.js";
 import { fetchCrossrefWork, searchCrossref } from "./sources/crossref.js";
 import { fetchDoiCsl } from "./sources/doi-org.js";
 import { fetchDnb, fetchK10plus } from "./sources/library-catalogs.js";
-import { fetchOpenAlexWork } from "./sources/openalex.js";
+import { fetchOpenAlexPdfUrls, fetchOpenAlexWork } from "./sources/openalex.js";
 import { fetchOpenLibrary } from "./sources/openlibrary.js";
 import { fetchPubmed } from "./sources/pubmed.js";
 import { fetchRetractionStatus } from "./sources/retraction.js";
@@ -230,6 +230,11 @@ export class MetadataResolver implements GraphLookup {
   async findOpenAccess(doi: string): Promise<Enrichment["openAccess"] | undefined> {
     if (this.config.unpaywall === false) return undefined;
     return (await fetchUnpaywall(this.ctx, doi))?.enrichment?.openAccess;
+  }
+
+  /** PDF links of all open-access locations OpenAlex lists for a DOI, best first. */
+  findOpenAlexPdfs(doi: string): Promise<string[]> {
+    return fetchOpenAlexPdfUrls(this.ctx, doi);
   }
 
   // Citation graph, retractions, versions (GraphLookup) ----------------------------------------
