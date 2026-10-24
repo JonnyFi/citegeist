@@ -4,7 +4,7 @@
 //   pnpm --filter @citegeist/ui design-check            screenshots of the app
 //   pnpm --filter @citegeist/ui design-check --boards   also screenshots of the board files
 //
-// Output goes to .context/design-check/ at the repository root. The script starts
+// Output goes to docs/design/screens/ at the repository root. The script starts
 // `vite --mode mock` itself on port 5188 (DESIGN_CHECK_PORT) when nothing listens there.
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
