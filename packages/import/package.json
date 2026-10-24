@@ -1,0 +1,30 @@
+{
+  "name": "@citegeist/import",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "fixture": "tsx src/testing/build-fixture.ts"
+  },
+  "dependencies": {
+    "@citegeist/cite": "workspace:*",
+    "@citegeist/metadata": "workspace:*",
+    "@citegeist/ops": "workspace:*",
+    "@citegeist/schema": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@citegeist/core": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.19.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
