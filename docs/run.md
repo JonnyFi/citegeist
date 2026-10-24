@@ -55,6 +55,18 @@ pnpm app:update
 
 Der Befehl holt den neuesten Stand von `main`, baut die App, beendet die laufende citegeist-App, ersetzt `/Applications/citegeist.app` und startet sie neu. Deine Bibliothek und die Einstellungen bleiben dabei unberührt, weil sie außerhalb der App liegen. Ist `main` in einem anderen Worktree ausgecheckt (etwa im Haupt-Checkout), läuft das Update dort, und der Worktree mit `main` muss bis auf untracked Dateien sauber sein.
 
+## Feste Signatur
+
+Ohne weiteres Zutun ist die App ad hoc signiert. macOS bindet die Bedienungshilfen-Berechtigung (für das Einfügen per Quick-Insert) bei solchen Apps an den einzelnen Build, nach jedem `pnpm app:update` ist sie deshalb weg. Mit einer eigenen, selbst signierten Identität bleibt die Signatur über alle Builds gleich, und macOS behält die Berechtigung.
+
+```
+sh scripts/make-signing-cert.sh
+```
+
+Das Skript legt einmal die Identität „citegeist local signing“ im Anmelde-Schlüsselbund an. macOS fragt dabei nach deinem Anmeldekennwort, um dem Zertifikat zu vertrauen. `pnpm package` signiert danach mit ihr, ohne Identität wie bisher ad hoc (`CITEGEIST_SIGNING_IDENTITY=-` erzwingt ad hoc). Beim ersten Build fragt macOS einmal, ob `codesign` den Schlüssel verwenden darf: Kennwort eingeben und „Immer erlauben“ wählen, nicht „Erlauben“, sonst kommt die Frage für jede Datei der App neu. Danach gibst du die Bedienungshilfen ein letztes Mal frei.
+
+Die Identität ist keine Developer ID und verlässt den Schlüsselbund nicht. Gatekeeper prüft eine per `curl` installierte App weiterhin nicht. Wer Releases installiert, die du mit dieser Identität baust, behält die Berechtigung ebenfalls über Updates hinweg.
+
 ## Installation ohne Developer ID
 
 citegeist ist ad hoc signiert und nicht notarisiert. Eine Datei, die `curl` herunterlädt, bekommt kein `com.apple.quarantine`-Attribut, und Gatekeeper prüft sie deshalb nicht. Darauf beruht die Installation, die ohne Apple Developer ID auskommt:

@@ -170,7 +170,7 @@ describe("quick-insert palette", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Kopiert, aber nicht eingefügt");
     expect(status).toHaveTextContent("Bedienungshilfen");
-    await user.click(within(status).getByRole("button", { name: "Berechtigung erteilen" }));
+    await user.click(within(status).getByRole("button", { name: "Bedienungshilfen öffnen" }));
     expect(bridge.requestAccessibility).toHaveBeenCalled();
   });
 

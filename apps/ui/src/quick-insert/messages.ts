@@ -15,9 +15,9 @@ const de = {
   "qi.hintIndirect": "Umschalt+Enter: indirektes Zitat",
   "qi.hintClose": "Esc: schließen",
   "qi.noPermission":
-    "Kopiert, aber nicht eingefügt: citegeist braucht die Bedienungshilfen-Berechtigung, um in die andere App zu tippen. Einfügen mit Cmd+V.",
+    "Kopiert, aber nicht eingefügt: citegeist braucht die Bedienungshilfen-Berechtigung, um in die andere App zu tippen. Einfügen mit Cmd+V. Der Knopf öffnet die Liste, dort citegeist einschalten oder mit „+“ hinzufügen.",
   "qi.unsupported": "Kopiert. Automatisches Einfügen gibt es nur auf dem Mac. Einfügen mit Strg+V.",
-  "qi.grant": "Berechtigung erteilen",
+  "qi.grant": "Bedienungshilfen öffnen",
   "qi.error": "Das Zitat konnte nicht erstellt werden.",
   "qi.searchError": "Die Suche ist fehlgeschlagen.",
   "qi.noLibrary": "Öffne zuerst eine Bibliothek in citegeist.",
@@ -39,9 +39,9 @@ const en: Record<QuickInsertKey, string> = {
   "qi.hintIndirect": "Shift+Enter: indirect citation",
   "qi.hintClose": "Esc: close",
   "qi.noPermission":
-    "Copied but not pasted: citegeist needs the Accessibility permission to type into the other app. Paste with Cmd+V.",
+    'Copied but not pasted: citegeist needs the Accessibility permission to type into the other app. Paste with Cmd+V. The button opens the list; switch citegeist on there or add it with "+".',
   "qi.unsupported": "Copied. Automatic pasting only exists on the Mac. Paste with Ctrl+V.",
-  "qi.grant": "Grant permission",
+  "qi.grant": "Open Accessibility",
   "qi.error": "The citation could not be created.",
   "qi.searchError": "The search failed.",
   "qi.noLibrary": "Open a library in citegeist first.",
