@@ -58,7 +58,7 @@ export interface SanitizedCell {
   rejected: number;
 }
 
-function normRef(ref: string): string {
+export function normRef(ref: string): string {
   return ref
     .trim()
     .replace(/^\[+|\]+$/g, "")

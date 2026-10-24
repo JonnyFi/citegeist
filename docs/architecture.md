@@ -86,6 +86,8 @@ Fehler folgen dem Vertrag für agent-taugliche Fehlermeldungen aus gstack: Sie n
         c_01JB8Z3Q.md                     eine Zitatkarte pro Datei
   notes/
     autopoiesis-erklaert-stabilitaet.md   Zettel mit Frontmatter und Wiki-Links
+    concepts/
+      autopoiesis.md                      Begriff (type: concept) mit Aliasen, Karten und Einträgen pro Quelle
   projects/
     phd-proposal/
       project.md                          Projektbrief, Forschungsfragen, Leseliste
@@ -296,7 +298,7 @@ Der citegeist-MCP-Server kommt in jedem Fall pro Sitzung dazu, mit eigenem Write
 
 Die Sprache aller AI-Texte (Paraphrase, Zusammenfassung) folgt einer Kette: Dropdown an der gerade gelesenen Quelle, sonst Projekteinstellung, sonst Bibliotheksstandard (D9). Das Dropdown ist im Reader jederzeit erreichbar.
 
-Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
+Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
 
 Jede Agent-Antwort mit Zitat geht durch eine Prüfung: Ein Zitat, das zu keiner gespeicherten Stelle passt, wird markiert.
 

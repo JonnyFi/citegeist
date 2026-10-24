@@ -83,6 +83,13 @@ export class LibraryPaths {
   noteFile(slug: string): string {
     return join(this.notesDir, `${slug}.md`);
   }
+  /** Concepts (notes of type "concept") live in their own folder. */
+  get conceptsDir(): string {
+    return join(this.notesDir, "concepts");
+  }
+  conceptFile(slug: string): string {
+    return join(this.conceptsDir, `${slug}.md`);
+  }
 
   get projectsDir(): string {
     return join(this.root, "projects");

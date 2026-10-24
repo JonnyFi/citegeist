@@ -27,6 +27,15 @@ export {
 } from "./tasks/card-paraphrase/index.js";
 export { CardVerifyInput, CardVerifyOutput } from "./tasks/card-verify/index.js";
 export {
+  ConceptDescribeInput,
+  ConceptDescribeOutput,
+  ConceptPassage,
+  MAX_USAGE_EVIDENCE,
+  sanitizeUsage,
+  type VerifiedUsage,
+} from "./tasks/concept-describe/index.js";
+export { ConceptNameInput, ConceptNameOutput } from "./tasks/concept-name/index.js";
+export {
   MAX_EVIDENCE,
   MatrixFillCellInput,
   MatrixFillCellOutput,

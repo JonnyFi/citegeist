@@ -11,7 +11,7 @@ const KNOWN: { re: RegExp; kind: FileKind }[] = [
   { re: /^items\/([^/]+)\/([^/]+)\.md$/, kind: "item" },
   { re: /^items\/([^/]+)\/cards\/([^/]+)\.md$/, kind: "card" },
   { re: /^items\/([^/]+)\/derived\/([0-9a-f]{12})\/blocks\.jsonl$/, kind: "blocks" },
-  { re: /^notes\/([^/]+)\.md$/, kind: "note" },
+  { re: /^notes\/(?:concepts\/)?([^/]+)\.md$/, kind: "note" },
   { re: /^projects\/([^/]+)\/project\.md$/, kind: "project" },
 ];
 

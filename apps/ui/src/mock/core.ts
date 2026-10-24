@@ -27,6 +27,7 @@ import {
 } from "@citegeist/ops";
 import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
 import { bindChatMock } from "../chat/mock";
+import { bindConceptsMock } from "../concepts/mock";
 import { bindConnectionsMock } from "../connections/mock";
 import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
@@ -734,6 +735,7 @@ export function createMockRegistry(
   bindPlanningMock(registry, data, emit);
   bindRelatedMock(registry, data, emit);
   bindMatrixMock(registry, data, emit, jobs, aiDelayMs);
+  bindConceptsMock(registry, data, emit, jobs, aiDelayMs);
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
   bindChatMock(registry, data, emit, {
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),

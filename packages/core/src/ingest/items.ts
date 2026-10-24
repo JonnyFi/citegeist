@@ -324,6 +324,8 @@ export function markdownFiles(lib: Library): string[] {
   }
   for (const e of ls("notes"))
     if (e.isFile() && e.name.endsWith(".md")) out.push(`notes/${e.name}`);
+  for (const e of ls("notes/concepts"))
+    if (e.isFile() && e.name.endsWith(".md")) out.push(`notes/concepts/${e.name}`);
   for (const p of ls("projects")) {
     if (p.isDirectory() && existsSync(join(lib.root, "projects", p.name, "project.md"))) {
       out.push(`projects/${p.name}/project.md`);

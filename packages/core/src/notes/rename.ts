@@ -1,8 +1,13 @@
 import { existsSync, readFileSync, renameSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, dirname } from "node:path";
 import { slugify } from "../ids.js";
 import { markdownFiles, rewriteWikiLinks } from "../ingest/items.js";
 import type { ChangeEvent, Library } from "../library.js";
+
+/** Whether a note or a concept already has this file name. Wiki links address both by slug. */
+export function noteSlugTaken(lib: Library, slug: string): boolean {
+  return existsSync(lib.paths.noteFile(slug)) || existsSync(lib.paths.conceptFile(slug));
+}
 
 /**
  * The slug a note with this title gets, or the first free `<slug>-2`, `-3` when it is taken. A
@@ -14,7 +19,7 @@ export function freeNoteSlug(lib: Library, title: string, own: string): string {
     return own;
   }
   let slug = base;
-  for (let n = 2; existsSync(lib.paths.noteFile(slug)); n++) slug = `${base}-${n}`;
+  for (let n = 2; noteSlugTaken(lib, slug); n++) slug = `${base}-${n}`;
   return slug;
 }
 
@@ -32,7 +37,8 @@ export function renameNoteFile(
   const slug = freeNoteSlug(lib, title, oldSlug);
   if (slug === oldSlug) return { rel, slug, rewritten: 0 };
 
-  const next = `notes/${slug}.md`;
+  const folder = dirname(rel);
+  const next = `${folder}/${slug}.md`;
   renameSync(lib.paths.abs(rel), lib.paths.abs(next));
   const removed = lib.indexer.removePath(rel);
   lib.emit("change", { ...removed, external: false } satisfies ChangeEvent);

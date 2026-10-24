@@ -149,3 +149,17 @@ Die Art „Zitat“ entfällt, weil jede Karte ein Zitat enthält. Die Arten sin
 Datum: 2026-10-24. Status: entschieden.
 
 Der Abschnitt heißt im Dateikörper `## Note`. Alte Karten mit beiden Abschnitten werden beim Lesen zusammengeführt: eigene Worte, eine Leerzeile, dann der Kommentar. Die Datei ändert sich erst, wenn die Karte neu geschrieben wird. Die Exportregel `own-else-ai` nimmt für sinngemäße Zitate die Notiz, sofern es eine gibt, sonst die Paraphrase. Die Kopieraktionen der Karte heißen „Wörtlich zitieren“ (Zitat mit Beleg) und „Sinngemäß zitieren“ („vgl.“-Beleg mit Paraphrase oder Notiz).
+
+## D18: Ein Begriff ist eine Notiz vom Typ concept, und jeder Eintrag pro Quelle ist belegt
+
+Datum: 2026-10-24. Status: entschieden.
+
+Das Begriffsregister liegt als Markdown unter `notes/concepts/<slug>.md`, Obsidian-kompatibel, mit `type: concept` und den Namen des Begriffs unter `aliases`. Der Ordner trennt Begriffe von Zetteln, die Wiki-Links lösen weiter über den Dateinamen auf, und ein Begriffsname ist deshalb nie zugleich der Name einer Notiz. Im Frontmatter stehen außerdem die Karten des Begriffs (`cards`) und pro Quelle ein Eintrag (`usages`). Der Körper der Datei ist daraus abgeleitet: der eigene Text des Nutzers, dann ein markierter Block mit einem Abschnitt `## [[citekey]]` pro Quelle, Belegzitaten und `[[c_…]]`-Links auf die Karten. Der Block wird bei jedem Schreiben neu erzeugt.
+
+Namen gelten als gleich, wenn sie sich nur in Groß- und Kleinschreibung, Akzenten, Umlautschreibung (ä oder ae) oder Satzzeichen unterscheiden. Ein neuer Begriff, dessen Name oder Alias schon zu einem Begriff gehört, erweitert diesen. Gehören die Namen zu zwei verschiedenen Begriffen, bricht das Anlegen mit dem Hinweis auf `concepts.merge` ab. Beim Zusammenführen werden Titel und Aliase der anderen Begriffe zu Aliasen des Ziels, die Karten vereinigt, Links auf die anderen Begriffe umgeschrieben und deren Dateien entfernt. Beim Umbenennen bleibt der alte Titel als Alias stehen.
+
+Ein Eintrag entsteht in der Aufgabe `concept.describe`. Sie sieht nur die Zitate der Karten dieser Quelle, die dem Begriff zugeordnet sind, und schreibt in der Bibliothekssprache (D9). Jedes Belegzitat wird gegen den gespeicherten Kartentext geprüft (dieselbe Normalisierung wie bei der Literaturmatrix), gespeichert wird der Text der Karte, und die Seite stammt aus der Karte. Bleibt kein Zitat übrig, wird der Eintrag verworfen. Jeder Eintrag merkt sich die Karten, aus denen er entstand. Ändert sich die Kartenmenge der Quelle, gilt er als veraltet und wird beim nächsten Lauf neu geschrieben.
+
+Vorschläge kommen aus Karten der Art Definition (die Aufgabe `concept.name` nennt den definierten Begriff, und er muss im Zitat oder in der Paraphrase vorkommen) und aus Wörtern, die in mindestens zwei Quellen wiederkehren (ohne Modell, aus Karten und Notizen gezählt). Nichts davon wird ohne Zutun des Nutzers angelegt.
+
+Die MCP-Obergrenze von 20 Werkzeugen ist ausgeschöpft. Agents erreichen die Begriffe deshalb über die Befehle `cg concepts …`, die aus denselben Verträgen entstehen, und in der Chat-Seitenleiste über deren Shell (A11).

@@ -13,7 +13,9 @@ function NotesList({ activeId }: { activeId: string | undefined }) {
   const { t } = useI18n();
   const [filter, setFilter] = useState("");
   const query = filter.trim();
-  const notes = useOp(notesList, { limit: 500, ...(query ? { query } : {}) });
+  const result = useOp(notesList, { limit: 500, ...(query ? { query } : {}) });
+  // concepts have their own screen
+  const notes = { ...result, list: result.data?.notes.filter((n) => n.type !== "concept") ?? [] };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -31,13 +33,13 @@ function NotesList({ activeId }: { activeId: string | undefined }) {
           <Loading label={t("notes.loadingList")} />
         ) : notes.isError ? (
           <ErrorState error={notes.error} />
-        ) : notes.data.notes.length === 0 ? (
+        ) : notes.list.length === 0 ? (
           <p className="px-2 py-4 text-muted">
             {query ? t("notes.noMatch") : t("notes.emptyTitle")}
           </p>
         ) : (
           <ul aria-label={t("notes.listLabel")} className="flex flex-col gap-0.5">
-            {notes.data.notes.map((note) => (
+            {notes.list.map((note) => (
               <li key={note.id}>
                 <Link
                   to="/notes/$id"
@@ -99,8 +101,8 @@ export function NotesLayout() {
 export function NotesIndex() {
   const { t } = useI18n();
   const createNote = useCreateNote();
-  const all = useOp(notesList, { limit: 1 });
-  const empty = all.data !== undefined && all.data.notes.length === 0;
+  const all = useOp(notesList, { limit: 500 });
+  const empty = all.data?.notes.every((n) => n.type === "concept") ?? false;
 
   return empty ? (
     <EmptyState

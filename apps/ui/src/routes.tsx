@@ -12,6 +12,7 @@ import { type ItemFilters, ItemsScreen } from "./components/items-screen";
 import { ProjectsScreen, ProjectView, parseProjectSearch } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
+import { ConceptsIndex, ConceptsLayout, ConceptView } from "./concepts";
 import { type GraphDepth, GraphScreen } from "./graph";
 import { ImportScreen } from "./import";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
@@ -137,6 +138,27 @@ const noteRoute = createRoute({
   },
 });
 
+const conceptsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/concepts",
+  component: ConceptsLayout,
+});
+
+const conceptsIndexRoute = createRoute({
+  getParentRoute: () => conceptsRoute,
+  path: "/",
+  component: ConceptsIndex,
+});
+
+const conceptRoute = createRoute({
+  getParentRoute: () => conceptsRoute,
+  path: "$id",
+  component: function ConceptRoute() {
+    const { id } = conceptRoute.useParams();
+    return <ConceptView key={id} id={id} />;
+  },
+});
+
 const graphRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/graph",
@@ -216,6 +238,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   projectRoute,
   notesRoute.addChildren([notesIndexRoute, noteRoute]),
+  conceptsRoute.addChildren([conceptsIndexRoute, conceptRoute]),
   graphRoute,
   searchRoute,
   settingsRoute,
