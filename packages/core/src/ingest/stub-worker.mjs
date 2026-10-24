@@ -5,6 +5,7 @@
 // Test switches (environment variables):
 //   CG_STUB_CRASH_ONCE=<file>  the first convert call creates <file> and kills the process
 //   CG_STUB_FAIL=1             every convert call answers with a permanent error
+//   CG_STUB_HEADER=<json>      PDF conversions write this as header.json, like GROBID does
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -100,6 +101,9 @@ function convert(params) {
     join(params.outDir, "blocks.jsonl"),
     `${blocks.map((b) => JSON.stringify(b)).join("\n")}\n`,
   );
+  if (params.kind === "pdf" && process.env.CG_STUB_HEADER) {
+    writeFileSync(join(params.outDir, "header.json"), `${process.env.CG_STUB_HEADER}\n`);
+  }
   writeFileSync(join(params.outDir, "idmap.json"), "{}\n");
   writeFileSync(join(params.outDir, "refs.jsonl"), "");
   writeFileSync(join(params.outDir, "doc.md"), doc);

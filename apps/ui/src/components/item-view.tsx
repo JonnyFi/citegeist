@@ -23,6 +23,25 @@ import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
+/** The marker ingest leaves when no open source delivered a PDF: which sources it tried. */
+function readNoFulltext(fm: Record<string, unknown>): { tried: string[] } | undefined {
+  const raw = fm.fulltext as { status?: unknown; tried?: unknown } | undefined;
+  if (!raw || raw.status !== "none") return undefined;
+  const names: Record<string, string> = {
+    unpaywall: "Unpaywall",
+    openalex: "OpenAlex",
+    arxiv: "arXiv",
+    publisher: "Verlagsseite",
+  };
+  const tried = Array.isArray(raw.tried)
+    ? raw.tried
+        .map((a) => (a as { source?: unknown }).source)
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => names[x] ?? x)
+    : [];
+  return { tried };
+}
+
 export type ItemTab = "overview" | "read";
 
 /**
@@ -114,6 +133,7 @@ export function ItemView({
   if (item.isError) return <ErrorState error={item.error} />;
 
   const { frontmatter: fm, note } = item.data;
+  const fulltext = readNoFulltext(fm);
   const authors = (fm.author ?? []).map(creatorName);
   const retraction = markerOf(fm.retraction);
   const projectTitle = (slug: string) =>
@@ -314,6 +334,22 @@ export function ItemView({
                   <span className="font-mono text-[12px] text-muted">
                     {fm.incomplete.code}: {fm.incomplete.message}
                   </span>
+                </div>
+              ) : null}
+              {!fm.incomplete && fulltext ? (
+                <div
+                  role="note"
+                  aria-label={t("item.noFulltext")}
+                  className="flex flex-col gap-1 border border-line px-3 py-2 text-[13px]"
+                >
+                  <span>
+                    <Stamp>{t("item.noFulltext")}</Stamp> {t("item.noFulltext.text")}
+                  </span>
+                  {fulltext.tried.length > 0 ? (
+                    <span className="font-mono text-[12px] text-muted">
+                      {t("item.noFulltext.tried")} {fulltext.tried.join(", ")}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
               {fm.sources.length === 0 ? (

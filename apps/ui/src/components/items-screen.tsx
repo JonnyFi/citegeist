@@ -1,4 +1,5 @@
 import { projectsList } from "@citegeist/ops";
+import { Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
@@ -38,7 +39,29 @@ export function ItemsScreen({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <HeaderSlot>
-        <h1 className="text-[13px] font-medium">{t("nav.library")}</h1>
+        {filters.project ? (
+          <nav
+            aria-label={t("item.breadcrumb")}
+            className="flex min-w-0 items-center gap-2 whitespace-nowrap text-muted"
+          >
+            <Link to="/projects" className="hover:text-ink">
+              {t("nav.projects")}
+            </Link>
+            <span aria-hidden="true">/</span>
+            <Link
+              to="/projects/$slug"
+              params={{ slug: filters.project }}
+              className="truncate hover:text-ink"
+            >
+              {projects.data?.projects.find((p) => p.slug === filters.project)?.title ??
+                filters.project}
+            </Link>
+            <span aria-hidden="true">/</span>
+            <h1 className="text-[13px] font-medium text-ink">{t("project.readingList")}</h1>
+          </nav>
+        ) : (
+          <h1 className="text-[13px] font-medium">{t("nav.library")}</h1>
+        )}
         {pages.data ? (
           <span className="font-mono text-[12px] text-muted">
             {tn("items.count", items.length)}

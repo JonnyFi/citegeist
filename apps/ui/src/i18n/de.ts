@@ -22,6 +22,10 @@ export const de = {
   "item.incomplete": "unvollständig",
   "item.incomplete.text":
     "Der Import ist nicht fertig geworden. Der Eintrag hat keinen lesbaren Text. Hänge eine passende Datei an oder lösche den Eintrag.",
+  "item.noFulltext": "ohne Volltext",
+  "item.noFulltext.text":
+    "Für diese Quelle wurde keine PDF-Datei gefunden. Hänge die Datei an, um sie zu lesen.",
+  "item.noFulltext.tried": "Geprüft:",
   "nav.projects": "Projekte",
   "shell.mockLibrary": "Mock-Bibliothek",
   "theme.label": "Darstellung",

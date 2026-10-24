@@ -60,6 +60,43 @@ export async function fetchOpenAlexWork(
   return makeRecord("openalex", fields.ids?.openalex ?? doi, res.fetchedAt, fields, enrichment);
 }
 
+/**
+ * Direct PDF links of every open-access location OpenAlex lists for a DOI, best location first.
+ * Empty when OpenAlex does not know the DOI or lists no PDF.
+ */
+export async function fetchOpenAlexPdfUrls(ctx: SourceContext, doi: string): Promise<string[]> {
+  const url = new URL(`${BASE}/works/doi:${doiPath(doi)}`);
+  url.searchParams.set("select", "best_oa_location,locations,open_access");
+  if (ctx.config.mailto) url.searchParams.set("mailto", ctx.config.mailto);
+  if (ctx.config.openalexApiKey) url.searchParams.set("api_key", ctx.config.openalexApiKey);
+  const res = await ctx.http.get({
+    source: "openalex",
+    url: url.toString(),
+    accept: "application/json",
+  });
+  if (res.status === 404) return [];
+  if (!res.ok) throw new SourceError("openalex", `HTTP ${res.status} for ${doi}`, res.status);
+  let work: Json;
+  try {
+    work = JSON.parse(res.body) as Json;
+  } catch {
+    throw new SourceError("openalex", `response for ${doi} is not JSON`);
+  }
+  return openAccessPdfUrls(work);
+}
+
+/** PDF links of the best location and of all listed locations, without duplicates. */
+export function openAccessPdfUrls(work: Json): string[] {
+  const locations = Array.isArray(work.locations) ? (work.locations as Json[]) : [];
+  const all = [(work.best_oa_location ?? undefined) as Json | undefined, ...locations];
+  const out: string[] = [];
+  for (const l of all) {
+    const pdf = l && l.is_oa !== false ? asString(l.pdf_url) : undefined;
+    if (pdf && /^https?:\/\//i.test(pdf) && !out.includes(pdf)) out.push(pdf);
+  }
+  return out;
+}
+
 export function mapOpenAlexWork(
   work: Json,
   fetchedAtMs: number,

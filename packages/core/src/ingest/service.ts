@@ -24,11 +24,10 @@ import { fileURLToPath } from "node:url";
 import type { AiRouter } from "@citegeist/ai";
 import { generateCitekey, parseBibtex, resolveImportedCitekey } from "@citegeist/cite";
 import {
+  arxivFromDoi,
   detectIdentifier,
-  extractIdentifiers,
   type FetchLike,
   type Identifier,
-  pickPrimary,
   type ResolveOptions,
   type ResolveResult,
   type TitleQuery,
@@ -53,6 +52,7 @@ import { enrichAfterConvert, splitName } from "./enrich.js";
 import {
   acceptInbox,
   assertMayTrash,
+  isCited,
   loadItem,
   problem,
   rejectInbox,
@@ -62,13 +62,17 @@ import {
   trashItem,
   updateItem,
 } from "./items.js";
-import { extractPdfText, guessHeader, type PdfTextExtractor } from "./pdf-text.js";
+import { extractPdfText, guessHeader, type PdfTextExtractor, pdfIdentifiers } from "./pdf-text.js";
 import type { ConvertParams, ConvertWorker } from "./worker.js";
 
 /** The part of MetadataResolver the pipeline uses. Tests pass a resolver with replayed responses. */
 export interface MetadataLookup {
   resolve(input: string | Identifier, options?: ResolveOptions): Promise<ResolveResult>;
   resolveByTitle(query: TitleQuery, options?: ResolveOptions): Promise<TitleResolveResult>;
+  /** Unpaywall: open-access status and PDF url of a DOI. */
+  findOpenAccess?(doi: string): Promise<{ pdfUrl?: string | undefined } | undefined>;
+  /** OpenAlex: PDF urls of all open-access locations of a DOI, best first. */
+  findOpenAlexPdfs?(doi: string): Promise<string[]>;
 }
 
 export interface IngestDeps {
@@ -112,10 +116,25 @@ export interface AddResult {
 }
 
 interface RemotePlan {
+  /**
+   * DOI of the work. With it the job looks for a full text in order: Unpaywall, OpenAlex
+   * open-access locations, arXiv, the citation_pdf_url tag of the publisher page.
+   */
+  doi?: string;
+  /** Landing page of the work (the URL field), for the publisher step. */
+  landing?: string;
   /** arXiv id: HTML and PDF come from arxiv.org. */
   arxiv?: string;
   /** Open-access PDF url from the metadata sources. */
   pdfUrl?: string;
+}
+
+/** One step of the full text lookup for a DOI. */
+export interface FulltextAttempt {
+  source: "unpaywall" | "openalex" | "arxiv" | "publisher";
+  outcome: "ok" | "none" | "failed";
+  url?: string;
+  detail?: string;
 }
 
 interface LocalFile {
@@ -135,6 +154,8 @@ interface Prepared {
   proposal?: Record<string, unknown>;
   /** Citekey from an imported BibTeX entry, used when free. */
   importedKey?: string;
+  /** A library item the file's identifier already names: the file goes there, no new item. */
+  duplicateOf?: string;
 }
 
 const CONVERT_KINDS: Record<Source["kind"], ConvertParams["kind"]> = {
@@ -197,6 +218,12 @@ export class IngestService {
     if (early && !this.mayRepair(early)) return this.duplicate(actor, early);
 
     const prepared = await this.prepare(actor, raw);
+    if (prepared.duplicateOf) {
+      return (
+        this.repairDuplicate(actor, prepared.duplicateOf, prepared) ??
+        this.duplicate(actor, prepared.duplicateOf)
+      );
+    }
     const lookupHash = prepared.file ? sha256Hex(prepared.file.buf).slice(0, 12) : undefined;
     const first = (
       prepared.fields.author as { family?: string; literal?: string }[] | undefined
@@ -411,13 +438,19 @@ export class IngestService {
     const idMap: Record<string, string> = { ...(ids ?? {}) };
     const arxiv = idMap.arxiv ?? (id?.kind === "arxiv" ? id.value : undefined);
     const pdfUrl = res.enrichment.openAccess?.pdfUrl;
+    // A DOI the user gave (or the one a PDF names) starts the full text lookup chain. An arXiv
+    // id the user gave names its own files.
+    const doi = typeof fields.DOI === "string" && id?.kind !== "arxiv" ? fields.DOI : undefined;
+    const landing = typeof fields.URL === "string" ? fields.URL : undefined;
     return {
       fields: fields as Record<string, unknown>,
       provenance: res.provenance,
       ids: idMap,
       remote: {
+        ...(doi ? { doi } : {}),
+        ...(doi && landing ? { landing } : {}),
         ...(arxiv ? { arxiv } : {}),
-        ...(!arxiv && pdfUrl ? { pdfUrl } : {}),
+        ...(pdfUrl ? { pdfUrl } : {}),
       },
     };
   }
@@ -593,12 +626,35 @@ export class IngestService {
   ): Promise<Prepared> {
     const today = this.lib.stamp(actor).at.slice(0, 10);
     const text = await this.pdfText(path);
-    const found = pickPrimary(extractIdentifiers(text.leading));
-    if (found) {
+    // XMP and the first pages name the work: DOI, arXiv id, ISBN, PMID. An identifier the library
+    // knows already ends the search, and the file goes to that item.
+    // Only the first two count: a later number in the running text is often a cited work.
+    const found = pdfIdentifiers(text)
+      .filter((i) => i.kind !== "url")
+      .slice(0, 2);
+    for (const id of found) {
+      const hit = findDuplicate(this.lib, {
+        ...(id.kind === "doi" ? { doi: id.value } : {}),
+        ...(id.kind === "arxiv" ? { arxiv: id.value } : {}),
+        ...(id.kind === "isbn" ? { isbn: id.value } : {}),
+        ...(id.kind === "pmid" ? { pmid: id.value } : {}),
+      });
+      if (hit) {
+        return {
+          fields: { type: "document", title: stem },
+          provenance: {},
+          ids: {},
+          remote: {},
+          file,
+          duplicateOf: hit,
+        };
+      }
+    }
+    for (const id of found) {
       try {
-        const res = await this.deps.resolver.resolve(found);
+        const res = await this.deps.resolver.resolve(id);
         if (res.status === "resolved" && res.fields.title) {
-          return { ...this.fromResolved(res, found), remote: {}, file };
+          return { ...this.fromResolved(res, id), remote: {}, file };
         }
       } catch (err) {
         if (!(err instanceof CitegeistError)) throw err;
@@ -748,7 +804,7 @@ export class IngestService {
     url: string,
     signal: AbortSignal | undefined,
     accept: string,
-  ): Promise<{ buf: Buffer; contentType: string } | undefined> {
+  ): Promise<{ buf: Buffer; contentType: string; url: string } | undefined> {
     let res: Response;
     try {
       res = await this.fetchFn(url, {
@@ -769,10 +825,15 @@ export class IngestService {
     const length = Number(res.headers.get("content-length") ?? 0);
     if (length > MAX_DOWNLOAD) return undefined;
     const buf = Buffer.from(await res.arrayBuffer());
-    return { buf, contentType: res.headers.get("content-type") ?? "" };
+    return { buf, contentType: res.headers.get("content-type") ?? "", url: res.url || url };
   }
 
-  private addSource(actor: Actor, citekey: string, file: LocalFile): Source | undefined {
+  private addSource(
+    actor: Actor,
+    citekey: string,
+    file: LocalFile,
+    role: Source["role"] = "main",
+  ): Source | undefined {
     const hash = sha256Hex(file.buf).slice(0, 12);
     const item = loadItem(this.lib, citekey);
     if (item.fm.sources.some((s) => s.hash === hash || (file.url && s.url === file.url))) {
@@ -783,11 +844,11 @@ export class IngestService {
       hash,
       kind: file.kind,
       filename: file.filename,
-      role: "main",
+      role,
       ...(file.url ? { url: file.url } : {}),
       added: this.lib.stamp(actor),
     };
-    saveItem(this.lib, actor, item, { sources: [...item.fm.sources, source] });
+    saveItem(this.lib, actor, item, { sources: [...item.fm.sources, source], fulltext: undefined });
     return source;
   }
 
@@ -867,7 +928,10 @@ export class IngestService {
       ...(url ? { url } : {}),
       added: this.lib.stamp(actor),
     };
-    saveItem(this.lib, actor, fresh, { sources: [...fresh.fm.sources, source] });
+    saveItem(this.lib, actor, fresh, {
+      sources: [...fresh.fm.sources, source],
+      fulltext: undefined,
+    });
     const job = this.queue.enqueue({
       kind: "convert",
       by: actor,
@@ -880,40 +944,14 @@ export class IngestService {
     ctx: JobContext,
     citekey: string,
     remote: RemotePlan,
-  ): Promise<string[]> {
+  ): Promise<{ notes: string[]; tried: FulltextAttempt[] }> {
+    if (remote.doi) return this.lookupFulltext(ctx, citekey, remote.doi, remote);
     const notes: string[] = [];
     const actor = ctx.job.by;
     const have = (url: string): boolean =>
       loadItem(this.lib, citekey).fm.sources.some((s) => s.url === url);
     if (remote.arxiv) {
-      const id = remote.arxiv;
-      const htmlUrl = `https://arxiv.org/html/${id}`;
-      const pdfUrl = `https://arxiv.org/pdf/${id}`;
-      if (!have(htmlUrl)) {
-        const html = await this.get(htmlUrl, ctx.signal, "text/html");
-        if (html && /html/i.test(html.contentType) && html.buf.length > 500) {
-          this.addSource(actor, citekey, {
-            buf: html.buf,
-            kind: "arxiv-html",
-            ext: "html",
-            filename: `${slugFile(id)}.html`,
-            url: htmlUrl,
-          });
-        } else notes.push("no arXiv HTML");
-      }
-      ctx.progress(0.1);
-      if (!have(pdfUrl)) {
-        const pdf = await this.get(pdfUrl, ctx.signal, "application/pdf");
-        if (pdf && isPdf(pdf.buf)) {
-          this.addSource(actor, citekey, {
-            buf: pdf.buf,
-            kind: "pdf",
-            ext: "pdf",
-            filename: `${slugFile(id)}.pdf`,
-            url: pdfUrl,
-          });
-        } else notes.push("no arXiv PDF");
-      }
+      await this.fetchArxiv(ctx, citekey, remote.arxiv, notes);
     } else if (remote.pdfUrl && !have(remote.pdfUrl)) {
       const pdf = await this.get(remote.pdfUrl, ctx.signal, "application/pdf");
       if (pdf && isPdf(pdf.buf)) {
@@ -926,7 +964,147 @@ export class IngestService {
         });
       } else notes.push("open-access PDF not downloadable");
     }
-    return notes;
+    return { notes, tried: [] };
+  }
+
+  /** arXiv: the HTML version and the PDF. True when at least one of them is on the item. */
+  private async fetchArxiv(
+    ctx: JobContext,
+    citekey: string,
+    id: string,
+    notes: string[],
+  ): Promise<boolean> {
+    const actor = ctx.job.by;
+    const have = (url: string): boolean =>
+      loadItem(this.lib, citekey).fm.sources.some((s) => s.url === url);
+    const htmlUrl = `https://arxiv.org/html/${id}`;
+    const pdfUrl = `https://arxiv.org/pdf/${id}`;
+    let got = false;
+    if (!have(htmlUrl)) {
+      const html = await this.get(htmlUrl, ctx.signal, "text/html");
+      if (html && /html/i.test(html.contentType) && html.buf.length > 500) {
+        this.addSource(actor, citekey, {
+          buf: html.buf,
+          kind: "arxiv-html",
+          ext: "html",
+          filename: `${slugFile(id)}.html`,
+          url: htmlUrl,
+        });
+        got = true;
+      } else notes.push("no arXiv HTML");
+    } else got = true;
+    ctx.progress(0.1);
+    if (!have(pdfUrl)) {
+      const pdf = await this.get(pdfUrl, ctx.signal, "application/pdf");
+      if (pdf && isPdf(pdf.buf)) {
+        this.addSource(actor, citekey, {
+          buf: pdf.buf,
+          kind: "pdf",
+          ext: "pdf",
+          filename: `${slugFile(id)}.pdf`,
+          url: pdfUrl,
+        });
+        got = true;
+      } else notes.push("no arXiv PDF");
+    } else got = true;
+    return got;
+  }
+
+  /**
+   * Full text for a work with a DOI. Tries Unpaywall, the open-access locations of OpenAlex, arXiv
+   * and the citation_pdf_url tag of the publisher page, in this order, and stops at the first one
+   * that delivers a file. Every attempt is recorded, a failing source never stops the next one.
+   */
+  private async lookupFulltext(
+    ctx: JobContext,
+    citekey: string,
+    doi: string,
+    remote: RemotePlan,
+  ): Promise<{ notes: string[]; tried: FulltextAttempt[] }> {
+    const notes: string[] = [];
+    const tried: FulltextAttempt[] = [];
+    const actor = ctx.job.by;
+    const seen = new Set<string>();
+    const guard = async <T>(source: FulltextAttempt["source"], run: () => Promise<T>) => {
+      try {
+        return await run();
+      } catch (err) {
+        if (ctx.signal.aborted) throw err;
+        tried.push({ source, outcome: "failed", detail: (err as Error).message });
+        return undefined;
+      }
+    };
+    const download = async (
+      source: FulltextAttempt["source"],
+      urls: string[],
+    ): Promise<boolean> => {
+      const fresh = urls.filter((u) => !seen.has(u));
+      if (fresh.length === 0) {
+        tried.push({ source, outcome: "none", detail: "no PDF location" });
+        return false;
+      }
+      let failure: string | undefined;
+      for (const url of fresh) {
+        seen.add(url);
+        try {
+          const pdf = await this.get(url, ctx.signal, "application/pdf");
+          if (pdf && isPdf(pdf.buf)) {
+            this.addSource(actor, citekey, {
+              buf: pdf.buf,
+              kind: "pdf",
+              ext: "pdf",
+              filename: `${citekey}.pdf`,
+              url,
+            });
+            tried.push({ source, outcome: "ok", url });
+            return true;
+          }
+        } catch (err) {
+          if (ctx.signal.aborted) throw err;
+          failure = (err as Error).message;
+        }
+      }
+      tried.push({
+        source,
+        outcome: failure ? "failed" : "none",
+        detail: failure ?? "the location did not deliver a PDF",
+      });
+      return false;
+    };
+
+    const resolver = this.deps.resolver;
+    // 1. Unpaywall. A resolver without that lookup hands over what the metadata cascade found.
+    const unpaywall = await guard("unpaywall", async () =>
+      resolver.findOpenAccess ? (await resolver.findOpenAccess(doi))?.pdfUrl : remote.pdfUrl,
+    );
+    if (unpaywall !== undefined || !tried.some((t) => t.source === "unpaywall")) {
+      if (await download("unpaywall", unpaywall ? [unpaywall] : [])) return { notes, tried };
+    }
+    // 2. OpenAlex open-access locations.
+    const alex = await guard("openalex", async () => resolver.findOpenAlexPdfs?.(doi) ?? []);
+    if (alex !== undefined && (await download("openalex", alex))) return { notes, tried };
+    // 3. arXiv.
+    const arxiv = remote.arxiv ?? arxivFromDoi(doi);
+    if (!arxiv) tried.push({ source: "arxiv", outcome: "none", detail: "no arXiv id" });
+    else {
+      const got = await guard("arxiv", () => this.fetchArxiv(ctx, citekey, arxiv, notes));
+      if (got) {
+        tried.push({ source: "arxiv", outcome: "ok", url: `https://arxiv.org/pdf/${arxiv}` });
+        return { notes, tried };
+      }
+      if (got === false) tried.push({ source: "arxiv", outcome: "none", detail: notes.join("; ") });
+    }
+    // 4. The publisher page: its citation_pdf_url meta tag.
+    const landing = remote.landing ?? `https://doi.org/${doi}`;
+    const page = await guard("publisher", async () => {
+      const res = await this.get(landing, ctx.signal, ACCEPT_ANY);
+      if (!res) return [] as string[];
+      if (sniffContent(res.buf, res.contentType) === "pdf") return [res.url];
+      return citationPdfUrls(res.buf.toString("utf8"), res.url);
+    });
+    if (page !== undefined && (await download("publisher", page))) return { notes, tried };
+    notes.push(`no full text (tried ${tried.map((t) => t.source).join(", ")})`);
+    return { notes, tried };
   }
 
   // Jobs ---------------------------------------------------------------------------------------
@@ -935,13 +1113,21 @@ export class IngestService {
     const input = ctx.job.input as { citekey: string; remote?: RemotePlan; convert?: boolean };
     const { citekey } = input;
     ctx.progress(0.05, "fetching sources");
-    const notes = await this.fetchSources(ctx, citekey, input.remote ?? {});
+    const { notes, tried } = await this.fetchSources(ctx, citekey, input.remote ?? {});
     const item = loadItem(this.lib, citekey);
     if (item.fm.sources.length === 0) {
+      // Not a failure: the metadata is fine, the file is missing. The item says so and keeps
+      // the record of where it looked, so that the user can attach a PDF.
+      if (input.remote?.doi) {
+        saveItem(this.lib, "system", item, {
+          fulltext: { status: "none", tried, at: this.lib.stamp("system").at },
+        });
+      }
       return {
         citekey,
         sources: 0,
         converted: false,
+        ...(input.remote?.doi ? { fulltext: "none", tried } : {}),
         message: `no source file available${notes.length ? ` (${notes.join(", ")})` : ""}`,
       };
     }
@@ -1027,10 +1213,12 @@ export class IngestService {
     }
     let finalKey = citekey;
     let renamed: { from: string; to: string } | undefined;
+    let merged: { from: string; into: string; job: string } | undefined;
     if (converted.length > 0) {
       const done = await this.afterConvert(ctx, citekey, converted);
       finalKey = done.citekey;
       renamed = done.renamed;
+      merged = done.merged;
     }
     return {
       citekey: finalKey,
@@ -1038,6 +1226,7 @@ export class IngestService {
       skipped: item.fm.sources.length - todo.length,
       failed,
       ...(renamed ? { renamed } : {}),
+      ...(merged ? { merged } : {}),
     };
   }
 
@@ -1049,7 +1238,11 @@ export class IngestService {
     ctx: JobContext,
     citekey: string,
     converted: string[],
-  ): Promise<{ citekey: string; renamed?: { from: string; to: string } }> {
+  ): Promise<{
+    citekey: string;
+    renamed?: { from: string; to: string };
+    merged?: { from: string; into: string; job: string };
+  }> {
     const actor = ctx.job.by;
     let key = citekey;
     let renamed: { from: string; to: string } | undefined;
@@ -1072,6 +1265,10 @@ export class IngestService {
           sourcePath,
           wasIncomplete,
         );
+        if (res.applied === "duplicate" && res.duplicateOf) {
+          const merged = this.mergeInto(actor, citekey, res.duplicateOf);
+          if (merged) return { citekey: res.duplicateOf, merged };
+        }
         if (res.renamed) {
           key = res.renamed.to;
           renamed = res.renamed;
@@ -1082,12 +1279,67 @@ export class IngestService {
     }
     try {
       const now = loadItem(this.lib, key);
-      if (now.fm.incomplete !== undefined)
-        saveItem(this.lib, actor, now, { incomplete: undefined });
+      if (now.fm.incomplete !== undefined || now.fm.fulltext !== undefined) {
+        saveItem(this.lib, actor, now, { incomplete: undefined, fulltext: undefined });
+      }
     } catch {
       // the item was removed in the meantime
     }
     return { citekey: key, ...(renamed ? { renamed } : {}) };
+  }
+
+  /**
+   * The PDF of `from` turned out to be a work the library has already (`into`): moves the files
+   * there, carries tags and projects over, queues the conversion for `into` and trashes the
+   * empty item. Returns undefined, and changes nothing, when something refers to `from`.
+   */
+  private mergeInto(
+    actor: Actor,
+    from: string,
+    into: string,
+  ): { from: string; into: string; job: string } | undefined {
+    if (from === into || isCited(this.lib, from)) return undefined;
+    const source = loadItem(this.lib, from);
+    const target = loadItem(this.lib, into);
+    // A target without a working source gives its broken files up for the new one.
+    if (this.needsRepair(into)) this.dropBrokenSources(into);
+    let first: string | undefined;
+    for (const s of source.fm.sources) {
+      const ext = s.kind === "pdf" ? "pdf" : s.kind === "epub" ? "epub" : "html";
+      const file = this.lib.paths.sourceFile(from, s.hash, ext);
+      if (!existsSync(file)) continue;
+      const have = loadItem(this.lib, into).fm.sources;
+      const role = have.some((h) => h.kind === s.kind && h.role === "main") ? "supplement" : s.role;
+      const added = this.addSource(
+        actor,
+        into,
+        {
+          buf: readFileSync(file),
+          kind: s.kind,
+          ext,
+          filename: s.filename,
+          ...(s.url ? { url: s.url } : {}),
+        },
+        role,
+      );
+      first ??= (added ?? have.find((h) => h.hash === s.hash))?.hash;
+    }
+    if (!first) return undefined;
+    const fresh = loadItem(this.lib, into);
+    const tags = [...new Set([...target.fm.tags, ...source.fm.tags])];
+    const projects = [...new Set([...target.fm.projects, ...source.fm.projects])];
+    saveItem(this.lib, actor, fresh, {
+      tags,
+      projects,
+      ...(actor === "human" && fresh.fm.inbox ? { inbox: undefined } : {}),
+    });
+    const job = this.queue.enqueue({
+      kind: "convert",
+      by: actor,
+      input: { citekey: into, source: first, force: true },
+    });
+    trashItem(this.lib, from, "system");
+    return { from, into, job: job.id };
   }
 
   /** Marks an item incomplete when its ingest or conversion failed and no source works. */
@@ -1200,6 +1452,23 @@ export class IngestService {
   acceptInbox = (actor: Actor, citekeys: string[]) => acceptInbox(this.lib, actor, citekeys);
   rejectInbox = (citekeys: string[], actor: Actor = "human") =>
     rejectInbox(this.lib, citekeys, actor);
+}
+
+/** PDF links a publisher page names in its citation_pdf_url meta tags, as absolute URLs. */
+export function citationPdfUrls(html: string, base: string): string[] {
+  const out: string[] = [];
+  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+    if (!/\bname\s*=\s*["']citation_pdf_url["']/i.test(tag)) continue;
+    const content = /\bcontent\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!content) continue;
+    try {
+      const url = new URL(content.replace(/&amp;/g, "&"), base).toString();
+      if (/^https?:/i.test(url) && !out.includes(url)) out.push(url);
+    } catch {
+      // not a URL
+    }
+  }
+  return out;
 }
 
 function isFatal(err: unknown): boolean {
