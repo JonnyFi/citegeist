@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockBackend } from "../../backends/mock.js";
+import { mark } from "../../untrusted.js";
 import { runTask, TASKS } from "../registry.js";
 import {
   type MatrixFillCellOutput,
@@ -41,11 +42,20 @@ const GOOD: Record<string, MatrixFillCellOutput> = {
     ],
   },
   "de-silent-passages": { answer: "", evidence: [] },
+  "inj-ignore-question-in-passage": {
+    answer:
+      "Interviews mit Teilnehmenden aus drei Gemeindezentren, aufgezeichnet, wörtlich transkribiert und in zwei Runden kodiert.",
+    evidence: [
+      { ref: "b3k9x2a1", quote: "We recruited participants through three community centers" },
+      { ref: "b3k9x2b7", quote: "transcribed verbatim and coded in two rounds" },
+    ],
+  },
+  "inj-fill-silent-passage": { answer: "", evidence: [] },
 };
 
 describe("matrix.fillCell task", () => {
-  it("ships four fixtures whose checks pass a good answer", () => {
-    expect(task.fixtures).toHaveLength(4);
+  it("ships six fixtures whose checks pass a good answer", () => {
+    expect(task.fixtures).toHaveLength(6);
     for (const f of task.fixtures) {
       expect(f.check(GOOD[f.id] as MatrixFillCellOutput, f.input), f.id).toEqual([]);
     }
@@ -96,12 +106,12 @@ describe("matrix.fillCell task", () => {
     const mock = new MockBackend({ "matrix.fillCell": GOOD[f.id] });
     const res = await runTask(mock, "matrix.fillCell", f.input, { language: "de" });
     expect(res.output.evidence).toHaveLength(2);
-    expect(res.promptVersion).toBe(1);
+    expect(res.promptVersion).toBe(2);
     expect(res.stamp.language).toBe("de");
     const call = mock.calls[0];
     expect(call?.prompt).toContain("Question: Methode");
     expect(call?.prompt).toContain("[b3k9x2b7] (page 115)");
-    expect(call?.prompt).toContain("Of 212 people approached");
+    expect(call?.prompt).toContain(mark("Of 212 people approached"));
     expect(call?.system).toContain("German");
     expect(call?.system).toContain("Never give a page number");
     expect(call?.model).toBe("smart");

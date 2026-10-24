@@ -3,6 +3,7 @@ import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
 import type { BackendDefinition } from "./backends.js";
 import type { AgentDriver, DriverEvent, DriverRequest } from "./driver.js";
+import { addressesIn, webToolOf } from "./egress.js";
 import { citegeistTool, decide, pickOption, type SessionMode } from "./policy.js";
 import { chatError, oneLine } from "./util.js";
 
@@ -260,8 +261,10 @@ export class AcpDriver implements AgentDriver {
   readonly transport = "acp";
   private readonly calls = new Map<
     string,
-    { title: string; kind: string; tool?: string; input?: unknown }
+    { title: string; kind: string; tool?: string; input?: unknown; search?: boolean }
   >();
+  /** Addresses of web search results: what a research job may fetch besides scholarly hosts (L9). */
+  private readonly seenUrls = new Set<string>();
   private sink: ((event: DriverEvent) => void) | undefined;
   private cancelled = false;
 
@@ -328,7 +331,26 @@ export class AcpDriver implements AgentDriver {
         const kind = update.kind ?? prev?.kind ?? "other";
         const tool = citegeistTool({ name: update.name, title, _meta: update._meta }) ?? prev?.tool;
         const input = update.rawInput ?? prev?.input;
-        this.calls.set(update.toolCallId, { title, kind, ...(tool ? { tool } : {}), input });
+        const search =
+          prev?.search === true ||
+          webToolOf({
+            name: update.name,
+            title,
+            kind,
+            rawInput: input,
+            _meta: update._meta,
+          }) === "search";
+        // Only the hits of a web search count. Text of a fetched page may name any address.
+        if (search) {
+          for (const url of addressesIn(update.rawOutput, update.content)) this.seenUrls.add(url);
+        }
+        this.calls.set(update.toolCallId, {
+          title,
+          kind,
+          ...(tool ? { tool } : {}),
+          input,
+          search,
+        });
         this.emit({
           type: "tool",
           callId: update.toolCallId,
@@ -355,6 +377,7 @@ export class AcpDriver implements AgentDriver {
       isolated: this.isolated,
       libraryRoot: this.paths.libraryRoot,
       scratchDir: this.paths.cwd,
+      seenUrls: this.seenUrls,
     });
     const option = pickOption(req.options, verdict.allow);
     if (!verdict.allow) {

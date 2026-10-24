@@ -4,6 +4,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { McpServer } from "@agentclientprotocol/sdk";
+import { SCHOLARLY_HOSTS } from "@citegeist/ops";
 import type { AgentDriver, DriverEvent, DriverRequest } from "./driver.js";
 import { citegeistTool } from "./policy.js";
 import { chatError, oneLine } from "./util.js";
@@ -130,6 +131,10 @@ export class ClaudePrintDriver implements AgentDriver {
       "--permission-mode",
       "acceptEdits",
     ];
+    // `claude -p` cannot ask for permission, so a research job gets the web search and the web
+    // fetch of the scholarly hosts only. The ACP route also allows the addresses that a web
+    // search returned, because the permission policy can check them (egress.ts, L9).
+    const webFetch = research ? SCHOLARLY_HOSTS.map((h) => `WebFetch(domain:${h})`) : ["WebFetch"];
     const args = req.isolated
       ? [
           ...common,
@@ -140,7 +145,7 @@ export class ClaudePrintDriver implements AgentDriver {
           "--allowedTools",
           "mcp__citegeist",
           "WebSearch",
-          "WebFetch",
+          ...webFetch,
           "--disallowedTools",
           "Bash",
           "BashOutput",
@@ -154,7 +159,7 @@ export class ClaudePrintDriver implements AgentDriver {
           "--allowedTools",
           "mcp__citegeist",
           "WebSearch",
-          "WebFetch",
+          ...webFetch,
           "Bash",
         ];
     if (req.directEdits && !research) args.push("--add-dir", req.libraryRoot);

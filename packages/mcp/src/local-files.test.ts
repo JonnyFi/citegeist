@@ -1,6 +1,7 @@
-import { itemsAdd, Registry } from "@citegeist/ops";
+import { CONTRACTS, itemsAdd, Registry } from "@citegeist/ops";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { afterAll, describe, expect, it } from "vitest";
+import { mcpContracts } from "./server.js";
 import { type McpHttpHandle, startMcpHttpServer } from "./transports.js";
 
 // M4: the token decides whether a call may make the core read local files. The flag travels in
@@ -48,6 +49,48 @@ async function connect(token: string, modern: boolean): Promise<Client> {
   cleanups.push(() => client.close());
   return client;
 }
+
+describe("research scope (W5.1, L9)", () => {
+  it("sees the read tools and add_item, nothing else that changes the library", () => {
+    const all = new Registry();
+    for (const c of CONTRACTS) all.bind(c, async () => ({}));
+    const tools = mcpContracts(all, "research").map((c) => c.mcp?.tool);
+    const changing = CONTRACTS.filter((c) => c.mcp && !c.mcp.readOnly).map((c) => c.mcp?.tool);
+    expect(tools).toContain("add_item");
+    expect(tools).toContain("search");
+    for (const tool of changing)
+      expect(tools.includes(tool), String(tool)).toBe(tool === "add_item");
+    // No operation of the admin class (webhooks, settings, jobs) is ever a tool.
+    expect(mcpContracts(all, "research").every((c) => c.access !== "admin")).toBe(true);
+    expect(tools.length).toBeLessThan(mcpContracts(all, "write").length);
+  });
+
+  it("passes the egress limit to the operation and forbids local files", async () => {
+    const egressSeen: Array<string | undefined> = [];
+    const reg = new Registry().bind(itemsAdd, async (ctx) => {
+      egressSeen.push(ctx.egress);
+      seen.push(ctx.localFiles);
+      return { citekey: "fixture1", job: "j_01JB8Z3QK7ABCDEFGH" };
+    });
+    const h = await startMcpHttpServer(reg, {
+      tokens: [{ token: "r", scope: "research" }],
+    });
+    cleanups.push(() => h.close());
+    seen.length = 0;
+    for (const modern of [false, true]) {
+      const client = new Client({ name: "t", version: "1" }, modern ? MODERN : undefined);
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(h.url), {
+          requestInit: { headers: { authorization: "Bearer r" } },
+        }),
+      );
+      cleanups.push(() => client.close());
+      await client.callTool({ name: "add_item", arguments: { identifier: "10.1000/x" } });
+    }
+    expect(egressSeen).toEqual(["scholarly", "scholarly"]);
+    expect(seen).toEqual([false, false]);
+  });
+});
 
 describe.each([
   ["2025 sessions", false],

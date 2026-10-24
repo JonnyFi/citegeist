@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTask } from "../types.js";
 import { matrixFillCellFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v1.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v2.js";
 import { verifyQuote } from "./verify.js";
 
 export { MIN_QUOTE_CHARS, normalizeForMatch, type QuoteMatch, verifyQuote } from "./verify.js";
