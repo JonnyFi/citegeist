@@ -26,9 +26,10 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 }
 
 /** String literals of a source file, template placeholders removed. */
+// Single-line literals only: a naive multi-line template match can pair backticks across code.
 function literals(code: string): string[] {
   const found: string[] = [];
-  const re = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
+  const re = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\\n]|\\.)*)`/g;
   for (const m of code.matchAll(re)) {
     const text = m[1] ?? m[2] ?? m[3] ?? "";
     found.push(text.replace(/\$\{[^}]*\}/g, ""));
