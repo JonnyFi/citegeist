@@ -47,13 +47,13 @@ curl -H "authorization: Bearer $(cat $DIR/core.token)" http://127.0.0.1:$(jq .po
 
 ## App aktualisieren
 
-Im Haupt-Checkout (`~/Documents/Coding/citegeist`):
+In jedem Checkout oder Worktree:
 
 ```
 pnpm app:update
 ```
 
-Der Befehl holt den neuesten Stand von `main`, baut die App, beendet die laufende citegeist-App, ersetzt `/Applications/citegeist.app` und startet sie neu. Deine Bibliothek und die Einstellungen bleiben dabei unberührt, weil sie außerhalb der App liegen.
+Der Befehl holt den neuesten Stand von `main`, baut die App, beendet die laufende citegeist-App, ersetzt `/Applications/citegeist.app` und startet sie neu. Deine Bibliothek und die Einstellungen bleiben dabei unberührt, weil sie außerhalb der App liegen. Ist `main` in einem anderen Worktree ausgecheckt (etwa im Haupt-Checkout), läuft das Update dort, und der Worktree mit `main` muss bis auf untracked Dateien sauber sein.
 
 ## Installation ohne Developer ID
 
