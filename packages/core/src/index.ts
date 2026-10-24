@@ -14,7 +14,14 @@ export { newCardId, newItemId, newNoteId, slugify, ulid } from "./ids.js";
 export { INDEX_SCHEMA_VERSION, Index, type Scope } from "./index-db.js";
 export { Indexer, type IndexResult, type IndexStatus, type SyncSummary } from "./indexer.js";
 export * from "./ingest/index.js";
-export { type JobContext, type JobHandler, JobQueue } from "./jobs/index.js";
+export {
+  type JobContext,
+  type JobHandler,
+  JobQueue,
+  type KindPort,
+  type SharedKind,
+  shareKind,
+} from "./jobs/index.js";
 export {
   type ChangeEvent,
   type InitOptions,

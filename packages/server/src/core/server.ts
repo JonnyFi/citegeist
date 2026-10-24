@@ -4,12 +4,22 @@ import type { AddressInfo } from "node:net";
 import {
   type ChangeEvent,
   createRuntime,
+  InMemoryKeychain,
   Library,
+  MacKeychain,
   type Runtime,
   type RuntimeOptions,
+  shareKind,
 } from "@citegeist/core";
 import type { Registry } from "@citegeist/ops";
 import { Actor, CitegeistError } from "@citegeist/schema";
+import {
+  attachWebhooks,
+  isWebhookTaskInput,
+  queueTaskTracker,
+  type SecretStore,
+  type WebhooksHandle,
+} from "@citegeist/webhooks";
 import { ORPCError, os } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/node";
 import { WebSocketServer } from "ws";
@@ -58,6 +68,13 @@ export interface CoreServerOptions {
    * to swap the backends (tests) or false to leave the chat out.
    */
   chat?: ChatOptions | false;
+  /**
+   * Signed webhooks for external agents (`/hooks/<connector>`). On by default. `secrets` is where
+   * the connector secrets live (default: the macOS Keychain; process memory elsewhere).
+   * `publicBaseUrl` is the address of this Mac as the connectors see it (default: the environment
+   * variable CITEGEIST_PUBLIC_URL). Pass false to leave webhooks out.
+   */
+  webhooks?: { secrets?: SecretStore; publicBaseUrl?: string; fetch?: typeof fetch } | false;
 }
 
 export interface CoreServer {
@@ -205,16 +222,47 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   });
   const registry = runtime.registry;
   bindImport(runtime, library);
-  // The chat binds its operations to the registry, so it starts before the router is built.
+  // Research jobs of the chat and tasks of outbound webhooks share the job kind "research". The
+  // queue keeps one handler per kind, so each user gets its own port: webhook jobs carry a
+  // `webhook` entry in their input, every other research job belongs to the chat.
+  const research = shareKind(runtime.ingest.queue, "research");
+  // The chat and the webhooks bind their operations to the registry, so they start before the
+  // router is built.
   let chat: ChatRuntime | undefined;
   try {
-    chat = opts.chat === false ? undefined : await startChat(library, runtime, opts.chat);
+    chat =
+      opts.chat === false
+        ? undefined
+        : await startChat(
+            library,
+            runtime,
+            opts.chat,
+            research.port((input) => !isWebhookTaskInput(input)),
+          );
   } catch (err) {
     await runtime.close();
     await library.close();
     releaseLock(dir);
     throw err;
   }
+  let port = 0;
+  const hookOpts = opts.webhooks === false ? undefined : (opts.webhooks ?? {});
+  const hooks: WebhooksHandle | undefined = !hookOpts
+    ? undefined
+    : attachWebhooks(
+        { registry },
+        {
+          dir,
+          secrets:
+            hookOpts.secrets ??
+            (process.platform === "darwin" ? new MacKeychain() : new InMemoryKeychain()),
+          port: () => port,
+          publicBaseUrl: () => hookOpts.publicBaseUrl ?? process.env.CITEGEIST_PUBLIC_URL,
+          tasks: queueTaskTracker(research.port(isWebhookTaskInput)),
+          ...(hookOpts.fetch ? { fetch: hookOpts.fetch } : {}),
+          ...(opts.log ? { log: opts.log } : {}),
+        },
+      );
   const rpc = new RPCHandler(buildRouter(registry));
   const token = randomBytes(32).toString("hex");
   const sockets = new Set<import("ws").WebSocket>();
@@ -237,7 +285,22 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     res.end(JSON.stringify(body));
   };
 
+  // The signature of a webhook replaces the token for /hooks/ only, so the hooks come before the
+  // Host, Origin and token checks. Every other path falls through to the checks.
   const server = createServer((req, res) => {
+    if (!hooks) return route(req, res);
+    hooks.handle(req, res).then(
+      (handled) => {
+        if (!handled) route(req, res);
+      },
+      () => {
+        if (!res.headersSent) reply(res, 500, { error: "internal error" });
+        else res.destroy();
+      },
+    );
+  });
+
+  const route = (req: IncomingMessage, res: ServerResponse) => {
     const port = (server.address() as AddressInfo).port;
     if (!hostOk(req, port)) return reply(res, 403, { error: "bad host" });
     if (!originOk(req)) return reply(res, 403, { error: "origin not allowed" });
@@ -289,7 +352,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       .catch(() => {
         if (!res.headersSent) reply(res, 500, { error: "internal error" });
       });
-  });
+  };
 
   const wss = new WebSocketServer({ noServer: true });
   server.on("upgrade", (req, socket, head) => {
@@ -325,7 +388,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     releaseLock(dir);
     throw err;
   }
-  const port = (server.address() as AddressInfo).port;
+  port = (server.address() as AddressInfo).port;
   publishLock(dir, port, token);
 
   // The connector runs inside the core: it calls the registry as its own actor, while the oRPC

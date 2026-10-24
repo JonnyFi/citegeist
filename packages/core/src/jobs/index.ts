@@ -12,6 +12,7 @@ export {
   type QueueOptions,
   TransientError,
 } from "./queue.js";
+export { type KindPort, type SharedKind, shareKind } from "./shared-kind.js";
 
 /** Binds jobs.get and jobs.list to a queue. */
 export function bindJobOperations(registry: Registry, queue: JobQueue): Registry {

@@ -6,7 +6,7 @@ import {
   DEFAULT_BACKENDS,
   type DriverFactoryOptions,
 } from "@citegeist/chat";
-import type { ChangeEvent, Library, Runtime } from "@citegeist/core";
+import type { ChangeEvent, KindPort, Library, Runtime } from "@citegeist/core";
 import {
   generateToken,
   type McpHttpHandle,
@@ -41,11 +41,15 @@ export function chatBackendFromRouting(
  * One ChatService per library. The agents reach the library through the citegeist MCP server on
  * loopback. Every chat session gets an own write token, so the token of one session is useless
  * for another and nothing outside a session knows it. The tokens live as long as the core.
+ *
+ * Research jobs run on `research`, a port of the shared job kind "research" (webhook tasks use the
+ * same kind). Without one, the chat registers the kind on the runtime's queue itself.
  */
 export async function startChat(
   library: Library,
   runtime: Runtime,
   opts: ChatOptions = {},
+  research?: KindPort<"research">,
 ): Promise<ChatRuntime> {
   // The MCP server needs one grant to start. This one is never handed out.
   const tokens: McpTokenGrant[] = [{ token: generateToken(), scope: "read" }];
@@ -94,7 +98,7 @@ export async function startChat(
       }),
     },
   );
-  bindChatOperations(runtime.registry, { service, queue: runtime.ingest.queue });
+  bindChatOperations(runtime.registry, { service, queue: research ?? runtime.ingest.queue });
 
   return {
     service,
