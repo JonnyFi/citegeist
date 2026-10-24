@@ -1428,7 +1428,8 @@
           "alerts",
           "worker-setup",
           "litsearch.run",
-          "litsearch.preprints"
+          "litsearch.preprints",
+          "pandoc-setup"
         ]
       },
       "status": {
