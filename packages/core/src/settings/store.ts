@@ -7,6 +7,10 @@ import { writeFileAtomic } from "../fsutil.js";
 export interface StoredSettings {
   ai: { routing: Record<string, string> };
   mailto?: string;
+  /** Address for Unpaywall; the contact address when unset. */
+  unpaywallEmail?: string;
+  /** `tool` parameter for NCBI E-utilities; "citegeist" when unset. */
+  ncbiTool?: string;
   uiLanguage: "de" | "en";
   /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
   semantic: { enabled: boolean; model?: EmbeddingModelKey };
@@ -37,6 +41,8 @@ function sanitize(raw: unknown): StoredSettings {
   const v = (raw ?? {}) as {
     ai?: { routing?: unknown };
     mailto?: unknown;
+    unpaywallEmail?: unknown;
+    ncbiTool?: unknown;
     uiLanguage?: unknown;
     semantic?: { enabled?: unknown; model?: unknown };
     connector?: { enabled?: unknown; port?: unknown };
@@ -51,6 +57,10 @@ function sanitize(raw: unknown): StoredSettings {
   return {
     ai: { routing: Object.keys(routing).length > 0 ? routing : { ...DEFAULT_SETTINGS.ai.routing } },
     ...(typeof v.mailto === "string" && v.mailto ? { mailto: v.mailto } : {}),
+    ...(typeof v.unpaywallEmail === "string" && v.unpaywallEmail
+      ? { unpaywallEmail: v.unpaywallEmail }
+      : {}),
+    ...(typeof v.ncbiTool === "string" && v.ncbiTool ? { ncbiTool: v.ncbiTool } : {}),
     uiLanguage: v.uiLanguage === "en" ? "en" : "de",
     semantic: {
       enabled: v.semantic?.enabled === true,

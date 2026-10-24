@@ -9,7 +9,7 @@ const BASE = "https://api.unpaywall.org/v2";
 
 /**
  * Open-access status and PDF location of a DOI from Unpaywall. Unpaywall requires an email
- * address on every call, so nothing is requested without `mailto` in the config. The answer
+ * address on every call, so nothing is requested without `unpaywallEmail` or `mailto` in the config. The answer
  * is a record without citation fields: only its `openAccess` enrichment counts. Unpaywall knows
  * Crossref DOIs only; DataCite DOIs answer 404 and come back as undefined.
  */
@@ -17,10 +17,11 @@ export async function fetchUnpaywall(
   ctx: SourceContext,
   doi: string,
 ): Promise<SourceRecord | undefined> {
-  if (!ctx.config.mailto) return undefined;
+  const email = ctx.config.unpaywallEmail ?? ctx.config.mailto;
+  if (!email) return undefined;
   const res = await ctx.http.get({
     source: "unpaywall",
-    url: `${BASE}/${doiPath(doi)}?email=${encodeURIComponent(ctx.config.mailto)}`,
+    url: `${BASE}/${doiPath(doi)}?email=${encodeURIComponent(email)}`,
     accept: "application/json",
   });
   if (res.status === 404 || res.status === 422) return undefined;

@@ -179,6 +179,38 @@ describe("createRuntime settings", () => {
     await s.rt.ingest.queue.waitFor(created.job);
   });
 
+  it("binds the matrix operations and runs a fill as an ai-task job with progress", async () => {
+    const s = await setup();
+    await s.call("projects.create", { slug: "phd", title: "PhD" });
+    for (const name of [
+      "matrix.create",
+      "matrix.list",
+      "matrix.get",
+      "matrix.update",
+      "matrix.fillCell",
+      "matrix.fill",
+      "matrix.export",
+    ]) {
+      expect(s.rt.registry.get(name), name).toBeDefined();
+    }
+    const created = await s.call<{ matrix: { id: string } }>("matrix.create", {
+      project: "phd",
+      title: "Methods",
+      columns: [{ name: "Method", instruction: "Which method does the source use?" }],
+      items: [CITEKEY],
+    });
+    const started = await s.call<{ job: string }>("matrix.fill", {
+      project: "phd",
+      matrix: created.matrix.id,
+    });
+    const queued = await s.call<{ id: string; kind: string }>("jobs.get", { job: started.job });
+    expect(queued).toMatchObject({ id: started.job, kind: "ai-task" });
+    const done = await s.rt.ingest.queue.waitFor(started.job);
+    expect(done.status).toBe("succeeded");
+    expect(done.progress).toBe(1);
+    expect(done.result).toMatchObject({ filled: expect.any(Number), failed: expect.any(Number) });
+  });
+
   it("starts the worker setup as a worker-setup job", async () => {
     const s = await setup();
     const started = await s.call<{ job: string }>("worker.setup", { force: false });

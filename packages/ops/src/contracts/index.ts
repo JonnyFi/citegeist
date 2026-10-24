@@ -166,6 +166,14 @@ export const itemsUpdate = defineContract({
   input: ItemRef.extend({ patch: z.record(z.string(), z.unknown()) }),
   output: z.object({ frontmatter: ItemFrontmatter }),
 });
+export const itemsResolve = defineContract({
+  name: "items.resolve",
+  summary:
+    "Look the metadata of an item up again from its DOI, arXiv id, ISBN, PMID or URL (title as a last resort) and merge the answer into the item. Fields that a person or an agent edited are kept; fields from earlier lookups or guesses are replaced. Returns the names of the fields that changed.",
+  access: "write",
+  input: ItemRef,
+  output: z.object({ citekey: Citekey, changed: z.array(z.string()) }),
+});
 export const itemsRename = defineContract({
   name: "items.rename",
   summary: "Change a citekey and rewrite every link to it",
@@ -588,6 +596,10 @@ export const Settings = z.object({
     apiKeys: z.record(z.string(), z.boolean()).default({}),
   }),
   mailto: z.string().optional(),
+  /** Address sent to Unpaywall. Without one, the contact address is used. */
+  unpaywallEmail: z.string().optional(),
+  /** `tool` parameter of NCBI E-utilities calls. Default "citegeist". The NCBI key is the API key slot "ncbi". */
+  ncbiTool: z.string().optional(),
   uiLanguage: z.enum(["de", "en"]).default("de"),
   /** Semantic search with a local embedding model. Off until the user turns it on. */
   semantic: z
@@ -639,7 +651,7 @@ export const settingsGet = defineContract({
 export const settingsUpdate = defineContract({
   name: "settings.update",
   summary:
-    "Change routing, contact address, UI language, semantic search or the connector; API keys go to the Keychain",
+    "Change routing, contact address, metadata source settings, UI language, semantic search or the connector; API keys (including the NCBI key) go to the Keychain",
   access: "admin",
   input: z.object({
     // Explicit optional fields: Settings.partial() would re-apply defaults and reset uiLanguage.
@@ -651,6 +663,8 @@ export const settingsUpdate = defineContract({
         })
         .optional(),
       mailto: z.string().optional(),
+      unpaywallEmail: z.string().optional(),
+      ncbiTool: z.string().optional(),
       uiLanguage: z.enum(["de", "en"]).optional(),
       semantic: z
         .object({ enabled: z.boolean().optional(), model: EmbeddingModelKey.optional() })
@@ -691,6 +705,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   itemsGet,
   itemsList,
   itemsUpdate,
+  itemsResolve,
   itemsRename,
   itemsTrash,
   inboxAccept,
