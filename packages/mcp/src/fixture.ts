@@ -6,6 +6,7 @@ import {
   documentsRead,
   inboxAccept,
   inboxReject,
+  insightsFind,
   itemsAdd,
   itemsGet,
   itemsList,
@@ -17,6 +18,7 @@ import {
   notesCreate,
   notesGet,
   type OperationContract,
+  outlineGet,
   projectsGet,
   projectsList,
   Registry,
@@ -268,6 +270,37 @@ export function createFixtureRegistry(): Registry {
   });
   reg.bind(jobsGet, async (_ctx, input) => job(input.job));
   reg.bind(jobsList, async () => ({ jobs: [job(JOB)] }));
+
+  reg.bind(outlineGet, async (_ctx, input) => ({
+    project: input.project,
+    plan: input.plan ?? "proposal",
+    title: "Proposal",
+    nodes: [
+      {
+        id: "k_01JC2C9KQ4",
+        title: "Luhmanns Kommunikationsbegriff",
+        parent: null,
+        order: 1,
+        status: "draft" as const,
+        questions: [],
+        number: "1",
+        depth: 0,
+      },
+    ],
+  }));
+  reg.bind(insightsFind, async () => ({
+    hits: [
+      {
+        path: "projects/systems/insights.md",
+        block: "i-01JC5Q2M8T",
+        date: "2026-11-12",
+        text: "2026-11-12: A und B beschreiben denselben Mechanismus.",
+        stage: "links" as const,
+        why: "shares 1 link: luhmann1984soziale",
+        score: 1,
+      },
+    ],
+  }));
 
   // Everything else is bound so the registry lists all contracts; calling it reports the gap.
   for (const contract of CONTRACTS) {
