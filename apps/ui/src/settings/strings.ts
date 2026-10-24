@@ -198,6 +198,19 @@ export const settingsDe = {
     "Damit der Bot dich aus dem Internet erreicht, richtest du einen Tunnel auf den Hooks-Port ein (Tailscale Funnel oder Cloudflare Tunnel) und trägst dessen Adresse oben bei „Öffentliche Adresse“ ein.",
   "webhooks.guide.step5": "Prüfe die Verbindung mit „Test senden“.",
   "webhooks.guide.more": "Beispielclient, Signatur und Tunnel stehen in docs/webhooks.md.",
+  "webhooks.agent.title": "An deinen Agent schicken",
+  "webhooks.agent.hint":
+    "Diesen Text fügst du in den Chat deines Agents ein. Er enthält Adressen, Header und Beispiele, fertig zum Einfügen.",
+  "webhooks.agent.noPublicUrl":
+    "Trage oben die öffentliche Adresse ein. Ohne sie kann ein Agent im Internet citegeist nicht erreichen, und der Text hätte eine falsche Adresse.",
+  "webhooks.agent.copy": "Text kopieren",
+  "webhooks.agent.once":
+    "Der Text enthält die Token im Klartext. Kopiere ihn jetzt, citegeist zeigt die Token nur dieses eine Mal.",
+  "webhooks.agent.placeholders":
+    "Die Token stehen als Platzhalter im Text, denn citegeist zeigt sie nur einmal. Mit einem neuen Token steht er im Text. Der bisherige Token gilt danach nicht mehr.",
+  "webhooks.agent.newMcp": "MCP-Token neu erzeugen",
+  "webhooks.agent.newInbound": "Callback-Token neu erzeugen",
+  "webhooks.agent.createInbound": "Callback-Token erzeugen",
 };
 
 export const settingsEn: Record<keyof typeof settingsDe, string> = {
@@ -392,4 +405,17 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
     'So that the bot can reach you from the internet, set up a tunnel to the hooks port (Tailscale Funnel or Cloudflare Tunnel) and enter its address above under "Public address".',
   "webhooks.guide.step5": 'Check the connection with "Send test".',
   "webhooks.guide.more": "Example client, signature and tunnel are described in docs/webhooks.md.",
+  "webhooks.agent.title": "Send to your agent",
+  "webhooks.agent.hint":
+    "Paste this text into your agent's chat. It has the addresses, headers and examples, ready to paste.",
+  "webhooks.agent.noPublicUrl":
+    "Enter the public address above. Without it an agent on the internet cannot reach citegeist, and the text would carry a wrong address.",
+  "webhooks.agent.copy": "Copy text",
+  "webhooks.agent.once":
+    "The text contains the tokens in plain text. Copy it now, citegeist shows the tokens only this once.",
+  "webhooks.agent.placeholders":
+    "The tokens are placeholders in the text, because citegeist shows them only once. A new token goes into the text. The previous token stops working.",
+  "webhooks.agent.newMcp": "Create new MCP token",
+  "webhooks.agent.newInbound": "Create new callback token",
+  "webhooks.agent.createInbound": "Create callback token",
 };

@@ -600,3 +600,93 @@ describe("webhooks access", () => {
     await waitFor(() => expect(webhooks.tokens["mcp:grok"]).toBeUndefined());
   });
 });
+
+describe("webhooks text for the agent", () => {
+  const PUBLIC = "https://mac.beispiel.ts.net";
+
+  it("shows the text with the new tokens filled in when a connector is created", async () => {
+    const user = userEvent.setup();
+    const { webhooks } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { publicBaseUrl: PUBLIC },
+    });
+    await user.type(await screen.findByLabelText("Name"), "phd-bot");
+    await user.click(screen.getByRole("button", { name: "Beides" }));
+    await user.type(
+      screen.getByLabelText("Adresse des Agents"),
+      "https://api2.cursor.sh/automations/webhook/r1",
+    );
+    await user.click(screen.getByLabelText("Bearer-Token für eingehende Anfragen erzeugen"));
+    await user.click(screen.getByRole("button", { name: "Lesen und schreiben" }));
+    await user.click(screen.getByRole("button", { name: "Anlegen" }));
+
+    const notice = within(await screen.findByTestId("secret-notice"));
+    const fresh = notice.getByTestId("agent-message-fresh").textContent ?? "";
+    expect(fresh).toContain(`URL: ${PUBLIC}/mcp`);
+    expect(fresh).toContain(`Header-Wert: Bearer ${webhooks.tokens["mcp:phd-bot"]}`);
+    expect(fresh).toContain(`Authorization: Bearer ${webhooks.tokens["in:phd-bot"]}`);
+    expect(fresh).not.toContain("-TOKEN:");
+    expect(notice.getAllByRole("button", { name: "Text kopieren" })).toHaveLength(1);
+    expect(notice.getByText(/citegeist zeigt die Token nur dieses eine Mal/)).toBeVisible();
+
+    const card = within(await screen.findByTestId("connector"));
+    const later = card.getByTestId("agent-message").textContent ?? "";
+    expect(later).toContain("<MCP-TOKEN: in citegeist neu erzeugen>");
+    expect(later).toContain("<CALLBACK-TOKEN: in citegeist neu erzeugen>");
+    expect(later).not.toContain(webhooks.tokens["mcp:phd-bot"] as string);
+
+    await user.click(notice.getByRole("button", { name: "Fertig" }));
+    expect(screen.queryByTestId("agent-message-fresh")).toBeNull();
+    expect(
+      screen.queryByText(webhooks.tokens["mcp:phd-bot"] as string, { exact: false }),
+    ).toBeNull();
+  });
+
+  it("rotates the MCP token from the placeholder text and shows the new text once", async () => {
+    const user = userEvent.setup();
+    const { webhooks, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: {
+        publicBaseUrl: PUBLIC,
+        hooks: [{ ...HOOK, mcpScope: "read" }],
+        tokens: { "mcp:grok": "whmcp_old" },
+      },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    expect(card.getByTestId("agent-message")).toHaveTextContent(
+      "Header-Wert: Bearer <MCP-TOKEN: in citegeist neu erzeugen>",
+    );
+    await user.click(card.getByRole("button", { name: "MCP-Token neu erzeugen" }));
+
+    const fresh = (await screen.findByTestId("agent-message-fresh")).textContent ?? "";
+    expect(webhooks.tokens["mcp:grok"]).not.toBe("whmcp_old");
+    expect(fresh).toContain(`Header-Wert: Bearer ${webhooks.tokens["mcp:grok"]}`);
+    expect(calls.find((c) => c.name === "webhooks.setMcpAccess")?.input).toEqual({
+      name: "grok",
+      enabled: true,
+      scope: "read",
+    });
+  });
+
+  it("creates the callback token from the text of an inbound connector", async () => {
+    const user = userEvent.setup();
+    const { webhooks } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { publicBaseUrl: PUBLIC, hooks: [{ ...HOOK, kind: "inbound" }] },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    expect(card.getByTestId("agent-message")).toHaveTextContent("papers.add");
+    expect(card.queryByRole("button", { name: "MCP-Token neu erzeugen" })).toBeNull();
+    await user.click(card.getByRole("button", { name: "Callback-Token erzeugen" }));
+    const fresh = (await screen.findByTestId("agent-message-fresh")).textContent ?? "";
+    expect(fresh).toContain(`Authorization: Bearer ${webhooks.tokens["in:grok"]}`);
+    expect(fresh).toContain(`${PUBLIC}/hooks/grok`);
+  });
+
+  it("warns instead of showing a text with a broken address", async () => {
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [{ ...HOOK, mcpScope: "write" }] },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    expect(card.getByText(/Trage oben die öffentliche Adresse ein/)).toBeVisible();
+    expect(card.queryByTestId("agent-message")).toBeNull();
+    expect(card.queryByRole("button", { name: "MCP-Token neu erzeugen" })).toBeNull();
+  });
+});

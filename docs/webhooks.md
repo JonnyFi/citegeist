@@ -1,6 +1,6 @@
 # Webhooks für externe Agents
 
-Mit Webhooks schickt ein externer Agent wie Jonnys Grok-Bot Paper und Notizen an citegeist, und citegeist schickt dem Agent Rechercheaufträge. Das Paket heißt `@citegeist/webhooks`. Die Entscheidungen dahinter stehen in D7 (Inbox als Standard) und D8 (allgemeine Webhooks, nicht nur Grok).
+Mit Webhooks schickt ein externer Agent wie Jonnys Grok-Bot Paper und Notizen an citegeist, und citegeist schickt dem Agent Rechercheaufträge. Das Paket heißt `@citegeist/webhooks`. Die Entscheidungen dahinter stehen in D7 (Inbox als Standard) und D8 (allgemeine Webhooks, nicht nur Grok). Wie du einen Agent Schritt für Schritt anbindest, steht in [agents.md](agents.md). Dort und in Einstellungen > Webhooks > „An deinen Agent schicken“ findest du den fertigen Text zum Einfügen.
 
 ## Aufbau
 
@@ -163,12 +163,12 @@ Ein Tunnel funktioniert, solange der Mac wach ist und citegeist läuft. Scheiter
 Voraussetzung: Tailscale ist installiert und Funnel in deinem Tailnet freigeschaltet (Admin-Konsole, Access Controls, `funnel` für dein Gerät). Die Befehle folgen der Dokumentation von Tailscale (Stand Oktober 2026, <https://tailscale.com/kb/1311/tailscale-funnel>). Prüfe sie gegen die installierte Version.
 
 ```
-tailscale funnel --bg --set-path=/hooks http://127.0.0.1:47321/hooks
-tailscale funnel --bg --set-path=/mcp http://127.0.0.1:47321/mcp
+tailscale funnel --bg --https=443 --set-path=/hooks http://127.0.0.1:47321/hooks
+tailscale funnel --bg --https=443 --set-path=/mcp http://127.0.0.1:47321/mcp
 tailscale funnel status
 ```
 
-Der erste Befehl leitet `/hooks` weiter, der zweite `/mcp` (nur nötig, wenn ein Connector MCP-Zugang hat). Alles andere bleibt verborgen. Das Ziel enthält den Pfad, damit er beim Weiterleiten erhalten bleibt; prüfe das mit den Befehlen unter „Prüfen“. Funnel erlaubt nur die Ports 443, 8443 und 10000 nach außen, der lokale Port ist frei. Die Adresse ist `https://<gerät>.<tailnet>.ts.net`. Mit `--bg` läuft Funnel weiter, bis du es abschaltest, auch nach einem Neustart des Macs. Beenden:
+Der erste Befehl leitet `/hooks` weiter, der zweite `/mcp` (nur nötig, wenn ein Connector MCP-Zugang hat). Alles andere bleibt verborgen, und eine andere App kann auf `/` desselben Hosts weiterlaufen. Das Ziel enthält den Pfad, damit er beim Weiterleiten erhalten bleibt; prüfe das mit den Befehlen unter „Prüfen“. Funnel erlaubt nur die Ports 443, 8443 und 10000 nach außen. Nimm **443**: Agents in der Cloud erreichen nur diesen Port, auf 8443 lief bei Grok Bot ein Timeout ab. Der lokale Port ist frei. Die Adresse ist `https://<gerät>.<tailnet>.ts.net`. Mit `--bg` läuft Funnel weiter, bis du es abschaltest, auch nach einem Neustart des Macs. Beenden:
 
 ```
 tailscale funnel --https=443 --set-path=/hooks off
@@ -228,6 +228,8 @@ Die Schritte:
 3. Gib dem Agent, was er für seine Richtung braucht: das Secret oder den Bearer-Token für Anfragen an `/hooks/<name>`, den MCP-Token für `/mcp`.
 4. Prüfe mit „Test senden“ und den `curl`-Befehlen oben.
 
+Der Text für den Agent mit Adressen, Headern und Token entsteht in Einstellungen > Webhooks unter „An deinen Agent schicken“. [agents.md](agents.md) beschreibt den ganzen Ablauf mit Fehlersuche.
+
 ## MCP für Agents in der Cloud
 
 Ein Agent in der Cloud erreicht keinen lokalen MCP-Server auf deinem Mac. Unterstützt er entfernte MCP-Server über HTTP, kann er dieselben Werkzeuge nutzen wie ein lokaler Agent: Der Hooks-Port bedient `/mcp` mit Streamable HTTP und dem Werkzeugsatz von `cg mcp`.
@@ -246,13 +248,13 @@ Grok Bot läuft in der Cloud mit eigenem Rechner (Browser, Dateisystem, Terminal
 **1. Tunnel.** Lege einen Connector an und richte Tailscale Funnel auf den Hooks-Port ein:
 
 ```
-tailscale funnel --bg --set-path=/hooks http://127.0.0.1:47321/hooks
-tailscale funnel --bg --set-path=/mcp http://127.0.0.1:47321/mcp
+tailscale funnel --bg --https=443 --set-path=/hooks http://127.0.0.1:47321/hooks
+tailscale funnel --bg --https=443 --set-path=/mcp http://127.0.0.1:47321/mcp
 ```
 
-Trage `https://<gerät>.<tailnet>.ts.net` unter Einstellungen > Webhooks > Öffentliche Adresse ein.
+Trage `https://<gerät>.<tailnet>.ts.net` (ohne Port) unter Einstellungen > Webhooks > Öffentliche Adresse ein.
 
-**2. MCP.** Schalte beim Connector den MCP-Zugang ein und kopiere den Token. In Grok Bot fügst du einen entfernten MCP-Server hinzu: URL `https://<gerät>.<tailnet>.ts.net/mcp`, Authentifizierung Bearer mit dem Token. Danach nutzt Grok `search`, `add_item`, `create_card` und die übrigen Werkzeuge und schreibt als `agent:grok`.
+**2. MCP.** Schalte beim Connector den MCP-Zugang ein. citegeist zeigt danach unter „An deinen Agent schicken“ einen Text, den du in den Chat von Grok Bot einfügst. Grok Bot kann einen MCP-Server nicht aus einem Geheimnisfeld speichern, sein Werkzeug braucht den Header-Wert (`Bearer whmcp_...`) als Klartext im Chat, und die Wörter „custom MCP server“ im Text verhindern die Suche im Katalog. Danach nutzt Grok `search`, `add_item`, `create_card` und die übrigen Werkzeuge und schreibt als `agent:grok`. Die Einzelheiten stehen in [agents.md](agents.md#grok-bot-xai-und-cursor).
 
 **3. Aufträge.** Lege in Grok Bot eine Routine mit Webhook-Trigger an. Trage ihre Adresse als Ziel des Connectors ein und `Authorization` mit `Bearer crsr_...` als Auth-Header (Art „Beides“). Mit `webhooks.send` oder dem Test in den Einstellungen löst citegeist die Routine aus. Das Ergebnis kommt auf einem der zwei Wege zurück: Die Routine ruft MCP-Werkzeuge auf, oder sie schickt `task.result` an die Rückruf-Adresse aus dem Auftrag, signiert mit dem Secret des Connectors (oder mit dem Bearer-Token, falls eingeschaltet).
 
