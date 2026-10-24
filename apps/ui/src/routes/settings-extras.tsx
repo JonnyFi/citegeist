@@ -1,12 +1,14 @@
-import { type settingsGet, settingsUpdate } from "@citegeist/ops";
+import { EMBEDDING_MODEL_KEYS, type settingsGet, settingsUpdate } from "@citegeist/ops";
 import { type FormEvent, useEffect, useState } from "react";
 import type { z } from "zod";
 import type { QuickInsertSettings } from "../bridge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { useI18n } from "../i18n";
+import { Select } from "../components/ui/select";
+import { type MessageKey, useI18n } from "../i18n";
 import { useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
+import { Bar } from "../settings/parts";
 
 type SettingsData = z.output<typeof settingsGet.output>;
 
@@ -48,6 +50,7 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
   const update = useOpMutation(settingsUpdate);
   const [error, setError] = useState<string>();
   const enabled = data.settings.semantic.enabled;
+  const model = data.settings.semantic.model ?? EMBEDDING_MODEL_KEYS[0];
   const status = data.semantic;
   const percent = Math.round((status?.progress ?? 0) * 100);
 
@@ -55,6 +58,18 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
     setError(undefined);
     try {
       await update.mutateAsync({ patch: { semantic: { enabled: next } } });
+    } catch (err) {
+      const { message, fix } = describeError(err);
+      setError(fix ? `${message} ${fix}` : message);
+    }
+  };
+
+  const pickModel = async (next: string) => {
+    setError(undefined);
+    try {
+      await update.mutateAsync({
+        patch: { semantic: { model: next as (typeof EMBEDDING_MODEL_KEYS)[number] } },
+      });
     } catch (err) {
       const { message, fix } = describeError(err);
       setError(fix ? `${message} ${fix}` : message);
@@ -72,6 +87,20 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
 
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <span>{t("settings.model.label")}</span>
+        <Select
+          label={t("settings.model.label")}
+          value={model}
+          options={EMBEDDING_MODEL_KEYS.map((key) => ({
+            value: key,
+            label: t(`settings.model.${key}` as MessageKey),
+          }))}
+          onChange={(next) => void pickModel(next)}
+          className="min-w-64"
+        />
+      </div>
+      <p className="text-sm text-muted">{t("settings.model.hint")}</p>
       <Switch
         checked={enabled}
         onChange={(next) => void toggle(next)}
@@ -79,12 +108,7 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
         disabled={update.isPending}
       />
       {enabled && status?.state === "downloading" ? (
-        <progress
-          aria-label={t("settings.semantic.progress")}
-          value={percent}
-          max={100}
-          className="h-2 w-full max-w-sm"
-        />
+        <Bar value={percent / 100} label={t("settings.semantic.progress")} />
       ) : null}
       {line ? (
         <p

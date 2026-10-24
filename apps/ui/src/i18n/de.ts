@@ -1,5 +1,7 @@
 import { chatDe } from "../chat/strings";
+import { importDe } from "../import/strings";
 import { planningDe } from "../planning/strings";
+import { settingsDe } from "../settings/strings";
 
 /**
  * German strings, the default language of the UI. `en.ts` must define the same keys. Keys with a
@@ -240,7 +242,7 @@ export const de = {
   "settings.worker.desc": "Python-Umgebung für PDF-Konvertierung, OCR und Webseiten.",
   "settings.semantic.title": "Suche nach Bedeutung",
   "settings.semantic.desc":
-    "Findet auch Texte, die andere Wörter für dasselbe benutzen. Ein Sprachmodell (etwa 325 MB) läuft lokal auf diesem Mac und wird beim Einschalten heruntergeladen.",
+    "Findet auch Texte, die andere Wörter für dasselbe benutzen. Ein Sprachmodell läuft lokal auf diesem Mac und wird beim Einschalten heruntergeladen.",
   "settings.semantic.switch": "Semantische Suche einschalten",
   "settings.semantic.progress": "Fortschritt des Downloads",
   "settings.semantic.downloading": "Das Modell wird geladen, {percent} %.",
@@ -430,6 +432,8 @@ export const de = {
     "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
   ...chatDe,
   ...planningDe,
+  ...settingsDe,
+  ...importDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",

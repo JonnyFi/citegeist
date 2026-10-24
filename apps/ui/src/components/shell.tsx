@@ -11,6 +11,7 @@ import {
 import {
   BookOpen,
   ChevronLeft,
+  FileInput,
   FolderOpen,
   Inbox,
   MessageSquare,
@@ -195,6 +196,7 @@ function ProjectList({ activeProject, onLibrary }: { activeProject?: string; onL
 
 const FALLBACK_TITLES: ReadonlyArray<readonly [RegExp, MessageKey]> = [
   [/^\/settings/, "nav.settings"],
+  [/^\/import/, "nav.import"],
   [/^\/notes/, "nav.notes"],
   [/^\/graph/, "nav.graph"],
   [/^\/search/, "nav.search"],
@@ -392,6 +394,13 @@ function ShellFrame() {
               className={navClass(open, pathname.startsWith("/graph"))}
             >
               <NavBody open={open} icon={<Network className={ICON} />} label={t("nav.graph")} />
+            </Link>
+            <Link
+              to="/import"
+              aria-current={pathname.startsWith("/import") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/import"))}
+            >
+              <NavBody open={open} icon={<FileInput className={ICON} />} label={t("nav.import")} />
             </Link>
           </div>
 

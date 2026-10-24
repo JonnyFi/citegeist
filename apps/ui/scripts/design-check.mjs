@@ -138,6 +138,68 @@ const screens = [
     hash: "#/projects/rag-evaluation?tab=plan",
     board: false,
   },
+
+  // UI-2b: settings sections and the import screen
+  { name: "einstellungen", hash: "#/settings", board: false },
+  {
+    name: "einstellungen-quellen",
+    hash: "#/settings",
+    board: false,
+    async setup(page) {
+      await page.getByRole("heading", { name: "Metadatenquellen" }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: "Chat-Agent" }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: "Metadatenquellen" }).scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: "einstellungen-modell",
+    hash: "#/settings",
+    board: false,
+    async setup(page) {
+      await page.getByRole("heading", { name: "Suche nach Bedeutung" }).scrollIntoViewIfNeeded();
+      await page.getByRole("combobox", { name: "Embedding-Modell" }).waitFor();
+    },
+  },
+  {
+    name: "einstellungen-sync",
+    hash: "#/settings?section=sync",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("conflict").first().waitFor();
+    },
+  },
+  {
+    name: "einstellungen-webhooks",
+    hash: "#/settings?section=webhooks",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("connector").first().waitFor();
+    },
+  },
+  {
+    name: "import",
+    hash: "#/import",
+    board: false,
+    async setup(page) {
+      await page.getByRole("button", { name: "BibTeX" }).click();
+      await page.getByLabel("Pfad zur Datei").fill("/Users/jonny/Zotero/export/bibliothek.bib");
+      await page.getByRole("button", { name: "Vorschau" }).click();
+      await page.getByTestId("import-report").waitFor();
+    },
+  },
+  {
+    name: "import-ergebnis",
+    hash: "#/import",
+    board: false,
+    async setup(page) {
+      await page.getByLabel("Pfad zu zotero.sqlite oder zum Zotero-Ordner").fill("~/Zotero");
+      await page.getByRole("button", { name: "Projekten" }).click();
+      await page.getByRole("button", { name: "Vorschau" }).click();
+      await page.getByTestId("import-report").waitFor();
+      await page.getByRole("button", { name: "Importieren" }).click();
+      await page.getByTestId("import-result").waitFor({ timeout: 10000 });
+    },
+  },
 ];
 
 async function showText(page) {

@@ -7,6 +7,7 @@ export interface SegmentOption<V extends string> {
   label: string;
   /** Counter in mono after the label (tabs only). */
   count?: number | undefined;
+  disabled?: boolean | undefined;
 }
 
 /**
@@ -44,6 +45,7 @@ export function Segmented<V extends string>({
         <Toggle
           key={o.value}
           value={o.value}
+          disabled={o.disabled ?? false}
           className={
             tabs
               ? cn(
@@ -51,7 +53,7 @@ export function Segmented<V extends string>({
                   "data-[pressed]:border-ink data-[pressed]:text-ink",
                 )
               : cn(
-                  "h-[26px] border border-line px-2.5 text-[12px] font-medium text-ink [&:not(:first-child)]:border-l-0",
+                  "h-[26px] border border-line px-2.5 text-[12px] font-medium text-ink [&:not(:first-child)]:border-l-0 disabled:opacity-50",
                   "hover:bg-sunken data-[pressed]:border-ink data-[pressed]:bg-ink data-[pressed]:text-bg",
                 )
           }

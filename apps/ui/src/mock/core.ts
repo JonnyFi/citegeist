@@ -24,11 +24,19 @@ import {
 import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
 import { bindChatMock } from "../chat/mock";
 import { bindConnectionsMock } from "../connections/mock";
+import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { classifyIdentifier } from "../lib/identifier";
 import { bindNotesMock } from "../notes/mock";
 import { bindPlanningMock } from "../planning/mock";
 import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
+import {
+  bindSyncMock,
+  bindWebhooksMock,
+  createSyncMockState,
+  createWebhooksMockState,
+  mockConflict,
+} from "../settings/mock";
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
@@ -148,6 +156,7 @@ export function createMockRegistry(
   const changed = (path: string) => emit({ type: "change", path, external: false });
   const aiDelayMs = options.aiDelayMs ?? 1500;
   const jobs = new Map<string, MockJob>();
+  let importJobs: ImportMockJobs | undefined;
 
   /** Starts a fake AI job that fills the paraphrase and, if unset, the kind after the delay. */
   const scheduleAi = (cardId: string, language: string): string => {
@@ -202,7 +211,7 @@ export function createMockRegistry(
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     }));
-    return [...demo, ...own];
+    return [...demo, ...own, ...(importJobs?.list() ?? [])];
   };
 
   const findCard = (id: string) => {
@@ -557,6 +566,8 @@ export function createMockRegistry(
       return { text: `(${items.map((i) => citationLabel(i.fm, i.locator)).join("; ")})` };
     })
     .bind(jobsGet, async (_ctx, input) => {
+      const imported = importJobs?.get(input.job);
+      if (imported) return imported;
       const job = jobs.get(input.job);
       if (!job) throw new Error(`JOB_NOT_FOUND: no job '${input.job}'`);
       return {
@@ -624,6 +635,40 @@ export function createMockRegistry(
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),
     extraJobs: () => listJobs(),
   });
+  importJobs = bindImportMock(registry, createImportMockState(), emit).jobs;
+  bindSyncMock(
+    registry,
+    createSyncMockState({
+      transport: "git",
+      versioning: true,
+      remote: "git@github.com:jonny/library.git",
+      uncommitted: 3,
+      lastSync: {
+        at: "2026-10-24T07:55:00.000Z",
+        ok: true,
+        message: "Pulled with rebase and pushed.",
+      },
+      conflicts: [mockConflict("notes/autopoiesis.md")],
+    }),
+    emit,
+  );
+  bindWebhooksMock(
+    registry,
+    createWebhooksMockState({
+      hooks: [
+        {
+          name: "grok",
+          kind: "both",
+          url: "https://grok-bot.example.com/citegeist",
+          inboundUrl: "",
+          actor: "agent:grok",
+          hasSecret: true,
+          createdAt: "2026-10-23T12:00:00.000Z",
+        },
+      ],
+    }),
+    emit,
+  );
   return bindSettingsMock(registry, settings, emit, false);
 }
 
