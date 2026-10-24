@@ -1,5 +1,6 @@
 // Takes 1280x820 screenshots of the app against the mock core, one per board of
-// docs/design/boards, so the result can be compared with the mockups side by side.
+// docs/design/boards, so the result can be compared with the mockups side by side, plus the
+// screens that have no board (planning, project cards, add field).
 //
 //   pnpm --filter @citegeist/ui design-check            screenshots of the app
 //   pnpm --filter @citegeist/ui design-check --boards   also screenshots of the board files
@@ -15,7 +16,7 @@ import { chromium } from "playwright";
 const here = dirname(fileURLToPath(import.meta.url));
 const appDir = resolve(here, "..");
 const repo = resolve(appDir, "../..");
-const out = join(repo, ".context", "design-check");
+const out = join(repo, "docs", "design", "screens");
 const port = process.env.DESIGN_CHECK_PORT ?? "5188";
 const url = `http://localhost:${port}`;
 const withBoards = process.argv.includes("--boards");
@@ -49,7 +50,19 @@ const screens = [
       await page.getByRole("tab", { name: /^Agent/ }).click();
     },
   },
-  { name: "quelle-uebersicht", hash: "#/items/luhmann1984soziale" },
+  {
+    name: "quelle-uebersicht",
+    hash: "#/items/luhmann1984soziale",
+    // "Weiterlesen, S. 216" needs a stored reading position
+    local: {
+      "citegeist.reading.luhmann1984soziale": JSON.stringify({
+        page: 215,
+        label: "216",
+        ratio: 0.32,
+        at: "2026-10-23T10:00:00.000Z",
+      }),
+    },
+  },
   { name: "bibliothek", hash: "#/" },
   {
     name: "bibliothek-spalte-offen",
@@ -66,6 +79,65 @@ const screens = [
     },
   },
   { name: "projekt", hash: "#/projects/phd-proposal" },
+
+  // W3.8: screens without a board of their own, drawn in the same system
+  {
+    name: "bibliothek-hinzufuegen",
+    hash: "#/",
+    board: false,
+    async setup(page) {
+      const field = page.getByRole("textbox", { name: "Hinzufügen" });
+      await field.fill("10.1000/xyz123");
+      await field.press("Enter");
+      await page.getByText("Hinzugefügt:").waitFor();
+    },
+  },
+  { name: "projekt-karten", hash: "#/projects/phd-proposal?tab=cards", board: false },
+  {
+    name: "projekt-plan",
+    hash: "#/projects/phd-proposal?tab=plan&node=k_01JC6A1B2D",
+    board: false,
+    async setup(page) {
+      await page.getByRole("button", { name: "2.2 Autopoiesis" }).waitFor();
+      await page.locator(".cm-content").waitFor();
+    },
+  },
+  {
+    name: "projekt-plan-einsichten",
+    hash: "#/projects/phd-proposal?tab=plan&view=insights",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("insight").first().waitFor();
+    },
+  },
+  {
+    name: "projekt-plan-luecken",
+    hash: "#/projects/phd-proposal?tab=plan&view=gaps",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("gap").first().waitFor();
+    },
+  },
+  {
+    name: "projekt-plan-agent",
+    hash: "#/projects/phd-proposal?tab=plan&view=insights&node=k_01JC6A1B2C",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("insight").first().waitFor();
+      await page.getByRole("tab", { name: /^Agent/ }).click();
+      const composer = page.getByRole("textbox", { name: "Nachricht an den Agent" });
+      await composer.fill(
+        "Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte notieren",
+      );
+      await composer.press("Enter");
+      await page.getByText("Notiert in 2, Luhmanns Kommunikationsbegriff.").waitFor();
+    },
+  },
+  {
+    name: "projekt-plan-neu",
+    hash: "#/projects/rag-evaluation?tab=plan",
+    board: false,
+  },
 ];
 
 async function showText(page) {
@@ -110,12 +182,13 @@ try {
   for (const screen of screens) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 820 } });
     await context.addInitScript(
-      ([theme, rail]) => {
+      ([theme, rail, local]) => {
         localStorage.setItem("citegeist.theme", theme);
         localStorage.setItem("citegeist.lang", "de");
         localStorage.setItem("citegeist.rail", rail);
+        for (const [key, value] of Object.entries(local)) localStorage.setItem(key, value);
       },
-      [screen.theme ?? "light", screen.rail ?? "closed"],
+      [screen.theme ?? "light", screen.rail ?? "closed", screen.local ?? {}],
     );
     const page = await context.newPage();
     await page.goto(`${url}/${screen.hash}`);
@@ -131,7 +204,7 @@ try {
 
   if (withBoards) {
     mkdirSync(join(out, "boards"), { recursive: true });
-    for (const screen of screens) {
+    for (const screen of screens.filter((s) => s.board !== false)) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 820 } });
       const page = await context.newPage();
       const file = resolve(repo, "docs/design/boards", `${screen.name}.html`);

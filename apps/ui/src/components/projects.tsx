@@ -1,4 +1,12 @@
-import { citeFormat, itemsList, projectsGet, projectsList, projectsUpdate } from "@citegeist/ops";
+import {
+  cardsList,
+  citeFormat,
+  itemsList,
+  plansList,
+  projectsGet,
+  projectsList,
+  projectsUpdate,
+} from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Pencil } from "lucide-react";
 import { useState } from "react";
@@ -6,8 +14,10 @@ import { useI18n } from "../i18n";
 import { AI_LANGUAGES, LIBRARY_AI_LANGUAGE } from "../lib/ai-language";
 import { downloadText } from "../lib/clipboard";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
-import { describeError } from "../lib/utils";
+import { cn, describeError } from "../lib/utils";
+import { type PlanSearch, PlanTab, type PlanView } from "../planning/plan-tab";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
+import { ProjectCards } from "./project-cards";
 import { Prose } from "./prose";
 import { StatusSquare } from "./ui/badge";
 import { Button, ButtonGroup } from "./ui/button";
@@ -180,10 +190,69 @@ function ProjectExport({ slug, citekeys }: { slug: string; citekeys: readonly st
 
 const STATUSES = ["active", "paused", "done"] as const;
 
-export function ProjectView({ slug }: { slug: string }) {
+function ProjectTabLink({
+  slug,
+  tab,
+  active,
+  children,
+}: {
+  slug: string;
+  tab?: ProjectTab;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to="/projects/$slug"
+      params={{ slug }}
+      search={tab ? { tab } : {}}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center border-b-2",
+        active ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export type ProjectTab = "brief" | "cards" | "plan";
+
+/** The URL state of the project screen: the tab and, on the plan tab, the plan, node and view. */
+export interface ProjectSearch extends PlanSearch {
+  tab?: ProjectTab | undefined;
+}
+
+const PLAN_VIEWS: readonly PlanView[] = ["doc", "insights", "gaps"];
+
+export function parseProjectSearch(search: Record<string, unknown>): ProjectSearch {
+  const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+  const tab = search.tab === "cards" || search.tab === "plan" ? search.tab : undefined;
+  const view = PLAN_VIEWS.find((v) => v === search.view);
+  return {
+    ...(tab ? { tab } : {}),
+    ...(str(search.plan) ? { plan: str(search.plan) } : {}),
+    ...(str(search.node) ? { node: str(search.node) } : {}),
+    ...(view && view !== "doc" ? { view } : {}),
+  };
+}
+
+export function ProjectView({
+  slug,
+  search = {},
+  onSearch,
+}: {
+  slug: string;
+  search?: ProjectSearch;
+  onSearch?: (next: ProjectSearch) => void;
+}) {
   const { t, tn } = useI18n();
   const project = useOp(projectsGet, { slug });
   const items = useOp(itemsList, { project: slug, inbox: false, limit: 500 });
+  const cards = useOp(cardsList, { project: slug, limit: 500 });
+  const plans = useOp(plansList, { project: slug });
+  const tab: ProjectTab = search.tab ?? "brief";
   const update = useOpMutation(projectsUpdate);
 
   if (project.isPending) return <Loading label={t("project.loading")} />;
@@ -245,9 +314,9 @@ export function ProjectView({ slug }: { slug: string }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <SubBar>
           <div className="flex items-stretch gap-6 text-[13px] font-medium">
-            <span aria-current="page" className="flex items-center border-b-2 border-ink text-ink">
+            <ProjectTabLink slug={slug} active={tab === "brief"}>
               {t("project.brief")}
-            </span>
+            </ProjectTabLink>
             <Link
               to="/"
               search={{ project: slug }}
@@ -256,50 +325,73 @@ export function ProjectView({ slug }: { slug: string }) {
               {t("project.readingList")}
               <span className="ml-1.5 font-mono font-normal">{itemCount}</span>
             </Link>
+            <ProjectTabLink slug={slug} tab="cards" active={tab === "cards"}>
+              {t("project.cardsTab")}
+              {cards.data ? (
+                <span className="ml-1.5 font-mono font-normal">{cards.data.cards.length}</span>
+              ) : null}
+            </ProjectTabLink>
+            <ProjectTabLink slug={slug} tab="plan" active={tab === "plan"}>
+              {t("project.planTab")}
+              {plans.data ? (
+                <span className="ml-1.5 font-mono font-normal">{plans.data.plans.length}</span>
+              ) : null}
+            </ProjectTabLink>
           </div>
           <div className="flex items-center">
             <ProjectExport slug={slug} citekeys={items.data?.items.map((i) => i.citekey) ?? []} />
           </div>
         </SubBar>
-        <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-9">
-          <div className="flex max-w-[680px] flex-col gap-7">
-            <header className="flex flex-col gap-2">
-              <h1 className="font-serif text-[30px] font-medium leading-[1.2] tracking-[-0.01em]">
-                {fm.title}
-              </h1>
-              <p className="text-muted">{tn("items.count", itemCount)}</p>
-            </header>
+        {tab === "plan" ? (
+          <PlanTab
+            project={slug}
+            questions={fm.questions}
+            search={search}
+            onSearch={(next) => onSearch?.({ ...next, tab: "plan" })}
+          />
+        ) : tab === "cards" ? (
+          <ProjectCards slug={slug} />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-9">
+            <div className="flex max-w-[680px] flex-col gap-7">
+              <header className="flex flex-col gap-2">
+                <h1 className="font-serif text-[30px] font-medium leading-[1.2] tracking-[-0.01em]">
+                  {fm.title}
+                </h1>
+                <p className="text-muted">{tn("items.count", itemCount)}</p>
+              </header>
 
-            <section>
-              <div className="flex items-center justify-between">
-                <SectionTitle>{t("project.brief")}</SectionTitle>
-                <span className="text-[11px] text-muted">{t("project.briefHint")}</span>
-              </div>
-              <BriefEditor slug={slug} brief={brief} />
-            </section>
-
-            {fm.questions.length > 0 ? (
               <section>
-                <SectionTitle>{t("project.questions")}</SectionTitle>
-                <ol className="flex flex-col border-t border-line">
-                  {fm.questions.map((q) => (
-                    <li
-                      key={q.id}
-                      className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 border-b border-line-soft py-2.5 text-[14px]"
-                    >
-                      <span className="font-mono text-[12px] text-muted">
-                        {t("project.questionShort", { n: q.id.replace(/^q/, "") })}
-                      </span>
-                      <span>{q.text}</span>
-                    </li>
-                  ))}
-                </ol>
+                <div className="flex items-center justify-between">
+                  <SectionTitle>{t("project.brief")}</SectionTitle>
+                  <span className="text-[11px] text-muted">{t("project.briefHint")}</span>
+                </div>
+                <BriefEditor slug={slug} brief={brief} />
               </section>
-            ) : null}
 
-            {items.isError ? <ErrorState error={items.error} /> : null}
+              {fm.questions.length > 0 ? (
+                <section>
+                  <SectionTitle>{t("project.questions")}</SectionTitle>
+                  <ol className="flex flex-col border-t border-line">
+                    {fm.questions.map((q) => (
+                      <li
+                        key={q.id}
+                        className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 border-b border-line-soft py-2.5 text-[14px]"
+                      >
+                        <span className="font-mono text-[12px] text-muted">
+                          {t("project.questionShort", { n: q.id.replace(/^q/, "") })}
+                        </span>
+                        <span>{q.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ) : null}
+
+              {items.isError ? <ErrorState error={items.error} /> : null}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <RightColumn
         label={t("project.settingsTab")}

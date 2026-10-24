@@ -1,4 +1,5 @@
 import { chatDe } from "../chat/strings";
+import { planningDe } from "../planning/strings";
 
 /**
  * German strings, the default language of the UI. `en.ts` must define the same keys. Keys with a
@@ -417,6 +418,7 @@ export const de = {
   "graph.noWebgl":
     "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
   ...chatDe,
+  ...planningDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",

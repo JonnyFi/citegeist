@@ -18,22 +18,29 @@ import { EmptyState, ErrorState, Loading } from "../components/ui/states";
 import { useI18n } from "../i18n";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
+import { type PlanContext, planContextLabel, usePlanContext } from "../planning/context";
 import { useChatSelection, useScreenContext } from "./context";
 import { Messages } from "./messages";
 
-type Chip = "project" | "item" | "selection";
+type Chip = "project" | "plan" | "item" | "selection";
 
 function ContextChips({
   context,
+  plan,
   onRemove,
 }: {
   context: ChatContext;
+  /** The plan open in the project view, given to the agent next to the project. */
+  plan: PlanContext | null;
   onRemove: (chip: Chip) => void;
 }) {
   const { t } = useI18n();
   const chips: Array<{ id: Chip; label: string }> = [
     ...(context.project
       ? [{ id: "project" as const, label: t("chat.context.project", { slug: context.project }) }]
+      : []),
+    ...(plan
+      ? [{ id: "plan" as const, label: t("chat.context.plan", { plan: planContextLabel(plan) }) }]
       : []),
     ...(context.item
       ? [{ id: "item" as const, label: t("chat.context.item", { citekey: context.item }) }]
@@ -91,6 +98,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
   const queryClient = useQueryClient();
   const screen = useScreenContext();
   const marked = useChatSelection();
+  const openPlan = usePlanContext();
 
   const backends = useOp(chatBackends, {});
   const history = useOp(chatList, { kind: "chat", limit: 30 });
@@ -124,6 +132,8 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
     [selectionKey],
   );
 
+  const plan =
+    openPlan && openPlan.project === screen.project && !removed.has("plan") ? openPlan : null;
   const context: ChatContext = {
     ...(screen.project && !removed.has("project") ? { project: screen.project } : {}),
     ...(screen.item && !removed.has("item") ? { item: screen.item } : {}),
@@ -169,6 +179,11 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
     ? (view.data?.session.backend ?? agent)
     : (agent ?? backends.data?.default);
 
+  // ChatContext has no plan field yet, so the core drops these two until the contract grows them
+  const agentContext = (
+    plan ? { ...context, plan: plan.plan, ...(plan.node ? { node: plan.node.id } : {}) } : context
+  ) as ChatContext;
+
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     const message = draft.trim();
@@ -179,13 +194,13 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
       if (!id) {
         const started = await start.mutateAsync({
           ...(agentId ? { backend: agentId } : {}),
-          ...context,
+          ...agentContext,
         });
         id = started.session.id;
         setSessionId(id);
       }
       setDraft("");
-      await send.mutateAsync({ session: id, message, context });
+      await send.mutateAsync({ session: id, message, context: agentContext });
     } catch (err) {
       setFailure(err);
     }
@@ -282,6 +297,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
 
       <ContextChips
         context={context}
+        plan={plan}
         onRemove={(chip) => setRemoved((r) => new Set([...r, chip]))}
       />
 
