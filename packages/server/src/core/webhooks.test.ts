@@ -78,7 +78,12 @@ async function start(chat = false): Promise<{ server: CoreServer; client: Client
       ai: { backends: [] },
       sync: { quietMs: 60_000 },
     },
-    webhooks: { secrets: new InMemoryKeychain(), publicBaseUrl: "https://mac.tail1234.ts.net" },
+    webhooks: {
+      secrets: new InMemoryKeychain(),
+      publicBaseUrl: "https://mac.tail1234.ts.net",
+      hooksPort: 0,
+      retryDelaysMs: [],
+    },
   });
   const client = createORPCClient<Client>(
     new RPCLink({
@@ -148,6 +153,9 @@ describe("webhooks in the core server", () => {
       "webhooks.list",
       "webhooks.create",
       "webhooks.rotateSecret",
+      "webhooks.setAuth",
+      "webhooks.setInboundToken",
+      "webhooks.setMcpAccess",
       "webhooks.delete",
       "webhooks.test",
       "webhooks.send",

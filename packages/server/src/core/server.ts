@@ -11,6 +11,7 @@ import {
   type RuntimeOptions,
   shareKind,
 } from "@citegeist/core";
+import { createMcpRequestHandler } from "@citegeist/mcp";
 import type { Registry } from "@citegeist/ops";
 import { Actor, CitegeistError } from "@citegeist/schema";
 import {
@@ -37,6 +38,7 @@ import {
 } from "../shared/lockfile.js";
 import { type ChatOptions, type ChatRuntime, startChat } from "./chat.js";
 import { FILES_PREFIX, serveLibraryFile } from "./files.js";
+import { type HooksListener, manageHooksListener } from "./hooks-listener.js";
 import { bindImport } from "./import.js";
 
 export { LockHeldError };
@@ -72,13 +74,26 @@ export interface CoreServerOptions {
    * Signed webhooks for external agents (`/hooks/<connector>`). On by default. `secrets` is where
    * the connector secrets live (default: the macOS Keychain; process memory elsewhere).
    * `publicBaseUrl` is the address of this Mac as the connectors see it (default: the environment
-   * variable CITEGEIST_PUBLIC_URL). Pass false to leave webhooks out.
+   * variable CITEGEIST_PUBLIC_URL, then the setting). `hooksPort` replaces the port from the
+   * settings for the dedicated hooks listener (0 picks a free one). `retryDelaysMs` and `sleep`
+   * set the waits between delivery attempts. Pass false to leave webhooks out.
    */
-  webhooks?: { secrets?: SecretStore; publicBaseUrl?: string; fetch?: typeof fetch } | false;
+  webhooks?:
+    | {
+        secrets?: SecretStore;
+        publicBaseUrl?: string;
+        fetch?: typeof fetch;
+        hooksPort?: number;
+        retryDelaysMs?: readonly number[];
+        sleep?: (ms: number) => Promise<void>;
+      }
+    | false;
 }
 
 export interface CoreServer {
   port: number;
+  /** Port of the dedicated hooks listener while it runs (a connector exists), else undefined. */
+  hooksPort(): number | undefined;
   token: string;
   library: Library;
   runtime: Runtime;
@@ -255,6 +270,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     throw err;
   }
   let port = 0;
+  let hooksListener: HooksListener | undefined;
   const hookOpts = opts.webhooks === false ? undefined : (opts.webhooks ?? {});
   const hooks: WebhooksHandle | undefined = !hookOpts
     ? undefined
@@ -266,7 +282,27 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
             hookOpts.secrets ??
             (process.platform === "darwin" ? new MacKeychain() : new InMemoryKeychain()),
           port: () => port,
-          publicBaseUrl: () => hookOpts.publicBaseUrl ?? process.env.CITEGEIST_PUBLIC_URL,
+          // The variable overrides the setting; Dock and Finder do not pass it on, the setting does.
+          publicBaseUrl: () =>
+            hookOpts.publicBaseUrl ||
+            process.env.CITEGEIST_PUBLIC_URL ||
+            runtime.settings.webhooks().publicUrl,
+          publicBaseUrlSource: () =>
+            hookOpts.publicBaseUrl || process.env.CITEGEIST_PUBLIC_URL
+              ? "env"
+              : runtime.settings.webhooks().publicUrl
+                ? "settings"
+                : undefined,
+          listenerStatus: () => hooksListener?.status() ?? { state: "off" },
+          onConnectorsChanged: () => void hooksListener?.reconcile(),
+          hooksPort: () => {
+            const state = hooksListener?.status();
+            if (!state || state.state === "error") return undefined;
+            if (state.state === "listening") return state.port;
+            return hookOpts.hooksPort || runtime.settings.webhooks().port;
+          },
+          ...(hookOpts.retryDelaysMs ? { retryDelaysMs: hookOpts.retryDelaysMs } : {}),
+          ...(hookOpts.sleep ? { sleep: hookOpts.sleep } : {}),
           tasks: queueTaskTracker(research.port(isWebhookTaskInput)),
           ...(hookOpts.fetch ? { fetch: hookOpts.fetch } : {}),
           ...(opts.log ? { log: opts.log } : {}),
@@ -409,9 +445,29 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       : manageConnector({ registry, library, runtime }, opts.log);
   await connector?.ready();
 
+  // The tunnel points at this listener, not at the core: it serves /hooks/ and /mcp only, on a
+  // port that does not change between starts.
+  const mcpHandler = hooks ? createMcpRequestHandler(registry) : undefined;
+  let unsubscribeHooks: (() => void) | undefined;
+  if (hooks && mcpHandler) {
+    hooksListener = manageHooksListener({
+      hooks,
+      mcp: mcpHandler,
+      port: () => runtime.settings.webhooks().port,
+      portOverride: hookOpts?.hooksPort,
+      ...(opts.log ? { log: opts.log } : {}),
+    });
+    unsubscribeHooks = runtime.settings.subscribe(() => hooksListener?.reconcile());
+    await hooksListener.reconcile();
+  }
+
   let closing: Promise<void> | undefined;
   return {
     port,
+    hooksPort: () => {
+      const state = hooksListener?.status();
+      return state?.state === "listening" ? state.port : undefined;
+    },
     token,
     library,
     runtime,
@@ -420,6 +476,9 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     close() {
       closing ??= (async () => {
         await connector?.stop();
+        unsubscribeHooks?.();
+        await hooksListener?.stop();
+        await mcpHandler?.close();
         library.off("change", onChange);
         for (const ws of sockets) ws.terminate();
         wss.close();
