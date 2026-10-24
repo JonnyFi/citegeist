@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>citegeist: Mini-Pitch</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --sunken: #f3f3f1;
+  --ink: #141414;
+  --muted: #5c5c5c;
+  --line-soft: #e4e4e4;
+  --line-faint: #c4c4c4;
+  --danger: #8a2130;
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
+  --serif: Newsreader, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: #e7e7e4;
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Viewport and stage */
+#viewport { position: fixed; inset: 0 0 44px 0; overflow: hidden; }
+#stage {
+  position: absolute; left: 0; top: 0;
+  width: 1280px; height: 720px;
+  transform-origin: 0 0;
+  background: var(--bg);
+  box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 18px 50px rgba(0,0,0,.14);
+  overflow: hidden;
+}
+
+/* Control bar */
+#bar {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 44px;
+  background: var(--bg); border-top: 1px solid var(--ink);
+  display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  font-size: 13px; z-index: 20;
+}
+#progress { position: absolute; left: 0; top: -3px; height: 3px; width: 100%; background: var(--line-soft); }
+#progress i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .2s ease; }
+#bar .brand { font-family: var(--serif); font-weight: 600; font-size: 16px; margin-right: 8px; }
+#bar .title { color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#count { font-family: var(--mono); font-size: 12px; min-width: 52px; text-align: right; }
+.btn {
+  font: inherit; font-size: 12px; height: 28px; padding: 0 12px;
+  border: 1px solid var(--ink); background: var(--bg); color: var(--ink); cursor: pointer;
+}
+.btn:hover { background: var(--sunken); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.sq { width: 28px; padding: 0; }
+.btn:focus-visible, a:focus-visible, .frame:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Slides */
+.slide { position: absolute; inset: 0; display: none; }
+.slide.active { display: grid; animation: fade .22s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .slide.active { animation: none; } #progress i { transition: none; } }
+
+.split { grid-template-columns: 480px 1fr; }
+.text { padding: 52px 40px 40px 64px; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.panel { background: var(--sunken); border-left: 1px solid var(--ink); padding: 36px 44px; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+
+.kicker {
+  margin: 0 0 14px; font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.kicker b { font-family: var(--mono); font-weight: 500; color: var(--ink); margin-right: 10px; letter-spacing: 0; }
+h1, h2 { font-family: var(--serif); font-weight: 500; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 34px; line-height: 1.14; margin-bottom: 24px; }
+ul.points { list-style: none; margin: 0; padding: 0; }
+ul.points li {
+  position: relative; padding: 0 0 0 20px; margin: 0 0 13px;
+  font-size: 16.5px; line-height: 1.45;
+}
+ul.points li::before {
+  content: ""; position: absolute; left: 0; top: .55em; width: 7px; height: 7px; background: var(--ink);
+}
+ul.points code, .note code, .inline-code {
+  font-family: var(--mono); font-size: .86em; background: var(--sunken); padding: 1px 5px; border: 1px solid var(--line-soft);
+}
+.note {
+  margin: 8px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft);
+  font-size: 14px; line-height: 1.45; color: var(--muted);
+}
+
+/* Screenshots */
+.shots { width: 100%; display: flex; flex-direction: column; align-items: stretch; }
+.tabs { display: flex; margin-bottom: 14px; }
+.tabs button {
+  font: inherit; font-size: 12px; height: 28px; padding: 0 12px; cursor: pointer;
+  border: 1px solid var(--ink); background: var(--bg); color: var(--ink);
+}
+.tabs button + button { border-left: 0; }
+.tabs button.on { background: var(--ink); color: var(--bg); }
+.shot { display: none; margin: 0; }
+.shot.on { display: block; }
+.frame {
+  position: relative; overflow: hidden; border-radius: 10px; background: #fff;
+  border: 1px solid rgba(20,20,20,.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 10px 28px rgba(0,0,0,.13);
+  cursor: zoom-in;
+}
+.frame img { display: block; width: 100%; height: auto; }
+.crop .frame { aspect-ratio: var(--w) / var(--h); }
+.crop .frame img {
+  position: absolute; max-width: none;
+  width: calc(1280 / var(--w) * 100%);
+  left: calc(var(--x) / var(--w) * -100%);
+  top: calc(var(--y) / var(--h) * -100%);
+}
+.shot figcaption { margin-top: 12px; font-size: 13px; line-height: 1.4; color: var(--muted); max-width: 700px; }
+
+/* Title slide */
+.title-slide .text { justify-content: center; }
+.title-slide h1 { font-size: 92px; line-height: 1; margin: 6px 0 26px -3px; font-weight: 500; }
+.title-slide .lead { font-size: 21px; line-height: 1.45; margin: 0 0 28px; font-family: var(--serif); }
+.title-slide .hint { font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1.7; }
+.title-slide .hint kbd { font-family: var(--mono); border: 1px solid var(--line-faint); padding: 0 5px; background: var(--bg); }
+
+/* Idea panel */
+.idea { width: 100%; }
+.idea .label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+.idea .big { font-family: var(--serif); font-size: 34px; line-height: 1.25; margin: 0 0 34px; }
+.idea .rule { border-top: 1px solid var(--ink); padding: 14px 0; font-size: 16px; line-height: 1.4; display: flex; gap: 18px; }
+.idea .rule span { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+
+/* Kind chips */
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.kind {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 9px 0 0;
+  border: 1px solid var(--ink); background: #fff; font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--c);
+}
+.kind::before { content: ""; align-self: stretch; width: 6px; background: var(--c); margin-right: 8px; }
+
+/* Coming soon */
+.slide.soon.active, .slide.cheat.active { display: flex; flex-direction: column; justify-content: center; }
+.soon { padding: 40px 64px 40px; }
+.soon .head { max-width: 900px; }
+.soon .cards { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 20px; margin-top: 8px; }
+.card { border: 1px solid var(--ink); background: #fff; padding: 26px 26px 22px; min-height: 340px; display: flex; flex-direction: column; gap: 10px; }
+.card .stamp {
+  align-self: flex-start; border: 1px solid var(--ink); padding: 2px 7px; font-size: 10px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.card h3 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 6px 0 0; line-height: 1.2; }
+.card p { margin: 0; font-size: 17px; line-height: 1.5; }
+.card .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: auto; padding-top: 10px; }
+.soon .foot { margin-top: 30px; font-size: 15px; color: var(--muted); }
+
+/* Cheat sheet */
+.cheat { padding: 36px 56px 36px; }
+.cheat h2 { margin-bottom: 20px; }
+.cheat .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px 28px; align-content: start; }
+.group { border-top: 1px solid var(--ink); padding-top: 9px; }
+.group h3 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; display: flex; justify-content: space-between; }
+.group h3 a { font-family: var(--mono); font-weight: 500; letter-spacing: 0; color: var(--muted); text-decoration: none; }
+.group ul { list-style: none; margin: 0; padding: 0; }
+.group li { font-size: 14.5px; line-height: 1.35; padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+.group li:last-child { border-bottom: 0; }
+.group li a { color: inherit; text-decoration: none; }
+.group li a:hover { text-decoration: underline; }
+.cheat .soonline { margin-top: 30px; font-size: 14px; color: var(--muted); }
+.cheat .soonline a { color: inherit; }
+
+/* Overview */
+#overview {
+  position: fixed; inset: 0; background: rgba(20,20,20,.55); z-index: 40; display: none;
+  overflow: auto; padding: 28px;
+}
+#overview.open { display: block; }
+#overview .sheet { max-width: 1320px; margin: 0 auto; background: var(--bg); border: 1px solid var(--ink); padding: 20px 24px 28px; }
+#overview header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+#overview header h2 { font-size: 26px; margin: 0; }
+#overview .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+.thumb { all: unset; display: block; cursor: pointer; }
+.thumb:focus-visible .tframe { outline: 2px solid var(--ink); outline-offset: 2px; }
+.tframe { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line-faint); background: #fff; }
+.thumb:hover .tframe, .thumb.cur .tframe { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.tframe .slide { display: grid; width: 1280px; height: 720px; transform-origin: 0 0; pointer-events: none; animation: none; }
+.tlabel { display: flex; gap: 8px; margin-top: 7px; font-size: 12.5px; }
+.tlabel b { font-family: var(--mono); font-weight: 500; color: var(--muted); }
+
+/* Lightbox */
+#lightbox {
+  position: fixed; inset: 0; background: rgba(15,15,15,.82); z-index: 60; display: none;
+  align-items: center; justify-content: center; padding: 28px; cursor: zoom-out;
+}
+#lightbox.open { display: flex; }
+#lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); background: #fff; }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- 1 Titel -->
+<section class="slide split title-slide" data-title="citegeist">
+  <div class="text">
+    <p class="kicker">Mini-Pitch &middot; Stand Oktober 2026</p>
+    <h1>citegeist</h1>
+    <p class="lead">citegeist ist eine Literaturverwaltung für den Mac. Du und deine Agents arbeitet darin mit derselben Bibliothek.</p>
+    <p class="hint">Weiter mit <kbd>&rarr;</kbd>, <kbd>Leertaste</kbd> oder Klick auf die rechte Hälfte.<br>Alle Folien siehst du mit <kbd>O</kbd>.</p>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/quelle-uebersicht.png" alt="Eine Quelle in citegeist mit Abstract, Literaturnotiz und Zitatkarten in der rechten Spalte"></div>
+        <figcaption>Eine Quelle mit Abstract, Literaturnotiz und Zitatkarten.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 2 Ausgangslage -->
+<section class="slide split" data-title="Ausgangslage">
+  <div class="text">
+    <p class="kicker"><b>02</b>Ausgangslage</p>
+    <h2>Deine Literatur liegt heute an mehreren Orten</h2>
+    <ul class="points">
+      <li>Die Literaturverwaltung kennt deine Markierungen nicht, und die Notiz-App kennt deine Quellen nicht.</li>
+      <li>Für jedes Zitat suchst du die gedruckte Seitenzahl von Hand heraus.</li>
+      <li>Agents wie Claude Code erreichen deine Bibliothek nur über Umwege.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="idea">
+      <div class="label">Die Idee von citegeist</div>
+      <p class="big">Quellen, Markierungen, Zitatkarten und Notizen liegen an einem Ort, für dich und für deine Agents.</p>
+      <div class="rule"><span>01</span>Mensch und Agent haben dieselben Fähigkeiten. Jede Funktion gibt es in der App, in der Kommandozeile und per MCP.</div>
+      <div class="rule"><span>02</span>Jede Änderung trägt ihre Herkunft: du, ein benannter Agent oder ein Modell.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 Quellen -->
+<section class="slide split" data-title="Quellen hinzufügen">
+  <div class="text">
+    <p class="kicker"><b>03</b>Quellen</p>
+    <h2>Neue Quellen füllen ihre Metadaten selbst aus</h2>
+    <ul class="points">
+      <li>Füge eine DOI, eine URL, eine arXiv-ID, eine PMID oder eine PDF-Datei ein. Das Menü &bdquo;+ Hinzufügen&ldquo; öffnet dafür auch die Dateiauswahl.</li>
+      <li>Die Quelle erscheint sofort in der Tabelle. Metadaten und Konvertierung laufen im Hintergrund.</li>
+      <li>Ziehst du eine PDF auf einen Eintrag mit DOI, hängt citegeist sie dort an.</li>
+      <li>Den Volltext sucht citegeist über Unpaywall, OpenAlex, arXiv und die Verlagsseite. Findet er keinen, steht &bdquo;ohne Volltext&ldquo; an der Quelle, und &bdquo;PDF anhängen&ldquo; holt das nach.</li>
+    </ul>
+    <p class="note">Löschen lässt sich mit einem Klick zurücknehmen, und Dubletten erkennt citegeist selbst.</p>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Hinzufügen</button><button>Bibliothek</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/bibliothek-hinzufuegen.png" alt="Bibliothekstabelle mit dem Feld zum Hinzufügen und der neuen Quelle doi101000xyz123"></div>
+        <figcaption>Das Feld oben nimmt DOI, arXiv-Link, ISBN oder URL entgegen. Die neue Quelle steht sofort in der Tabelle.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/bibliothek-spalte-offen.png" alt="Bibliothek mit ausgeklappter Leiste und gefilterter Projektliste"></div>
+        <figcaption>Die Bibliothek nach Projekt gefiltert, mit Lesestatus, Jahr und Citekey.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 4 Import und Export -->
+<section class="slide split" data-title="Import und Export">
+  <div class="text">
+    <p class="kicker"><b>04</b>Import und Export</p>
+    <h2>Deine bestehende Sammlung lässt sich importieren</h2>
+    <ul class="points">
+      <li>Import aus Zotero, BibTeX, RIS und CSL-JSON. Die Vorschau zeigt vorher, was passieren würde.</li>
+      <li>Aus Zotero kommen Sammlungen (als Projekte oder Tags), Anhänge, Notizen und PDF-Markierungen (als Karten) mit. citegeist arbeitet dabei auf einer Kopie der Datenbank.</li>
+      <li>Der Zotero Connector im Browser speichert Artikel direkt in citegeist.</li>
+      <li>Der Export liefert CSL-JSON, BibTeX und RIS mit stabilen Citekeys. Das Quick-Insert-Fenster fügt Zitate per Hotkey in jede App ein, in der du schreibst.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Zotero</button><button>BibTeX</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/import-ergebnis.png" alt="Importdialog mit gewählter Quelle Zotero und den Optionen für Sammlungen, Anhänge, Notizen und PDF-Markierungen"></div>
+        <figcaption>Import aus einer Zotero-Datenbank. Sammlungen werden zu Projekten oder Tags, PDF-Markierungen zu Karten.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/import.png" alt="Importdialog mit gewählter Quelle BibTeX und der Vorschau mit Zahlen"></div>
+        <figcaption>Import einer BibTeX-Datei mit Vorschau: 41 Einträge, davon 39 neu und 2 übersprungen.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 5 Lesen -->
+<section class="slide split" data-title="Lesen">
+  <div class="text">
+    <p class="kicker"><b>05</b>Lesen</p>
+    <h2>Jede PDF wird zu einem Text, den du gut lesen kannst</h2>
+    <ul class="points">
+      <li>PDFs, arXiv-HTML und Webartikel wandelt citegeist im Hintergrund in ein lesbares Dokument um, mit stabilen Block-IDs und den gedruckten Seitenzahlen.</li>
+      <li>Für Scans übernimmt die OCR von Apple Vision, lokal und kostenlos.</li>
+      <li>Der Reader wechselt zwischen PDF und Text und läuft in Hell und Dunkel.</li>
+      <li>Das Banner &bdquo;Seitenzahlen prüfen&ldquo; bestätigst du einmal pro PDF, danach stimmen alle Karten.</li>
+    </ul>
+    <p class="note">Du liest die Textansicht, und deine Agents lesen dasselbe Dokument als Markdown.</p>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Hell</button><button>Dunkel</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/lesen-hell.png" alt="Reader im Hellmodus mit Textansicht, markierten Passagen und dem Banner Seitenzahlen prüfen"></div>
+        <figcaption>Textansicht im Hellmodus mit zwei markierten Passagen. Das Banner oben bestätigt die gedruckte Seitenzahl.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/lesen-dunkel.png" alt="Derselbe Reader im Dunkelmodus"></div>
+        <figcaption>Derselbe Screen im Dunkelmodus.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 6 Zitatkarten -->
+<section class="slide split" data-title="Der Highlighter">
+  <div class="text">
+    <p class="kicker"><b>06</b>Highlighter</p>
+    <h2>Eine Markierung wird zur Zitatkarte</h2>
+    <ul class="points">
+      <li>Du markierst eine Passage, und citegeist speichert den Wortlaut mit Autor, Jahr und gedruckter Seite.</li>
+      <li>Die KI schreibt eine Paraphrase dazu und schlägt eine Art vor. Du änderst sie jederzeit.</li>
+      <li>Im Feld &bdquo;Notiz&ldquo; hältst du eigene Gedanken fest.</li>
+      <li>&bdquo;Wörtlich zitieren&ldquo; und &bdquo;Sinngemäß zitieren&ldquo; kopieren das Zitat mit fertigem Beleg, etwa &bdquo;Luhmann (1984, S. 31)&ldquo;.</li>
+    </ul>
+    <div class="kinds" aria-label="Kartenarten">
+      <span class="kind" style="--c:#5b3a9e">These</span>
+      <span class="kind" style="--c:#8a2130">Befund</span>
+      <span class="kind" style="--c:#1f6f8b">Methode</span>
+      <span class="kind" style="--c:#5a6b12">Definition</span>
+      <span class="kind" style="--c:#7a5c00">Beispiel</span>
+      <span class="kind" style="--c:#141414">Kritik</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Im Projekt</button><button>Bei der Quelle</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-karten.png" alt="Projektansicht mit Zitatkarten der Arten These und Definition, Paraphrase und Notiz"></div>
+        <figcaption>Zitatkarten mit Art, Seite, Originalwortlaut, KI-Paraphrase (Stern) und Notiz.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/quelle-uebersicht.png" alt="Quellenübersicht mit Abstract, Literaturnotiz und den Zitatkarten in der rechten Spalte"></div>
+        <figcaption>Dieselben Karten in der rechten Spalte bei der Quelle.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 7 Notizen -->
+<section class="slide split" data-title="Notizen und Begriffe">
+  <div class="text">
+    <p class="kicker"><b>07</b>Notizen</p>
+    <h2>Notizen verbinden Quellen, Karten und Begriffe</h2>
+    <ul class="points">
+      <li>Notizen im Zettelkasten-Stil sind Markdown-Dateien mit Wiki-Links, wie du sie aus Obsidian kennst.</li>
+      <li>Verbindungen haben einen Typ, etwa &bdquo;widerspricht&ldquo; oder &bdquo;präzisiert&ldquo;. Die KI schlägt sie mit Begründung und Belegstelle vor, du bestätigst oder verwirfst.</li>
+      <li>Backlinks und eine Graph-Ansicht zeigen, was zusammenhängt.</li>
+      <li>Das Begriffsregister zeigt, wie verschiedene Quellen denselben Begriff verwenden, jeweils mit Belegzitat und Seite.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <figure class="shot on crop" style="--w:780; --h:300; --x:100; --y:440">
+        <div class="frame" tabindex="0"><img src="../design/screens/quelle-uebersicht.png" alt="Ausschnitt der Literaturnotiz zu Luhmann mit Kernbegriffen und einem Verweis auf habermas1981theorie"></div>
+        <figcaption>Eine Literaturnotiz mit Kernbegriffen. Der Verweis auf habermas1981theorie verknüpft beide Quellen.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 8 Projekte -->
+<section class="slide split" data-title="Projekte">
+  <div class="text">
+    <p class="kicker"><b>08</b>Projekte</p>
+    <h2>Ein Projekt bündelt alles, was zu einer Arbeit gehört</h2>
+    <ul class="points">
+      <li>Ein Projekt wie dein PhD hat einen Projektbrief mit Forschungsfragen. Agents lesen ihn vor jeder Aufgabe.</li>
+      <li>Leseliste und Karten sind pro Projekt gefiltert. Der Export als .bib und CSL-JSON aktualisiert sich selbst.</li>
+      <li>Die Literaturmatrix beantwortet deine Spaltenfragen für jede Quelle. Jede Zelle verweist auf die Stelle oder Karte, aus der sie stammt, und lässt sich bearbeiten oder neu füllen.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Projektbrief</button><button>Literaturmatrix</button><button>Matrix anlegen</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt.png" alt="Projektansicht PhD proposal mit Projektbrief und Forschungsfragen"></div>
+        <figcaption>Projektbrief und Forschungsfragen, rechts Status, Sprache der KI-Texte und Zitierstil.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-matrix.png" alt="Literaturmatrix mit Quellen als Zeilen und Fragen als Spalten"></div>
+        <figcaption>Die Literaturmatrix: Zellen mit Stellenbeleg, Herkunft des Modells und der Aktion &bdquo;Neu füllen&ldquo;.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-matrix-anlegen.png" alt="Dialog zum Anlegen einer Matrix mit Quellen und Fragen"></div>
+        <figcaption>Eine Matrix legst du aus gewählten Quellen und eigenen Fragen an.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 9 Planung -->
+<section class="slide split" data-title="Forschungsplanung">
+  <div class="text">
+    <p class="kicker"><b>09</b>Forschungsplanung</p>
+    <h2>Pläne gliedern deine Arbeit in Kapitel und Abschnitte</h2>
+    <ul class="points">
+      <li>Ein Projekt kann mehrere Pläne haben, etwa ein Exposé und ein Paper. Als Vorlagen stehen Exposé und IMRaD bereit.</li>
+      <li>Jeder Abschnitt trägt einen Zweck, einen Status (Idee, Entwurf, Gefestigt, Fertig) und die Forschungsfragen, die er bearbeitet.</li>
+      <li>Einsichten über mehrere Quellen hinweg hältst du fest, sobald sie dir auffallen. Sie landen bei dem Kapitel, das sie betrifft.</li>
+      <li>Der Reiter &bdquo;Lücken&ldquo; zeigt, welchem Abschnitt noch Quellen oder Einsichten fehlen.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Dokument</button><button>Einsichten</button><button>Lücken</button><button>Neuer Plan</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-plan.png" alt="Planansicht mit Gliederung links und dem Abschnitt Autopoiesis im Dokument"></div>
+        <figcaption>Gliederung links, Abschnitt 2.2 mit Zweck, Status und Forschungsfragen rechts.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-plan-einsichten.png" alt="Reiter Einsichten mit Eingabefeld und datierten Einsichten"></div>
+        <figcaption>Einsichten mit Datum, zugehörigem Kapitel und verlinkten Quellen.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-plan-luecken.png" alt="Reiter Lücken mit Hinweisen keine Quelle und keine Einsicht"></div>
+        <figcaption>&bdquo;Keine Quelle&ldquo; und &bdquo;Keine Einsicht&ldquo; markieren, was noch fehlt.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-plan-neu.png" alt="Dialog Plan anlegen mit den Vorlagen Exposé, IMRaD und Leer"></div>
+        <figcaption>Einen neuen Plan legst du aus den Vorlagen Exposé, IMRaD oder leer an.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 10 Agent -->
+<section class="slide split" data-title="So arbeitet der Agent mit dir">
+  <div class="text">
+    <p class="kicker"><b>10</b>Der Agent</p>
+    <h2>So arbeitet der Agent mit dir</h2>
+    <ul class="points">
+      <li>Der Agent läuft auf deinem eigenen Abo von Claude Code, Codex oder Cursor. Die Kosten laufen über dein Abo, API-Schlüssel sind optional.</li>
+      <li>Er sieht die Bibliothek, liest Paper, legt Karten an und ändert Pläne direkt in den Dateien.</li>
+      <li>Jede Änderung trägt den Namen des Agents. Ein Klick auf &bdquo;Rückgängig&ldquo; nimmt den ganzen Zug zurück.</li>
+      <li>Kontext-Chips zeigen, was der Agent gerade sieht, etwa die geöffnete Quelle oder den aktuellen Plan.</li>
+    </ul>
+    <p class="note">Standardmäßig arbeitet der Agent in deiner normalen Umgebung, mit Shell und deinen MCP-Servern. Mit dem Schalter &bdquo;Isolierter Agent&ldquo; in den Einstellungen läuft er in einer Sandbox.</p>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Im Plan</button><button>Beim Lesen</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/projekt-plan-agent.png" alt="Planansicht mit Agent-Chat, der eine Einsicht in Kapitel 2 notiert und eine Rückgängig-Schaltfläche zeigt"></div>
+        <figcaption>Der Agent notiert die Einsicht in Kapitel 2. Unter der Antwort steht &bdquo;Rückgängig&ldquo;.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/lesen-agent-chat.png" alt="Reader mit geöffnetem Agent-Reiter und Claude Code als gewähltem Agent"></div>
+        <figcaption>Der Agent-Reiter neben dem Reader, mit der geöffneten Quelle als Kontext.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 11 Finden -->
+<section class="slide split" data-title="Suchen und Prüfen">
+  <div class="text">
+    <p class="kicker"><b>11</b>Finden und Prüfen</p>
+    <h2>citegeist hilft dir, Literatur zu finden und zu prüfen</h2>
+    <ul class="points">
+      <li>Die semantische Suche läuft offline mit einem lokalen Modell und findet auch Texte, die andere Wörter für dasselbe benutzen. Daneben gibt es die Volltextsuche.</li>
+      <li>Die Schneeballsuche zeigt zu jeder Quelle, wen sie zitiert und von wem sie zitiert wird. Was schon in der Bibliothek oder Inbox liegt, ist markiert.</li>
+      <li>Rückruf-Hinweise aus Retraction Watch markieren zurückgezogene und korrigierte Quellen in der Tabelle und an der Quelle selbst.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Verwandte Werke</button><button>Rückruf-Hinweis</button><button>Suche nach Bedeutung</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/quelle-verwandte-werke.png" alt="Quelle mit der Liste verwandter Werke, die zitieren, und den Schaltflächen In die Inbox"></div>
+        <figcaption>&bdquo;Zitiert von&ldquo; mit Jahresfilter. Neue Werke legst du mit &bdquo;In die Inbox&ldquo; ab.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/quelle-rueckzug.png" alt="Quelle mit rot umrandetem Hinweis Zurückgezogen und Prüfdatum"></div>
+        <figcaption>Der Hinweis &bdquo;Zurückgezogen&ldquo; steht über dem Titel, mit Prüfdatum und Link.</figcaption>
+      </figure>
+      <figure class="shot crop" style="--w:660; --h:190; --x:340; --y:412">
+        <div class="frame" tabindex="0"><img src="../design/screens/einstellungen-modell.png" alt="Einstellung Suche nach Bedeutung mit Embedding-Modell"></div>
+        <figcaption>In den Einstellungen schaltest du die Suche nach Bedeutung ein. Das Modell läuft lokal auf deinem Mac.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 12 Inbox -->
+<section class="slide split" data-title="Inbox und Alerts">
+  <div class="text">
+    <p class="kicker"><b>12</b>Inbox</p>
+    <h2>Was Agents und Alerts finden, landet zuerst in der Inbox</h2>
+    <ul class="points">
+      <li>Jeder Vorschlag trägt seine Herkunft, etwa &bdquo;agent:claude-code&ldquo;, und eine Begründung.</li>
+      <li>Du nimmst Quellen einzeln an oder verwirfst sie, oder du wählst mehrere aus und entscheidest gesammelt.</li>
+      <li>Alerts sind gespeicherte Beobachtungen für ein Thema, eine Autorin oder einen Autor oder die Arbeiten, die ein bestimmtes Paper zitieren. Die täglichen Treffer landen in der Inbox.</li>
+      <li>Recherche-Aufträge schickst du im Chat los. Der Agent arbeitet im Hintergrund und legt seine Funde mit Begründung in die Inbox.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/inbox.png" alt="Inbox mit drei vorgeschlagenen Quellen, Begründungen und Sammelaktionen"></div>
+        <figcaption>Drei Vorschläge mit Herkunft und Begründung, zwei davon für die Sammelaktion ausgewählt.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 13 Schnittstellen -->
+<section class="slide split" data-title="Agent-Zugang">
+  <div class="text">
+    <p class="kicker"><b>13</b>Agent-Zugang</p>
+    <h2>Jeder Agent kann mit deiner Bibliothek arbeiten</h2>
+    <ul class="points">
+      <li>Ein MCP-Server gibt Agents wie Claude Code oder Cursor Zugriff auf Quellen, Karten und Notizen.</li>
+      <li>Dasselbe geht aus dem Terminal mit der Kommandozeile <code>cg</code>.</li>
+      <li>Ein Agent in einem anderen Projekt fragt zum Beispiel: &bdquo;Welche Paper zu Retrieval-Evaluation habe ich gelesen, und was waren die Kernaussagen?&ldquo; Die Antwort verweist auf Karten und Notizen mit Seitenangaben.</li>
+      <li>Über Webhooks verbindest du externe Agents, etwa deinen Grok-Bot. Seine Anfragen sind mit einem Secret signiert, und alles, was er schreibt, trägt seinen Namen.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/einstellungen-webhooks.png" alt="Einstellungen, Reiter Webhooks, mit dem Connector grok"></div>
+        <figcaption>Ein Webhook-Connector für einen Grok-Bot, mit eingehender Adresse, Ziel für Aufträge, Akteur und Secret.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 14 Dateien -->
+<section class="slide split" data-title="Dateien und Datenschutz">
+  <div class="text">
+    <p class="kicker"><b>14</b>Dateien und Datenschutz</p>
+    <h2>Deine Bibliothek ist ein Ordner mit offenen Dateien</h2>
+    <ul class="points">
+      <li>Quellen, Notizen und Karten liegen als Markdown-, YAML- und JSON-Dateien neben den Original-PDFs. Sie bleiben ohne citegeist lesbar, und der Ordner öffnet sich auch als Obsidian-Vault.</li>
+      <li>Der Ordner synchronisiert über iCloud, Dropbox oder einen git-Remote, immer über genau einen Weg. Der git-Verlauf macht nachvollziehbar, was Agents geändert haben.</li>
+      <li>Suche, Embeddings und OCR laufen lokal auf deinem Mac. Ins Netz gehen Metadaten-Abfragen, Downloads freier PDFs und die Aufrufe an deinen AI-Anbieter. Jede AI-Funktion lässt sich abschalten.</li>
+      <li>Die Einstellungen decken Modell pro Aufgabe, Metadatenquellen, Sync und Webhooks ab.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="shots">
+      <div class="tabs"><button class="on">Sync</button><button>Modelle</button><button>Metadaten</button></div>
+      <figure class="shot on">
+        <div class="frame" tabindex="0"><img src="../design/screens/einstellungen-sync.png" alt="Einstellungen, Reiter Sync, mit Sync-Weg git-Remote und Stand des letzten Syncs"></div>
+        <figcaption>Sync-Weg wählen (iCloud, Dropbox oder git-Remote) und git-Verlauf der Bibliothek führen.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/einstellungen.png" alt="Einstellungen mit den AI-Backends Claude Code, Codex, Ollama und OpenAI API"></div>
+        <figcaption>AI-Backends mit Status und Testknopf. API-Schlüssel liegen in der macOS-Keychain.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame" tabindex="0"><img src="../design/screens/einstellungen-quellen.png" alt="Einstellungen mit Zuordnung der Aufgaben, Kontaktadresse und Metadatenquellen"></div>
+        <figcaption>Welches Backend welche Aufgabe übernimmt, dazu Kontaktadresse und Metadatenquellen.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 15 Kommt bald -->
+<section class="slide soon" data-title="Kommt bald">
+  <div class="head">
+    <p class="kicker"><b>15</b>Kommt bald</p>
+    <h2>Drei Erweiterungen sind in Prüfung</h2>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <span class="stamp">Kommt bald</span>
+      <h3>Literatursuche</h3>
+      <p>Ein eigener Tab von Niels sucht in OpenAlex, arXiv und Semantic Scholar und bewertet die Treffer mit einem Scoring. Du vergleichst Läufe miteinander, legst Watchlists an und verfolgst Preprints, bis sie veröffentlicht sind.</p>
+      <span class="meta">Von Niels</span>
+    </article>
+    <article class="card">
+      <span class="stamp">Kommt bald</span>
+      <h3>Farben und Tags für Markierungen</h3>
+      <p>Markierungen bekommen Farben und Tags.</p>
+      <span class="meta">#51</span>
+    </article>
+    <article class="card">
+      <span class="stamp">Kommt bald</span>
+      <h3>Ablagefläche für Dateien</h3>
+      <p>Eine Drop-Area nimmt Dateien entgegen.</p>
+      <span class="meta">#52</span>
+    </article>
+  </div>
+  <p class="foot">Alle drei Pull Requests sind noch nicht gemergt. Offen sind außerdem ein iPad-Ableger, ein eigener Schreibeditor und die Signierung der App.</p>
+</section>
+
+<!-- 16 Überblick -->
+<section class="slide cheat" data-title="Alle Funktionen im Überblick">
+  <div>
+    <p class="kicker"><b>16</b>Überblick</p>
+    <h2>Die Funktionen im Überblick</h2>
+  </div>
+  <div>
+    <div class="grid">
+      <div class="group"><h3>Quellen <a href="#3">03</a></h3><ul>
+        <li><a href="#3">DOI, URL, arXiv-ID, PMID oder PDF</a></li>
+        <li><a href="#3">Metadaten automatisch</a></li>
+        <li><a href="#3">Volltext-Suche, &bdquo;PDF anhängen&ldquo;</a></li>
+        <li><a href="#3">Löschen mit Rückgängig</a></li>
+        <li><a href="#3">Dubletten erkennen</a></li>
+      </ul></div>
+      <div class="group"><h3>Import und Export <a href="#4">04</a></h3><ul>
+        <li><a href="#4">Zotero-Import</a></li>
+        <li><a href="#4">BibTeX, RIS, CSL-JSON</a></li>
+        <li><a href="#4">Zotero Connector</a></li>
+        <li><a href="#4">Export, stabile Citekeys</a></li>
+        <li><a href="#4">Quick-Insert per Hotkey</a></li>
+      </ul></div>
+      <div class="group"><h3>Lesen und Zitieren <a href="#5">05 06</a></h3><ul>
+        <li><a href="#5">Konvertierung, Block-IDs, Seitenzahlen</a></li>
+        <li><a href="#5">OCR für Scans</a></li>
+        <li><a href="#5">Reader in Hell und Dunkel</a></li>
+        <li><a href="#6">Zitatkarte, KI-Paraphrase, Art</a></li>
+        <li><a href="#6">Notiz, wörtlich und sinngemäß zitieren</a></li>
+      </ul></div>
+      <div class="group"><h3>Denken <a href="#7">07</a></h3><ul>
+        <li><a href="#7">Zettelkasten-Notizen</a></li>
+        <li><a href="#7">Typisierte Verbindungen</a></li>
+        <li><a href="#7">Backlinks und Graph</a></li>
+        <li><a href="#7">Begriffsregister</a></li>
+      </ul></div>
+      <div class="group"><h3>Projekte <a href="#8">08 09</a></h3><ul>
+        <li><a href="#8">Projektbrief, Forschungsfragen</a></li>
+        <li><a href="#8">Leseliste, Karten pro Projekt</a></li>
+        <li><a href="#8">Literaturmatrix</a></li>
+        <li><a href="#9">Pläne mit Vorlagen</a></li>
+        <li><a href="#9">Einsichten und Lücken</a></li>
+      </ul></div>
+      <div class="group"><h3>Agents <a href="#10">10 12 13</a></h3><ul>
+        <li><a href="#10">Chat im eigenen Abo</a></li>
+        <li><a href="#10">Rückgängig pro Zug</a></li>
+        <li><a href="#12">Recherche-Aufträge, Inbox, Alerts</a></li>
+        <li><a href="#13">MCP-Server und <span class="inline-code">cg</span></a></li>
+        <li><a href="#13">Webhooks</a></li>
+      </ul></div>
+      <div class="group"><h3>Finden und Prüfen <a href="#11">11</a></h3><ul>
+        <li><a href="#11">Semantische Suche, offline</a></li>
+        <li><a href="#11">Volltextsuche</a></li>
+        <li><a href="#11">Schneeballsuche</a></li>
+        <li><a href="#11">Rückruf-Hinweise</a></li>
+      </ul></div>
+      <div class="group"><h3>Dateien <a href="#14">14</a></h3><ul>
+        <li><a href="#14">Ordner aus offenen Dateien</a></li>
+        <li><a href="#14">Obsidian-kompatibel</a></li>
+        <li><a href="#14">Sync per iCloud, Dropbox oder git</a></li>
+        <li><a href="#14">Einstellungen</a></li>
+      </ul></div>
+    </div>
+    <p class="soonline">Kommt bald (<a href="#15">15</a>): Literatursuche von Niels, Farben und Tags für Markierungen, Ablagefläche für Dateien.</p>
+  </div>
+</section>
+
+</div>
+</div>
+
+<div id="bar">
+  <div id="progress"><i></i></div>
+  <span class="brand">citegeist</span>
+  <span class="title" id="slidetitle"></span>
+  <span id="count"></span>
+  <button class="btn sq" id="prev" aria-label="Vorherige Folie">&larr;</button>
+  <button class="btn sq" id="next" aria-label="Nächste Folie">&rarr;</button>
+  <button class="btn primary" id="ovbtn">Übersicht</button>
+</div>
+
+<div id="overview" role="dialog" aria-label="Übersicht">
+  <div class="sheet">
+    <header><h2>Übersicht</h2><button class="btn" id="ovclose">Schließen (Esc)</button></header>
+    <div class="grid" id="ovgrid"></div>
+  </div>
+</div>
+
+<div id="lightbox" role="dialog" aria-label="Screenshot in voller Größe"><img alt=""></div>
+
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var viewport = document.getElementById('viewport');
+  var slides = Array.prototype.slice.call(stage.querySelectorAll(':scope > .slide'));
+  var n = slides.length, cur = 0;
+  var bar = document.querySelector('#progress i');
+  var count = document.getElementById('count');
+  var titleEl = document.getElementById('slidetitle');
+  var overview = document.getElementById('overview');
+  var lightbox = document.getElementById('lightbox');
+  var lbImg = lightbox.querySelector('img');
+
+  function fit() {
+    var w = viewport.clientWidth, h = viewport.clientHeight;
+    var s = Math.min(w / 1280, h / 720);
+    stage.style.transform = 'scale(' + s + ')';
+    stage.style.left = Math.max(0, (w - 1280 * s) / 2) + 'px';
+    stage.style.top = Math.max(0, (h - 720 * s) / 2) + 'px';
+  }
+
+  function go(i) {
+    i = Math.max(0, Math.min(n - 1, i));
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    cur = i;
+    bar.style.width = ((i + 1) / n * 100) + '%';
+    count.textContent = (i + 1) + ' / ' + n;
+    titleEl.textContent = slides[i].getAttribute('data-title') || '';
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  function fromHash() {
+    var m = /^#(\d+)$/.exec(location.hash);
+    go(m ? parseInt(m[1], 10) - 1 : 0);
+  }
+
+  /* Overview */
+  var built = false;
+  function scaleThumbs() {
+    document.querySelectorAll('#ovgrid .tframe').forEach(function (f) {
+      var inner = f.firstElementChild;
+      if (inner) inner.style.transform = 'scale(' + (f.clientWidth / 1280) + ')';
+    });
+  }
+  function buildOverview() {
+    var grid = document.getElementById('ovgrid');
+    slides.forEach(function (s, k) {
+      var b = document.createElement('button');
+      b.className = 'thumb'; b.type = 'button'; b.dataset.i = k;
+      var f = document.createElement('div'); f.className = 'tframe';
+      var c = s.cloneNode(true);
+      c.classList.add('active');
+      c.querySelectorAll('[tabindex]').forEach(function (e) { e.removeAttribute('tabindex'); });
+      c.querySelectorAll('a').forEach(function (e) { e.removeAttribute('href'); });
+      f.appendChild(c);
+      var l = document.createElement('div'); l.className = 'tlabel';
+      l.innerHTML = '<b>' + (k + 1) + '</b><span></span>';
+      l.lastChild.textContent = s.getAttribute('data-title') || '';
+      b.appendChild(f); b.appendChild(l); grid.appendChild(b);
+    });
+    built = true;
+  }
+  function openOverview() {
+    if (!built) buildOverview();
+    overview.classList.add('open');
+    document.querySelectorAll('#ovgrid .thumb').forEach(function (t) { t.classList.toggle('cur', +t.dataset.i === cur); });
+    scaleThumbs();
+    var curThumb = document.querySelector('#ovgrid .thumb.cur');
+    if (curThumb) curThumb.focus({ preventScroll: false });
+  }
+  function closeOverview() { overview.classList.remove('open'); }
+  document.getElementById('ovgrid').addEventListener('click', function (e) {
+    var t = e.target.closest('.thumb');
+    if (!t) return;
+    go(+t.dataset.i); closeOverview();
+  });
+  document.getElementById('ovbtn').addEventListener('click', function (e) {
+    e.currentTarget.blur();
+    overview.classList.contains('open') ? closeOverview() : openOverview();
+  });
+  document.getElementById('ovclose').addEventListener('click', closeOverview);
+  overview.addEventListener('click', function (e) { if (e.target === overview) closeOverview(); });
+
+  /* Lightbox */
+  function openLightbox(frame) {
+    var img = frame.querySelector('img');
+    lbImg.src = img.src; lbImg.alt = img.alt;
+    lightbox.classList.add('open');
+  }
+  function closeLightbox() { lightbox.classList.remove('open'); }
+  lightbox.addEventListener('click', closeLightbox);
+
+  /* Tabs and frames */
+  stage.addEventListener('click', function (e) {
+    var tab = e.target.closest('.tabs button');
+    if (tab) {
+      var wrap = tab.closest('.shots');
+      var idx = Array.prototype.indexOf.call(tab.parentNode.children, tab);
+      Array.prototype.forEach.call(tab.parentNode.children, function (b, k) { b.classList.toggle('on', k === idx); });
+      wrap.querySelectorAll('.shot').forEach(function (s, k) { s.classList.toggle('on', k === idx); });
+      tab.blur();
+      return;
+    }
+    var frame = e.target.closest('.frame');
+    if (frame) { openLightbox(frame); return; }
+  });
+  stage.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter') && e.target.classList && e.target.classList.contains('frame')) openLightbox(e.target);
+  });
+
+  /* Click navigation: left half back, right half forward */
+  viewport.addEventListener('click', function (e) {
+    if (e.target.closest('a, button, .frame, .tabs')) return;
+    var r = viewport.getBoundingClientRect();
+    if (e.clientX - r.left < r.width / 2) go(cur - 1); else go(cur + 1);
+  });
+  document.getElementById('prev').addEventListener('click', function (e) { e.currentTarget.blur(); go(cur - 1); });
+  document.getElementById('next').addEventListener('click', function (e) { e.currentTarget.blur(); go(cur + 1); });
+
+  /* Keyboard */
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Escape') {
+      if (lightbox.classList.contains('open')) closeLightbox();
+      else if (overview.classList.contains('open')) closeOverview();
+      return;
+    }
+    if (lightbox.classList.contains('open')) return;
+    if (e.key === 'o' || e.key === 'O') {
+      e.preventDefault();
+      overview.classList.contains('open') ? closeOverview() : openOverview();
+      return;
+    }
+    if (overview.classList.contains('open')) return;
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); go(cur + 1); break;
+      case 'ArrowLeft': case 'PageUp': e.preventDefault(); go(cur - 1); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End': e.preventDefault(); go(n - 1); break;
+    }
+  });
+
+  window.addEventListener('resize', function () { fit(); if (overview.classList.contains('open')) scaleThumbs(); });
+  window.addEventListener('hashchange', fromHash);
+  fit();
+  fromHash();
+})();
+</script>
+</body>
+</html>
