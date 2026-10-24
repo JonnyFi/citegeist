@@ -34,7 +34,7 @@ beforeEach(() => {
 afterEach(async () => {
   await server?.close();
   server = undefined;
-  rmSync(tmp, { recursive: true, force: true });
+  rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 async function start() {
