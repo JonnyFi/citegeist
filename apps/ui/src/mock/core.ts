@@ -27,8 +27,10 @@ import { bindConnectionsMock } from "../connections/mock";
 import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { classifyIdentifier } from "../lib/identifier";
+import { bindMatrixMock } from "../matrix/mock";
 import { bindNotesMock } from "../notes/mock";
 import { bindPlanningMock } from "../planning/mock";
+import { bindRelatedMock } from "../related";
 import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
 import {
   bindSyncMock,
@@ -88,6 +90,8 @@ interface MockJob {
   status: "running" | "succeeded" | "failed";
   createdAt: string;
   updatedAt: string;
+  /** Share of the work done, 0 to 1. Without it a running job reports one half. */
+  progress?: number;
 }
 
 function surname(fm: ItemFrontmatter): string {
@@ -204,7 +208,7 @@ export function createMockRegistry(
       id: job.id,
       kind: "ai-task",
       status: job.status,
-      progress: job.status === "running" ? 0.5 : 1,
+      progress: job.progress ?? (job.status === "running" ? 0.5 : 1),
       input: {},
       attempts: 1,
       by: "human",
@@ -574,7 +578,7 @@ export function createMockRegistry(
         id: job.id,
         kind: "ai-task" as const,
         status: job.status,
-        progress: job.status === "running" ? 0.5 : 1,
+        progress: job.progress ?? (job.status === "running" ? 0.5 : 1),
         input: {},
         attempts: 1,
         by: "human" as const,
@@ -630,6 +634,8 @@ export function createMockRegistry(
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
   bindNotesMock(registry, data, emit);
   bindPlanningMock(registry, data, emit);
+  bindRelatedMock(registry, data, emit);
+  bindMatrixMock(registry, data, emit, jobs, aiDelayMs);
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
   bindChatMock(registry, data, emit, {
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),

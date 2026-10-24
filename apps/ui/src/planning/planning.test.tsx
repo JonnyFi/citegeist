@@ -318,6 +318,17 @@ describe("documents", () => {
 });
 
 describe("insights", () => {
+  it("reads the insights with insights.list and the documents with plan.docs.get", async () => {
+    const { calls } = renderApp(`${PLAN}&view=insights`);
+    await screen.findByRole("list", { name: "Einsichten" });
+    const names = calls.map((c) => c.name);
+    expect(names).toContain("insights.list");
+    expect(names).not.toContain("insights.find");
+    expect(calls.find((c) => c.name === "insights.list")?.input).toMatchObject({
+      project: "phd-proposal",
+    });
+  });
+
   it("lists the insights with date, target node and sources, newest first", async () => {
     renderApp(`${PLAN}&view=insights`);
     const list = await screen.findByRole("list", { name: "Einsichten" });

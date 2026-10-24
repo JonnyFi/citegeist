@@ -1,5 +1,5 @@
 import { scanWikiLinks } from "@citegeist/editor";
-import { type InsightHit, insightsFind, insightsNote, type NumberedNode } from "@citegeist/ops";
+import { type InsightHit, insightsList, insightsNote, type NumberedNode } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { Lightbulb } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
@@ -16,7 +16,7 @@ import { nodeLabel } from "./outline";
 
 /** The hits the insights view and the gap view share: everything noted in the plan and the project. */
 export function useInsightHits(project: string, plan: string) {
-  return useOp(insightsFind, { project, plan, limit: 50 });
+  return useOp(insightsList, { project, plan, limit: 500 });
 }
 
 /** Citekeys of the sources an insight links, directly or through a card. */

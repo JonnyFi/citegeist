@@ -1,4 +1,4 @@
-import { cardsList, itemsGet, projectsList } from "@citegeist/ops";
+import { cardsList, itemsGet, itemsResolve, projectsList } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, Quote } from "lucide-react";
 import type { ReactNode } from "react";
@@ -9,7 +9,7 @@ import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { useReadingPosition } from "../lib/reading-position";
 import { cn, describeError } from "../lib/utils";
-import { itemsResolve } from "../planning/contracts";
+import { markerOf, RelatedWorks, RetractionBadge, RetractionNote } from "../related";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
@@ -36,11 +36,7 @@ function OverviewActions({ citekey, onResume }: { citekey: string; onResume: () 
     ? resolve.data.changed.length > 0
       ? t("resolve.changed", { fields: resolve.data.changed.join(", ") })
       : t("resolve.unchanged")
-    : failure
-      ? /UNKNOWN_OPERATION|No operation/i.test(failure)
-        ? t("resolve.unsupported")
-        : failure
-      : undefined;
+    : failure;
   return (
     <div className="flex items-center gap-2">
       {status ? (
@@ -115,6 +111,7 @@ export function ItemView({
 
   const { frontmatter: fm, note } = item.data;
   const authors = (fm.author ?? []).map(creatorName);
+  const retraction = markerOf(fm.retraction);
   const projectTitle = (slug: string) =>
     projects.data?.projects.find((p) => p.slug === slug)?.title ?? slug;
   const firstProject = fm.projects[0];
@@ -167,6 +164,7 @@ export function ItemView({
         </span>
       </nav>
       <span className="flex-1" />
+      {retraction ? <RetractionBadge marker={retraction} /> : null}
       <span className="font-mono text-[12px] text-muted">{fm.citekey}</span>
     </HeaderSlot>
   );
@@ -277,6 +275,11 @@ export function ItemView({
         <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
           <article className="mx-auto flex w-full max-w-[720px] flex-col">
             <header className="flex flex-col gap-2.5 pb-7">
+              {retraction ? (
+                <div className="mb-3">
+                  <RetractionNote marker={retraction} />
+                </div>
+              ) : null}
               {fm.inbox?.why ? (
                 <Provenance
                   who={fm.inbox.by === "human" ? t("actor.human") : fm.inbox.by}
@@ -344,6 +347,10 @@ export function ItemView({
               ) : (
                 <p className="text-muted">{t("item.noNote")}</p>
               )}
+            </Section>
+
+            <Section title={t("related.title")}>
+              <RelatedWorks citekey={citekey} />
             </Section>
 
             <Section title={t("item.metadata")}>

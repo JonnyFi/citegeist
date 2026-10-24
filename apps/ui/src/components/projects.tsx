@@ -15,6 +15,7 @@ import { AI_LANGUAGES, LIBRARY_AI_LANGUAGE } from "../lib/ai-language";
 import { downloadText } from "../lib/clipboard";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
+import { MatrixTab } from "../matrix";
 import { type PlanSearch, PlanTab, type PlanView } from "../planning/plan-tab";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { ProjectCards } from "./project-cards";
@@ -217,23 +218,29 @@ function ProjectTabLink({
   );
 }
 
-export type ProjectTab = "brief" | "cards" | "plan";
+export type ProjectTab = "brief" | "cards" | "plan" | "matrix";
 
 /** The URL state of the project screen: the tab and, on the plan tab, the plan, node and view. */
 export interface ProjectSearch extends PlanSearch {
   tab?: ProjectTab | undefined;
+  /** The matrix open on the matrix tab. */
+  matrix?: string | undefined;
 }
 
 const PLAN_VIEWS: readonly PlanView[] = ["doc", "insights", "gaps"];
 
 export function parseProjectSearch(search: Record<string, unknown>): ProjectSearch {
   const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
-  const tab = search.tab === "cards" || search.tab === "plan" ? search.tab : undefined;
+  const tab =
+    search.tab === "cards" || search.tab === "plan" || search.tab === "matrix"
+      ? search.tab
+      : undefined;
   const view = PLAN_VIEWS.find((v) => v === search.view);
   return {
     ...(tab ? { tab } : {}),
     ...(str(search.plan) ? { plan: str(search.plan) } : {}),
     ...(str(search.node) ? { node: str(search.node) } : {}),
+    ...(str(search.matrix) ? { matrix: str(search.matrix) } : {}),
     ...(view && view !== "doc" ? { view } : {}),
   };
 }
@@ -337,6 +344,9 @@ export function ProjectView({
                 <span className="ml-1.5 font-mono font-normal">{plans.data.plans.length}</span>
               ) : null}
             </ProjectTabLink>
+            <ProjectTabLink slug={slug} tab="matrix" active={tab === "matrix"}>
+              {t("project.matrixTab")}
+            </ProjectTabLink>
           </div>
           <div className="flex items-center">
             <ProjectExport slug={slug} citekeys={items.data?.items.map((i) => i.citekey) ?? []} />
@@ -351,6 +361,12 @@ export function ProjectView({
           />
         ) : tab === "cards" ? (
           <ProjectCards slug={slug} />
+        ) : tab === "matrix" ? (
+          <MatrixTab
+            project={slug}
+            matrix={search.matrix}
+            onMatrix={(matrix) => onSearch?.({ tab: "matrix", ...(matrix ? { matrix } : {}) })}
+          />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-9">
             <div className="flex max-w-[680px] flex-col gap-7">

@@ -50,6 +50,8 @@ interface ItemSeed {
   inboxWhy?: string;
   note?: string;
   pages?: number;
+  /** The frontmatter key `retraction`, as items.checkRetractions writes it. */
+  retraction?: Record<string, unknown>;
 }
 
 const ITEMS: ItemSeed[] = [
@@ -164,6 +166,20 @@ const ITEMS: ItemSeed[] = [
     projects: ["rag-evaluation"],
     tags: ["rag", "evaluation"],
     note: "",
+    retraction: {
+      status: "retracted",
+      checked: "2026-10-20",
+      notices: [
+        {
+          kind: "retraction",
+          label: "Retraction notice (Beispielhinweis der Mock-Bibliothek)",
+          doi: "10.9999/mock.notice.es2023",
+          date: "2026-09-14",
+          source: "retraction-watch",
+          recordId: "RW-mock-1",
+        },
+      ],
+    },
   },
   {
     citekey: "thakur2021beir",
@@ -177,6 +193,19 @@ const ITEMS: ItemSeed[] = [
     projects: ["rag-evaluation"],
     tags: ["retrieval", "evaluation"],
     note: "",
+    retraction: {
+      status: "corrected",
+      checked: "2026-10-20",
+      notices: [
+        {
+          kind: "correction",
+          label: "Erratum (Beispielhinweis der Mock-Bibliothek)",
+          doi: "10.9999/mock.erratum.thakur2021",
+          date: "2022-03-02",
+          source: "publisher",
+        },
+      ],
+    },
   },
   {
     citekey: "bush1945think",
@@ -358,6 +387,7 @@ export function createFixtures(): MockData {
       ...(s.publisher ? { publisher: s.publisher } : {}),
       ...(s.doi ? { DOI: s.doi } : {}),
       ...(s.abstract ? { abstract: s.abstract } : {}),
+      ...(s.retraction ? { retraction: s.retraction } : {}),
       tags: s.tags ?? [],
       projects: s.projects ?? [],
       status: s.status ?? "unread",

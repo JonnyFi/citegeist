@@ -1,4 +1,4 @@
-import type { NumberedNode } from "@citegeist/ops";
+import { type NumberedNode, planDocsGet } from "@citegeist/ops";
 import { useQueries } from "@tanstack/react-query";
 import { CircleCheck } from "lucide-react";
 import { Stamp } from "../components/ui/badge";
@@ -7,7 +7,6 @@ import { EmptyState, ErrorState, Loading } from "../components/ui/states";
 import { useI18n } from "../i18n";
 import { useCore } from "../lib/hooks";
 import type { LinkIndex } from "../notes/library-links";
-import { planDocsGet } from "./contracts";
 import { findGaps } from "./insights";
 import { useInsightHits } from "./insights-view";
 import { StatusMeter } from "./outline-tree";
