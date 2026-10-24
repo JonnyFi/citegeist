@@ -1334,6 +1334,7 @@
           "research",
           "import",
           "export",
+          "alerts",
           "worker-setup"
         ]
       },

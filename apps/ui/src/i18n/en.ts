@@ -1,3 +1,4 @@
+import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { planningEn } from "../planning/strings";
@@ -432,6 +433,7 @@ export const en: Record<MessageKey, string> = {
   "graph.noWebgl":
     "The graph needs WebGL and is not available here. The node list next to it still works.",
   ...chatEn,
+  ...alertsEn,
   ...planningEn,
   ...settingsEn,
   ...importEn,
