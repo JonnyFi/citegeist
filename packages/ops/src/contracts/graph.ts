@@ -175,6 +175,28 @@ export const RetractionMarker = z.object({
 });
 export type RetractionMarker = z.infer<typeof RetractionMarker>;
 
+/** The part of a marker that items.list carries per item: the status and the link to the notice. */
+export const RetractionSummary = z.object({
+  status: RetractionStatus,
+  noticeUrl: z.string().optional().describe("Link to the first notice that has a DOI"),
+});
+export type RetractionSummary = z.infer<typeof RetractionSummary>;
+
+/** Link to the notice: the DOI of the first notice that has one. */
+export function retractionNoticeUrl(marker: RetractionMarker): string | undefined {
+  const doi = marker.notices.find((n) => n.doi)?.doi;
+  return doi ? `https://doi.org/${doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : undefined;
+}
+
+/** The summary of a raw frontmatter value `retraction`; undefined when there is none or it is malformed. */
+export function summarizeRetraction(raw: unknown): RetractionSummary | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const parsed = RetractionMarker.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const url = retractionNoticeUrl(parsed.data);
+  return { status: parsed.data.status, ...(url ? { noticeUrl: url } : {}) };
+}
+
 export const itemsCheckRetractions = defineContract({
   name: "items.checkRetractions",
   summary:

@@ -27,6 +27,15 @@ export interface QuickInsertSettingsBridge {
   set(patch: Partial<QuickInsertSettings>): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
+/** What the native picker may choose. `any` lets a person pick a file or a folder. */
+export interface PickPathsOptions {
+  kind: "file" | "folder" | "any";
+  multiple?: boolean;
+  title?: string;
+  /** File extensions without the dot, e.g. ["pdf"]. Only used when files can be chosen. */
+  extensions?: readonly string[];
+}
+
 export interface CitegeistBridge {
   /** Null until a library is open. */
   connection: CoreConnection | null;
@@ -34,6 +43,11 @@ export interface CitegeistBridge {
   openLibrary(): Promise<boolean>;
   /** Native picker to create a new library in an empty folder. Resolves false when cancelled. */
   createLibrary(): Promise<boolean>;
+  /**
+   * Opens the native open dialog (`dialog.showOpenDialog`) and resolves to the chosen absolute
+   * paths, empty when cancelled. Absent in the browser preview, where paths are typed.
+   */
+  pickPaths?(options: PickPathsOptions): Promise<string[]>;
   /** Subscribes to navigation requests from the menu and from citegeist:// links. */
   onNavigate(listener: (path: string) => void): () => void;
   /** Settings of the quick-insert palette. Absent where there is no palette. */

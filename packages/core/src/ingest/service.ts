@@ -57,6 +57,7 @@ import {
   problem,
   rejectInbox,
   renameItem,
+  restoreItem,
   saveItem,
   trashItem,
   updateItem,
@@ -1188,6 +1189,10 @@ export class IngestService {
   updateItem = (actor: Actor, citekey: string, patch: Record<string, unknown>) =>
     updateItem(this.lib, actor, citekey, patch);
   renameItem = (actor: Actor, from: string, to: string) => renameItem(this.lib, actor, from, to);
+  restoreItem = (citekey: string) => {
+    restoreItem(this.lib, citekey);
+  };
+
   trashItem = (actor: Actor, citekey: string) => {
     assertMayTrash(this.lib, actor, citekey);
     trashItem(this.lib, citekey, actor);

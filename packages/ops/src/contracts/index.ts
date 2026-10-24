@@ -21,7 +21,7 @@ import {
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 import { CHAT_CONTRACTS } from "./chat.js";
-import { GRAPH_CONTRACTS } from "./graph.js";
+import { GRAPH_CONTRACTS, RetractionSummary } from "./graph.js";
 import { IMPORT_CONTRACTS } from "./import.js";
 import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
@@ -57,6 +57,8 @@ const ItemSummary = z.object({
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
   incomplete: z.boolean().optional(),
   incompleteReason: z.string().optional(),
+  /** Set when items.checkRetractions found a retraction, withdrawal, concern or correction. */
+  retraction: RetractionSummary.optional(),
 });
 
 export * from "./chat.js";
@@ -189,6 +191,14 @@ export const itemsTrash = defineContract({
   input: ItemRef,
   output: Ok,
   mcp: { tool: "trash_item", readOnly: false },
+});
+export const itemsRestore = defineContract({
+  name: "items.restore",
+  summary:
+    "Put the most recently trashed item with this citekey back into the library, for example right after items.trash. Fails when the citekey is in use again",
+  access: "write",
+  input: ItemRef,
+  output: Ok,
 });
 export const inboxAccept = defineContract({
   name: "inbox.accept",
@@ -709,6 +719,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   itemsResolve,
   itemsRename,
   itemsTrash,
+  itemsRestore,
   inboxAccept,
   inboxReject,
   documentsRead,

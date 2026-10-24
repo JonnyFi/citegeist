@@ -10,8 +10,11 @@ import {
   inboxAccept,
   inboxReject,
   itemsAdd,
+  itemsAttach,
   itemsGet,
   itemsList,
+  itemsRestore,
+  itemsTrash,
   itemsUpdate,
   jobsGet,
   libraryStatus,
@@ -20,6 +23,7 @@ import {
   projectsUpdate,
   Registry,
   searchQuery,
+  summarizeRetraction,
 } from "@citegeist/ops";
 import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
 import { bindChatMock } from "../chat/mock";
@@ -55,6 +59,7 @@ function authorsOf(fm: ItemFrontmatter): string | undefined {
 
 function summary(fm: ItemFrontmatter) {
   const authors = authorsOf(fm);
+  const retraction = summarizeRetraction((fm as Record<string, unknown>).retraction);
   return {
     citekey: fm.citekey,
     title: fm.title,
@@ -68,6 +73,7 @@ function summary(fm: ItemFrontmatter) {
     ...(fm.incomplete
       ? { incomplete: true, incompleteReason: `${fm.incomplete.code}: ${fm.incomplete.message}` }
       : {}),
+    ...(retraction ? { retraction } : {}),
   };
 }
 
@@ -161,6 +167,11 @@ export function createMockRegistry(
   const aiDelayMs = options.aiDelayMs ?? 1500;
   const jobs = new Map<string, MockJob>();
   let importJobs: ImportMockJobs | undefined;
+  /** Items moved to the trash, newest last; items.restore takes the latest of a citekey back. */
+  const trashed: Array<{
+    citekey: string;
+    item: NonNullable<ReturnType<MockData["items"]["get"]>>;
+  }> = [];
 
   /** Starts a fake AI job that fills the paraphrase and, if unset, the kind after the delay. */
   const scheduleAi = (cardId: string, language: string): string => {
@@ -323,6 +334,75 @@ export function createMockRegistry(
       item.frontmatter = { ...item.frontmatter, ...input.patch } as ItemFrontmatter;
       changed(`items/${input.citekey}/${input.citekey}.md`);
       return { frontmatter: item.frontmatter };
+    })
+    .bind(itemsTrash, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      data.items.delete(input.citekey);
+      trashed.push({ citekey: input.citekey, item });
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      return { ok: true as const };
+    })
+    .bind(itemsRestore, async (_ctx, input) => {
+      if (data.items.has(input.citekey)) {
+        throw new Error(`CITEKEY_TAKEN: an item with citekey '${input.citekey}' exists again`);
+      }
+      const at = trashed.map((t) => t.citekey).lastIndexOf(input.citekey);
+      const entry = at >= 0 ? trashed.splice(at, 1)[0] : undefined;
+      if (!entry) throw new Error(`NOT_IN_TRASH: no trashed item with citekey '${input.citekey}'`);
+      data.items.set(input.citekey, entry.item);
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      return { ok: true as const };
+    })
+    .bind(itemsAttach, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      const filename = input.filename ?? input.path.split(/[\\/]/).pop() ?? input.path;
+      if (!/\.(pdf|html?|epub)$/i.test(filename)) {
+        throw new Error(
+          `FILE_TYPE_UNSUPPORTED: files of this type cannot be attached (${filename})`,
+        );
+      }
+      const hash = Array.from(filename)
+        .reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+        .toString(16)
+        .padStart(12, "0")
+        .slice(-12);
+      const have = item.frontmatter.sources.some((src) => src.hash === hash);
+      if (!have) {
+        item.frontmatter = {
+          ...item.frontmatter,
+          sources: [
+            ...item.frontmatter.sources,
+            {
+              hash,
+              kind: /\.pdf$/i.test(filename) ? "pdf" : /\.epub$/i.test(filename) ? "epub" : "html",
+              filename,
+              role: "main",
+              added: { at: new Date().toISOString(), by: "human" },
+            },
+          ],
+        } as ItemFrontmatter;
+        changed(`items/${input.citekey}/${input.citekey}.md`);
+      }
+      const stamp = new Date().toISOString();
+      const job: MockJob = {
+        id: randomId("j_"),
+        status: "running",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      jobs.set(job.id, job);
+      setTimeout(() => {
+        job.status = "succeeded";
+        job.updatedAt = new Date().toISOString();
+      }, aiDelayMs);
+      return {
+        citekey: input.citekey,
+        source: hash,
+        added: !have,
+        ...(have ? {} : { job: job.id }),
+      };
     })
     .bind(inboxAccept, async (_ctx, input) => {
       for (const key of input.citekeys) {

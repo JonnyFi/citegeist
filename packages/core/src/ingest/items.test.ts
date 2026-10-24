@@ -226,6 +226,34 @@ describe("items.trash", () => {
   });
 });
 
+describe("items.restore", () => {
+  it("puts a trashed item back with its cards and indexes it again", async () => {
+    const e = await env();
+    const { citekey } = await add(e, "10.1038/s41586-020-2649-2");
+    const card = cardData(citekey, "Something quoted.");
+    e.lib.writeCard(card.fm, card.body);
+    await e.call("items.trash", { citekey });
+    expect(e.lib.status()).toMatchObject({ items: 0, cards: 0 });
+
+    expect(await e.call("items.restore", { citekey })).toEqual({ ok: true });
+    expect(e.lib.getItem(citekey).frontmatter.citekey).toBe(citekey);
+    expect(e.lib.status()).toMatchObject({ items: 1, cards: 1 });
+    expect(existsSync(join(e.lib.paths.itemDir(citekey), "trashed.json"))).toBe(false);
+    expect(readdirSync(join(e.root, ".trash"))).toHaveLength(0);
+  });
+
+  it("refuses when the citekey is in use or nothing was trashed", async () => {
+    const e = await env();
+    const { citekey } = await add(e, "10.1038/s41586-020-2649-2");
+    await expect(e.call("items.restore", { citekey })).rejects.toMatchObject({
+      detail: { code: "CITEKEY_TAKEN" },
+    });
+    await expect(e.call("items.restore", { citekey: "nothing1999here" })).rejects.toMatchObject({
+      detail: { code: "NOT_IN_TRASH" },
+    });
+  });
+});
+
 describe("documents.read", () => {
   async function converted(e: TestEnv) {
     const { citekey } = await add(e, "10.1038/s41586-020-2649-2");
