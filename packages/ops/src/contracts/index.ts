@@ -28,6 +28,7 @@ import { IMPORT_CONTRACTS } from "./import.js";
 import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
+import { TEXTS_CONTRACTS } from "./texts.js";
 import { WEBHOOK_CONTRACTS } from "./webhooks.js";
 
 const Paged = z.object({
@@ -73,6 +74,7 @@ export * from "./import.js";
 export * from "./matrix.js";
 export * from "./planning.js";
 export * from "./sync.js";
+export * from "./texts.js";
 export * from "./webhooks.js";
 
 // Library -----------------------------------------------------------------------------------------
@@ -781,6 +783,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   ...MATRIX_CONTRACTS,
   ...PLANNING_CONTRACTS,
   ...SYNC_CONTRACTS,
+  ...TEXTS_CONTRACTS,
   ...GRAPH_CONTRACTS,
   ...WEBHOOK_CONTRACTS,
   ...ALERT_CONTRACTS,

@@ -14,6 +14,7 @@ export const JobKind = z.enum([
   "export",
   "alerts",
   "worker-setup",
+  "pandoc-setup",
 ]);
 export const JobStatus = z.enum(["queued", "running", "succeeded", "failed", "cancelled"]);
 
