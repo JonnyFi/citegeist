@@ -62,7 +62,7 @@ citegeist wird fast vollständig von Agents gebaut, parallel in Conductor-Worksp
 ### Rollen
 
 - **Jonny:** Produktentscheidungen, Abnahme der Oberfläche, Antworten auf offene Fragen.
-- **Lead-Session (Opus):** pflegt Verträge, `CLAUDE.md`, Hotspot-Dateien und die Merge-Reihenfolge, integriert am Ende jeder Welle.
+- **Lead-Session (Opus):** pflegt Verträge, `AGENTS.md`, `CLAUDE.md`, Hotspot-Dateien und die Merge-Reihenfolge, integriert am Ende jeder Welle.
 - **Workstream-Agents (Sonnet):** je ein Conductor-Workspace pro Workstream.
 
 ### Ablauf pro Workstream mit gstack
@@ -108,7 +108,7 @@ fixtures/           PDFs mit CC-BY-Lizenz, HTTP-Aufnahmen, erwartete Ausgaben
 docs/
 ```
 
-Hotspots, die nur die Lead-Session ändert: `packages/schema`, `packages/ops/src/contracts`, die Wurzel-`package.json`, `pnpm-lock.yaml`, `turbo.json`, `CLAUDE.md`, `.github/workflows`.
+Hotspots, die nur die Lead-Session ändert: `packages/schema`, `packages/ops/src/contracts`, die Wurzel-`package.json`, `pnpm-lock.yaml`, `turbo.json`, `AGENTS.md`, `CLAUDE.md`, `.github/workflows`.
 
 ## Welle 0: Fundament
 
