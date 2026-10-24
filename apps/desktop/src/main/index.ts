@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } from "electron";
 import { type QuickInsertHandle, registerQuickInsert } from "../quick-insert/electron.js";
 import { deepLinkToPath, findDeepLink, PROTOCOL } from "../shared/deeplink.js";
 import { isTrustedSender, ownRendererUrl } from "../shared/trusted-sender.js";
@@ -23,6 +23,10 @@ const UI_INDEX = resolve(import.meta.dirname, "../../../ui/dist/index.html");
 const RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 /** True for the pages of the app's own renderer. Everything else is foreign (M8). */
 const isOwnUrl = ownRendererUrl({ rendererUrl: RENDERER_URL, uiIndex: UI_INDEX });
+
+// Dock icon of an unpackaged run (pnpm dev). The packaged app takes build/icon.icns from its
+// bundle. Neither BrowserWindow sets an icon of its own, so the dock icon is the app icon.
+const DEV_ICON = resolve(import.meta.dirname, "../../build/icon.png");
 
 const QUICK_INSERT_PRELOAD = join(import.meta.dirname, "../preload/quick-insert.cjs");
 
@@ -242,6 +246,9 @@ app.on("activate", () => {
 
 async function start(): Promise<void> {
   await app.whenReady();
+  if (process.platform === "darwin" && !app.isPackaged && existsSync(DEV_ICON)) {
+    app.dock?.setIcon(nativeImage.createFromPath(DEV_ICON));
+  }
   // Everything is denied except writing to the clipboard, which "copy citation" needs.
   const allowed = (permission: string) => permission === "clipboard-sanitized-write";
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>

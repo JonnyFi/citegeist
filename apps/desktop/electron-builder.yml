@@ -86,6 +86,9 @@ electronFuses:
   onlyLoadAppFromAsar: true
 mac:
   category: public.app-category.productivity
+  # Generated from build/icon.svg by scripts/make-icon.sh and committed. It lands in
+  # Contents/Resources as icon.icns (CFBundleIconFile). build/ itself is not packaged.
+  icon: build/icon.icns
   target:
     - target: dir
       arch: arm64

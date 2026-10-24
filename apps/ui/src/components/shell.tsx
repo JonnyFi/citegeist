@@ -275,12 +275,12 @@ function ShellFrame() {
         >
           {open ? (
             <>
-              <span
+              <img
+                src={`${import.meta.env.BASE_URL}icon.svg`}
+                alt=""
                 aria-hidden="true"
-                className={cn("font-serif text-[22px] font-medium", darwin && "hidden")}
-              >
-                c
-              </span>
+                className={cn("size-8", darwin && "hidden")}
+              />
               <span className="text-[13px] font-semibold">citegeist</span>
               <span className="flex-1" />
               <button
