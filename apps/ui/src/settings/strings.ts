@@ -88,9 +88,62 @@ export const settingsDe = {
   "webhooks.desc":
     "Ein Connector ist ein externer Agent wie ein Grok-Bot. Er signiert seine Anfragen mit einem Secret, und alles, was er schreibt, trägt den Akteur agent:name.",
   "webhooks.loadError": "Die Connectors konnten nicht geladen werden.",
-  "webhooks.publicUrl": "Öffentliche Basis-URL",
+  "webhooks.publicUrl": "Öffentliche Adresse (aktiv)",
   "webhooks.publicUrl.none":
-    "Nicht gesetzt. Die Adressen zeigen auf diesen Mac. Für Agents im Internet brauchst du einen Tunnel und die Umgebungsvariable CITEGEIST_PUBLIC_URL.",
+    "Nicht gesetzt. Die Adressen zeigen auf diesen Mac. Für Agents im Internet richtest du einen Tunnel ein und trägst seine Adresse unten ein.",
+  "webhooks.off": "Aus",
+  "webhooks.listener": "Hooks-Port",
+  "webhooks.listener.on": "Lauscht auf 127.0.0.1:{port} (nur /hooks und /mcp)",
+  "webhooks.listener.off":
+    "Aus, solange kein Connector existiert. Danach lauscht citegeist auf Port {port}.",
+  "webhooks.listener.inUse":
+    "Port {port} ist schon belegt. Wähle unten einen anderen Port und richte den Tunnel auf diesen Port.",
+  "webhooks.listener.failed": "Der Hooks-Port konnte nicht geöffnet werden: {detail}",
+  "webhooks.port": "Hooks-Port",
+  "webhooks.port.save": "Port speichern",
+  "webhooks.port.invalid": "Der Port ist eine ganze Zahl von 1024 bis 65535.",
+  "webhooks.port.hint":
+    "Der Tunnel zeigt auf diesen Port. Er bleibt bei jedem Start gleich, der Port des Kerns bleibt privat. Eine Änderung gilt sofort.",
+  "webhooks.publicUrl.field": "Öffentliche Adresse",
+  "webhooks.publicUrl.save": "Adresse speichern",
+  "webhooks.publicUrl.env":
+    "Die Umgebungsvariable CITEGEIST_PUBLIC_URL überschreibt diese Einstellung.",
+  "webhooks.publicUrl.needed":
+    "Für Aufträge an Agents im Internet fehlt die öffentliche Adresse. Ohne sie kann der Agent sein Ergebnis nicht zurückschicken.",
+  "webhooks.auth": "Auth-Header",
+  "webhooks.auth.set": "{header} (Wert in der Keychain)",
+  "webhooks.auth.none": "Keiner",
+  "webhooks.auth.hint":
+    "Viele Agent-Plattformen prüfen am Trigger ihren eigenen Schlüssel, zum Beispiel Authorization mit Bearer und dem Schlüssel. citegeist schickt diesen Header bei jedem ausgehenden Auftrag zusätzlich zur Signatur mit.",
+  "webhooks.auth.name": "Header-Name",
+  "webhooks.auth.value": "Wert",
+  "webhooks.auth.valueKept": "Gespeichert, neuen Wert eingeben zum Ersetzen",
+  "webhooks.auth.save": "Speichern",
+  "webhooks.auth.remove": "Header entfernen",
+  "webhooks.auth.edit": "Auth-Header",
+  "webhooks.token": "Bearer-Token eingehend",
+  "webhooks.token.on": "Aktiv",
+  "webhooks.token.title": "Bearer-Token für {name}",
+  "webhooks.token.hint":
+    "Für Agents, die keine HMAC-Signatur berechnen können. Der Agent schickt Authorization: Bearer mit dem Token und eine eindeutige Id (Header x-citegeist-id oder Feld id im Body). Wer den Token kennt, kann Anfragen senden; das Secret bleibt die sicherere Wahl.",
+  "webhooks.token.create": "Token erzeugen",
+  "webhooks.token.renew": "Neuen Token erzeugen",
+  "webhooks.token.disable": "Token ausschalten",
+  "webhooks.token.edit": "Bearer-Token",
+  "webhooks.mcp": "MCP-Zugang",
+  "webhooks.mcp.read": "Lesen",
+  "webhooks.mcp.write": "Lesen und schreiben",
+  "webhooks.mcp.url": "MCP-Adresse",
+  "webhooks.mcp.hint":
+    "Der Agent nutzt dieselben Werkzeuge wie ein lokaler MCP-Client, als agent:name und mit Neuem zuerst in der Inbox. Er trägt die MCP-Adresse und den Token als Bearer in seinen MCP-Einstellungen ein.",
+  "webhooks.mcp.create": "Zugang erzeugen",
+  "webhooks.mcp.renew": "Neuen Token erzeugen",
+  "webhooks.mcp.revoke": "Zugang entziehen",
+  "webhooks.mcp.edit": "MCP-Zugang",
+  "webhooks.mcp.tokenTitle": "MCP-Token für {name}",
+  "webhooks.create.authIncomplete":
+    "Header-Name und Wert gehören zusammen. Fülle beide Felder oder keines.",
+  "webhooks.create.token": "Bearer-Token für eingehende Anfragen erzeugen",
   "webhooks.empty": "Es ist noch kein Connector angelegt.",
   "webhooks.kind.inbound": "Eingehend",
   "webhooks.kind.outbound": "Ausgehend",
@@ -136,7 +189,7 @@ export const settingsDe = {
   "webhooks.guide.step3":
     "Der Bot signiert jede Anfrage mit HMAC-SHA256 über Id, Zeitstempel und Body und schickt die Header x-citegeist-id, x-citegeist-timestamp und x-citegeist-signature mit.",
   "webhooks.guide.step4":
-    "Damit der Bot dich aus dem Internet erreicht, richtest du einen Tunnel ein (Tailscale Funnel oder Cloudflare Tunnel) und setzt CITEGEIST_PUBLIC_URL auf dessen Adresse.",
+    "Damit der Bot dich aus dem Internet erreicht, richtest du einen Tunnel auf den Hooks-Port ein (Tailscale Funnel oder Cloudflare Tunnel) und trägst dessen Adresse oben bei „Öffentliche Adresse“ ein.",
   "webhooks.guide.step5": "Prüfe die Verbindung mit „Test senden“.",
   "webhooks.guide.more": "Beispielclient, Signatur und Tunnel stehen in docs/webhooks.md.",
 };
@@ -225,9 +278,60 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
   "webhooks.desc":
     "A connector is an external agent such as a Grok bot. It signs its requests with a secret, and everything it writes carries the actor agent:name.",
   "webhooks.loadError": "The connectors could not be loaded.",
-  "webhooks.publicUrl": "Public base URL",
+  "webhooks.publicUrl": "Public address (active)",
   "webhooks.publicUrl.none":
-    "Not set. The addresses point to this Mac. Agents on the internet need a tunnel and the environment variable CITEGEIST_PUBLIC_URL.",
+    "Not set. The addresses point to this Mac. Agents on the internet need a tunnel, and its address goes in below.",
+  "webhooks.off": "Off",
+  "webhooks.listener": "Hooks port",
+  "webhooks.listener.on": "Listening on 127.0.0.1:{port} (only /hooks and /mcp)",
+  "webhooks.listener.off": "Off while no connector exists. Then citegeist listens on port {port}.",
+  "webhooks.listener.inUse":
+    "Port {port} is already in use. Pick another port below and point the tunnel at it.",
+  "webhooks.listener.failed": "The hooks port could not be opened: {detail}",
+  "webhooks.port": "Hooks port",
+  "webhooks.port.save": "Save port",
+  "webhooks.port.invalid": "The port is a whole number from 1024 to 65535.",
+  "webhooks.port.hint":
+    "The tunnel points at this port. It stays the same at every start, and the core's own port stays private. A change takes effect at once.",
+  "webhooks.publicUrl.field": "Public address",
+  "webhooks.publicUrl.save": "Save address",
+  "webhooks.publicUrl.env": "The environment variable CITEGEIST_PUBLIC_URL overrides this setting.",
+  "webhooks.publicUrl.needed":
+    "Tasks for agents on the internet need the public address. Without it the agent cannot send its result back.",
+  "webhooks.auth": "Auth header",
+  "webhooks.auth.set": "{header} (value in the Keychain)",
+  "webhooks.auth.none": "None",
+  "webhooks.auth.hint":
+    "Many agent platforms check their own key at the trigger, for example Authorization with Bearer and the key. citegeist sends this header with every outbound task, next to the signature.",
+  "webhooks.auth.name": "Header name",
+  "webhooks.auth.value": "Value",
+  "webhooks.auth.valueKept": "Stored, type a new value to replace it",
+  "webhooks.auth.save": "Save",
+  "webhooks.auth.remove": "Remove header",
+  "webhooks.auth.edit": "Auth header",
+  "webhooks.token": "Inbound bearer token",
+  "webhooks.token.on": "Active",
+  "webhooks.token.title": "Bearer token for {name}",
+  "webhooks.token.hint":
+    "For agents that cannot compute an HMAC signature. The agent sends Authorization: Bearer with the token and a unique id (header x-citegeist-id or an id field in the body). Anyone who knows the token can send requests; the secret remains the safer choice.",
+  "webhooks.token.create": "Create token",
+  "webhooks.token.renew": "Create new token",
+  "webhooks.token.disable": "Turn token off",
+  "webhooks.token.edit": "Bearer token",
+  "webhooks.mcp": "MCP access",
+  "webhooks.mcp.read": "Read",
+  "webhooks.mcp.write": "Read and write",
+  "webhooks.mcp.url": "MCP address",
+  "webhooks.mcp.hint":
+    "The agent uses the same tools as a local MCP client, as agent:name, and new items land in the inbox first. It enters the MCP address and the token as a bearer in its MCP settings.",
+  "webhooks.mcp.create": "Create access",
+  "webhooks.mcp.renew": "Create new token",
+  "webhooks.mcp.revoke": "Revoke access",
+  "webhooks.mcp.edit": "MCP access",
+  "webhooks.mcp.tokenTitle": "MCP token for {name}",
+  "webhooks.create.authIncomplete":
+    "Header name and value belong together. Fill both fields or neither.",
+  "webhooks.create.token": "Create a bearer token for inbound requests",
   "webhooks.empty": "No connector has been created yet.",
   "webhooks.kind.inbound": "Inbound",
   "webhooks.kind.outbound": "Outbound",
@@ -273,7 +377,7 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
   "webhooks.guide.step3":
     "The bot signs every request with HMAC-SHA256 over id, timestamp and body and sends the headers x-citegeist-id, x-citegeist-timestamp and x-citegeist-signature.",
   "webhooks.guide.step4":
-    "So that the bot can reach you from the internet, set up a tunnel (Tailscale Funnel or Cloudflare Tunnel) and set CITEGEIST_PUBLIC_URL to its address.",
+    'So that the bot can reach you from the internet, set up a tunnel to the hooks port (Tailscale Funnel or Cloudflare Tunnel) and enter its address above under "Public address".',
   "webhooks.guide.step5": 'Check the connection with "Send test".',
   "webhooks.guide.more": "Example client, signature and tunnel are described in docs/webhooks.md.",
 };
