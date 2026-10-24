@@ -13,9 +13,12 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "pnpm run build && playwright test"
+    "test:e2e": "pnpm run build && playwright test",
+    "package": "pnpm run build && electron-builder --config electron-builder.yml --mac dir --arm64"
   },
   "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "0.95.0",
+    "@agentclientprotocol/codex-acp": "2.2.2",
     "@citegeist/core": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
@@ -30,6 +33,7 @@
     "@orpc/client": "^1.16.1",
     "@playwright/test": "^1.64.1",
     "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "catalog:",
     "vite": "^8.3.5",

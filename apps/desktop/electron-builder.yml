@@ -1,19 +1,33 @@
-# Packaging of the desktop app with electron-builder. Run it after `pnpm --filter @citegeist/desktop build`.
+# Packaging of the desktop app with electron-builder. `pnpm package` (repo root) builds the UI and
+# the Electron bundles first and then runs this config. The result is an unsigned, ad-hoc signed
+# arm64 app at apps/desktop/dist/mac-arm64/citegeist.app.
 #
-# Native code cannot be loaded from inside app.asar, so every module with a .node or .dylib file is
-# unpacked next to it. The core runs as a utilityProcess from out/main/core.js and finds them there.
+# Native code cannot be loaded from inside app.asar, so every module with a .node or .dylib file
+# is unpacked next to it. The core runs as a utilityProcess from out/main/core.js and finds them
+# there. better-sqlite3 ships N-API prebuilds, so nothing is rebuilt.
 appId: app.citegeist.desktop
 productName: citegeist
 directories:
   output: dist
+npmRebuild: false
 files:
   - out/**
   - package.json
-  # the built renderer of apps/ui, loaded from file://
-  - from: ../ui/dist
-    to: ../ui/dist
+  # Only the platform of this build (macOS arm64) stays; the optional packages of the others are
+  # several hundred MB each.
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-{darwin-x64,linux-*,win32-*}/**"
+  - "!**/node_modules/@openai/codex-{darwin-x64,linux-*,win32-*}/**"
+  - "!**/node_modules/@napi-rs/canvas-{android-*,darwin-x64,linux-*,win32-*}/**"
+  - "!**/node_modules/@img/*{linux,win32,darwin-x64}*/**"
+  - "!**/node_modules/sqlite-vec-{darwin-x64,linux-*,windows-*}/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/x64/**"
+  - "!**/node_modules/better-sqlite3/prebuilds/{win32-*,linux*,darwin-x64}.node"
 extraResources:
-  # the Python conversion worker; the app installs its environment from these sources
+  # the built renderer of apps/ui, loaded from file://; main/index.ts looks in Resources/ui/dist
+  - from: ../ui/dist
+    to: ui/dist
+  # the Python conversion worker; the app installs its environment from these sources on first run
   - from: ../../workers/convert
     to: workers/convert
     filter:
@@ -29,7 +43,22 @@ asarUnpack:
   - "**/node_modules/onnxruntime-node/**"
   - "**/node_modules/sqlite-vec/**"
   - "**/node_modules/sqlite-vec-*/**"
+  # the chat agents run as child processes: the ACP adapters and the native binaries behind them
+  - "**/node_modules/@agentclientprotocol/**"
+  - "**/node_modules/@anthropic-ai/**"
+  - "**/node_modules/@openai/**"
+  # JavaScript that the adapters import; they run from the unpacked tree, outside the archive
+  - "**/node_modules/zod/**"
+  - "**/node_modules/diff/**"
+  # CSL styles and locales that @citegeist/cite reads next to the bundle
+  - out/main/vendor/**
 mac:
   category: public.app-category.productivity
   target:
-    - dmg
+    - target: dir
+      arch: arm64
+  # Ad-hoc signature ("-"): the app starts on the machine that built it without a developer account.
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
