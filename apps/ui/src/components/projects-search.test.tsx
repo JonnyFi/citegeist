@@ -16,13 +16,15 @@ describe("projects", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "PhD proposal" })).toBeVisible();
     expect(screen.getByText(/Das Proposal untersucht Plattformen/)).toBeVisible();
     expect(screen.getByText(/Wie laesst sich Luhmanns Kommunikationsbegriff/)).toBeVisible();
-    expect(await screen.findAllByTestId("item-row")).toHaveLength(3);
+    // the reading list is a link into the filtered library, not a second table
+    const list = await screen.findByRole("link", { name: /Leseliste/ });
+    expect(list).toHaveAttribute("href", "/?project=phd-proposal");
+    expect(list).toHaveTextContent("3");
   });
 
   it("says so when a project has no brief", async () => {
     renderApp("/projects/reading-group");
     expect(await screen.findByText("Dieses Projekt hat noch keinen Brief.")).toBeVisible();
-    expect(await screen.findByText("Noch keine Quellen in diesem Projekt.")).toBeVisible();
   });
 });
 
@@ -30,6 +32,7 @@ describe("search", () => {
   it("finds items and cards for a query from the search bar", async () => {
     const user = userEvent.setup();
     renderApp("/");
+    await user.click(await screen.findByRole("link", { name: "Suchen" }));
     await user.type(await screen.findByRole("searchbox", { name: "Suche" }), "autopoiesis{Enter}");
     // fixture note of luhmann mentions Autopoiesis
     const hits = await screen.findAllByTestId("hit");

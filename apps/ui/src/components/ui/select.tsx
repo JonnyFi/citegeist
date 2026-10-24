@@ -7,19 +7,24 @@ export interface SelectOption {
   label: string;
 }
 
-/** shadcn-style select on Base UI. Values are strings; the caller maps "all" to "no filter". */
+/**
+ * Select on Base UI, styled as an outlined button. Values are strings; the caller maps "all" to
+ * "no filter". `active` inverts the trigger, the way a chosen filter shows in a bar.
+ */
 export function Select({
   value,
   onChange,
   options,
   label,
   className,
+  active = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: readonly SelectOption[];
   label: string;
   className?: string;
+  active?: boolean;
 }) {
   const items = Object.fromEntries(options.map((o) => [o.value, o.label]));
   return (
@@ -33,24 +38,27 @@ export function Select({
       <BaseSelect.Trigger
         aria-label={label}
         className={cn(
-          "inline-flex h-8 min-w-36 items-center justify-between gap-2 rounded-md border border-line bg-surface px-2.5 text-sm hover:bg-sunken",
+          "inline-flex h-[26px] min-w-36 items-center justify-between gap-2 border px-2.5 text-[12px]",
+          active
+            ? "border-ink bg-ink text-bg hover:opacity-85"
+            : "border-line bg-transparent text-ink hover:bg-sunken",
           className,
         )}
       >
         <BaseSelect.Value />
         <BaseSelect.Icon>
-          <ChevronDown className="size-3.5 text-muted" />
+          <ChevronDown className={cn("size-3.5", active ? "text-bg" : "text-muted")} />
         </BaseSelect.Icon>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         <BaseSelect.Positioner sideOffset={4} className="z-50">
-          <BaseSelect.Popup className="min-w-36 rounded-md border border-line bg-surface p-1 shadow-lg">
+          <BaseSelect.Popup className="min-w-36 border border-line bg-surface text-ink">
             <BaseSelect.List>
               {options.map((o) => (
                 <BaseSelect.Item
                   key={o.value}
                   value={o.value}
-                  className="flex cursor-default items-center justify-between gap-3 rounded px-2 py-1 text-sm data-[highlighted]:bg-sunken"
+                  className="flex h-8 cursor-default items-center justify-between gap-3 px-2.5 text-[12px] data-[highlighted]:bg-ink data-[highlighted]:text-bg"
                 >
                   <BaseSelect.ItemText>{o.label}</BaseSelect.ItemText>
                   <BaseSelect.ItemIndicator>

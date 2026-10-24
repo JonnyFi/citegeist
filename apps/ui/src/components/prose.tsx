@@ -5,7 +5,7 @@ function inline(text: string): ReactNode[] {
   return text.split(/(\[\[[^\]]+\]\])/g).map((part, i) =>
     part.startsWith("[[") ? (
       // biome-ignore lint/suspicious/noArrayIndexKey: static split, order never changes
-      <span key={i} className="text-accent">
+      <span key={i} className="border-b border-ink font-mono text-[0.85em]">
         {part.slice(2, -2).split("|").pop()}
       </span>
     ) : (
@@ -19,7 +19,7 @@ function inline(text: string): ReactNode[] {
  * Minimal Markdown for notes and briefs: headings, bullet lists, paragraphs. The editor view that
  * replaces this renders real Markdown; this one only has to read well.
  */
-export function Prose({ text }: { text: string }) {
+export function Prose({ text, size = "read" }: { text: string; size?: "read" | "sm" | "card" }) {
   const blocks: ReactNode[] = [];
   let list: string[] = [];
   let para: string[] = [];
@@ -67,5 +67,7 @@ export function Prose({ text }: { text: string }) {
   flushList();
   flushPara();
 
-  return <div className="prose-read">{blocks}</div>;
+  return (
+    <div className={size === "read" ? "prose-read" : `prose-read prose-${size}`}>{blocks}</div>
+  );
 }

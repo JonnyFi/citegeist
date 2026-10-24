@@ -123,7 +123,7 @@ export function BackendRow({
     <li
       data-testid="backend"
       data-backend={backend.id}
-      className="rounded-md border border-line bg-surface p-3"
+      className="border border-line bg-surface p-3"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
@@ -134,7 +134,7 @@ export function BackendRow({
           <p className="flex items-center gap-1.5 text-sm text-muted">
             <span
               aria-hidden="true"
-              className={cn("size-1.5 rounded-full", backend.available ? "bg-accent" : "bg-danger")}
+              className={cn("size-1.5", backend.available ? "bg-accent" : "bg-danger")}
             />
             {statusText(tr, backend)}
           </p>
@@ -298,13 +298,13 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
       : undefined;
 
   return (
-    <div data-testid="worker-panel" className="rounded-md border border-line bg-surface p-3">
+    <div data-testid="worker-panel" className="border border-line bg-surface p-3">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm">
             <span
               aria-hidden="true"
-              className={cn("size-1.5 rounded-full", worker.ready ? "bg-accent" : "bg-danger")}
+              className={cn("size-1.5", worker.ready ? "bg-accent" : "bg-danger")}
             />
             <span data-testid="worker-status">
               {running ? t("worker.status.installing") : label}
@@ -330,7 +330,7 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(state.progress * 100)}
-            className="h-1.5 overflow-hidden rounded-full bg-sunken"
+            className="h-1.5 overflow-hidden bg-sunken"
           >
             <div
               className="h-full bg-accent transition-all"

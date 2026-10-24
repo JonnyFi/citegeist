@@ -1,7 +1,16 @@
-import { itemsList, projectsList, settingsUpdate } from "@citegeist/ops";
-import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { itemsList, projectsGet, projectsList, settingsUpdate } from "@citegeist/ops";
+import { useQueries } from "@tanstack/react-query";
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useRouter,
+  useRouterState,
+  useSearch,
+} from "@tanstack/react-router";
 import {
   BookOpen,
+  ChevronLeft,
   FolderOpen,
   Inbox,
   MessageSquare,
@@ -9,239 +18,439 @@ import {
   Moon,
   Network,
   NotebookPen,
+  PanelLeft,
   Search,
   Settings,
   Sun,
 } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { ChatPanel } from "../chat";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
+import { FOCUS_SEARCH_EVENT } from "../lib/search-focus";
 import { type ThemeChoice, useTheme } from "../lib/theme";
 import { cn } from "../lib/utils";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { JobStatus } from "./job-status";
+import { LayoutProvider, RightColumn, useHeaderRef, useLayout } from "./layout";
 
-const NAV_ITEM =
-  "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-muted hover:bg-sunken hover:text-ink";
-const NAV_ACTIVE = "bg-sunken text-ink font-medium";
+const RAIL_KEY = "citegeist.rail";
 
-function SearchBar() {
+function useRailOpen() {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(RAIL_KEY) === "open";
+    } catch {
+      return false;
+    }
+  });
+  const set = useCallback((next: boolean) => {
+    try {
+      localStorage.setItem(RAIL_KEY, next ? "open" : "closed");
+    } catch {
+      // storage unavailable, the state still holds for this session
+    }
+    setOpen(next);
+  }, []);
+  return [open, set] as const;
+}
+
+function navClass(open: boolean, active: boolean): string {
+  return cn(
+    "relative flex items-center text-ink",
+    open ? "h-11 gap-3 px-[18px]" : "size-11 justify-center",
+    active ? "bg-ink text-bg" : "hover:bg-sunken",
+    active && open && "font-medium",
+  );
+}
+
+/** Label and counter of a rail entry. Collapsed, the label becomes the accessible name. */
+function NavBody({
+  open,
+  icon,
+  label,
+  count,
+  badge,
+  badgeLabel,
+}: {
+  open: boolean;
+  icon: ReactNode;
+  label: string;
+  count?: number | undefined;
+  /** Count drawn as an inverted block (inbox) instead of a mono number. */
+  badge?: number | undefined;
+  badgeLabel?: string | undefined;
+}) {
+  return (
+    <>
+      {icon}
+      {open ? <span>{label}</span> : <span className="sr-only">{badgeLabel ?? label}</span>}
+      {open ? <span className="flex-1" /> : null}
+      {open && count !== undefined ? (
+        <span className="font-mono text-[11px] opacity-80">{count}</span>
+      ) : null}
+      {badge ? (
+        <span
+          className={cn(
+            "bg-ink px-1 font-mono text-[10px] leading-[14px] text-bg",
+            open ? "" : "absolute right-1.5 top-1.5 outline outline-1 outline-bg",
+          )}
+          aria-hidden={open ? undefined : "true"}
+        >
+          {badge}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+const ICON = "size-5 shrink-0";
+
+const THEME_CYCLE: readonly ThemeChoice[] = ["light", "dark", "system"];
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
+
+function ThemeButton({ open }: { open: boolean }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const [value, setValue] = useState("");
-  const ref = useRef<HTMLInputElement>(null);
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [choice, setChoice] = useTheme();
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(choice) + 1) % THEME_CYCLE.length] ?? "light";
+  const Icon = THEME_ICON[choice];
+  const label = t(`theme.mode.${next}` as MessageKey);
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={`${t("theme.label")}: ${t(`theme.${choice}` as MessageKey)}`}
+      onClick={() => setChoice(next)}
+      className={cn(navClass(open, false), "w-full")}
+    >
+      <Icon className={ICON} />
+      {open ? <span>{label}</span> : null}
+    </button>
+  );
+}
 
-  // The menu entry "Search" navigates to /search; put the cursor in the bar.
-  useEffect(() => {
-    if (pathname === "/search") ref.current?.focus();
-  }, [pathname]);
+/** UI language switch. Also tells the core, so the choice survives a restart; the mock has no settings. */
+function LanguageButton({ open }: { open: boolean }) {
+  const { t, lang, setLang } = useI18n();
+  const core = useCore();
+  const next: Lang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length] ?? "de";
+  const pick = () => {
+    setLang(next);
+    core.call(settingsUpdate, { patch: { uiLanguage: next } }).catch(() => {});
+  };
+  return (
+    <button
+      type="button"
+      aria-label={t(`lang.${next}`)}
+      title={t("lang.label")}
+      onClick={pick}
+      className={cn(navClass(open, false), "w-full")}
+    >
+      <span className="flex size-5 shrink-0 items-center justify-center font-mono text-[11px] font-semibold">
+        {lang.toUpperCase()}
+      </span>
+      {open ? <span>{t("lang.label")}</span> : null}
+    </button>
+  );
+}
+
+/** The project list under "Bibliothek" in the expanded rail: each entry filters the library. */
+function ProjectList({ activeProject, onLibrary }: { activeProject?: string; onLibrary: boolean }) {
+  const { t } = useI18n();
+  const core = useCore();
+  const projects = useOp(projectsList, {});
+  const list = projects.data?.projects ?? [];
+  const counts = useQueries({
+    queries: list.map((p) => ({
+      queryKey: ["op", projectsGet.name, { slug: p.slug }],
+      queryFn: () => core.call(projectsGet, { slug: p.slug }),
+    })),
+  });
+  const row = (active: boolean) =>
+    cn(
+      "flex h-9 items-center pl-[50px] pr-[18px]",
+      active
+        ? "font-medium text-ink shadow-[inset_3px_0_0_var(--ink)]"
+        : "text-muted hover:text-ink",
+    );
+  return (
+    <div className="flex flex-col border-b border-line bg-sunken" data-testid="rail-projects">
+      <Link to="/" search={{}} className={row(onLibrary && !activeProject)}>
+        <span>{t("nav.allSources")}</span>
+      </Link>
+      {list.map((p, i) => (
+        <Link
+          key={p.slug}
+          to="/"
+          search={{ project: p.slug }}
+          className={row(onLibrary && activeProject === p.slug)}
+        >
+          <span className="min-w-0 flex-1 truncate">{p.title}</span>
+          {counts[i]?.data ? (
+            <span className="font-mono text-[11px]">{counts[i].data.items}</span>
+          ) : null}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+const FALLBACK_TITLES: ReadonlyArray<readonly [RegExp, MessageKey]> = [
+  [/^\/settings/, "nav.settings"],
+  [/^\/notes/, "nav.notes"],
+  [/^\/graph/, "nav.graph"],
+  [/^\/search/, "nav.search"],
+  [/^\/projects\/?$/, "nav.projects"],
+];
+
+function ShellFrame() {
+  const { t } = useI18n();
+  const core = useCore();
+  const router = useRouter();
+  const navigate = useNavigate();
+  const { setTab, chatOpen, setChatOpen, tab, ownColumns } = useLayout();
+  const headerRef = useHeaderRef();
+  const [open, setOpen] = useRailOpen();
+  const inbox = useOp(itemsList, { inbox: true, limit: 500 });
+  const inboxCount = inbox.data?.items.length ?? 0;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useSearch({ strict: false }) as { project?: string };
+  const darwin = typeof window !== "undefined" && window.citegeist?.platform === "darwin";
+
+  useEffect(() => window.citegeist?.onNavigate((path) => router.history.push(path)), [router]);
+
+  const focusSearch = useCallback(() => {
+    void navigate({ to: "/search", search: { q: "" } }).then(() =>
+      window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT)),
+    );
+  }, [navigate]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const typing = target && /^(input|textarea|select)$/i.test(target.tagName);
-      if ((e.key === "/" && !typing) || ((e.metaKey || e.ctrlKey) && e.key === "k")) {
+      const editable = target?.isContentEditable;
+      if ((e.key === "/" && !typing && !editable) || ((e.metaKey || e.ctrlKey) && e.key === "k")) {
         e.preventDefault();
-        ref.current?.focus();
+        if (pathname.startsWith("/search")) window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT));
+        else focusSearch();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [focusSearch, pathname]);
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const q = value.trim();
-    if (q) void navigate({ to: "/search", search: { q } });
+  const onItem = pathname.startsWith("/items/");
+  const onProject = /^\/projects\/[^/]+/.test(pathname);
+  const ownColumn = ownColumns > 0;
+  const onLibrary = pathname === "/";
+  const fallback = FALLBACK_TITLES.find(([re]) => re.test(pathname));
+  const columnVisible = ownColumn || chatOpen;
+
+  const openChat = () => {
+    if (ownColumn) {
+      setTab("agent");
+      return;
+    }
+    if (chatOpen && tab === "agent") setChatOpen(false);
+    else {
+      setTab("agent");
+      setChatOpen(true);
+    }
   };
 
-  return (
-    <search className="no-drag block w-full max-w-md">
-      <form onSubmit={submit} className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-2 size-4 text-muted" />
-        <Input
-          ref={ref}
-          type="search"
-          aria-label={t("search.label")}
-          placeholder={t("search.placeholder")}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="pl-8"
-        />
-      </form>
-    </search>
-  );
-}
+  const libraryName = core.isMock ? t("shell.mockLibrary") : (core.label.split("/").pop() ?? "");
 
-const THEMES = [
-  { value: "light", label: "theme.light", icon: Sun },
-  { value: "system", label: "theme.system", icon: Monitor },
-  { value: "dark", label: "theme.dark", icon: Moon },
-] as const satisfies ReadonlyArray<{ value: ThemeChoice; label: MessageKey; icon: typeof Sun }>;
-
-function ThemeToggle() {
-  const { t } = useI18n();
-  const [choice, setChoice] = useTheme();
   return (
-    <fieldset
-      aria-label={t("theme.label")}
-      className="m-0 inline-flex min-w-0 gap-0.5 border-0 p-0"
-    >
-      {THEMES.map(({ value, label, icon: Icon }) => (
-        <Button
-          key={value}
-          variant="ghost"
-          size="icon"
-          aria-label={t(label)}
-          aria-pressed={choice === value}
-          onClick={() => setChoice(value)}
-          className={cn("size-7", choice === value ? "bg-sunken" : "text-muted")}
-        >
-          <Icon className="size-3.5" />
-        </Button>
-      ))}
-    </fieldset>
-  );
-}
-
-/** UI language switch. Also tells the core, so the choice survives a restart; the mock has no settings. */
-function LanguageToggle() {
-  const { t, lang, setLang } = useI18n();
-  const core = useCore();
-  const pick = (next: Lang) => {
-    setLang(next);
-    core.call(settingsUpdate, { patch: { uiLanguage: next } }).catch(() => {});
-  };
-  return (
-    <fieldset aria-label={t("lang.label")} className="m-0 inline-flex min-w-0 gap-0.5 border-0 p-0">
-      {LANGS.map((value) => (
-        <Button
-          key={value}
-          variant="ghost"
-          size="icon"
-          aria-label={t(`lang.${value}`)}
-          aria-pressed={lang === value}
-          onClick={() => pick(value)}
+    <div className="flex h-full flex-col">
+      <header className="drag-region flex h-topbar shrink-0 items-stretch border-b border-line">
+        <div
           className={cn(
-            "size-7 text-xs font-semibold",
-            lang === value ? "bg-sunken" : "text-muted",
+            "no-drag flex shrink-0 items-center border-r border-line",
+            open ? "w-rail-open gap-3 px-4" : "w-rail justify-center",
+            darwin && open && "pl-[84px]",
           )}
         >
-          {value.toUpperCase()}
-        </Button>
-      ))}
-    </fieldset>
+          {open ? (
+            <>
+              <span
+                aria-hidden="true"
+                className={cn("font-serif text-[22px] font-medium", darwin && "hidden")}
+              >
+                c
+              </span>
+              <span className="text-[13px] font-semibold">citegeist</span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                aria-label={t("rail.collapse")}
+                onClick={() => setOpen(false)}
+                className="flex size-7 items-center justify-center hover:bg-sunken"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              aria-label={t("rail.expand")}
+              onClick={() => setOpen(true)}
+              className={cn(
+                "flex size-full items-center justify-center font-serif text-[22px] font-medium hover:bg-sunken",
+                darwin && "invisible",
+              )}
+            >
+              c
+            </button>
+          )}
+        </div>
+        <div
+          ref={headerRef}
+          className="no-drag flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]"
+        >
+          {fallback ? <div className="font-medium">{t(fallback[1])}</div> : null}
+        </div>
+        <JobStatus />
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <nav
+          aria-label={t("nav.main")}
+          className={cn(
+            "flex shrink-0 flex-col justify-between overflow-y-auto border-r border-line py-3",
+            open ? "w-rail-open" : "w-rail items-center",
+          )}
+        >
+          <div className={cn("flex flex-col", !open && "items-center gap-1")}>
+            <Link
+              to="/search"
+              search={{ q: "" }}
+              aria-current={pathname.startsWith("/search") ? "page" : undefined}
+              className={cn(
+                "flex h-11 items-center border border-line text-ink",
+                open ? "mx-3 mb-2 gap-3 px-[11px]" : "mb-2 w-11 justify-center",
+                pathname.startsWith("/search") ? "bg-ink text-bg" : "hover:bg-sunken",
+              )}
+            >
+              <Search className={ICON} />
+              {open ? (
+                <span>{t("nav.search")}</span>
+              ) : (
+                <span className="sr-only">{t("nav.search")}</span>
+              )}
+              {open ? <span className="flex-1" /> : null}
+              {open ? <span className="font-mono text-[11px]">⌘K</span> : null}
+            </Link>
+
+            <Link
+              to="/"
+              search={{}}
+              aria-current={onLibrary || onItem ? "page" : undefined}
+              className={navClass(open, onLibrary || onItem)}
+            >
+              <NavBody open={open} icon={<BookOpen className={ICON} />} label={t("nav.library")} />
+            </Link>
+            {open ? (
+              <ProjectList
+                onLibrary={onLibrary}
+                {...(search.project ? { activeProject: search.project } : {})}
+              />
+            ) : null}
+
+            <Link
+              to="/inbox"
+              aria-current={pathname.startsWith("/inbox") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/inbox"))}
+            >
+              <NavBody
+                open={open}
+                icon={<Inbox className={ICON} />}
+                label={t("nav.inbox")}
+                badge={inboxCount}
+                badgeLabel={inboxCount > 0 ? t("nav.inboxNew", { n: inboxCount }) : t("nav.inbox")}
+              />
+            </Link>
+            <Link
+              to="/projects"
+              aria-current={pathname === "/projects" || onProject ? "page" : undefined}
+              className={navClass(open, pathname === "/projects" || onProject)}
+            >
+              <NavBody
+                open={open}
+                icon={<FolderOpen className={ICON} />}
+                label={t("nav.projects")}
+              />
+            </Link>
+            <Link
+              to="/notes"
+              aria-current={pathname.startsWith("/notes") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/notes"))}
+            >
+              <NavBody open={open} icon={<NotebookPen className={ICON} />} label={t("nav.notes")} />
+            </Link>
+            <Link
+              to="/graph"
+              aria-current={pathname.startsWith("/graph") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/graph"))}
+            >
+              <NavBody open={open} icon={<Network className={ICON} />} label={t("nav.graph")} />
+            </Link>
+          </div>
+
+          <div className={cn("flex flex-col", !open && "items-center gap-1")}>
+            <button
+              type="button"
+              aria-label={open ? undefined : t("chat.toggle")}
+              aria-controls="chat-column"
+              aria-pressed={columnVisible && tab === "agent"}
+              onClick={openChat}
+              className={cn(navClass(open, false), "w-full", !open && "w-11")}
+            >
+              <MessageSquare className={ICON} />
+              {open ? <span>{t("nav.chat")}</span> : null}
+            </button>
+            <ThemeButton open={open} />
+            <LanguageButton open={open} />
+            <Link
+              to="/settings"
+              aria-current={pathname.startsWith("/settings") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/settings"))}
+            >
+              <NavBody open={open} icon={<Settings className={ICON} />} label={t("nav.settings")} />
+            </Link>
+            {open ? (
+              <div
+                className="truncate px-[18px] pt-2 font-mono text-[11px] text-muted"
+                title={core.label}
+              >
+                {libraryName}
+              </div>
+            ) : darwin ? (
+              <button
+                type="button"
+                aria-label={t("rail.expand")}
+                onClick={() => setOpen(true)}
+                className={navClass(false, false)}
+              >
+                <PanelLeft className={ICON} />
+              </button>
+            ) : null}
+          </div>
+        </nav>
+
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+            <Outlet />
+          </main>
+          {chatOpen && !ownColumn ? <RightColumn label={t("nav.chat")} tabs={[]} /> : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function Shell() {
-  const { t } = useI18n();
-  const core = useCore();
-  const router = useRouter();
-  const projects = useOp(projectsList, {});
-  const inbox = useOp(itemsList, { inbox: true, limit: 500 });
-  const inboxCount = inbox.data?.items.length ?? 0;
-  const [chatOpen, setChatOpen] = useState(false);
-
-  useEffect(() => window.citegeist?.onNavigate((path) => router.history.push(path)), [router]);
-
   return (
-    <div className="flex h-full">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-sunken/50">
-        <div className="drag-region flex h-12 shrink-0 items-end px-4 pb-1.5 pl-20">
-          <span className="font-serif text-base font-semibold tracking-tight">citegeist</span>
-        </div>
-        <nav
-          aria-label={t("nav.main")}
-          className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2"
-        >
-          <Link
-            to="/"
-            className={NAV_ITEM}
-            activeProps={{ className: NAV_ACTIVE }}
-            activeOptions={{ exact: true }}
-          >
-            <BookOpen className="size-4" />
-            {t("nav.library")}
-          </Link>
-          <Link to="/inbox" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
-            <Inbox className="size-4" />
-            {t("nav.inbox")}
-            {inboxCount > 0 ? (
-              <span className="ml-auto text-xs tabular-nums text-accent">{inboxCount}</span>
-            ) : null}
-          </Link>
-          <Link to="/notes" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
-            <NotebookPen className="size-4" />
-            {t("nav.notes")}
-          </Link>
-          <Link to="/graph" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
-            <Network className="size-4" />
-            {t("nav.graph")}
-          </Link>
-          <Link
-            to="/projects"
-            className={NAV_ITEM}
-            activeProps={{ className: NAV_ACTIVE }}
-            activeOptions={{ exact: true }}
-          >
-            <FolderOpen className="size-4" />
-            {t("nav.projects")}
-          </Link>
-          <div className="ml-4 flex flex-col gap-0.5 border-l border-line pl-2">
-            {(projects.data?.projects ?? []).map((p) => (
-              <Link
-                key={p.slug}
-                to="/projects/$slug"
-                params={{ slug: p.slug }}
-                className="truncate rounded px-2 py-1 text-muted hover:text-ink"
-                activeProps={{ className: "text-ink font-medium" }}
-              >
-                {p.title}
-              </Link>
-            ))}
-          </div>
-        </nav>
-        <div className="flex flex-col gap-1.5 border-t border-line px-3 py-2">
-          <Link to="/settings" className={NAV_ITEM} activeProps={{ className: NAV_ACTIVE }}>
-            <Settings className="size-4" />
-            {t("nav.settings")}
-          </Link>
-          <span className="min-w-0 truncate text-xs text-muted" title={core.label}>
-            {core.isMock ? t("shell.mockLibrary") : core.label.split("/").pop()}
-          </span>
-          <div className="flex items-center justify-between gap-1.5">
-            <LanguageToggle />
-            <ThemeToggle />
-          </div>
-        </div>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="drag-region flex h-12 shrink-0 items-center border-b border-line px-6">
-          <SearchBar />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="no-drag ml-auto"
-            aria-label={t("chat.toggle")}
-            aria-pressed={chatOpen}
-            aria-controls="chat-column"
-            onClick={() => setChatOpen((open) => !open)}
-          >
-            <MessageSquare className="size-4" />
-          </Button>
-        </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
-        </main>
-      </div>
-      {chatOpen ? (
-        <aside id="chat-column" className="w-[360px] shrink-0 border-l border-line">
-          <ChatPanel />
-        </aside>
-      ) : null}
-    </div>
+    <LayoutProvider>
+      <ShellFrame />
+    </LayoutProvider>
   );
 }

@@ -153,7 +153,10 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
     ? JSON.stringify(view.data.entries.at(-1)).length
     : 0;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the transcript grows
-  useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [turns, lastLength, sessionId]);
+  useEffect(() => {
+    // not returned: Chromium hands back null here, and React rejects an effect result that is no function
+    bottom.current?.scrollIntoView({ block: "end" });
+  }, [turns, lastLength, sessionId]);
 
   const start = useOpMutation(chatStart);
   const send = useOpMutation(chatSend);

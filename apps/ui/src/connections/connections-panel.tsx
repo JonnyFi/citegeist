@@ -238,10 +238,7 @@ function Proposals({
           const target = row.node?.label ?? row.fallback;
           const evidence = row.evidence ? nodes.get(linkTarget(row.evidence)) : undefined;
           return (
-            <li
-              key={row.key}
-              className="flex flex-col gap-1.5 rounded-md border border-line bg-surface p-2.5"
-            >
+            <li key={row.key} className="flex flex-col gap-1.5 border border-line bg-surface p-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="accent">{relationLabel(tr, row.rel)}</Badge>
                 <NodeName node={row.node} fallback={row.fallback} onOpen={onOpen} />
