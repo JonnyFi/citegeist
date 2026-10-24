@@ -163,3 +163,19 @@ Ein Eintrag entsteht in der Aufgabe `concept.describe`. Sie sieht nur die Zitate
 Vorschläge kommen aus Karten der Art Definition (die Aufgabe `concept.name` nennt den definierten Begriff, und er muss im Zitat oder in der Paraphrase vorkommen) und aus Wörtern, die in mindestens zwei Quellen wiederkehren (ohne Modell, aus Karten und Notizen gezählt). Nichts davon wird ohne Zutun des Nutzers angelegt.
 
 Die MCP-Obergrenze von 20 Werkzeugen ist ausgeschöpft. Agents erreichen die Begriffe deshalb über die Befehle `cg concepts …`, die aus denselben Verträgen entstehen, und in der Chat-Seitenleiste über deren Shell (A11).
+
+## D20: Texte entstehen in citegeist als Markdown mit Pandoc-Zitaten, Pandoc exportiert nach Word, LaTeX und PDF
+
+Datum: 2026-10-24. Status: entschieden. Ergänzt D2.
+
+Anlass ist ein Kapitel der Doktorarbeit, das Jonny schreiben will. D2 ging davon aus, dass er nichts Längeres schreibt und Zitate nur herauskopiert. Mit einem echten Kapitel soll der Text dort entstehen, wo die Zitatkarten liegen.
+
+Ein Text ist eine Markdown-Datei unter `projects/<slug>/texts/` mit kleinem Frontmatter für Titel, Zitierstil und Sprache. Zitate stehen in der Pandoc-Syntax `[@citekey, S. 12]`. Der Editor aus W3.1 vervollständigt sie nach der Eingabe von `[@` aus der Bibliothek, Quellen des Projekts zuerst, und markiert unbekannte Citekeys. Aus einer Zitatkarte lässt sich ein wörtliches oder sinngemäßes Zitat mit Beleg an der Cursorposition einfügen (D17). Der Chat-Agent entwirft und überarbeitet Passagen direkt in der Datei, mit Verlauf und Rückgängig pro Zug (D12).
+
+Der Export läuft über Pandoc als eigener Prozess. `texts.export` erzeugt Word (`.docx`), LaTeX (ein ZIP mit `main.tex` und `references.bib`), PDF und Markdown. Das Literaturverzeichnis enthält nur die zitierten Quellen und folgt dem Zitierstil des Texts, sonst dem des Projekts (CSL). Die Sprache folgt dem Text, sonst dem Projekt (D9). Ein PDF setzt eine LaTeX-Engine oder Typst auf dem Rechner voraus.
+
+Pandoc gehört nicht zum App-Paket. citegeist sucht es im `PATH` und in den Homebrew-Ordnern und lädt sonst auf Wunsch ein festgelegtes Release mit fester Prüfsumme in den maschinenlokalen Ordner, nach dem Muster des GROBID-Downloads. Pandoc steht unter GPL-2.0 und läuft deshalb immer als eigener Prozess, nie als gelinkte Bibliothek.
+
+LaTeX ist ein Exportziel und keine Bearbeitungsfläche. Ein visueller Editor und Add-ins für Word oder Google Docs entstehen später und nur bei nachgewiesenem Bedarf.
+
+Die MCP-Obergrenze von 20 Werkzeugen ist ausgeschöpft. Agents erreichen Texte deshalb über die Befehle `cg texts …`, die aus denselben Verträgen entstehen, und über die Dateien selbst (A11).
