@@ -113,6 +113,20 @@ export class LibraryPaths {
   chatFile(name: string): string {
     return join(this.chatsDir, `${name}.md`);
   }
+
+  /** Literature search (workers/research): runs, preprint lists, opendraft and LaTeX output. */
+  get researchDir(): string {
+    return join(this.root, "research");
+  }
+  get litsearchRunsDir(): string {
+    return join(this.researchDir, "runs");
+  }
+  litsearchRunDir(runId: string): string {
+    return join(this.litsearchRunsDir, runId);
+  }
+  get litsearchWatchesDir(): string {
+    return join(this.researchDir, "watches");
+  }
 }
 
 /** Machine-local files: index, state, logs, models. Never inside the synced library folder. */

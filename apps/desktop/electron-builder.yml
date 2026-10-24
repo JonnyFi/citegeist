@@ -52,6 +52,22 @@ extraResources:
       - src/**
       - "!**/__pycache__/**"
       - "!**/*.pyc"
+  # the literature search (issue #50): standard-library Python, run with uv in its own environment
+  - from: ../../workers/research
+    to: workers/research
+    filter:
+      - pyproject.toml
+      - uv.lock
+      - NOTICE.md
+      - "*.yaml"
+      - scripts/**
+      # opendraft, Text to LaTeX and the legacy import wait for issue #61 and have no operation yet
+      - "!vendor/**"
+      - "!scripts/word_latex.py"
+      - "!scripts/latex_export.py"
+      - "!scripts/opendraft_bridge.py"
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
 asar: true
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"

@@ -266,7 +266,7 @@ export class JobQueue extends EventEmitter {
   }
 
   /** Cancels a queued or running job. Running handlers see their signal abort. */
-  cancel(id: string): Job {
+  cancel(id: string, message = "cancelled"): Job {
     const job = this.get(id);
     if (!job) {
       throw new CitegeistError({
@@ -278,7 +278,7 @@ export class JobQueue extends EventEmitter {
       });
     }
     if (TERMINAL.has(job.status)) return job;
-    this.update(id, { status: "cancelled", message: "cancelled" });
+    this.update(id, { status: "cancelled", message });
     this.running.get(id)?.abort();
     return this.mustGet(id);
   }

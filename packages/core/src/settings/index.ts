@@ -8,6 +8,7 @@ export {
   type BackendStatus,
   KEY_PROVIDERS,
   NCBI_KEY_PROVIDER,
+  OPENALEX_KEY_PROVIDER,
 } from "./backends.js";
 export { createSettingsDeps, type DefaultSettingsOptions } from "./defaults.js";
 export { extendedPath, extraBinDirs, findExecutable } from "./executables.js";

@@ -46,7 +46,14 @@ export interface SettingsMockState {
 export function createSettingsMockState(over: Partial<SettingsMockState> = {}): SettingsMockState {
   return {
     routing: { "*": "claude-code-cli" },
-    apiKeys: { openai: false, anthropic: false, openrouter: false, xai: false, ncbi: false },
+    apiKeys: {
+      openai: false,
+      anthropic: false,
+      openrouter: false,
+      xai: false,
+      ncbi: false,
+      openalex: false,
+    },
     uiLanguage: "de",
     backends: [
       {

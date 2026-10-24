@@ -15,7 +15,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:convert": "uv run --directory workers/convert pytest",
-    "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest",
+    "test:research": "uv run --directory workers/research pytest",
+    "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest && uv run --directory workers/research pytest",
     "prepare": "git config core.hooksPath .githooks || true",
     "app:update": "sh scripts/update-app.sh",
     "release": "sh scripts/release.sh"

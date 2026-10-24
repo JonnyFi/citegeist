@@ -1,6 +1,7 @@
 import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
+import { litsearchEn } from "../litsearch/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import { conceptsEn } from "./concepts";
@@ -442,6 +443,7 @@ export const en: Record<MessageKey, string> = {
   ...relatedEn,
   ...matrixEn,
   ...conceptsEn,
+  ...litsearchEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",

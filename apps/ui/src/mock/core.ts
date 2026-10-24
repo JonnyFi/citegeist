@@ -33,6 +33,7 @@ import { bindConnectionsMock } from "../connections/mock";
 import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { classifyIdentifier } from "../lib/identifier";
+import { bindLitsearchMock, createLitsearchMockState } from "../litsearch/mock";
 import { bindMatrixMock } from "../matrix/mock";
 import { bindNotesMock } from "../notes/mock";
 import { bindPlanningMock } from "../planning/mock";
@@ -737,6 +738,13 @@ export function createMockRegistry(
   bindRelatedMock(registry, data, emit);
   bindMatrixMock(registry, data, emit, jobs, aiDelayMs);
   bindConceptsMock(registry, data, emit, jobs, aiDelayMs);
+  bindLitsearchMock(
+    registry,
+    createLitsearchMockState(),
+    emit,
+    Math.max(5, Math.round(aiDelayMs / 10)),
+    data,
+  );
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
   bindChatMock(registry, data, emit, {
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),

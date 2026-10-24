@@ -28,6 +28,12 @@ import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
 import { bindLinkOperations } from "./links/index.js";
+import {
+  bindLitsearchOperations,
+  defaultLitsearchEnvDir,
+  type LitsearchCommand,
+  litsearchCommand,
+} from "./litsearch/index.js";
 import { aiTaskJobs, bindMatrixOperations } from "./matrix/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
@@ -46,6 +52,7 @@ import {
   createSettingsDeps,
   type DefaultSettingsOptions,
   NCBI_KEY_PROVIDER,
+  OPENALEX_KEY_PROVIDER,
   type SettingsService,
 } from "./settings/index.js";
 import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
@@ -83,6 +90,11 @@ export interface RuntimeOptions {
   sync?: Omit<BindSyncOptions, "autoStart" | "onError">;
   /** Receives errors of background work such as sync commits. */
   onError?: (err: unknown) => void;
+  /**
+   * Literature search (workers/research). `sourceDir` defaults to the repository checkout; the
+   * packaged app passes its resources. `command` replaces the uv command, for tests.
+   */
+  litsearch?: { sourceDir?: string; command?: LitsearchCommand };
 }
 
 export interface Runtime {
@@ -346,6 +358,39 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     addItem: (actor, input) => ingest.addItem(actor, input),
     queue: ingest.queue,
   });
+  bindProjectContext(registry);
+  // A literature search run is a job; a one-shot process (the CLI) only reads runs.
+  const litsearchSource = opts.litsearch?.sourceDir ?? join(repoRoot(), "workers", "research");
+  const metadataLookup = opts.resolver ?? (resolver as NonNullable<typeof resolver>).lookup;
+  const litsearch = bindLitsearchOperations(registry, lib, {
+    versions: {
+      lookup: graphLookup,
+      link: (actor, citekeys) => graph.linkVersions(actor, citekeys),
+      resolve: (doi) => metadataLookup.resolve(doi),
+    },
+    ai: {
+      run: async (task, input) => ai.run(task, input),
+    },
+    ...(opts.autoStart !== false
+      ? {
+          queue: ingest.queue,
+          command:
+            opts.litsearch?.command ??
+            litsearchCommand({
+              sourceDir: litsearchSource,
+              envDir: defaultLitsearchEnvDir(localBase),
+            }),
+          scriptsDir: join(litsearchSource, "scripts"),
+        }
+      : {}),
+    addItem: (actor, input) => ingest.addItem(actor, input),
+    openAlexDoi: async (openalex) => graphLookup.openAlexDoi(openalex),
+    credentials: async () => ({
+      openalexKey: await deps.keychain.get(OPENALEX_KEY_PROVIDER).catch(() => undefined),
+      mailto: deps.store.load().mailto ?? opts.mailto,
+    }),
+  });
+
   const alerts = bindAlertOperations(registry, lib, {
     lookup:
       resolver?.alerts ??
@@ -353,9 +398,8 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     addItem: (actor, input) => ingest.addItem(actor, input),
     queue: ingest.queue,
     rank: async (query, texts) => semantic?.rank(query, texts),
+    pipeline: litsearch.litsearch,
   });
-  bindProjectContext(registry);
-
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {
     const { createEmbedder, ...tuning } = opts.semantic ?? {};
@@ -373,8 +417,15 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   }
 
   let alertSchedule: AlertSchedule | undefined;
+  let preprintSchedule: { stop(): void } | undefined;
   if (opts.autoStart !== false) {
     graph.schedule();
+    try {
+      alerts.adoptWatchlists();
+    } catch (err) {
+      opts.onError?.(err);
+    }
+    preprintSchedule = litsearch.litsearch.schedulePreprintChecks();
     alertSchedule = scheduleAlerts(alerts);
   }
 
@@ -399,6 +450,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     ...(semantic ? { semantic } : {}),
     close: async () => {
       graph.stop();
+      preprintSchedule?.stop();
       alertSchedule?.stop();
       semantic?.close();
       syncService.close();
