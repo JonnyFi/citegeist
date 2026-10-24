@@ -23,7 +23,7 @@ export const aiErrors = {
     make(
       "AI_CLI_MISSING",
       "do-first",
-      `The \`${cli}\` command was not found on PATH.`,
+      `The \`${cli}\` command was not found on PATH or in the usual install folders (~/.local/bin, ~/.claude/local, /opt/homebrew/bin, /usr/local/bin).`,
       installHint,
       { cli },
     ),

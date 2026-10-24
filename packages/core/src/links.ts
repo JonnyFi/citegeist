@@ -31,13 +31,14 @@ export function createLink(
       context: { from: input.from, to: input.link.to },
     });
   }
-  const exists = note.frontmatter.links.some(
-    (l) => wikiTarget(l.to) === target && l.rel === input.link.rel,
-  );
+  const same = (l: { to: string; rel?: string | undefined }) =>
+    wikiTarget(l.to) === target && l.rel === input.link.rel;
+  const exists = note.frontmatter.links.some((l) => same(l) && l.status !== "rejected");
   if (exists) return note;
   const file = MarkdownFile.parse(readFileSync(note.path, "utf8"));
   file.patch({
-    links: [...note.frontmatter.links, { ...input.link, by: ctx.actor }],
+    // A person who creates a link again overrules an earlier rejection.
+    links: [...note.frontmatter.links.filter((l) => !same(l)), { ...input.link, by: ctx.actor }],
     modified: lib.stamp(ctx.actor),
   });
   lib.writeFile(lib.paths.rel(note.path), file.toString());

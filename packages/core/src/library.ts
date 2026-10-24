@@ -401,9 +401,11 @@ export class Library extends EventEmitter {
       incomplete_code: string | null;
       incomplete_message: string | null;
       retraction_json: string | null;
+      fulltext_status: string | null;
     }>(
       `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
          json_extract(i.frontmatter_json, '$.retraction') AS retraction_json,
+         json_extract(i.frontmatter_json, '$.fulltext.status') AS fulltext_status,
          json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
          json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why,
          json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
@@ -434,6 +436,8 @@ export class Library extends EventEmitter {
               incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
             }
           : {}),
+        ...(r.fulltext_status === "found" ? { fulltext: "found" as const } : {}),
+        ...(r.fulltext_status === "missing" ? { fulltext: "missing" as const } : {}),
         ...(retraction ? { retraction } : {}),
       };
     });

@@ -96,6 +96,9 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
                       <Stamp tone="danger">{t("item.incomplete")}</Stamp>
                     </span>
                   ) : null}
+                  {!item.incomplete && item.fulltext === "missing" ? (
+                    <span className="text-[12px] text-muted">{t("item.noFulltext")}</span>
+                  ) : null}
                 </div>
               </td>
               <td className={`${TD} pr-8 text-right`}>

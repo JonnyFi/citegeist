@@ -61,6 +61,12 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
         label: "Codex CLI",
         available: false,
         detail: "not-installed",
+        error: {
+          code: "AI_CLI_MISSING",
+          message: "The `codex` command was not found on PATH or in the usual install folders.",
+          fix: "Install the Codex CLI (`npm install -g @openai/codex`), run `codex login`, then retry.",
+          recovery: "do-first",
+        },
       },
       { id: "ollama", kind: "local", label: "Ollama", available: false, detail: "unreachable" },
       { id: "openai", kind: "api-key", label: "OpenAI API", available: false, detail: "no-key" },

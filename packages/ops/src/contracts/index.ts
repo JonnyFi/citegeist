@@ -57,6 +57,8 @@ const ItemSummary = z.object({
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
   incomplete: z.boolean().optional(),
   incompleteReason: z.string().optional(),
+  /** Outcome of the full text lookup: "missing" shows as "ohne Volltext" in the library table. */
+  fulltext: z.enum(["found", "missing"]).optional(),
   /** Set when items.checkRetractions found a retraction, withdrawal, concern or correction. */
   retraction: RetractionSummary.optional(),
 });
@@ -109,6 +111,13 @@ export const itemsAdd = defineContract({
     why: z.string().optional(),
   }),
   output: z.object({
+    /**
+     * The item the input belongs to. When the library already has the work and the match is
+     * certain at once (DOI, arXiv id, ISBN, PMID or URL, also one found inside a PDF), this is the
+     * existing citekey and `duplicateOf` repeats it. A PDF that is only recognised after the
+     * conversion (GROBID header, title match) starts as a new item; the ingest job result then
+     * names the final citekey (`citekey`, with `merged` or `renamed`).
+     */
     citekey: Citekey,
     job: JobId,
     duplicateOf: Citekey.optional(),
@@ -592,6 +601,15 @@ const BackendStatus = z.object({
   label: z.string(),
   available: z.boolean(),
   detail: z.string().optional(),
+  /** A missing or logged-out CLI: the agent-ready error whose `fix` names the install and login commands. */
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      fix: z.string(),
+      recovery: z.string(),
+    })
+    .optional(),
 });
 /** Port of the Zotero Connector listener unless the user picks another one. */
 export const DEFAULT_CONNECTOR_PORT = 23119;

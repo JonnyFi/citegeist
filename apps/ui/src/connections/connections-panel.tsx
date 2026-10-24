@@ -343,9 +343,9 @@ export function ConnectionsPanel({ kind, id }: { kind: ConnectionSubject; id: st
     const links = note.data?.frontmatter.links ?? [];
     const resolved = resolveLinkNodes(id, links, nodes, data?.edges ?? []);
     proposals = rowsFromLinks(links, resolved, (l) => l.status === "proposed");
-    const typed = rowsFromLinks(links, resolved, (l) => l.status !== "proposed");
+    const typed = rowsFromLinks(links, resolved, (l) => l.status === "accepted");
     const covered = new Set([
-      ...links.map((l) => linkTarget(l.to)),
+      ...links.filter((l) => l.status !== "rejected").map((l) => linkTarget(l.to)),
       ...resolved.flatMap((n) => (n ? [n.id] : [])),
     ]);
     // Wiki links to something the note also links with a type would only repeat that link.

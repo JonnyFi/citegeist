@@ -8,7 +8,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { type Actor, CitegeistError, ItemFrontmatter } from "@citegeist/schema";
+import {
+  type Actor,
+  CitegeistError,
+  ItemFrontmatter,
+  legacyItemPatch,
+  migrateItemData,
+} from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
 import type { ChangeEvent, Library } from "../library.js";
 
@@ -42,7 +48,9 @@ export function saveItem(
   item: LoadedItem,
   patch: Record<string, unknown>,
 ): void {
-  item.file.patch({ ...patch, modified: lib.stamp(actor) });
+  // Keys that older versions wrote in another shape are rewritten with every save.
+  const migrated = legacyItemPatch(item.file.data ?? {});
+  item.file.patch({ ...migrated, ...patch, modified: lib.stamp(actor) });
   lib.writeFile(item.rel, item.file.toString());
 }
 
@@ -90,7 +98,7 @@ export function updateItem(
       );
     }
   }
-  const merged: Record<string, unknown> = { ...(item.file.data ?? {}) };
+  const merged: Record<string, unknown> = migrateItemData(item.file.data ?? {});
   const today = lib.stamp(actor).at.slice(0, 10);
   const provenance: Record<string, string> = { ...(item.fm.provenance ?? {}) };
   const filePatch: Record<string, unknown> = {};

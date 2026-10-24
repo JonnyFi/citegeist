@@ -103,6 +103,8 @@ describe("one item per paper: a dropped PDF joins the item added by DOI", () => 
     });
     const key = await addByDoi(e);
     const out = await dropPdf(e, pdfFile([["scan"]]));
+    // decided at once: items.add already names the existing item
+    expect(out.citekey).toBe(key);
     expect(out.duplicateOf).toBe(key);
     expect(keys(e)).toEqual([key]);
     expect(e.lib.getItem(key).frontmatter.sources).toHaveLength(1);
@@ -155,10 +157,14 @@ describe("one item per paper: a dropped PDF joins the item added by DOI", () => 
       identifier: pdfFile([["scan"]]),
       tags: ["weak-ties"],
     });
-    await e.svc.queue.waitFor(out.job);
+    const job = await e.svc.queue.waitFor(out.job);
     await e.svc.queue.idle();
     expect(keys(e)).toEqual([key]);
     expect(e.lib.getItem(key).frontmatter.tags).toContain("weak-ties");
+    // decided only after the conversion: items.add named the new item, the job result the final one
+    expect(out.citekey).not.toBe(key);
+    expect(out.duplicateOf).toBeUndefined();
+    expect(job.result).toMatchObject({ citekey: key, merged: { from: out.citekey, into: key } });
   });
 
   it("keeps a second item when the paper is not in the library", async () => {
@@ -250,15 +256,15 @@ describe("full text lookup for DOI items", () => {
     const fm = e.lib.getItem(key).frontmatter;
     expect(fm.sources).toHaveLength(0);
     expect(fm.incomplete).toBeUndefined();
-    const fulltext = fm.fulltext as { status: string; tried: { source: string }[]; at: string };
-    expect(fulltext.status).toBe("none");
-    expect(fulltext.tried.map((t) => t.source)).toEqual([
+    const fulltext = fm.fulltext;
+    expect(fulltext?.status).toBe("missing");
+    expect(fulltext?.tried.map((t) => t.source)).toEqual([
       "unpaywall",
       "openalex",
       "arxiv",
       "publisher",
     ]);
-    expect(fulltext.at).toBeDefined();
+    expect(fulltext?.checked_at).toBeDefined();
   });
 
   it("tries Unpaywall, OpenAlex, arXiv and the publisher page in this order", async () => {

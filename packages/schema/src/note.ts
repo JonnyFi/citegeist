@@ -30,7 +30,8 @@ export const Link = z.object({
   why: z.string().optional(),
   evidence: WikiLink.optional(),
   by: Actor,
-  status: z.enum(["proposed", "accepted"]).default("accepted"),
+  /** A rejected link stays in the file so that `links.propose` does not suggest it again. */
+  status: z.enum(["proposed", "accepted", "rejected"]).default("accepted"),
 });
 export type Link = z.infer<typeof Link>;
 

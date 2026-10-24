@@ -102,6 +102,80 @@ export const ItemIncomplete = z.object({
 });
 export type ItemIncomplete = z.infer<typeof ItemIncomplete>;
 
+/** One step of the full text lookup for a DOI. */
+export const FulltextAttempt = z.object({
+  source: z.string().min(1),
+  outcome: z.enum(["ok", "none", "failed"]),
+  url: z.string().optional(),
+  detail: z.string().optional(),
+});
+export type FulltextAttempt = z.infer<typeof FulltextAttempt>;
+
+/**
+ * Result of the full text lookup after adding an item by DOI: which sources were tried and when.
+ * `found` means a file was fetched, `missing` that no open source delivered one.
+ */
+export const ItemFulltext = z.object({
+  status: z.enum(["found", "missing"]),
+  tried: z.array(FulltextAttempt).default([]),
+  checked_at: z.string(),
+});
+export type ItemFulltext = z.infer<typeof ItemFulltext>;
+
+/** Older files: `status: "none"` and `at` instead of `status: "missing"` and `checked_at`. */
+const LegacyFulltext = z.object({
+  status: z.enum(["none", "found", "missing"]),
+  tried: z.array(FulltextAttempt).default([]),
+  at: z.string().optional(),
+  checked_at: z.string().optional(),
+});
+
+/** A candidate work from title matching that did not reach the confidence needed to adopt it. */
+export const ProposalCandidate = z.object({
+  title: z.string().nullable().optional(),
+  DOI: z.string().nullable().optional(),
+  similarity: z.number().optional(),
+});
+
+/**
+ * Metadata that is a guess and needs a person's review: read from the first page of a PDF
+ * (`metadata.fromFirstPage` or the header heuristic), a file name or a web page. Cleared when a
+ * metadata source confirms the work.
+ */
+export const ItemProposal = z.object({
+  status: z.string().default("needs-review"),
+  source: z.string().optional(),
+  reason: z.string().optional(),
+  candidates: z.array(ProposalCandidate).optional(),
+});
+export type ItemProposal = z.infer<typeof ItemProposal>;
+
+/**
+ * Rewrites item frontmatter keys that older versions stored as untyped extra keys into the typed
+ * shape. Returns only the keys that changed, with their new value, so that a caller can write
+ * them back. Keys that are already current or cannot be read are not part of the result.
+ */
+export function legacyItemPatch(data: Record<string, unknown>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (data.fulltext !== undefined && !ItemFulltext.safeParse(data.fulltext).success) {
+    const old = LegacyFulltext.safeParse(data.fulltext);
+    if (old.success) {
+      patch.fulltext = {
+        status: old.data.status === "found" ? "found" : "missing",
+        tried: old.data.tried,
+        checked_at: old.data.checked_at ?? old.data.at ?? "",
+      } satisfies ItemFulltext;
+    }
+  }
+  return patch;
+}
+
+/** `data` with its legacy keys in the current shape. Used on every read of an item file. */
+export function migrateItemData(data: Record<string, unknown>): Record<string, unknown> {
+  const patch = legacyItemPatch(data);
+  return Object.keys(patch).length > 0 ? { ...data, ...patch } : data;
+}
+
 /**
  * Frontmatter of items/<citekey>/<citekey>.md. Known CSL variables are typed; any other CSL
  * variable is allowed and validated later against the Zotero schema data.
@@ -148,6 +222,10 @@ export const ItemFrontmatter = z
      * conversion succeeds.
      */
     incomplete: ItemIncomplete.optional(),
+    /** Outcome of the full text lookup for an item added by DOI. Absent when no lookup ran. */
+    fulltext: ItemFulltext.optional(),
+    /** Set while the metadata is a guess that a person has to review. */
+    proposal: ItemProposal.optional(),
     sources: z.array(Source).default([]),
     provenance: Provenance.default({}),
     created: Stamp,
