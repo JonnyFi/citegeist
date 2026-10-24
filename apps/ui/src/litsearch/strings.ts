@@ -142,6 +142,17 @@ export const litsearchDe = {
   "litsearch.download.summaries": "Zusammenfassungen",
   "litsearch.download.report": "Bericht (HTML)",
   "litsearch.download.busy": "Wird erstellt",
+  "litsearch.add.library": "Zur Bibliothek hinzufügen",
+  "litsearch.add.inbox": "In die Inbox",
+  "litsearch.add.inboxSelected": "In die Inbox ({n})",
+  "litsearch.add.busy": "Wird hinzugefügt",
+  "litsearch.add.noId": "Ohne DOI oder arXiv-ID lässt sich dieses Paper nicht nachschlagen.",
+  "litsearch.add.result":
+    "{added} hinzugefügt, {duplicates} schon vorhanden, {failed} nicht möglich",
+  "litsearch.add.addedLibrary":
+    "In der Bibliothek. Die Metadaten und das PDF kommen im Hintergrund.",
+  "litsearch.select": "{title} auswählen",
+  "litsearch.selectAll": "Alle neuen Paper dieses Abschnitts auswählen",
 };
 
 export const litsearchEn: Record<keyof typeof litsearchDe, string> = {
@@ -284,4 +295,13 @@ export const litsearchEn: Record<keyof typeof litsearchDe, string> = {
   "litsearch.download.summaries": "Summaries",
   "litsearch.download.report": "Report (HTML)",
   "litsearch.download.busy": "Preparing",
+  "litsearch.add.library": "Add to library",
+  "litsearch.add.inbox": "To the inbox",
+  "litsearch.add.inboxSelected": "To the inbox ({n})",
+  "litsearch.add.busy": "Adding",
+  "litsearch.add.noId": "Without a DOI or arXiv id this paper cannot be looked up.",
+  "litsearch.add.result": "{added} added, {duplicates} already there, {failed} not possible",
+  "litsearch.add.addedLibrary": "In the library. Metadata and PDF arrive in the background.",
+  "litsearch.select": "Select {title}",
+  "litsearch.selectAll": "Select all new papers of this section",
 };

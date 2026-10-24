@@ -10,9 +10,11 @@ import {
   litsearchRuns,
   litsearchStart,
   litsearchSuggest,
+  litsearchToInbox,
   type Registry,
 } from "@citegeist/ops";
 import type { CoreEvent } from "../lib/core";
+import type { MockData } from "../mock/fixtures";
 
 /** The 18 stages of pipeline.py, as its plan event lists them. */
 export const MOCK_STAGES: ReadonlyArray<{ id: string; label: string }> = [
@@ -210,7 +212,21 @@ export function bindLitsearchMock(
   state: LitsearchMockState,
   emit: (e: CoreEvent) => void,
   stepMs: number,
+  data?: MockData,
 ): void {
+  /** Marks a paper against the mock library by DOI, the way core matches. */
+  const marked = (p: LitsearchPaper): LitsearchPaper => {
+    const doi = p.doi?.toLowerCase();
+    const hit = doi
+      ? [...(data?.items.values() ?? [])].find((i) => i.frontmatter.DOI?.toLowerCase() === doi)
+      : undefined;
+    if (!hit) return { ...p, status: "new" };
+    return {
+      ...p,
+      status: hit.frontmatter.inbox ? "inbox" : "library",
+      citekey: hit.frontmatter.citekey,
+    };
+  };
   const changed = (id: string) =>
     emit({ type: "change", path: `research/runs/${id}/run.json`, external: false });
   const active = () => [...state.runs.values()].find((r) => r.meta.status === "running");
@@ -366,13 +382,57 @@ export function bindLitsearchMock(
         html: `<!doctype html><title>${run.meta.topic}</title><h1>${run.meta.topic}</h1>`,
       };
     })
+    .bind(litsearchToInbox, async (_ctx, input) => {
+      const run = state.runs.get(input.runId);
+      if (!run) throw fail("LITSEARCH_RUN_NOT_FOUND", `There is no run "${input.runId}".`);
+      const results: Array<{
+        key: string;
+        identifier: string;
+        status: "added" | "duplicate" | "failed";
+        citekey?: string;
+        job?: string;
+        reason?: string;
+      }> = [];
+      for (const key of input.keys) {
+        const p = MOCK_PAPERS.find((x) => x.key === key);
+        const identifier = p?.doi ?? (p?.arxiv ? `arXiv:${p.arxiv}` : undefined);
+        if (!p || !identifier) {
+          results.push({ key, identifier: key, status: "failed" as const, reason: "no DOI" });
+          continue;
+        }
+        const out = (await registry.call(
+          "items.add",
+          { actor: "system" },
+          {
+            identifier,
+            target: "inbox",
+            projects: input.projects,
+            why: `Literatursuche „${run.meta.topic}“: Score ${p.score.toFixed(1)}`,
+          },
+        )) as { citekey: string; job: string; duplicateOf?: string };
+        results.push({
+          key,
+          identifier,
+          status: out.duplicateOf ? ("duplicate" as const) : ("added" as const),
+          citekey: out.duplicateOf ?? out.citekey,
+          job: out.job,
+        });
+      }
+      const count = (s: string) => results.filter((r) => r.status === s).length;
+      return {
+        results,
+        added: count("added"),
+        duplicates: count("duplicate"),
+        failed: count("failed"),
+      };
+    })
     .bind(litsearchGet, async (_ctx, input) => {
       const run = state.runs.get(input.runId);
       if (!run) throw fail("LITSEARCH_RUN_NOT_FOUND", `There is no run "${input.runId}".`);
       return {
         run: run.meta,
         stages: stagesOf(run),
-        papers: run.meta.status === "done" ? [...MOCK_PAPERS] : [],
+        papers: run.meta.status === "done" ? MOCK_PAPERS.map(marked) : [],
       };
     });
 }

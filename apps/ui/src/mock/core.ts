@@ -642,6 +642,7 @@ export function createMockRegistry(
     createLitsearchMockState(),
     emit,
     Math.max(5, Math.round(aiDelayMs / 10)),
+    data,
   );
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
   bindChatMock(registry, data, emit, {

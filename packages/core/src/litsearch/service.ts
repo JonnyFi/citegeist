@@ -8,6 +8,7 @@ import type {
   LitsearchRunSummary,
 } from "@citegeist/ops";
 import { type Actor, CitegeistError, type Job } from "@citegeist/schema";
+import { writeFileAtomic } from "../fsutil.js";
 import { markWorks } from "../graph/marking.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { Library } from "../library.js";
@@ -89,8 +90,28 @@ function pidAlive(pid: number | undefined): boolean {
   }
 }
 
+/** One added paper, as items.add answers. */
+interface Added {
+  citekey: string;
+  job: string;
+  duplicateOf?: string | undefined;
+}
+
 /** What a run needs from the machine: how to start the scripts and what to pass them. */
 export interface LitsearchDeps {
+  /** items.add of the ingest service. "system" puts a paper into the inbox (D7). */
+  addItem?: (
+    actor: Actor,
+    input: {
+      identifier: string;
+      projects: string[];
+      tags: string[];
+      target: "inbox" | "library";
+      why?: string;
+    },
+  ) => Promise<Added>;
+  /** DOI of an OpenAlex work, for papers without DOI or arXiv id in papers.csv. */
+  openAlexDoi?: (openalex: string) => Promise<string | undefined>;
   /** Runs AI tasks with the routing the user set (litsearch.suggestQueries). */
   ai?: {
     run(task: "litsearch.suggestQueries", input: unknown): Promise<{ output: unknown }>;
@@ -184,17 +205,110 @@ export class LitsearchService {
     return {
       run: { ...meta, ...(meta.error || !error ? {} : { error }) },
       stages,
-      papers: this.mark(readRunPapers(dir)),
+      papers: this.mark(readRunPapers(dir), dir),
     };
   }
 
-  /** Marks each paper as in the library, in the inbox or new, like the citation graph does. */
-  mark(papers: RunPaper[]): LitsearchPaper[] {
+  /**
+   * Marks each paper as in the library, in the inbox or new, like the citation graph does. A paper
+   * this run sent to the inbox is found through inbox.json too, in case its metadata has not
+   * arrived yet; a citekey the library no longer has (rejected in the inbox) counts as new.
+   */
+  mark(papers: RunPaper[], dir?: string): LitsearchPaper[] {
     const { marked } = markWorks(this.lib, papers.map(workOf));
+    const sent = dir ? readSent(dir) : {};
     return papers.map((p, i) => {
       const m = marked[i];
-      return { ...p, status: m?.status ?? "new", ...(m?.citekey ? { citekey: m.citekey } : {}) };
+      if (m && m.status !== "new") {
+        return { ...p, status: m.status, ...(m.citekey ? { citekey: m.citekey } : {}) };
+      }
+      const citekey = sent[p.key]?.citekey;
+      const row = citekey
+        ? this.lib.index.get<{ inbox: number }>(
+            "SELECT inbox FROM items WHERE citekey = ?",
+            citekey,
+          )
+        : undefined;
+      if (citekey && row) {
+        return { ...p, status: row.inbox === 1 ? "inbox" : "library", citekey };
+      }
+      return { ...p, status: "new" };
     });
+  }
+
+  /**
+   * Sends papers of a run to the inbox with the search as the reason (D7: as "system", so a human's
+   * request still waits for review). Which paper became which item is kept in <run>/inbox.json.
+   */
+  async toInbox(input: { runId: string; keys: string[]; projects: string[] }) {
+    const meta = this.meta(input.runId);
+    const dir = this.runDir(input.runId);
+    const addItem = this.deps.addItem;
+    if (!addItem) throw unavailable("adding papers needs the ingest service of the app");
+    const papers = new Map(readRunPapers(dir).map((p) => [p.key, p]));
+    const sent = readSent(dir);
+    const results: Array<{
+      key: string;
+      identifier: string;
+      status: "added" | "duplicate" | "failed";
+      citekey?: string;
+      job?: string;
+      reason?: string;
+    }> = [];
+    for (const key of [...new Set(input.keys)]) {
+      const p = papers.get(key);
+      if (!p) {
+        results.push({ key, identifier: key, status: "failed", reason: "not a paper of this run" });
+        continue;
+      }
+      let identifier: string | undefined = p.doi ?? (p.arxiv ? `arXiv:${p.arxiv}` : undefined);
+      if (!identifier && p.openalex && this.deps.openAlexDoi) {
+        identifier = await this.deps.openAlexDoi(p.openalex).catch(() => undefined);
+      }
+      if (!identifier) {
+        results.push({
+          key,
+          identifier: p.openalex ?? p.title,
+          status: "failed",
+          reason: "the paper has no DOI or arXiv id to look it up by",
+        });
+        continue;
+      }
+      const why = `Literatursuche „${meta.topic}“: Score ${p.score.toFixed(1)}${p.why ? `, ${p.why}` : ""}`;
+      try {
+        const added = await addItem("system", {
+          identifier,
+          projects: input.projects,
+          tags: [],
+          target: "inbox",
+          why,
+        });
+        const citekey = added.duplicateOf ?? added.citekey;
+        sent[key] = { citekey, at: (this.deps.now ?? (() => new Date()))().toISOString() };
+        results.push({
+          key,
+          identifier,
+          status: added.duplicateOf ? "duplicate" : "added",
+          citekey,
+          job: added.job,
+        });
+      } catch (err) {
+        results.push({
+          key,
+          identifier,
+          status: "failed",
+          reason: err instanceof CitegeistError ? err.detail.message : String(err),
+        });
+      }
+    }
+    writeFileAtomic(join(dir, "inbox.json"), `${JSON.stringify(sent, null, 2)}\n`);
+    const count = (s: string) => results.filter((r) => r.status === s).length;
+    return {
+      results,
+      added: count("added"),
+      duplicates: count("duplicate"),
+      failed: count("failed"),
+    };
   }
 
   async suggest(input: { topic: string; maxQueries: number }): Promise<{ queries: string[] }> {
@@ -392,6 +506,22 @@ export class LitsearchService {
       });
     }
     return { runId, status: outcome.status, counts: outcome.counts };
+  }
+}
+
+/** <run>/inbox.json: which paper key became which library item. */
+function readSent(dir: string): Record<string, { citekey: string; at: string }> {
+  try {
+    const raw: unknown = JSON.parse(readFileSync(join(dir, "inbox.json"), "utf8"));
+    if (!raw || typeof raw !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(raw).filter(
+        (e): e is [string, { citekey: string; at: string }] =>
+          typeof (e[1] as { citekey?: unknown })?.citekey === "string",
+      ),
+    );
+  } catch {
+    return {};
   }
 }
 

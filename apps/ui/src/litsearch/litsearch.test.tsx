@@ -190,3 +190,67 @@ describe("results of a finished run", () => {
     URL.createObjectURL = original;
   });
 });
+
+describe("adding papers from a run", () => {
+  const RUN = "/litsearch/2026-10-20-agent-communication-protocols";
+
+  it("adds one paper straight to the library from its details and marks it", async () => {
+    // protects: the user's own decision in the detail adds the paper to the library (not the inbox) and the list shows it
+    // fails_when: the call goes to the inbox, uses no DOI, or the badge does not change
+    // no_claim: metadata lookup and PDF download of items.add are core's; the mock only stores the item
+    const user = userEvent.setup();
+    const { calls, data } = renderApp(RUN);
+    await user.click(
+      await screen.findByRole("button", { name: "A Survey of Agent Interoperability Protocols" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Zur Bibliothek hinzufügen" }));
+    expect(calls.find((c) => c.name === "items.add")?.input).toEqual({
+      identifier: "10.1145/3700001",
+      target: "library",
+    });
+    expect(await screen.findByText(/In der Bibliothek\. Die Metadaten/)).toBeVisible();
+    const added = [...data.items.values()].find((i) => i.frontmatter.DOI === "10.1145/3700001");
+    expect(added?.frontmatter.inbox).toBeUndefined();
+    await waitFor(() =>
+      expect(
+        within(screen.getAllByTestId("litsearch-paper")[0] as HTMLElement).getByText(
+          "in Bibliothek",
+        ),
+      ).toBeVisible(),
+    );
+  });
+
+  it("sends the selected papers to the inbox and only offers papers that are new", async () => {
+    // protects: bulk selection goes to litsearch.toInbox, the result is counted, and added papers can no longer be picked
+    // fails_when: a paper already in the library is selectable, or the selection is not sent as keys
+    // no_claim: the mock's toInbox calls its own items.add as "system"
+    const user = userEvent.setup();
+    const { calls, data } = renderApp(RUN);
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-paper")).toHaveLength(2));
+    const send = screen.getByRole("button", { name: "In die Inbox (0)" });
+    expect(send).toBeDisabled();
+    await user.click(
+      screen.getByRole("checkbox", { name: "Alle neuen Paper dieses Abschnitts auswählen" }),
+    );
+    await user.click(screen.getByRole("button", { name: "In die Inbox (2)" }));
+    expect(calls.find((c) => c.name === "litsearch.toInbox")?.input).toEqual({
+      runId: "2026-10-20-agent-communication-protocols",
+      keys: ["W4400000001", "W4200000002"],
+    });
+    expect(
+      await screen.findByText("2 hinzugefügt, 0 schon vorhanden, 0 nicht möglich"),
+    ).toBeVisible();
+    const inInbox = [...data.items.values()].filter((i) =>
+      i.frontmatter.inbox?.why?.startsWith("Literatursuche"),
+    );
+    expect(inInbox).toHaveLength(2);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("checkbox", {
+          name: "A Survey of Agent Interoperability Protocols auswählen",
+        }),
+      ).toBeDisabled(),
+    );
+    expect(screen.getAllByText("in Inbox")).toHaveLength(2);
+  });
+});

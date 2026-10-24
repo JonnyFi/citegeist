@@ -543,7 +543,12 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
         </div>
         {done ? (
           <div className="border-t border-line">
-            <ResultsTable papers={papers} selected={selected} onSelect={setSelected} />
+            <ResultsTable
+              runId={runId}
+              papers={papers}
+              selected={selected}
+              onSelect={setSelected}
+            />
           </div>
         ) : null}
       </div>
@@ -565,7 +570,9 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
               {
                 id: "paper",
                 label: t("litsearch.detail.title"),
-                content: <PaperDetail paper={papers.find((p) => p.key === selected)} />,
+                content: (
+                  <PaperDetail runId={runId} paper={papers.find((p) => p.key === selected)} />
+                ),
               },
             ]}
           />

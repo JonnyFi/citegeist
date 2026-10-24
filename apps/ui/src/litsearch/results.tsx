@@ -1,8 +1,10 @@
 import {
+  itemsAdd,
   type LitsearchPaper,
   type LitsearchSection,
   litsearchExport,
   litsearchReport,
+  litsearchToInbox,
 } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Download, ExternalLink } from "lucide-react";
@@ -13,7 +15,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
 import { type MessageKey, useI18n } from "../i18n";
-import { useCore } from "../lib/hooks";
+import { useCore, useOpMutation } from "../lib/hooks";
 import { cn } from "../lib/utils";
 import { ErrorLine, useGuarded } from "../settings/parts";
 import { PART_COLOR, SCORE_PARTS } from "./charts";
@@ -165,16 +167,48 @@ const TH =
 const TD = "border-b border-line-soft px-3 py-2 align-top";
 
 /** Section tabs, filters and the sortable table of a finished run. */
+/** A paper can be added when the library does not know it yet and it has an id to look it up by. */
+export function addable(p: LitsearchPaper): boolean {
+  return p.status === "new" && p.section !== "rejected" && Boolean(p.doi || p.arxiv);
+}
+
+/** Sends papers to the inbox and says how it went. */
+function useToInbox(runId: string) {
+  const { t } = useI18n();
+  const send = useOpMutation(litsearchToInbox);
+  const guard = useGuarded();
+  const [result, setResult] = useState<string>();
+  const run = async (keys: string[]) => {
+    setResult(undefined);
+    const out = await guard.run(() => send.mutateAsync({ runId, keys }));
+    if (out) {
+      setResult(
+        t("litsearch.add.result", {
+          added: out.added,
+          duplicates: out.duplicates,
+          failed: out.failed,
+        }),
+      );
+    }
+    return out;
+  };
+  return { run, busy: send.isPending, error: guard.error, result };
+}
+
 export function ResultsTable({
+  runId,
   papers,
   selected,
   onSelect,
 }: {
+  runId: string;
   papers: readonly LitsearchPaper[];
   selected: string | undefined;
   onSelect: (key: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const inbox = useToInbox(runId);
   const [section, setSection] = useState<LitsearchSection>("main");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "rank", desc: false });
@@ -185,6 +219,19 @@ export function ResultsTable({
   }, [inSection, filters, sort]);
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
   const filtered = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
+  const choosable = shown.filter(addable);
+  const chosen = papers.filter((p) => checked.has(p.key) && addable(p)).map((p) => p.key);
+  const allChosen = choosable.length > 0 && choosable.every((p) => checked.has(p.key));
+  const toggle = (key: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  const sendChosen = async () => {
+    const out = await inbox.run(chosen);
+    if (out) setChecked(new Set());
+  };
 
   const head = (key: SortKey, col: MessageKey, className = "") => {
     const active = sort.key === key;
@@ -288,6 +335,44 @@ export function ResultsTable({
           {t("litsearch.results.shown", { n: shown.length, total: inSection.length })}
         </span>
       </div>
+      <div className="flex flex-wrap items-center gap-3 border-b border-line-soft px-8 py-2">
+        <label className="flex cursor-pointer items-center gap-2 text-[12px]">
+          <input
+            type="checkbox"
+            className="size-3.5"
+            checked={allChosen}
+            disabled={choosable.length === 0}
+            aria-label={t("litsearch.selectAll")}
+            onChange={() =>
+              setChecked((prev) => {
+                const next = new Set(prev);
+                for (const p of choosable) {
+                  if (allChosen) next.delete(p.key);
+                  else next.add(p.key);
+                }
+                return next;
+              })
+            }
+          />
+          {chosen.length > 0 ? tn("inbox.selectedCount", chosen.length) : t("inbox.selectAll")}
+        </label>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={chosen.length === 0 || inbox.busy}
+          onClick={() => void sendChosen()}
+        >
+          {inbox.busy
+            ? t("litsearch.add.busy")
+            : t("litsearch.add.inboxSelected", { n: chosen.length })}
+        </Button>
+        {inbox.result ? (
+          <span role="status" className="text-[12px] text-muted">
+            {inbox.result}
+          </span>
+        ) : null}
+        <ErrorLine error={inbox.error} />
+      </div>
       {inSection.length === 0 ? (
         <p className="px-8 py-6 text-muted">{t("litsearch.results.empty")}</p>
       ) : shown.length === 0 ? (
@@ -296,7 +381,10 @@ export function ResultsTable({
         <table className="w-full border-collapse text-left text-[13px]">
           <thead>
             <tr>
-              {head("rank", "litsearch.col.rank", "w-14 pl-8")}
+              <th scope="col" className={cn(TH, "w-10 pl-8")}>
+                <span className="sr-only">{t("litsearch.selectAll")}</span>
+              </th>
+              {head("rank", "litsearch.col.rank", "w-14")}
               {head("score", "litsearch.col.score", "w-24")}
               {head("title", "litsearch.col.title")}
               {head("year", "litsearch.col.year", "w-16")}
@@ -319,7 +407,18 @@ export function ResultsTable({
                 onClick={() => onSelect(p.key)}
                 className={cn("cursor-default hover:bg-sunken", selected === p.key && "bg-sunken")}
               >
-                <td className={cn(TD, "pl-8 font-mono text-[12px] text-muted")}>{p.rank ?? ""}</td>
+                <td className={cn(TD, "pl-8")}>
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-3.5"
+                    aria-label={t("litsearch.select", { title: p.title })}
+                    checked={checked.has(p.key) && addable(p)}
+                    disabled={!addable(p)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggle(p.key)}
+                  />
+                </td>
+                <td className={cn(TD, "font-mono text-[12px] text-muted")}>{p.rank ?? ""}</td>
                 <td className={TD}>
                   <ScoreBar paper={p} />
                 </td>
@@ -400,7 +499,58 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /** Everything the run knows about one paper, for the right column. */
-export function PaperDetail({ paper }: { paper: LitsearchPaper | undefined }) {
+/** "Add to library" (the user decides, straight in) and "To the inbox" for one paper. */
+function AddActions({ runId, paper }: { runId: string; paper: LitsearchPaper }) {
+  const { t } = useI18n();
+  const add = useOpMutation(itemsAdd);
+  const guard = useGuarded();
+  const inbox = useToInbox(runId);
+  const [added, setAdded] = useState(false);
+  if (added) {
+    return (
+      <p role="status" className="text-[12px] text-muted">
+        {t("litsearch.add.addedLibrary")}
+      </p>
+    );
+  }
+  if (!addable(paper)) {
+    return paper.status === "new" && paper.section !== "rejected" ? (
+      <p className="text-[12px] text-muted">{t("litsearch.add.noId")}</p>
+    ) : null;
+  }
+  const identifier = paper.doi ?? `arXiv:${paper.arxiv}`;
+  const busy = add.isPending || inbox.busy;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={busy}
+          onClick={() =>
+            void guard
+              .run(() => add.mutateAsync({ identifier, target: "library" }))
+              .then((out) => setAdded(Boolean(out)))
+          }
+        >
+          {add.isPending ? t("litsearch.add.busy") : t("litsearch.add.library")}
+        </Button>
+        <Button size="sm" disabled={busy} onClick={() => void inbox.run([paper.key])}>
+          {t("litsearch.add.inbox")}
+        </Button>
+      </div>
+      <ErrorLine error={guard.error ?? inbox.error} />
+    </div>
+  );
+}
+
+export function PaperDetail({
+  runId,
+  paper,
+}: {
+  runId: string;
+  paper: LitsearchPaper | undefined;
+}) {
   const { t } = useI18n();
   if (!paper) {
     return <p className="p-4 text-muted">{t("litsearch.detail.empty")}</p>;
@@ -455,6 +605,9 @@ export function PaperDetail({ paper }: { paper: LitsearchPaper | undefined }) {
             </a>
           ) : null}
           {paper.doi ? <span className="font-mono text-[11px] text-muted">{paper.doi}</span> : null}
+        </div>
+        <div className="mt-2">
+          <AddActions key={paper.key} runId={runId} paper={paper} />
         </div>
       </div>
 

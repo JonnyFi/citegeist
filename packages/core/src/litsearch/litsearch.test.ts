@@ -617,3 +617,57 @@ function python3(): string | undefined {
   }
   return undefined;
 }
+
+describe("litsearch.toInbox", () => {
+  it("adds papers as system with the search as the reason and remembers them across restarts", async () => {
+    // protects: a human's selection waits in the inbox with "Literatursuche ..." as reason; the run keeps knowing which item it became
+    // fails_when: the paper lands in the library, the reason is missing, or after a fresh service the paper reads as new
+    // no_claim: addItem is a stand-in that writes the inbox item itself; the real ingest is tested in ingest tests
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    const calls: Array<{ actor: string; input: Record<string, unknown> }> = [];
+    const deps = {
+      addItem: async (actor: string, input: { identifier: string; why?: string }) => {
+        calls.push({ actor, input });
+        const citekey = input.identifier.startsWith("arXiv") ? "okafor2026llm" : "ruiz2025survey";
+        lib.writeItem(
+          itemData(citekey, {
+            type: "article-journal",
+            // the stand-in stores no DOI, so only inbox.json can tie the item to the paper
+            inbox: { by: "system", why: input.why },
+          }),
+        );
+        return { citekey, job: "j_01JBZZZZZZZZZZZZZZZZZZZZZZ" };
+      },
+    };
+    const registry = bindLitsearchOperations(new Registry(), lib, deps as never);
+    const out = (await registry.call(
+      "litsearch.toInbox",
+      { actor: "human" },
+      { runId: "run-sample", keys: ["W4400000001", "W4600000003", "p44d6258ece7a", "nope"] },
+    )) as { added: number; failed: number; results: Array<{ key: string; status: string }> };
+    expect(out.added).toBe(3);
+    expect(out.failed).toBe(1);
+    expect(calls.map((c) => c.actor)).toEqual(["system", "system", "system"]);
+    expect(calls[0]?.input).toMatchObject({
+      identifier: "10.1145/3700001",
+      target: "inbox",
+      why: "Literatursuche „agent communication protocols“: Score 81.4, Tier-1 venue, high relevance, FWCI 3.1",
+    });
+    expect(calls[1]?.input.identifier).toBe("10.48550/arXiv.2601.01234");
+
+    const fresh = bindLitsearchOperations(new Registry(), lib);
+    const got = (await fresh.call(
+      "litsearch.get",
+      { actor: "human" },
+      { runId: "run-sample" },
+    )) as {
+      papers: Array<{ key: string; status: string; citekey?: string }>;
+    };
+    expect(got.papers.find((p) => p.key === "W4400000001")).toMatchObject({
+      status: "inbox",
+      citekey: "ruiz2025survey",
+    });
+    expect(got.papers.find((p) => p.key === "W4200000002")?.status).toBe("new");
+  });
+});
