@@ -223,6 +223,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const ingest = bindIngestOperations(registry, lib, {
     resolver: opts.resolver ?? (resolver as NonNullable<typeof resolver>).lookup,
     worker,
+    ai,
     ensureLocal: async (rel) => (sync ? sync.ensureLocal(rel) : true),
     ...(opts.autoStart === undefined ? {} : { autoStart: opts.autoStart }),
   });

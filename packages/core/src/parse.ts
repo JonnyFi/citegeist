@@ -100,7 +100,14 @@ export function parseLibraryFile(
       return {
         ok: true,
         parsed: { kind: "item", citekey: c.key, fm: r.data, body: fmr.file.body },
-        warnings: [],
+        warnings: r.data.incomplete
+          ? [
+              {
+                code: "ITEM_INCOMPLETE",
+                message: `ingest did not finish (${r.data.incomplete.code}): ${r.data.incomplete.message}`,
+              },
+            ]
+          : [],
       };
     }
     case "card": {

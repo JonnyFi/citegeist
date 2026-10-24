@@ -52,6 +52,9 @@ const ItemSummary = z.object({
   /** Who added an inbox item and why (D7). */
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
+  /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
+  incomplete: z.boolean().optional(),
+  incompleteReason: z.string().optional(),
 });
 
 export * from "./chat.js";
@@ -99,7 +102,13 @@ export const itemsAdd = defineContract({
     target: z.enum(["inbox", "library"]).default("inbox"),
     why: z.string().optional(),
   }),
-  output: z.object({ citekey: Citekey, job: JobId, duplicateOf: Citekey.optional() }),
+  output: z.object({
+    citekey: Citekey,
+    job: JobId,
+    duplicateOf: Citekey.optional(),
+    /** True when the matched item had no working source and the new file or download repairs it. */
+    repaired: z.boolean().optional(),
+  }),
   mcp: { tool: "add_item", readOnly: false },
 });
 export const itemsAttach = defineContract({
