@@ -5,6 +5,7 @@ import { join } from "node:path";
 // of ACP) talks to the citegeist MCP server of the core and writes a note, and the oRPC endpoint
 // and the WebSocket show the result.
 import { fakeBackend } from "@citegeist/chat/testing";
+import { createStubWorker } from "@citegeist/core";
 import { chatChangePath } from "@citegeist/ops";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
@@ -34,7 +35,7 @@ beforeEach(() => {
 afterEach(async () => {
   await server?.close();
   server = undefined;
-  rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  rmSync(tmp, { recursive: true, force: true });
 });
 
 async function start() {
@@ -44,6 +45,8 @@ async function start() {
     watch: false,
     connector: false,
     chat: { backends: [fakeBackend()], find: () => undefined, handshakeTimeoutMs: 30_000 },
+    // a real worker would build its Python environment under tmp while the test removes it
+    runtime: { worker: createStubWorker() },
   });
   const link = new RPCLink({
     url: `http://127.0.0.1:${server.port}/rpc`,
