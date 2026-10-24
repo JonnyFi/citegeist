@@ -102,6 +102,8 @@ export const LitsearchPaper = z.object({
   /** Whether the library knows the paper; `new` when it is in neither inbox nor library. */
   status: WorkStatus,
   citekey: Citekey.optional(),
+  /** In a watchlist's run: the run before it did not have this paper. */
+  newInWatch: z.boolean().optional(),
 });
 export type LitsearchPaper = z.infer<typeof LitsearchPaper>;
 
@@ -115,6 +117,10 @@ export const LitsearchWatch = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/),
   /** A launchd agent re-runs the search weekly, also while the app is closed. Off until the user turns it on. */
   background: z.boolean(),
+  /** launchctl knows the agent. False with background on means the agent went missing. */
+  agentLoaded: z.boolean(),
+  /** A run of this watchlist is going on right now. */
+  running: z.boolean(),
   runs: z.array(LitsearchRunId),
   lastRun: z.string().optional(),
   lastStatus: LitsearchRunStatus.optional(),
