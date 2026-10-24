@@ -7,7 +7,7 @@ describe("contracts", () => {
     expect(new Set(names).size).toBe(names.length);
     const tools = CONTRACTS.flatMap((c) => (c.mcp ? [c.mcp.tool] : []));
     expect(new Set(tools).size).toBe(tools.length);
-    expect(tools.length).toBeLessThanOrEqual(12);
+    expect(tools.length).toBeLessThanOrEqual(16);
   });
 
   it("never expose admin operations over MCP", () => {

@@ -39,7 +39,21 @@
     { "name": "link", "description": "Add a typed link from a note to an item, card or note" },
     { "name": "get_project", "description": "Read a project with its brief and counts" },
     { "name": "cite", "description": "Format citations and bibliographies in a CSL style" },
-    { "name": "jobs_get", "description": "Status of a background job" }
+    { "name": "jobs_get", "description": "Status of a background job" },
+    { "name": "get_outline", "description": "Read the outline of a plan with computed numbers" },
+    {
+      "name": "edit_outline",
+      "description": "Add, update, move or remove outline nodes of a plan"
+    },
+    { "name": "edit_plan_doc", "description": "Replace the text of a planning document" },
+    {
+      "name": "note_insight",
+      "description": "Write a dated insight paragraph into a plan or project"
+    },
+    {
+      "name": "find_insights",
+      "description": "Find insight paragraphs by links first, then by text"
+    }
   ],
   "tools_generated": false,
   "user_config": {
