@@ -32,6 +32,69 @@ export function trimRange(
   return { start: s, end: e };
 }
 
+const isWordChar = (c: string | undefined): boolean => c !== undefined && /[\p{L}\p{N}]/u.test(c);
+/** Apostrophes join the word parts on both sides of them: "don't", "Luhmann's". A hyphen does not. */
+const isJoiner = (c: string | undefined): boolean => c === "'" || c === "\u2019";
+
+/**
+ * True when the position between `text[i - 1]` and `text[i]` lies inside a word. A letter or digit
+ * on both sides counts, and so does an apostrophe with a letter or digit on each side.
+ */
+function insideWord(text: string, i: number): boolean {
+  if (i <= 0 || i >= text.length) return false;
+  const before = text[i - 1];
+  const after = text[i];
+  if (isWordChar(before) && isWordChar(after)) return true;
+  if (isWordChar(before) && isJoiner(after)) return isWordChar(text[i + 1]);
+  if (isJoiner(before) && isWordChar(after)) return isWordChar(text[i - 2]);
+  return false;
+}
+
+/**
+ * Snap a selection to word boundaries: an edge that cuts through a word moves
+ * outward, so the quote of a card never ends in "th" or starts in "ommunication". Edge whitespace
+ * is trimmed first. A run of more than `maxExtend` word characters is left alone, because it is
+ * not a word (a long URL or a string of digits).
+ */
+export function snapToWordBoundaries(
+  text: string,
+  start: number,
+  end: number,
+  maxExtend = 64,
+): { start: number; end: number } {
+  const r = trimRange(text, start, end);
+  let s = r.start;
+  let e = r.end;
+  if (e <= s) return r;
+  let n = 0;
+  while (insideWord(text, s) && n < maxExtend) {
+    s--;
+    n++;
+  }
+  if (insideWord(text, s)) s = r.start;
+  n = 0;
+  while (insideWord(text, e) && n < maxExtend) {
+    e++;
+    n++;
+  }
+  if (insideWord(text, e)) e = r.end;
+  return { start: s, end: e };
+}
+
+/**
+ * Create a text anchor for a reader selection: the range is snapped to word boundaries first (see
+ * {@link snapToWordBoundaries}), then handled like {@link createTextAnchor}.
+ */
+export function createSelectionAnchor(
+  stream: TextStream,
+  start: number,
+  end: number,
+  contextLen = CONTEXT_LEN,
+): TextAnchorRecord | null {
+  const r = snapToWordBoundaries(stream.text, start, end);
+  return createTextAnchor(stream, r.start, r.end, contextLen);
+}
+
 /**
  * Create a text anchor from a character range of a normalised stream, taken at selection time.
  * The block hint is the unit that contains the start of the range.

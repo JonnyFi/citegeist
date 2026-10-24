@@ -32,7 +32,7 @@ import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mo
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
-  /** How long the mock AI needs for paraphrase and core statement. The real one takes a few seconds. */
+  /** How long the mock AI needs for the paraphrase. The real one takes a few seconds. */
   aiDelayMs?: number;
   /** Seeds the job list with finished and running conversions, so the top bar has something to show. */
   demoJobs?: boolean;
@@ -98,12 +98,12 @@ function firstSentence(text: string): string {
   return (m ? m[0] : text).trim();
 }
 
-/** What the mock AI writes: obviously machine text, in the requested language. */
+/** What the mock AI writes: obviously machine text, in the requested language, with a kind. */
 function mockAiText(quote: string, language: string) {
   const lead = firstSentence(quote);
   return {
     paraphrase: language === "de" ? `Sinngemäß: ${lead}` : `In other words (${language}): ${lead}`,
-    core: lead.length > 90 ? `${lead.slice(0, 87)}...` : lead,
+    kind: "thesis" as const,
   };
 }
 
@@ -149,7 +149,7 @@ export function createMockRegistry(
   const aiDelayMs = options.aiDelayMs ?? 1500;
   const jobs = new Map<string, MockJob>();
 
-  /** Starts a fake AI job that fills paraphrase and core statement after the delay. */
+  /** Starts a fake AI job that fills the paraphrase and, if unset, the kind after the delay. */
   const scheduleAi = (cardId: string, language: string): string => {
     const now = new Date().toISOString();
     const job: MockJob = { id: randomId("j_"), status: "running", createdAt: now, updatedAt: now };
@@ -158,12 +158,13 @@ export function createMockRegistry(
       const card = data.cards.find((c) => c.frontmatter.id === cardId);
       const at = new Date().toISOString();
       if (card) {
-        card.body = { ...card.body, ...mockAiText(card.body.quote, language) };
+        const ai = mockAiText(card.body.quote, language);
+        card.body = { ...card.body, paraphrase: ai.paraphrase };
         const stamp = { by: "claude-code/haiku", at, language };
         card.frontmatter = {
           ...card.frontmatter,
           paraphrase: stamp,
-          core: stamp,
+          kind: card.frontmatter.kind ?? ai.kind,
           modified: { at, by: "human" },
         };
         changed(`items/${card.frontmatter.item}/cards/${cardId}.md`);
@@ -432,7 +433,7 @@ export function createMockRegistry(
         id: randomId("c_"),
         item: input.citekey,
         ...(doc ? { source: doc.source } : {}),
-        kind: input.kind,
+        ...(input.kind ? { kind: input.kind } : {}),
         ...(label
           ? { locator: { label: "page", start: label, confirmed: doc?.pages.confirmed ?? false } }
           : {}),
@@ -460,10 +461,12 @@ export function createMockRegistry(
         throw new Error("CARD_QUOTE_IMMUTABLE: the verbatim quote of a card never changes");
       }
       const card = findCard(input.id);
-      const { kind, tags, locator, ownWords, comment, paraphrase, core } = input.patch;
+      const { kind, tags, locator, note, paraphrase } = input.patch;
+      const { kind: oldKind, ...rest } = card.frontmatter;
       card.frontmatter = {
-        ...card.frontmatter,
-        ...(kind ? { kind } : {}),
+        ...rest,
+        // null clears the kind, undefined keeps it
+        ...(kind === undefined ? (oldKind ? { kind: oldKind } : {}) : kind ? { kind } : {}),
         ...(tags ? { tags } : {}),
         ...(locator && card.frontmatter.locator
           ? {
@@ -479,10 +482,8 @@ export function createMockRegistry(
       };
       card.body = {
         ...card.body,
-        ...(ownWords !== undefined ? { ownWords } : {}),
-        ...(comment !== undefined ? { comment } : {}),
+        ...(note !== undefined ? { note } : {}),
         ...(paraphrase !== undefined ? { paraphrase } : {}),
-        ...(core !== undefined ? { core } : {}),
       };
       changed(`items/${card.frontmatter.item}/cards/${card.frontmatter.id}.md`);
       return { card };
@@ -506,7 +507,7 @@ export function createMockRegistry(
         if (!item) continue;
         const loc = card.frontmatter.locator?.start;
         const quote = card.body.quote;
-        const own = card.body.ownWords ?? card.body.paraphrase ?? card.body.core ?? quote;
+        const own = card.body.note || card.body.paraphrase || quote;
         if (input.format === "pandoc") {
           const at = `@${item.frontmatter.citekey}${loc ? `, S. ${loc}` : ""}`;
           lines.push(input.mode === "direct" ? `"${quote}" [${at}]` : `${own} [vgl. ${at}]`);
@@ -597,7 +598,7 @@ export function createMockRegistry(
         }
       }
       for (const c of data.cards) {
-        const text = `${c.body.quote} ${c.body.paraphrase ?? ""} ${c.body.core ?? ""}`;
+        const text = `${c.body.quote} ${c.body.paraphrase ?? ""} ${c.body.note ?? ""}`;
         if (!input.kinds.includes("card") || !text.toLowerCase().includes(q)) continue;
         const owner = data.items.get(c.frontmatter.item);
         if (!owner) continue;

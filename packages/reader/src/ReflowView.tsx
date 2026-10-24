@@ -5,6 +5,7 @@ import {
   buildDomStream,
   type DomStream,
   domRangesOfStreamRange,
+  snapDomRangeToWords,
   sourceRangeOfDomRange,
 } from "./domStream.js";
 import { HighlightLayer, highlightAt, type PlacedHighlight } from "./HighlightLayer.js";
@@ -117,7 +118,8 @@ export function ReflowView({
     if (!r) return null;
     return anchorsForRange(ds.stream, r.start, r.end, stream);
   };
-  const pending = useSelection(scrollRef, compute, onSelectionChange);
+  const snap = (range: Range): Range | null => (ds ? snapDomRangeToWords(ds, range) : null);
+  const pending = useSelection(scrollRef, compute, onSelectionChange, undefined, snap);
 
   return (
     <div className="cg-reader cg-reflow">

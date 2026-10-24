@@ -1,7 +1,7 @@
 import { type InferenceBackend, MockBackend } from "@citegeist/ai";
 
 export const CANNED_PARAPHRASE = "Canned paraphrase of the selected passage.";
-export const CANNED_CORE = "Canned core statement.";
+export const CANNED_KIND = "finding" as const;
 
 /**
  * A backend that answers every task with fixed texts. End-to-end runs use it to exercise the
@@ -10,7 +10,7 @@ export const CANNED_CORE = "Canned core statement.";
 export function cannedAiBackend(id = "mock"): InferenceBackend {
   return new MockBackend(
     {
-      "card.paraphrase": { paraphrase: CANNED_PARAPHRASE, core: CANNED_CORE },
+      "card.paraphrase": { paraphrase: CANNED_PARAPHRASE, kind: CANNED_KIND },
       "card.verify": { faithful: true, issues: [] },
     },
     id,

@@ -183,7 +183,6 @@ export function createFixtureRegistry(): Registry {
         frontmatter: {
           id: CARD,
           item: input.citekey ?? FIXTURE_CITEKEY,
-          kind: "quote" as const,
           anchor: { text: { exact: "Kommunikation", prefix: "", suffix: "" } },
           quote_sha256: "a".repeat(64),
           tags: [],

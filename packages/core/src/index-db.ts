@@ -15,7 +15,8 @@ import type { Issue } from "./parse.js";
 import { stemmedText } from "./text.js";
 import { extractWikiLinks, wikiTarget } from "./wikilinks.js";
 
-export const INDEX_SCHEMA_VERSION = 1;
+/** 2: cards table has a nullable kind and a note column instead of core, own_words and comment (D15 to D17). */
+export const INDEX_SCHEMA_VERSION = 2;
 
 const TABLES = [
   "items",
@@ -56,9 +57,9 @@ CREATE TABLE creators (
 CREATE INDEX creators_path ON creators(path);
 CREATE INDEX creators_family ON creators(family);
 CREATE TABLE cards (
-  id TEXT PRIMARY KEY, path TEXT NOT NULL, citekey TEXT NOT NULL, source TEXT, kind TEXT NOT NULL,
-  quote TEXT NOT NULL, quote_ok INTEGER NOT NULL, paraphrase TEXT, core TEXT, own_words TEXT,
-  comment TEXT, created TEXT NOT NULL, frontmatter_json TEXT NOT NULL, body_json TEXT NOT NULL
+  id TEXT PRIMARY KEY, path TEXT NOT NULL, citekey TEXT NOT NULL, source TEXT, kind TEXT,
+  quote TEXT NOT NULL, quote_ok INTEGER NOT NULL, paraphrase TEXT, note TEXT,
+  created TEXT NOT NULL, frontmatter_json TEXT NOT NULL, body_json TEXT NOT NULL
 );
 CREATE INDEX cards_path ON cards(path);
 CREATE INDEX cards_citekey ON cards(citekey);
@@ -385,21 +386,19 @@ export class Index {
   putCard(path: string, citekey: string, fm: CardFrontmatter, body: CardBody, quoteOk: boolean) {
     this.deleteRows(path);
     this.stmt(
-      `INSERT INTO cards(id, path, citekey, source, kind, quote, quote_ok, paraphrase, core,
-        own_words, comment, created, frontmatter_json, body_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO cards(id, path, citekey, source, kind, quote, quote_ok, paraphrase, note,
+        created, frontmatter_json, body_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       fm.id,
       path,
       citekey,
       fm.source ?? null,
-      fm.kind,
+      fm.kind ?? null,
       body.quote,
       quoteOk ? 1 : 0,
       body.paraphrase ?? null,
-      body.core ?? null,
-      body.ownWords ?? null,
-      body.comment ?? null,
+      body.note ?? null,
       fm.created.at,
       JSON.stringify(fm),
       JSON.stringify(body),
@@ -409,7 +408,8 @@ export class Index {
       `INSERT INTO links(path, src_kind, src_ref, dst, rel, status, actor, origin)
        VALUES (?, 'card', ?, ?, 'excerpt-of', 'accepted', 'system', 'auto')`,
     ).run(path, fm.id, citekey);
-    const free = [body.paraphrase, body.core, body.ownWords, body.comment, ...extraTexts(body)];
+    // The legacy core statement is shown nowhere (D15), so it is not searched either.
+    const free = [body.paraphrase, body.note, ...extraTexts(body)];
     this.putWikiLinks(path, "card", fm.id, free.filter(Boolean).join("\n"));
     this.addDoc({
       path,

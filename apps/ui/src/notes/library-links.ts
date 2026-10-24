@@ -131,8 +131,8 @@ export function createProvider(index: LinkIndex, tr: Translator): WikiLinkProvid
         quote: card.body.quote,
         ...(page ? { page } : {}),
         ...(owner ? { citation: owner } : {}),
-        kind: tr.t(`kind.${card.frontmatter.kind}`),
-        ...(card.body.ownWords ? { ownWords: card.body.ownWords } : {}),
+        ...(card.frontmatter.kind ? { kind: tr.t(`kind.${card.frontmatter.kind}`) } : {}),
+        ...(card.body.note ? { note: card.body.note } : {}),
       };
     },
   };

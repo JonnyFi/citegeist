@@ -213,7 +213,7 @@ function setup(over: Partial<SettingsDeps> = {}) {
     {
       "card.paraphrase": {
         paraphrase: "Systems consist of communication.",
-        core: "Communication.",
+        kind: "finding",
       },
     },
     "claude-code-cli",
@@ -415,7 +415,7 @@ describe("ai.testBackend", () => {
           is_error: false,
           structured_output: {
             paraphrase: "Systems consist of communication.",
-            core: "Communication.",
+            kind: "finding",
           },
         }),
       };

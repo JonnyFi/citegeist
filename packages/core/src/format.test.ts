@@ -37,7 +37,8 @@ Autopoiesis ist [[luhmann1984soziale#^b7f3k2q]] zentral.
 
 const QUOTE = "Soziale Systeme bestehen aus Kommunikationen.\n\nNicht aus Menschen.";
 
-const CARD = `---
+/** A card as written before D15 to D17: kind "quote", core statement, own words and comment. */
+const CARD_LEGACY = `---
 id: c_01JB8Z3Q7K
 item: luhmann1984soziale
 kind: quote
@@ -71,6 +72,40 @@ Communication is the unit.
 Mein Gedanke, siehe [[luhmann1984soziale]].
 
 ## Comment
+
+## Reading list
+
+- eigener Abschnitt
+`;
+
+const CARD = `---
+id: c_01JB8Z3Q7K
+item: luhmann1984soziale
+kind: definition
+anchor:
+  text:
+    exact: Soziale Systeme bestehen aus Kommunikationen.
+    prefix: ""
+    suffix: ""
+quote_sha256: ${quoteSha256(QUOTE)}
+tags: []
+projects: []
+created:
+  at: 2026-10-23T10:00:00.000Z
+  by: human
+---
+
+> Soziale Systeme bestehen aus Kommunikationen.
+>
+> Nicht aus Menschen.
+
+## Paraphrase
+
+Systems consist of communications.
+
+## Note
+
+Mein Gedanke, siehe [[luhmann1984soziale]].
 
 ## Reading list
 
@@ -230,9 +265,8 @@ describe("card body", () => {
     const body = parseCardBody(file.body);
     expect(body.quote).toBe(QUOTE);
     expect(body.paraphrase).toBe("Systems consist of communications.");
-    expect(body.core).toBe("Communication is the unit.");
-    expect(body.ownWords).toBe("Mein Gedanke, siehe [[luhmann1984soziale]].");
-    expect(body.comment).toBe("");
+    expect(body.note).toBe("Mein Gedanke, siehe [[luhmann1984soziale]].");
+    expect(body.core).toBeUndefined();
     expect(body.extra).toEqual([{ heading: "Reading list", text: "- eigener Abschnitt" }]);
     expect(CardBody.safeParse(body).success).toBe(true);
   });
@@ -242,10 +276,73 @@ describe("card body", () => {
     expect(serializeCardBody(parseCardBody(file.body))).toBe(file.body);
   });
 
+  describe("migration of cards from before D15 to D17", () => {
+    it("reads an old card: the empty comment disappears, own words become the note", () => {
+      const body = parseCardBody(MarkdownFile.parse(CARD_LEGACY).body);
+      expect(body.note).toBe("Mein Gedanke, siehe [[luhmann1984soziale]].");
+      expect(Object.keys(body)).not.toContain("ownWords");
+      expect(Object.keys(body)).not.toContain("comment");
+    });
+
+    it("rewrites an old card with the heading Note and keeps the core statement as it is", () => {
+      const body = parseCardBody(MarkdownFile.parse(CARD_LEGACY).body);
+      expect(body.core).toBe("Communication is the unit.");
+      const out = serializeCardBody(body);
+      expect(out).toContain("## Note\n\nMein Gedanke");
+      expect(out).not.toContain("## In my words");
+      expect(out).not.toContain("## Comment");
+      expect(out).toContain("## Core statement\n\nCommunication is the unit.");
+      expect(out.indexOf("## Paraphrase")).toBeLessThan(out.indexOf("## Core statement"));
+      expect(out.indexOf("## Core statement")).toBeLessThan(out.indexOf("## Note"));
+      // and the result is stable: a second pass changes nothing
+      expect(serializeCardBody(parseCardBody(out))).toBe(out);
+    });
+
+    it("concatenates own words and comment with a blank line", () => {
+      const text = ">q\n\n## In my words\n\nEigene Worte.\n\n## Comment\n\nMerken: Maturana.\n";
+      const body = parseCardBody(text);
+      expect(body.note).toBe("Eigene Worte.\n\nMerken: Maturana.");
+      expect(serializeCardBody(body)).toBe("> q\n\n## Note\n\nEigene Worte.\n\nMerken: Maturana.");
+    });
+
+    it("takes a lone comment as the note and ignores the order of the old headings", () => {
+      expect(parseCardBody(">q\n\n## Comment\n\nNur Kommentar.\n").note).toBe("Nur Kommentar.");
+      const swapped = parseCardBody(">q\n\n## Comment\n\nB\n\n## In my words\n\nA\n");
+      expect(swapped.note).toBe("B\n\nA");
+    });
+
+    it("puts an existing Note section after the old sections", () => {
+      const body = parseCardBody(">q\n\n## In my words\n\nAlt.\n\n## Note\n\nNeu.\n");
+      expect(body.note).toBe("Alt.\n\nNeu.");
+    });
+
+    it("parses the frontmatter kind quote and comment as unset and keeps a stored core stamp", () => {
+      const c = classify("items/luhmann1984soziale/cards/c_01JB8Z3Q7K.md");
+      if (!c || c.kind === "conflict" || c.kind === "placeholder") throw new Error("unreachable");
+      const withCore = CARD_LEGACY.replace(
+        "tags: []",
+        "paraphrase: {by: claude-code/haiku, at: 2026-10-23T11:02:00Z}\ncore: {by: claude-code/haiku, at: 2026-10-23T11:02:00Z}\ntags: []",
+      );
+      const r = parseLibraryFile(c, withCore);
+      expect(r.ok).toBe(true);
+      if (r.ok && r.parsed.kind === "card") {
+        expect(r.parsed.fm.kind).toBeUndefined();
+        expect(r.parsed.fm.core?.by).toBe("claude-code/haiku");
+        expect(r.parsed.body.note).toBe("Mein Gedanke, siehe [[luhmann1984soziale]].");
+      }
+      const comment = parseLibraryFile(c, CARD_LEGACY.replace("kind: quote", "kind: comment"));
+      expect(comment.ok && comment.parsed.kind === "card" && comment.parsed.fm.kind).toBeFalsy();
+      const finding = parseLibraryFile(c, CARD_LEGACY.replace("kind: quote", "kind: finding"));
+      expect(finding.ok && finding.parsed.kind === "card" && finding.parsed.fm.kind).toBe(
+        "finding",
+      );
+    });
+  });
+
   it("ignores headings inside code fences and accepts quote lines without a space", () => {
     const body = parseCardBody(">eins\n>zwei\n\n## In my words\n\n```\n## Not a heading\n```\n");
     expect(body.quote).toBe("eins\nzwei");
-    expect(body.ownWords).toBe("```\n## Not a heading\n```");
+    expect(body.note).toBe("```\n## Not a heading\n```");
     expect(body.extra).toEqual([]);
   });
 

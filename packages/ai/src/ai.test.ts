@@ -14,10 +14,11 @@ import {
   toModelJsonSchema,
 } from "./index.js";
 import { CLAUDE_ENV_BLOCKLIST, cleanEnv } from "./runner.js";
+import { sentenceCount } from "./tasks/card-paraphrase/fixtures.js";
 import {
   prompt as paraphrasePrompt,
   PROMPT_VERSION as paraphraseVersion,
-} from "./tasks/card-paraphrase/prompt.v2.js";
+} from "./tasks/card-paraphrase/prompt.v4.js";
 import { inventedNumbers, isWrittenIn, longestSharedRun } from "./tasks/checks.js";
 
 describe("resolveLanguage (D9)", () => {
@@ -38,8 +39,14 @@ describe("routing", () => {
   });
 
   it("sends each task to its backend and explains misconfiguration", async () => {
-    const fast = new MockBackend({ "card.paraphrase": { paraphrase: "fast", core: "c" } }, "fast");
-    const slow = new MockBackend({ "card.paraphrase": { paraphrase: "slow", core: "c" } }, "slow");
+    const fast = new MockBackend(
+      { "card.paraphrase": { paraphrase: "fast", kind: "finding" } },
+      "fast",
+    );
+    const slow = new MockBackend(
+      { "card.paraphrase": { paraphrase: "slow", kind: "finding" } },
+      "slow",
+    );
     const router = new AiRouter([fast, slow], { routing: { "card.paraphrase": "slow" } });
     const res = await router.run("card.paraphrase", { passage: "x" });
     expect(res.output.paraphrase).toBe("slow");
@@ -156,14 +163,14 @@ describe("task registry", () => {
   });
 
   it("runs card.paraphrase through a backend with language and stamp", async () => {
-    const mock = new MockBackend({ "card.paraphrase": { paraphrase: "Text", core: "Kern" } });
+    const mock = new MockBackend({ "card.paraphrase": { paraphrase: "Text", kind: "definition" } });
     const res = await runTask(
       mock,
       "card.paraphrase",
       { passage: "The sky is blue." },
       { language: "de" },
     );
-    expect(res.output.core).toBe("Kern");
+    expect(res.output.kind).toBe("definition");
     expect(res.stamp.by).toBe("mock:mock-fast");
     expect(res.stamp.language).toBe("de");
     expect(mock.calls[0]?.system).toContain("German");
@@ -189,14 +196,14 @@ describe("task registry", () => {
     const mock = new MockBackend({
       "card.verify": { faithful: false, issues: [{ kind: "added", detail: "adds a cause" }] },
     });
-    const res = await runTask(mock, "card.verify", { passage: "p", paraphrase: "q", core: "r" });
+    const res = await runTask(mock, "card.verify", { passage: "p", paraphrase: "q" });
     expect(res.output.faithful).toBe(false);
     expect(mock.calls[0]?.model).toBe("smart");
     const bad = new MockBackend({
       "card.verify": { faithful: true, issues: [{ kind: "invented", detail: "x" }] },
     });
     await expect(
-      runTask(bad, "card.verify", { passage: "p", paraphrase: "q", core: "r" }),
+      runTask(bad, "card.verify", { passage: "p", paraphrase: "q" }),
     ).rejects.toMatchObject({
       detail: { code: "AI_SCHEMA_INVALID" },
     });
@@ -267,17 +274,63 @@ describe("eval checks", () => {
     const good = {
       paraphrase:
         "Die Festigung von Erinnerungen im Schlaf gilt oft als Weitergabe vom Hippocampus an den Neokortex, doch die Befunde sind uneinheitlicher. Bei Nagetieren treffen Ripples auf das Wiederabspielen von Wegen, beim Menschen sind die Effekte mäßig und hängen vom Material ab.",
-      core: "Die Rolle des Schlafs für das Gedächtnis ist bei Menschen mäßig und vom Lernstoff abhängig.",
+      kind: "finding" as const,
     };
     expect(sleep.check(good, sleep.input)).toEqual([]);
     const bad = {
       paraphrase:
         "Sleep helps the brain and improves recall by 30 percent in the study that the authors ran.",
-      core: "Sleep is good for the brain.",
+      kind: "method" as const,
     };
     const fails = sleep.check(bad, sleep.input);
     expect(fails.join(" ")).toMatch(/not in de/);
     expect(fails.join(" ")).toMatch(/numbers not in passage: 30/);
+    expect(fails.join(" ")).toMatch(/kind is method, expected finding/);
+  });
+
+  it("classifies kinds: every fixture names the kinds it accepts, and a wrong kind fails", () => {
+    const ACCEPTS_CRITIQUE = new Set(["en-sleep-memory", "en-survey-response"]);
+    const byId = (id: string) => fixtures.find((f) => f.id === id);
+    const good = "Gesellschaft entsteht aus Kommunikation. Das ist eine kurze Aussage.";
+    const expected: Record<string, string> = {
+      "en-sleep-memory": "finding",
+      "de-institutionen": "thesis",
+      "en-survey-response": "finding",
+      "de-lernen-feedback": "finding",
+      "en-method-sampling": "method",
+      "en-definition-social-capital": "definition",
+      "de-beispiel-hafen": "example",
+      "en-critique-metrics": "critique",
+      "de-these-arbeit": "thesis",
+    };
+    expect(fixtures.map((f) => f.id).sort()).toEqual(Object.keys(expected).sort());
+    // all six kinds appear in the fixtures
+    expect(new Set(Object.values(expected)).size).toBe(6);
+    for (const [id, kind] of Object.entries(expected)) {
+      const f = byId(id);
+      if (!f) throw new Error(`fixture ${id} missing`);
+      const para = f.language === "de" ? good : "Society arises from communication. This is short.";
+      const kindFails = (k: string) =>
+        f
+          .check({ paraphrase: para, kind: k as "finding" }, f.input)
+          .filter((m) => m.startsWith("kind is"));
+      expect(kindFails(kind), id).toEqual([]);
+      // Passages that report results with stated limits accept finding or critique (prompt v4).
+      const wrong = kind === "critique" || ACCEPTS_CRITIQUE.has(id) ? "example" : "critique";
+      expect(kindFails(wrong), id).toHaveLength(1);
+    }
+  });
+
+  it("limits the paraphrase to one to three sentences", () => {
+    expect(sentenceCount("Ein Satz.")).toBe(1);
+    expect(sentenceCount("Der Wert lag bei 0,48. Das ist hoch. Und stabil!")).toBe(3);
+    expect(sentenceCount("Eins. Zwei. Drei. Vier.")).toBe(4);
+    if (!sleep) throw new Error("fixture missing");
+    const four = {
+      paraphrase: "Der Schlaf hilft. Er festigt Erinnerungen. Das ist belegt. Aber nicht immer.",
+      kind: "finding" as const,
+    };
+    expect(sleep.check(four, sleep.input).join(" ")).toMatch(/4 sentences, not 1 to 3/);
   });
 
   it("keeps the verify fixtures consistent with their intent", () => {

@@ -436,9 +436,8 @@
         "pattern": "^[0-9a-f]{12}$"
       },
       "kind": {
-        "default": "quote",
         "type": "string",
-        "enum": ["quote", "finding", "method", "definition", "critique", "comment"]
+        "enum": ["thesis", "finding", "method", "definition", "example", "critique"]
       },
       "locator": {
         "type": "object",
@@ -682,10 +681,7 @@
       "core": {
         "type": "string"
       },
-      "ownWords": {
-        "type": "string"
-      },
-      "comment": {
+      "note": {
         "type": "string"
       },
       "extra": {

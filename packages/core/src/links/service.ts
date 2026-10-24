@@ -99,18 +99,18 @@ export class LinkService {
           title: item.title,
           ...(summary ? { summary } : {}),
         });
-        const rows = index.all<{ id: string; quote: string; core: string | null }>(
-          "SELECT id, quote, core FROM cards WHERE citekey = ? ORDER BY id LIMIT ?",
+        const rows = index.all<{ id: string; quote: string; paraphrase: string | null }>(
+          "SELECT id, quote, paraphrase FROM cards WHERE citekey = ? ORDER BY id LIMIT ?",
           item.citekey,
           CARDS_PER_ITEM,
         );
         for (const c of rows) {
-          cards.push({ ref: `[[${c.id}]]`, item: wiki, text: clip(c.core || c.quote) });
+          cards.push({ ref: `[[${c.id}]]`, item: wiki, text: clip(c.paraphrase || c.quote) });
         }
         continue;
       }
-      const card = index.get<{ id: string; quote: string; core: string | null }>(
-        "SELECT id, quote, core FROM cards WHERE id = ?",
+      const card = index.get<{ id: string; quote: string; paraphrase: string | null }>(
+        "SELECT id, quote, paraphrase FROM cards WHERE id = ?",
         ref.target,
       );
       if (card) {
@@ -119,7 +119,7 @@ export class LinkService {
           ref: wiki,
           kind: "card",
           title: clip(card.quote, 80),
-          summary: clip(card.core || card.quote),
+          summary: clip(card.paraphrase || card.quote),
         });
         continue;
       }

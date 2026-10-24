@@ -125,10 +125,9 @@ test("adds a PDF, reads it, makes a card with AI and copies the citation", async
   await expect(page.getByText("Canned paraphrase of the selected passage.")).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText("Canned core statement.")).toBeVisible();
 
   // Copy the citation and read it back from the system clipboard.
-  await page.getByRole("button", { name: "Copy as direct quote" }).click();
+  await page.getByRole("button", { name: "Quote verbatim" }).click();
   await expect(page.getByRole("status").filter({ hasText: /copied/i })).toBeVisible();
   const clipboard = await app.evaluate(({ clipboard: c }) => c.readText());
   expect(clipboard).toContain(PASSAGE);

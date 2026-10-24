@@ -12,7 +12,8 @@ import { QuoteCard } from "./card-editor";
 import { CardExport } from "./card-export";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
-type CardKind = CardFrontmatter["kind"];
+type CardKind = NonNullable<CardFrontmatter["kind"]>;
+type KindFilter = CardKind | "all" | "none";
 
 /** The "Karten" tab of a project: every card filed under it, filterable by kind, with the export. */
 export function ProjectCards({ slug }: { slug: string }) {
@@ -20,11 +21,23 @@ export function ProjectCards({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const cards = useOp(cardsList, { project: slug, limit: 500 });
   const { index } = useLibraryLinks();
-  const [kind, setKind] = useState<CardKind | "all">("all");
+  const [kind, setKind] = useState<KindFilter>("all");
 
   const all = useMemo(() => cards.data?.cards ?? [], [cards.data]);
-  const kinds = useMemo(() => [...new Set(all.map((c) => c.frontmatter.kind))], [all]);
-  const shown = kind === "all" ? all : all.filter((c) => c.frontmatter.kind === kind);
+  const kinds = useMemo(
+    () =>
+      [...new Set(all.map((c) => c.frontmatter.kind))].filter(
+        (k): k is CardKind => k !== undefined,
+      ),
+    [all],
+  );
+  const hasUnset = useMemo(() => all.some((c) => c.frontmatter.kind === undefined), [all]);
+  const shown =
+    kind === "all"
+      ? all
+      : all.filter((c) =>
+          kind === "none" ? c.frontmatter.kind === undefined : c.frontmatter.kind === kind,
+        );
 
   if (cards.isPending) return <Loading label={t("projectCards.loading")} />;
   if (cards.isError) return <ErrorState error={cards.error} />;
@@ -38,7 +51,7 @@ export function ProjectCards({ slug }: { slug: string }) {
     );
   }
 
-  const chip = (value: CardKind | "all", label: string, color?: string) => (
+  const chip = (value: KindFilter, label: string, color?: string) => (
     <button
       key={value}
       type="button"
@@ -61,6 +74,7 @@ export function ProjectCards({ slug }: { slug: string }) {
           <div className="flex flex-wrap items-center gap-1.5">
             {chip("all", t("projectCards.all"))}
             {kinds.map((k) => chip(k, t(`kind.${k}`), kindColor(k)))}
+            {hasUnset ? chip("none", t("kind.none"), kindColor(undefined)) : null}
           </div>
           <CardExport ids={shown.map((c) => c.frontmatter.id)} project={slug} />
         </div>

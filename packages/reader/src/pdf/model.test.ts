@@ -6,6 +6,7 @@ import {
   buildPageTexts,
   buildPdfStream,
   domRectsToPdfRects,
+  itemOfSource,
   pdfRectToBox,
   type RawTextItem,
   textRangeToRects,
@@ -67,6 +68,39 @@ describe("pdf text model", () => {
     expect(anchors?.textAnchor.block).toBe("bpara0002");
     expect(anchors?.location.blocks[0]?.id).toBe("bpara0002");
     if (anchors) expect(resolveAnchor(stream, anchors.textAnchor).status).toBe("anchored");
+  });
+
+  it("snaps a quote that ends or starts in the middle of a word", () => {
+    const at = stream.text.indexOf("Closure does not mean isolation");
+    const cut = anchorsForRange(stream, at, at + "Closure does not mean isola".length);
+    expect(cut?.quote).toBe("Closure does not mean isolation");
+    expect(cut?.textAnchor.end).toBe(at + "Closure does not mean isolation".length);
+    const late = anchorsForRange(stream, at + 2, at + "Closure does not mean isolation".length);
+    expect(late?.quote).toBe("Closure does not mean isolation");
+    // a hyphenated word that the stream has joined counts as one word
+    const d = stream.text.indexOf("distinction");
+    expect(anchorsForRange(stream, d + 2, d + 6)?.quote).toBe("distinction");
+  });
+
+  it("finds the text item and offset of a source offset", () => {
+    const page = pages[0];
+    if (!page) throw new Error("page");
+    const second = page.items[1];
+    if (!second) throw new Error("item");
+    expect(itemOfSource(pages, page.base + second.start + 3, false)).toEqual({
+      page: 0,
+      item: 1,
+      offset: 3,
+    });
+    // a range end is the offset after the last character, so it can reach the item length
+    expect(itemOfSource(pages, page.base + second.start + second.str.length, true)).toEqual({
+      page: 0,
+      item: 1,
+      offset: second.str.length,
+    });
+    // the line break after an item belongs to no item
+    expect(itemOfSource(pages, page.base + second.start + second.str.length, false)).toBeNull();
+    expect(itemOfSource(pages, -1, false)).toBeNull();
   });
 
   it("converts a page-text range to line rects and back through a viewport", () => {

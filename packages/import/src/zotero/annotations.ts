@@ -5,8 +5,8 @@ export interface CardDraft {
   ref: string;
   /** The highlighted text, verbatim. */
   quote: string;
-  /** The reader's comment; it goes into "In my words". */
-  ownWords?: string;
+  /** The reader's comment; it goes into the note. */
+  note?: string;
   /** Zero-based page index. */
   page: number;
   /** Rectangles in PDF user space, `[x1, y1, x2, y2]`, as Zotero stores them. */
@@ -89,7 +89,7 @@ export function annotationToCard(
     card: {
       ref: a.ref,
       quote,
-      ...(comment ? { ownWords: comment } : {}),
+      ...(comment ? { note: comment } : {}),
       page: position.page,
       quads: position.quads,
       ...(a.pageLabel ? { pageLabel: a.pageLabel } : {}),

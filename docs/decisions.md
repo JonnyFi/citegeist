@@ -131,3 +131,21 @@ Die Einstellung „Isolierter Agent" (Einstellungen, Abschnitt Chat-Agent) stell
 Isoliert bleiben Recherche-Aufträge und die Inferenz-Aufgaben (Highlighter, Metadaten, Zusammenfassungen). Beide laufen ohne Gespräch und ohne dass jemand zusieht, deshalb bleibt es bei `settingSources: []`, ohne Shell und mit Schreibzugriff allein über `add_item` in die Inbox.
 
 Die Folgen für die Nachvollziehbarkeit sind gering. Der Verlauf eines Zuges (D12) vergleicht den Bibliotheksordner vor und nach dem Zug und erfasst deshalb auch Änderungen, die eine Shell-Anweisung ausgelöst hat. Was der Agent über MCP anlegt, trägt weiter `by: agent:<name>` (D7).
+
+## D15: Eine Karte trägt genau einen AI-Text, die Paraphrase
+
+Datum: 2026-10-24. Status: entschieden.
+
+Die Kernaussage entfällt in der Aufgabe `card.paraphrase`, in der Oberfläche und bei neuen Karten. Die Paraphrase umfasst einen bis drei Sätze in der aufgelösten Sprache (D9). Alte Karten bleiben lesbar: Ein gespeicherter Abschnitt „Core statement“ und der Stempel `core` bleiben beim Umschreiben der Datei erhalten, die Oberfläche zeigt sie nirgends, die Suche liest sie nicht, und sie wandern in kein anderes Feld. Das Neuschreiben und die Sprachwahl sitzen als kleine Aktion im Paraphrase-Block der Karte. Modell, Zeit und Sprache stehen in einem kleinen Tooltip statt in einer sichtbaren Zeile.
+
+## D16: Die Art einer Karte ist optional, und die AI schlägt sie vor
+
+Datum: 2026-10-24. Status: entschieden.
+
+Die Art „Zitat“ entfällt, weil jede Karte ein Zitat enthält. Die Arten sind These, Befund, Methode, Definition, Beispiel und Kritik (`thesis`, `finding`, `method`, `definition`, `example`, `critique`). Dieselbe Anfrage, die die Paraphrase schreibt, ordnet die Karte einer Art zu, und der Nutzer ändert die Art jederzeit. Eine vom Nutzer gesetzte Art bleibt beim Neuschreiben der Paraphrase stehen. Alte Karten werden beim Lesen abgebildet: `quote` und `comment` werden zu keiner Art, die übrigen Arten bleiben unverändert. Das Feld `kind` ist im Schema optional, und eine Karte ohne Art trägt die neutrale Kartenfarbe.
+
+## D17: Ein freies Feld „Notiz“ ersetzt „In meinen Worten“ und „Kommentar“
+
+Datum: 2026-10-24. Status: entschieden.
+
+Der Abschnitt heißt im Dateikörper `## Note`. Alte Karten mit beiden Abschnitten werden beim Lesen zusammengeführt: eigene Worte, eine Leerzeile, dann der Kommentar. Die Datei ändert sich erst, wenn die Karte neu geschrieben wird. Die Exportregel `own-else-ai` nimmt für sinngemäße Zitate die Notiz, sofern es eine gibt, sonst die Paraphrase. Die Kopieraktionen der Karte heißen „Wörtlich zitieren“ (Zitat mit Beleg) und „Sinngemäß zitieren“ („vgl.“-Beleg mit Paraphrase oder Notiz).

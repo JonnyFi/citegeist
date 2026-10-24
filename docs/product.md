@@ -27,7 +27,7 @@ Jonny zieht ein PDF ins Fenster, fügt eine DOI ein oder teilt einen arXiv-Link.
 
 ### Lesen mit dem AI-Highlighter
 
-Jonny liest im PDF oder in der umgebrochenen Textansicht. Er markiert einen Absatz, und ein Menü bietet „Zitat“, „Erklären“ und „Mit Notiz verknüpfen“. Bei „Zitat“ speichert citegeist den Wortlaut mit gedruckter Seitenzahl, und das Modell schreibt eine Paraphrase und eine Kernaussage dazu. Später kopiert ein Klick die Karte als direktes oder indirektes Zitat mit Beleg, etwa als „(Luhmann 1984, S. 31)“ oder als `[vgl. @luhmann1984soziale, S. 31]`.
+Jonny liest im PDF oder in der umgebrochenen Textansicht. Er markiert einen Absatz, und ein Menü bietet „Zitat“, „Erklären“ und „Mit Notiz verknüpfen“. Bei „Zitat“ speichert citegeist den Wortlaut mit gedruckter Seitenzahl, und das Modell schreibt eine Paraphrase dazu und ordnet die Karte einer Art zu. Später kopiert ein Klick die Karte als wörtliches oder sinngemäßes Zitat mit Beleg, etwa als „(Luhmann 1984, S. 31)“ oder als `[vgl. @luhmann1984soziale, S. 31]`.
 
 ### Gedanken verknüpfen
 
@@ -83,7 +83,7 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Import | Freie PDFs selbst finden (Unpaywall, arXiv, OpenAlex) | v0.2 | Vorschlag |
 | Lesen | PDF-Ansicht und umgebrochene Textansicht mit denselben Markierungen | v0.1 | Jonny |
 | Lesen | Erklären und Übersetzen markierter Stellen | v0.2 | Vorschlag |
-| Highlighter | Zitatkarte: Wortlaut, Seite, Paraphrase, Kernaussage, eigene Worte, Art (Zitat, Befund, Methode, Definition, Kritik) | v0.1 | Jonny |
+| Highlighter | Zitatkarte: Wortlaut, Seite, Paraphrase, Notiz, Art (These, Befund, Methode, Definition, Beispiel, Kritik) | v0.1 | Jonny |
 | Highlighter | Kopieren als direktes oder indirektes Zitat, Rich Text und Pandoc | v0.1 | D2 |
 | Highlighter | Sprache der AI-Texte: Dropdown pro Quelle, überschreibt die Projekteinstellung | v0.1 | D9 |
 | Highlighter | Gedruckte Seitenzahl einmal pro PDF bestätigen, alle Karten folgen | v0.1 | Vorschlag |

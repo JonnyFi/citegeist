@@ -118,7 +118,7 @@ function fill(card: CardEmbed, body: HTMLElement, labels: { page: string }): voi
   if (card.citation) meta.push(card.citation);
   if (card.page) meta.push(labels.page.replace("{page}", card.page));
   if (meta.length > 0) body.append(el("div", "cm-card-meta", meta.join(" · ")));
-  if (card.ownWords) body.append(el("div", "cm-card-own", card.ownWords));
+  if (card.note) body.append(el("div", "cm-card-own", card.note));
 }
 
 /** `![[c_...]]` rendered as an inline quote card. Data comes from the provider, maybe later. */
