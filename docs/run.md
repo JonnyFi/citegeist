@@ -94,6 +94,48 @@ pnpm release             # baut, packt, schreibt die Prüfsumme, legt das GitHub
 
 `scripts/release.sh` verweigert die Arbeit bei einem unsauberen Arbeitsbaum, bei einem vorhandenen Tag und bei einem Commit, der nicht auf `origin` liegt.
 
+## Suche messen
+
+Ein Testsatz aus 43 Suchfragen über sechs CC-BY-Dokumente (`fixtures/retrieval/`) läuft in `pnpm verify` und schlägt fehl, wenn hit@5 oder MRR unter die Messlatte in `fixtures/retrieval/baseline.json` fallen. Liegt das Einbettungsmodell im lokalen Cache (`~/Library/Caches/citegeist-embed-eval` oder der Modellordner der App), prüft der Test die Hybridsuche, sonst nur die Volltextsuche. Mit `CITEGEIST_SKIP_MODELS=1` (so läuft CI) lädt und liest er nie ein Modell.
+
+```
+pnpm eval:retrieval --golden                  Testsatz des Repos, Volltext und Hybrid
+pnpm eval:retrieval --golden --record         neue Zahlen als Messlatte speichern
+pnpm eval:retrieval --golden --rerank bge-reranker-v2-m3
+pnpm eval:retrieval --library ~/Bibliothek --queries ~/fragen.json
+```
+
+Die zweite Form misst eine echte Bibliothek. Die Fragen stehen in einer Datei außerhalb des Repos, echte Bibliotheksdaten kommen nie hinein. Das Skript liest die Bibliothek nur und arbeitet auf einer Kopie des Index aus dem App-Ordner, die schon berechneten Vektoren werden also wiederverwendet. Die Fragen-Datei ist ein JSON-Array oder `{ "queries": [...] }`:
+
+```json
+[
+  {
+    "id": "q1",
+    "lang": "de",
+    "kind": "conceptual",
+    "q": "Wie verändert sich der Anteil rauchender Jugendlicher?",
+    "expect": [
+      { "item": "lampert2019gesundheitliche", "contains": "starker Rückgang" },
+      { "item": "anderer-citekey" }
+    ]
+  }
+]
+```
+
+`item` ist der Citekey, `contains` ein Textausschnitt des Abschnitts, der die Frage beantwortet. Ohne `contains` zählt jeder Treffer des Items. Die Frage gilt als beantwortet, wenn eine der Angaben unter den ersten k Treffern liegt. Ausgegeben werden hit@1, hit@3, hit@5, hit@10, MRR und die Dauer pro Suche, getrennt nach Sprache und Art der Frage.
+
+| Option | Wirkung |
+|---|---|
+| `--mode fts\|hybrid\|both` | Welche Suche gemessen wird, Standard `both` |
+| `--model <Schlüssel>` | Einbettungsmodell aus `MODELS`, Standard ist `DEFAULT_MODEL` |
+| `--models-dir <Ordner>` | Modelle von dort lesen, fehlende dorthin laden |
+| `--kinds block,item,card,note` | Welche Treffer zählen, Standard bei `--library` `item,card,block` |
+| `--rerank <Schlüssel>` | Zusätzlich mit Reranker messen (`--rerank-top`, `--rerank-tokens` stellen ihn ein) |
+| `--details` | Rang jeder einzelnen Frage |
+| `--json` | Zahlen als JSON |
+
+Ändert sich, wie Abschnitte eingebettet werden (Überschriftenpfad, Modell), bettet der nächste Abgleich nur die Chunks neu ein, deren Eingabe sich geändert hat. Beim Wechsel auf den Überschriftenpfad (W5.3) sind das alle Abschnitte konvertierter Dokumente. Das dauert auf einem M4 Pro etwa 24 Chunks pro Sekunde, rund 7 Minuten für 10 000 Abschnitte, und läuft im Hintergrund. Notizen, Karten und Items bleiben unberührt.
+
 ## Erster Start
 
 1. **Bibliothek.** Beim ersten Start wählst du einen Ordner. Ist er noch keine Bibliothek, fragt die App und legt `citegeist.json` und die Unterordner an. Die App merkt sich den Ordner für den nächsten Start.

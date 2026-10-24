@@ -11,7 +11,8 @@
  *
  * Options: --mode fts|hybrid|both (default both)  --model <key>  --models-dir <dir>
  *          --kinds block,item,card,note  --limit <n>  --details  --json
- *          --rerank [<reranker key>]  (also measure with the cross-encoder reranker)
+ *          --rerank <reranker key>  (also measure with the cross-encoder reranker)
+ *          --rerank-top <n>  --rerank-tokens <n>  (candidates reranked, token limit per pair)
  *          --record  (golden only: write the numbers into fixtures/retrieval/baseline.json)
  *
  * Models come from the local cache (see findCachedModel) and are downloaded into --models-dir
@@ -51,7 +52,7 @@ import {
   saveBaseline,
   toEntry,
 } from "./golden.js";
-import { SemanticSearch } from "./hybrid.js";
+import { RERANK_TOP, SemanticSearch } from "./hybrid.js";
 
 const { values: opt } = parseArgs({
   options: {
@@ -66,6 +67,8 @@ const { values: opt } = parseArgs({
     details: { type: "boolean", default: false },
     json: { type: "boolean", default: false },
     rerank: { type: "string" },
+    "rerank-top": { type: "string", default: String(RERANK_TOP) },
+    "rerank-tokens": { type: "string" },
     record: { type: "boolean", default: false },
   },
   allowPositionals: false,
@@ -172,10 +175,16 @@ async function main(): Promise<void> {
         const rspec = rerankKey === "default" ? RERANKERS.default : RERANKERS[rerankKey];
         if (!rspec)
           throw new Error(`unknown reranker; choose from ${Object.keys(RERANKERS).join(", ")}`);
-        const reranker = new TransformersReranker({ model: rspec, modelsDir: modelsDir(rspec) });
+        const tuned = opt["rerank-tokens"]
+          ? { ...rspec, maxTokens: Number(opt["rerank-tokens"]) }
+          : rspec;
+        const reranker = new TransformersReranker({ model: tuned, modelsDir: modelsDir(rspec) });
         try {
           await reranker.warmup();
-          const semR = new SemanticSearch(lib.index, embedder, { reranker });
+          const semR = new SemanticSearch(lib.index, embedder, {
+            reranker,
+            rerankTop: Number(opt["rerank-top"]),
+          });
           await run(`hybrid ${spec.key} + ${rspec.key}`, (i) => semR.search(i));
         } finally {
           await reranker.close();
@@ -204,6 +213,15 @@ function report(list: Row[]): void {
   }
   for (const r of list) {
     console.log(`${r.name.padEnd(40)} ${formatMetrics(r.metrics)}`);
+    for (const group of ["lang", "kind"] as const) {
+      const values = [...new Set(r.results.map((x) => x[group]).filter(Boolean))].sort();
+      if (values.length < 2) continue;
+      const parts = values.map((v) => {
+        const m = metrics(r.results.filter((x) => x[group] === v));
+        return `${v} hit@5 ${(m.hit5 * 100).toFixed(0)}% MRR ${m.mrr.toFixed(3)} (${m.queries})`;
+      });
+      console.log(`${"".padEnd(40)} ${parts.join("  |  ")}`);
+    }
     console.log(
       `${"".padEnd(40)} latency p50 ${percentile(r.latencyMs, 0.5).toFixed(0)} ms, p95 ${percentile(r.latencyMs, 0.95).toFixed(0)} ms`,
     );

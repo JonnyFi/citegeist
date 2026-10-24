@@ -40,6 +40,7 @@ Keine Komponente steht unter GPL oder AGPL und läuft im Prozess von citegeist. 
 | 11 | `opencv-python-headless`, `torch`, `numpy`, `pypdfium2` (Python) | Apache-2.0, BSD, gebündelte Fremdbibliotheken | Die Wheels bündeln eigene native Bibliotheken. Bei OpenCV sind das laut Projekt teils LGPL-Teile wie FFmpeg (ungeprüft) | Der Worker installiert sie beim ersten Start per `uv` von PyPI auf den Rechner des Nutzers. citegeist gibt sie nicht weiter, nur den Quelltext des Workers | Keine, solange die App die Wheels nicht selbst mitliefert |
 | 12 | Fixture-Daten und Spike-Ausgaben | CC BY 4.0, CC BY-SA 4.0, gemeinfrei, bei drei Dateien ungeklärt | `fixtures/pdf/manifest.json` führt je Datei Lizenz und Beleg. Drei Einträge tragen den Vermerk, die Lizenz vor einer Weitergabe zu prüfen. `spikes/s1/out` enthält extrahierten Volltext dieser Dokumente | Die PDFs liegen nicht im Repository (`fetch.mjs` lädt sie mit Prüfsumme) | Vor dem Release `spikes/*/out` aus dem Repository nehmen oder auf klar lizenzierte Quellen beschränken |
 | 13 | Pandoc 3.12.1 (Export von Texten nach Word, LaTeX und PDF) | GPL-2.0-or-later | Starkes Copyleft. Gilt für das Programm selbst, nicht für Dateien, die es erzeugt | Wird nicht mitgeliefert und nie gelinkt. citegeist startet es als eigenen Prozess mit Kommandozeilenargumenten und Dateien (Prüfsumme fest, Download nur auf Wunsch, siehe `packages/core/src/texts/pandoc.ts`). Ein vorhandenes Pandoc im `PATH` oder in Homebrew hat Vorrang | Keine |
+| 14 | Testsatz der Suche (`fixtures/retrieval/corpus`, sechs konvertierte Dokumente) | CC BY 4.0 | Namensnennung. Die Dateien enthalten die Abschnitte der Originale als Text | `fixtures/retrieval/items.json` nennt Autoren, Titel und DOI jedes Dokuments, `fixtures/pdf/manifest.json` den Beleg der Lizenz. Enthalten sind nur Dokumente mit klarem CC-BY-Beleg, die Einträge mit ungeklärter Lizenz fehlen | Keine |
 
 ## Zotero und AGPL
 
@@ -64,6 +65,10 @@ Wer später Zoteros translation-server anbindet, startet ihn als eigenen Prozess
 | docling-project/CodeFormulaV2 | CDLA-Permissive-2.0 | Hugging Face, fester Commit | bei Formelseiten |
 | Qwen3-Embedding-0.6B (ONNX) | Apache-2.0 laut Ursprungsmodell, die ONNX-Karte trägt kein Lizenzfeld | Hugging Face, fester Commit | Einstellung Semantische Suche |
 | EmbeddingGemma 300M (ONNX) | Gemma Terms of Use | Hugging Face, fester Commit | Standard der Semantischen Suche |
+| bge-reranker-v2-m3 (ONNX, `onnx-community/bge-reranker-v2-m3-ONNX`) | Apache-2.0 laut Ursprungsmodell `BAAI/bge-reranker-v2-m3`, die ONNX-Karte trägt kein Lizenzfeld | Hugging Face, fester Commit, 571 MB | Einstellung "Treffer neu sortieren" (Standard aus) |
+| bge-reranker-base (ONNX, `Xenova/bge-reranker-base`) | MIT laut Ursprungsmodell `BAAI/bge-reranker-base` | Hugging Face, fester Commit, 279 MB | nur über `pnpm eval:retrieval --rerank`, nicht in den Einstellungen |
+| mxbai-rerank-xsmall-v1 | Apache-2.0 | Hugging Face, fester Commit, 87 MB | nur über `pnpm eval:retrieval --rerank`, nicht in den Einstellungen |
+| EmbeddingGemma 2 (ONNX, `onnx-community/embeddinggemma-2-ONNX`, nur das Textmodell) | Apache-2.0 | Hugging Face, fester Commit, 305 MB | nur über `pnpm eval:retrieval --model embeddinggemma-2`, nicht in den Einstellungen |
 | GROBID und Temurin-JRE | Apache-2.0, GPL-2.0 mit Classpath Exception | GitHub, Prüfsumme im Code | `install-grobid` |
 | Pandoc | GPL-2.0-or-later | GitHub-Release von jgm/pandoc (arm64-macOS-ZIP), Prüfsumme im Code | `pandoc.setup`, nur auf Wunsch |
 | Apple Vision (OCR) | Teil von macOS | System | Scans |

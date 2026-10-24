@@ -30,6 +30,8 @@ export interface SettingsMockState {
     state: "downloading" | "ready" | "error";
     progress: number;
     detail?: string;
+    /** Re-sorting of the best hits by a second model. */
+    rerank?: boolean;
   };
   semanticPolls: number;
   connector: { enabled: boolean; port: number; error?: string };
@@ -132,6 +134,7 @@ export function bindSettingsMock(
     semantic: {
       enabled: state.semantic.enabled,
       model: state.semantic.model ?? "embeddinggemma-300m",
+      rerank: state.semantic.rerank === true,
     },
     connector: { enabled: state.connector.enabled, port: state.connector.port },
     webhooks: {
@@ -147,14 +150,25 @@ export function bindSettingsMock(
     if (!enabled) return { state: "off" as const, model };
     if (shown === "downloading") {
       semanticReads++;
-      if (semanticReads >= state.semanticPolls) return { state: "ready" as const, model };
+      if (semanticReads >= state.semanticPolls) {
+        return {
+          state: "ready" as const,
+          model,
+          ...(state.semantic.rerank ? { rerank: "ready" as const } : {}),
+        };
+      }
       return {
         state: "downloading" as const,
         model,
         progress: Math.max(progress, semanticReads / state.semanticPolls),
       };
     }
-    return { state: shown, model, ...(detail ? { detail } : {}) };
+    return {
+      state: shown,
+      model,
+      ...(detail ? { detail } : {}),
+      ...(shown === "ready" && state.semantic.rerank ? { rerank: "ready" as const } : {}),
+    };
   };
   const connectorStatus = () => {
     const { enabled, port, error } = state.connector;
@@ -209,6 +223,7 @@ export function bindSettingsMock(
         if (turnsOn || switches) semanticReads = 0;
         state.semantic.enabled = patch.semantic.enabled ?? state.semantic.enabled;
         if (patch.semantic.model) state.semantic.model = patch.semantic.model;
+        if (patch.semantic.rerank !== undefined) state.semantic.rerank = patch.semantic.rerank;
       }
       if (patch.connector) {
         state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;

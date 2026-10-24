@@ -3,6 +3,8 @@ export const name = "@citegeist/embed";
 export { createFakeEmbedder, FakeEmbedder, type FakeEmbedderOptions } from "./fake.js";
 export {
   DEFAULT_MODEL,
+  EMBEDDING_GEMMA_2,
+  EMBEDDING_GEMMA_2_256,
   EMBEDDING_GEMMA_300M,
   MODELS,
   type ModelSpec,

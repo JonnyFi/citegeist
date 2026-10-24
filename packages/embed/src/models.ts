@@ -22,6 +22,11 @@ export interface ModelSpec {
   maxTokens: number;
   queryPrefix: string;
   documentPrefix: string;
+  /**
+   * The repository holds vision and audio encoders next to the text model. Only the text model
+   * is loaded and downloaded.
+   */
+  textOnly?: boolean;
 }
 
 const RETRIEVAL_INSTRUCTION =
@@ -55,7 +60,35 @@ export const EMBEDDING_GEMMA_300M: ModelSpec = {
   documentPrefix: "title: none | text: ",
 };
 
+/**
+ * EmbeddingGemma 2 (Apache-2.0, multimodal; only its text model is used). Measured against the
+ * default on the golden set, not offered in the settings (see packages/embed/RETRIEVAL.md).
+ */
+export const EMBEDDING_GEMMA_2: ModelSpec = {
+  key: "embeddinggemma-2",
+  repo: "onnx-community/embeddinggemma-2-ONNX",
+  revision: "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+  dtype: "q8",
+  license: "Apache-2.0",
+  nativeDimensions: 768,
+  dimensions: 768,
+  pooling: "sentence-embedding",
+  maxTokens: 512,
+  queryPrefix: "task: search result | query: ",
+  documentPrefix: "title: none | text: ",
+  textOnly: true,
+};
+
+/** The same model cut to its first 256 dimensions (Matryoshka). */
+export const EMBEDDING_GEMMA_2_256: ModelSpec = {
+  ...EMBEDDING_GEMMA_2,
+  key: "embeddinggemma-2-256",
+  dimensions: 256,
+};
+
 export const MODELS: Record<string, ModelSpec> = {
+  [EMBEDDING_GEMMA_2.key]: EMBEDDING_GEMMA_2,
+  [EMBEDDING_GEMMA_2_256.key]: EMBEDDING_GEMMA_2_256,
   [QWEN3_EMBEDDING_0_6B.key]: QWEN3_EMBEDDING_0_6B,
   [EMBEDDING_GEMMA_300M.key]: EMBEDDING_GEMMA_300M,
 };

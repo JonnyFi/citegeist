@@ -255,6 +255,12 @@ export const en: Record<MessageKey, string> = {
   "settings.semantic.downloading": "Downloading the model, {percent}%.",
   "settings.semantic.ready": "The model is ready. Search combines full text and meaning.",
   "settings.semantic.error": "The model could not be loaded: {detail}",
+  "settings.rerank.switch": "Re-sort results",
+  "settings.rerank.hint":
+    "A second model checks the best results more closely. A search then takes about a second longer, and the model is about 570 MB.",
+  "settings.rerank.loading": "Loading the re-sorting model.",
+  "settings.rerank.ready": "The re-sorting model is ready.",
+  "settings.rerank.error": "The re-sorting model could not be loaded: {detail}",
   "settings.connector.title": "Zotero Connector",
   "settings.connector.desc":
     "With the Zotero Connector browser extension you save articles straight into citegeist. The listener only accepts connections from this Mac (127.0.0.1). When Zotero itself is running, it uses the same port.",

@@ -13,7 +13,7 @@ export interface StoredSettings {
   ncbiTool?: string;
   uiLanguage: "de" | "en";
   /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
-  semantic: { enabled: boolean; model?: EmbeddingModelKey };
+  semantic: { enabled: boolean; model?: EmbeddingModelKey; rerank?: boolean };
   connector: { enabled: boolean; port: number };
   /** Port of the hooks listener and the address of the tunnel in front of it. */
   webhooks: { port: number; publicUrl?: string };
@@ -53,7 +53,7 @@ function sanitize(raw: unknown): StoredSettings {
     unpaywallEmail?: unknown;
     ncbiTool?: unknown;
     uiLanguage?: unknown;
-    semantic?: { enabled?: unknown; model?: unknown };
+    semantic?: { enabled?: unknown; model?: unknown; rerank?: unknown };
     connector?: { enabled?: unknown; port?: unknown };
     webhooks?: { port?: unknown; publicUrl?: unknown };
     chat?: { isolated?: unknown };
@@ -75,6 +75,7 @@ function sanitize(raw: unknown): StoredSettings {
     semantic: {
       enabled: v.semantic?.enabled === true,
       ...(isModelKey(v.semantic?.model) ? { model: v.semantic.model } : {}),
+      ...(v.semantic?.rerank === true ? { rerank: true } : {}),
     },
     connector: { enabled: v.connector?.enabled === true, port: validPort(v.connector?.port) },
     webhooks: {

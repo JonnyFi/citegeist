@@ -1,4 +1,4 @@
-import { createFakeEmbedder, type DownloadProgress } from "@citegeist/embed";
+import { createFakeEmbedder, type DownloadProgress, FakeReranker } from "@citegeist/embed";
 import { afterEach, describe, expect, it } from "vitest";
 import { cannedAiBackend } from "../canned-ai.js";
 import { newNoteId } from "../ids.js";
@@ -204,7 +204,11 @@ describe("semantic search in the runtime", () => {
       "settings.update",
       { patch: { semantic: { model: "qwen3-embedding-0.6b" } } },
     );
-    expect(res.settings.semantic).toEqual({ enabled: true, model: "qwen3-embedding-0.6b" });
+    expect(res.settings.semantic).toEqual({
+      enabled: true,
+      model: "qwen3-embedding-0.6b",
+      rerank: false,
+    });
     await until(async () => model.models.length === 2 && s.rt.semantic?.status().state === "ready");
     expect(model.models).toEqual(["embeddinggemma-300m", "qwen3-embedding-0.6b"]);
 
@@ -212,6 +216,63 @@ describe("semantic search in the runtime", () => {
     await expect(
       s.call("settings.update", { patch: { semantic: { model: "word2vec" } } }),
     ).rejects.toThrow();
+  });
+
+  it("re-sorts hits with the reranker only after it has loaded, and not at all when it is off", async () => {
+    let release!: () => void;
+    const loaded = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fake = new FakeReranker();
+    const reranker = {
+      id: fake.id,
+      rerank: (q: string, p: string[]) => fake.rerank(q, p),
+      warmup: () => loaded,
+    };
+    const embedder = createFakeEmbedder({ synonyms: SYNONYMS });
+    const s = await setup({
+      embedder,
+      semantic: { debounceMs: 5, minSimilarity: -1, createReranker: () => reranker },
+    });
+    await until(async () => (await s.titles("Automobil")).length > 1, 5000, 20);
+    expect(fake.calls).toBe(0);
+
+    await s.call("settings.update", { patch: { semantic: { rerank: true } } });
+    await until(async () => s.rt.semantic?.status().rerank === "loading");
+    await s.titles("Automobil");
+    expect(fake.calls).toBe(0);
+
+    release();
+    await until(async () => s.rt.semantic?.status().rerank === "ready");
+    expect((await s.titles("Automobil"))[0]).toBe("Garage");
+    expect(fake.calls).toBeGreaterThan(0);
+
+    await s.call("settings.update", { patch: { semantic: { rerank: false } } });
+    expect(s.rt.semantic?.status().rerank).toBeUndefined();
+    const calls = fake.calls;
+    await s.titles("Automobil");
+    expect(fake.calls).toBe(calls);
+  });
+
+  it("reports a reranker that fails to load and keeps the fused order", async () => {
+    const embedder = createFakeEmbedder({ synonyms: SYNONYMS });
+    const s = await setup({
+      embedder,
+      semantic: {
+        debounceMs: 5,
+        createReranker: () => ({
+          id: "broken",
+          rerank: async () => [],
+          warmup: async () => {
+            throw new Error("no disk space");
+          },
+        }),
+      },
+    });
+    await s.call("settings.update", { patch: { semantic: { rerank: true } } });
+    await until(async () => s.rt.semantic?.status().rerank === "error");
+    expect(s.rt.semantic?.status().rerankDetail).toBe("no disk space");
+    await until(async () => (await s.titles("Automobil")).length > 0, 5000, 20);
   });
 
   it("leaves semantic search out of a one-shot process", async () => {

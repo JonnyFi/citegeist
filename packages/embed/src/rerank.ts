@@ -45,14 +45,15 @@ export const BGE_RERANKER_V2_M3: RerankerSpec = {
   revision: "6f5ff65298512715a1e669753bc754d2bc8f367b",
   dtype: "q8",
   license: "Apache-2.0",
-  maxTokens: 512,
+  // 256 tokens give the same ranking on the golden set as 512 and are a third faster.
+  maxTokens: 256,
 };
 
 export const RERANKERS: Record<string, RerankerSpec> & { default: RerankerSpec } = {
   [MXBAI_RERANK_XSMALL.key]: MXBAI_RERANK_XSMALL,
   [BGE_RERANKER_BASE.key]: BGE_RERANKER_BASE,
   [BGE_RERANKER_V2_M3.key]: BGE_RERANKER_V2_M3,
-  default: MXBAI_RERANK_XSMALL,
+  default: BGE_RERANKER_V2_M3,
 };
 
 /** The reranker used when the setting is on and no other one is chosen. */
