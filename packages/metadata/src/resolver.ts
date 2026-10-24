@@ -3,6 +3,7 @@
  * Agents and the MCP server call this, never the remote APIs directly.
  */
 
+import type { AlertLookup, AlertQuery, AlertWork } from "./alert-types.js";
 import type {
   CitingPage,
   GraphLookup,
@@ -21,6 +22,7 @@ import {
 import { detectIdentifier, type Identifier } from "./identifiers.js";
 import { type MatchResult, matchTitle, type TitleQuery, titleSimilarity } from "./match.js";
 import { type MergeResult, mergeRecords } from "./merge.js";
+import { fetchAlertWorks } from "./sources/alerts.js";
 import { fetchArxiv } from "./sources/arxiv.js";
 import {
   fetchCrossrefReferences,
@@ -32,7 +34,7 @@ import type { SourceContext } from "./sources/context.js";
 import { fetchCrossrefWork, searchCrossref } from "./sources/crossref.js";
 import { fetchDoiCsl } from "./sources/doi-org.js";
 import { fetchDnb, fetchK10plus } from "./sources/library-catalogs.js";
-import { fetchOpenAlexWork } from "./sources/openalex.js";
+import { fetchOpenAlexPdfUrls, fetchOpenAlexWork } from "./sources/openalex.js";
 import { fetchOpenLibrary } from "./sources/openlibrary.js";
 import { fetchPubmed } from "./sources/pubmed.js";
 import { fetchRetractionStatus } from "./sources/retraction.js";
@@ -82,7 +84,7 @@ export interface TitleResolveResult {
 
 const SAME_WORK_TITLE = 0.85;
 
-export class MetadataResolver implements GraphLookup {
+export class MetadataResolver implements GraphLookup, AlertLookup {
   readonly http: HttpClient;
   private readonly ctx: SourceContext;
   private readonly config: MetadataConfig;
@@ -232,6 +234,11 @@ export class MetadataResolver implements GraphLookup {
     return (await fetchUnpaywall(this.ctx, doi))?.enrichment?.openAccess;
   }
 
+  /** PDF links of all open-access locations OpenAlex lists for a DOI, best first. */
+  findOpenAlexPdfs(doi: string): Promise<string[]> {
+    return fetchOpenAlexPdfUrls(this.ctx, doi);
+  }
+
   // Citation graph, retractions, versions (GraphLookup) ----------------------------------------
 
   crossrefReferences(doi: string, limit: number): Promise<ReferencePage | undefined> {
@@ -251,6 +258,11 @@ export class MetadataResolver implements GraphLookup {
 
   openAlexDoi(openalex: string): Promise<string | undefined> {
     return fetchOpenAlexDoi(this.ctx, openalex);
+  }
+
+  /** New works of an alert source: arXiv category or query, OpenAlex topic, search, author, citing. */
+  alertWorks(query: AlertQuery): Promise<AlertWork[]> {
+    return fetchAlertWorks(this.ctx, query);
   }
 
   retractionStatus(doi: string): Promise<RetractionStatus> {

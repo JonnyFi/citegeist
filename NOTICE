@@ -1,0 +1,109 @@
+citegeist
+Copyright 2026 the citegeist authors
+
+This file lists third-party material that citegeist ships or loads, and the attribution that
+material asks for. The license of citegeist itself is not part of this file; it will be named in
+LICENSE once the maintainers have chosen it. The audit behind this list is docs/licenses.md.
+
+--------------------------------------------------------------------------------
+1. Citation Style Language styles and locales
+--------------------------------------------------------------------------------
+
+Files:    packages/cite/src/vendor/*.csl and packages/cite/src/vendor/locales-*.xml
+          (copied to the app as out/main/vendor)
+License:  Creative Commons Attribution-ShareAlike 3.0 Unported
+          https://creativecommons.org/licenses/by-sa/3.0/
+Source:   https://github.com/citation-style-language/styles
+          https://github.com/citation-style-language/locales
+Project:  Citation Style Language, https://citationstyles.org/
+
+The files are redistributed unmodified and as separate data files. Each file keeps its own
+<rights>, <author> and <contributor> elements, which name the authors:
+
+  apa.csl                                  APA Style 7th edition
+                                           Brenton M. Wiernik, Andrew Dunning, Jay Pfaffman
+  chicago-author-date.csl                  Chicago Manual of Style 18th edition (author-date)
+                                           Andrew Dunning and contributors named in the file
+  deutsche-gesellschaft-fur-psychologie.csl  Deutsche Gesellschaft fuer Psychologie, 5. Auflage
+                                           Daniel Hirsbrunner, Michael Zaugg, Patrick O'Brien,
+                                           Tobias Stocker, Marius Steffen
+  locales-de-DE.xml, locales-en-US.xml     CSL locale files, translators named in the files
+
+A modified copy of one of these files must be released under the same license.
+
+--------------------------------------------------------------------------------
+2. citeproc-js
+--------------------------------------------------------------------------------
+
+Package:  citeproc 2.4.63 (npm), loaded through @citation-js/plugin-csl
+Author:   Frank Bennett, Copyright (c) 2009-2019
+License:  CPAL-1.0 OR AGPL-3.0-or-later (dual). citegeist uses the package under the CPAL option,
+          unmodified, as an npm dependency.
+Source:   https://github.com/Juris-M/citeproc-js
+
+The license text sits in the package (node_modules/citeproc/LICENSE) and is delivered with every
+build that contains the package. Changes to citeproc-js files must be published under the CPAL.
+
+--------------------------------------------------------------------------------
+3. Fonts
+--------------------------------------------------------------------------------
+
+Packages: @fontsource-variable/inter, @fontsource-variable/jetbrains-mono,
+          @fontsource-variable/newsreader
+License:  SIL Open Font License 1.1, https://openfontlicense.org/
+Copyright: Inter, The Inter Project Authors; JetBrains Mono, The JetBrains Mono Project Authors;
+          Newsreader, The Newsreader Project Authors
+
+The font files are bundled in the renderer build. The OFL text and the copyright lines travel with
+the packages (LICENSE files inside each package) and must stay with the font files.
+
+--------------------------------------------------------------------------------
+4. libvips (through sharp)
+--------------------------------------------------------------------------------
+
+Package:  @img/sharp-libvips-darwin-arm64 1.3.4 (optional dependency of @huggingface/transformers)
+License:  LGPL-3.0-or-later
+Source:   https://github.com/lovell/sharp-libvips and https://github.com/libvips/libvips
+
+The library is a separate shared object that sharp loads at run time. It is not modified and can
+be replaced by the user by swapping the file.
+
+--------------------------------------------------------------------------------
+5. Runtime downloads (not part of the repository or the app bundle)
+--------------------------------------------------------------------------------
+
+These are fetched to the user's machine on first use, with a pinned revision or checksum.
+citegeist does not redistribute them.
+
+  Docling models (docling-project/docling-layout-heron: Apache-2.0;
+    docling-project/docling-models: CDLA-Permissive-2.0 and Apache-2.0;
+    docling-project/CodeFormulaV2: CDLA-Permissive-2.0), from Hugging Face.
+  GROBID, Apache-2.0, https://github.com/grobidOrg/grobid, built from the release archive.
+  Eclipse Temurin JRE 21, GPL-2.0 with Classpath Exception, https://adoptium.net/, used by GROBID.
+  Qwen3-Embedding-0.6B, Apache-2.0, ONNX conversion from onnx-community on Hugging Face.
+  EmbeddingGemma 300M, Gemma Terms of Use, https://ai.google.dev/gemma/terms and the Gemma
+    Prohibited Use Policy, https://ai.google.dev/gemma/prohibited_use_policy. Gemma is provided
+    under and subject to the Gemma Terms of Use. The terms apply to whoever downloads the weights.
+  The Python packages of workers/convert/uv.lock, installed from PyPI by uv on first start.
+
+--------------------------------------------------------------------------------
+6. Components the user installs, which citegeist only calls
+--------------------------------------------------------------------------------
+
+  Claude Code, Codex CLI and Cursor CLI run as the user's own installations under the user's own
+  accounts and terms. citegeist starts them through the Agent Client Protocol adapters
+  @agentclientprotocol/claude-agent-acp and @agentclientprotocol/codex-acp (Apache-2.0).
+  The adapter for Claude Code depends on @anthropic-ai/claude-agent-sdk, which is published under
+  Anthropic's legal agreements (https://code.claude.com/docs/en/legal-and-compliance) and not
+  under an open source license.
+  Zotero Connector: the user's browser extension, AGPL-3.0, talks to citegeist over the Connector
+  protocol. citegeist contains no Zotero code. "Zotero" is a trademark of the Corporation for
+  Digital Scholarship.
+
+--------------------------------------------------------------------------------
+7. Other dependencies
+--------------------------------------------------------------------------------
+
+The remaining npm and Python dependencies are under permissive licenses (MIT, Apache-2.0, BSD,
+ISC and similar). Their notices are in the packages themselves. The complete list with versions
+and licenses is in docs/licenses.md.

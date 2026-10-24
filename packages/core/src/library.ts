@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
+import { summarizeRetraction } from "@citegeist/ops";
 import {
   type Actor,
   type CardBody,
@@ -22,7 +23,7 @@ import { TEMP_FILE, writeFileAtomic } from "./fsutil.js";
 import { newNoteId, slugify } from "./ids.js";
 import { Index, type Scope, scopeClauses } from "./index-db.js";
 import { Indexer, type IndexResult, type SyncSummary } from "./indexer.js";
-import { renameNoteFile } from "./notes/rename.js";
+import { noteSlugTaken, renameNoteFile } from "./notes/rename.js";
 import { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 import { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
 import { type SearchHit, type SearchInput, search } from "./search.js";
@@ -399,8 +400,12 @@ export class Library extends EventEmitter {
       inbox_why: string | null;
       incomplete_code: string | null;
       incomplete_message: string | null;
+      retraction_json: string | null;
+      fulltext_status: string | null;
     }>(
       `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
+         json_extract(i.frontmatter_json, '$.retraction') AS retraction_json,
+         json_extract(i.frontmatter_json, '$.fulltext.status') AS fulltext_status,
          json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
          json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why,
          json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
@@ -411,23 +416,31 @@ export class Library extends EventEmitter {
       input.limit + 1,
     );
     const page = rows.slice(0, input.limit);
-    const items = page.map((r) => ({
-      citekey: r.citekey,
-      title: r.title,
-      ...(r.year ? { year: r.year } : {}),
-      ...(r.authors ? { authors: r.authors } : {}),
-      type: r.type,
-      status: r.status,
-      inbox: r.inbox === 1,
-      ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
-      ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
-      ...(r.incomplete_code
-        ? {
-            incomplete: true,
-            incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
-          }
-        : {}),
-    }));
+    const items = page.map((r) => {
+      const retraction = summarizeRetraction(
+        r.retraction_json ? JSON.parse(r.retraction_json) : undefined,
+      );
+      return {
+        citekey: r.citekey,
+        title: r.title,
+        ...(r.year ? { year: r.year } : {}),
+        ...(r.authors ? { authors: r.authors } : {}),
+        type: r.type,
+        status: r.status,
+        inbox: r.inbox === 1,
+        ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
+        ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
+        ...(r.incomplete_code
+          ? {
+              incomplete: true,
+              incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
+            }
+          : {}),
+        ...(r.fulltext_status === "found" ? { fulltext: "found" as const } : {}),
+        ...(r.fulltext_status === "missing" ? { fulltext: "missing" as const } : {}),
+        ...(retraction ? { retraction } : {}),
+      };
+    });
     const next = rows.length > input.limit ? page[page.length - 1]?.citekey : undefined;
     return { items, ...(next ? { next } : {}) };
   }
@@ -529,7 +542,7 @@ export class Library extends EventEmitter {
     const id = newNoteId(this.now().getTime());
     const base = slugify(input.title);
     let slug = base;
-    for (let n = 2; existsSync(this.paths.noteFile(slug)); n++) slug = `${base}-${n}`;
+    for (let n = 2; noteSlugTaken(this, slug); n++) slug = `${base}-${n}`;
     const fm = NoteFrontmatter.parse({
       id,
       type: input.type,
@@ -538,7 +551,7 @@ export class Library extends EventEmitter {
       created: this.stamp(actor),
     });
     this.writeFile(
-      `notes/${slug}.md`,
+      `${input.type === "concept" ? "notes/concepts" : "notes"}/${slug}.md`,
       MarkdownFile.create(fm as Record<string, unknown>, input.body).toString(),
     );
     return this.getNote(id);

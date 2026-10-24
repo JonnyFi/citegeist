@@ -13,16 +13,31 @@ npmRebuild: false
 files:
   - out/**
   - package.json
-  # Only the platform of this build (macOS arm64) stays; the optional packages of the others are
-  # several hundred MB each.
-  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-{darwin-x64,linux-*,win32-*}/**"
-  - "!**/node_modules/@openai/codex-{darwin-x64,linux-*,win32-*}/**"
+  # The Claude Code and Codex binaries (about 560 MB) do not ship with the app: the chat adapters
+  # run the `claude` and `codex` the user installed. Only the JavaScript of the adapters and of
+  # the Agent SDK stays.
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**"
+  - "!**/node_modules/@openai/codex-*/**"
   - "!**/node_modules/@napi-rs/canvas-{android-*,darwin-x64,linux-*,win32-*}/**"
   - "!**/node_modules/@img/*{linux,win32,darwin-x64}*/**"
   - "!**/node_modules/sqlite-vec-{darwin-x64,linux-*,windows-*}/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/x64/**"
   - "!**/node_modules/better-sqlite3/prebuilds/{win32-*,linux*,darwin-x64}.node"
+  # onnxruntime-web (145 MB of WASM) is bundled into transformers.node.mjs already; the runtime
+  # loads onnxruntime-node, never this package
+  - "!**/node_modules/onnxruntime-web/**"
+  # pdf.js: the core imports legacy/build/pdf.mjs only; the viewer, the browser build and the
+  # image decoders belong to the UI bundle in apps/ui/dist
+  - "!**/node_modules/pdfjs-dist/{build,web,types,image_decoders,legacy/web,legacy/image_decoders}/**"
+  # workspace packages: core, ops, schema, server and the packages behind them are bundled into
+  # out/main, so their sources, tests and fixtures stay out of the archive
+  - "!**/node_modules/@citegeist/**"
+  - "!**/node_modules/zod/src/**"
+  # source maps, type declarations, docs, tests and CI files of every dependency
+  - "!**/node_modules/**/*.{map,d.ts,d.mts,d.cts,tsbuildinfo}"
+  - "!**/node_modules/**/{README,CHANGELOG,HISTORY,CONTRIBUTING}{,.md,.markdown,.txt}"
+  - "!**/node_modules/**/{test,tests,__tests__,docs,example,examples,.github}/**"
 extraResources:
   # the built renderer of apps/ui, loaded from file://; main/index.ts looks in Resources/ui/dist
   - from: ../ui/dist
@@ -35,6 +50,8 @@ extraResources:
       - uv.lock
       - README.md
       - src/**
+      - "!**/__pycache__/**"
+      - "!**/*.pyc"
   # the literature search (issue #50): standard-library Python, run with uv in its own environment
   - from: ../../workers/research
     to: workers/research
@@ -46,6 +63,7 @@ extraResources:
       - scripts/**
       - vendor/**
       - "!**/__pycache__/**"
+      - "!**/*.pyc"
 asar: true
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
@@ -54,7 +72,7 @@ asarUnpack:
   - "**/node_modules/onnxruntime-node/**"
   - "**/node_modules/sqlite-vec/**"
   - "**/node_modules/sqlite-vec-*/**"
-  # the chat agents run as child processes: the ACP adapters and the native binaries behind them
+  # the chat agents run as child processes: the ACP adapters and the JavaScript they import
   - "**/node_modules/@agentclientprotocol/**"
   - "**/node_modules/@anthropic-ai/**"
   - "**/node_modules/@openai/**"
@@ -63,6 +81,21 @@ asarUnpack:
   - "**/node_modules/diff/**"
   # CSL styles and locales that @citegeist/cite reads next to the bundle
   - out/main/vendor/**
+# Chromium locale packs of languages the UI does not offer (German and English only)
+electronLanguages:
+  - en
+  - de
+afterPack: ./scripts/after-pack.cjs
+# Electron fuses (M8), flipped in the binary before it is signed. They close ways to run other
+# code inside the signed app: NODE_OPTIONS and the inspector flags are ignored, and the app code
+# loads from app.asar only.
+# runAsNode stays on on purpose: the chat adapters (Claude Code, Codex) run as the app binary
+# with ELECTRON_RUN_AS_NODE (packages/chat/src/backends.ts). A test pins both sides.
+electronFuses:
+  runAsNode: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
 mac:
   category: public.app-category.productivity
   target:

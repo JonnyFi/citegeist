@@ -183,6 +183,7 @@ describe("links.decide", () => {
     })) as ReturnType<Library["getNote"]>;
     expect(out.frontmatter.links.map((l) => [l.rel, l.status])).toEqual([
       ["supports", "accepted"],
+      ["opposes", "rejected"],
       ["qualifies", "proposed"],
     ]);
     expect(out.frontmatter.links[0]?.by).toBe("agent:mock");
@@ -190,6 +191,46 @@ describe("links.decide", () => {
     expect(
       lib.index.all("SELECT 1 FROM links WHERE origin = 'frontmatter' AND status = 'accepted'"),
     ).toHaveLength(1);
+    // a rejected link stays in the file but is not a link in the index
+    expect(rawLinks(out.path)).toContain("status: rejected");
+    expect(lib.index.all("SELECT 1 FROM links WHERE status = 'rejected'")).toHaveLength(0);
+  });
+
+  it("does not propose a rejected link again", async () => {
+    const { reg, mock, links, lib, note } = await withProposals();
+    const id = note.frontmatter.id;
+    await reg.call("links.decide", human, { note: id, accept: [], reject: [0, 1] });
+    mock.set("note.proposeLinks", {
+      proposals: [
+        { to: `[[${LUHMANN}]]`, rel: "supports", why: "Nochmal." },
+        { to: `[[${TEUBNER}]]`, rel: "opposes", why: "Nochmal." },
+        { to: `[[${TEUBNER}]]`, rel: "extends", why: "Neu." },
+      ],
+    });
+    await reg.call("links.propose", human, { note: id });
+    await links.detached?.idle();
+    const after = lib.getNote(id).frontmatter.links;
+    expect(after.map((l) => [l.to, l.rel, l.status])).toEqual([
+      [`[[${LUHMANN}]]`, "supports", "rejected"],
+      [`[[${TEUBNER}]]`, "opposes", "rejected"],
+      [`[[${TEUBNER}]]`, "qualifies", "proposed"],
+      [`[[${TEUBNER}]]`, "extends", "proposed"],
+    ]);
+    const last = mock.calls[mock.calls.length - 1]?.prompt ?? "";
+    expect(last).toContain(`- [[${LUHMANN}]] supports`);
+  });
+
+  it("lets links.create overrule an earlier rejection", async () => {
+    const { reg, lib, note } = await withProposals();
+    const id = note.frontmatter.id;
+    await reg.call("links.decide", human, { note: id, accept: [], reject: [0] });
+    await reg.call("links.create", human, {
+      from: id,
+      link: { to: `[[${LUHMANN}]]`, rel: "supports", status: "accepted" },
+    });
+    const links = lib.getNote(id).frontmatter.links;
+    expect(links.filter((l) => l.to === `[[${LUHMANN}]]`)).toHaveLength(1);
+    expect(links.find((l) => l.to === `[[${LUHMANN}]]`)?.status).toBe("accepted");
   });
 
   it("rejects bad indexes, double decisions and links that are already accepted", async () => {

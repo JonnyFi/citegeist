@@ -36,7 +36,7 @@ open apps/desktop/dist/mac-arm64/citegeist.app
 
 `pnpm package` baut die Oberfläche und die Electron-Bündel und schreibt danach `citegeist.app` für arm64. Die App ist nicht notarisiert und ad hoc signiert. Auf dem Rechner, auf dem sie gebaut wurde, startet sie ohne Rückfrage. Auf einem anderen Mac sperrt Gatekeeper sie, bis du sie über Rechtsklick und Öffnen freigibst.
 
-Im Paket liegen die Quellen des Python-Workers (`Contents/Resources/workers/convert`), die CSL-Stile, die nativen Module und die beiden ACP-Adapter mit den Programmen von Claude Code und Codex.
+Im Paket liegen die Quellen des Python-Workers (`Contents/Resources/workers/convert`), die CSL-Stile, die nativen Module und die beiden ACP-Adapter als JavaScript. Die Programme von Claude Code und Codex gehören nicht dazu. Im Chat und für die AI-Aufgaben startet citegeist das `claude` und das `codex`, das du selbst installiert hast. Es sucht im PATH und unter `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin` und ähnlichen Orten. Ein npm-Skript funktioniert, sobald ein `node` in einem dieser Ordner liegt. Fehlt das Programm, zeigen Einrichtung und Einstellungen den Installationsbefehl (`npm install -g @anthropic-ai/claude-code`, `npm install -g @openai/codex`) und den Anmeldebefehl (`claude auth login`, `codex login`), und der Chat antwortet mit demselben Fehler (`CHAT_CLI_MISSING`).
 
 Ob der Kern läuft, zeigt der Health-Aufruf. Port und Token stehen in der Sperrdatei der Bibliothek:
 

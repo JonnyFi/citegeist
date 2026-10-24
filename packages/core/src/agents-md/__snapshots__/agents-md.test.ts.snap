@@ -15,6 +15,7 @@ items/<citekey>/sources/<hash>.<ext>  original files, immutable
 items/<citekey>/derived/<hash>/       converted text (manifest.json, pages.json, blocks.jsonl, doc.md, doc.html, assets/)
 items/<citekey>/cards/<id>.md         one quote card per file
 notes/<slug>.md                       notes with frontmatter and [[wiki links]]
+notes/concepts/<slug>.md              concepts (type: concept) with aliases, member cards and one entry per source
 projects/<slug>/project.md            project brief, research questions, reading list
 projects/<slug>/exports/              .bib and CSL-JSON, regenerated automatically
 chats/                                saved agent conversations
@@ -33,6 +34,7 @@ The folder is a valid Obsidian vault. Files are UTF-8 with LF line endings and Y
 - Anything under \`derived/\` and \`sources/\`. The core writes these files and restores them if they change.
 - The quote of a card (the blockquote at the top of \`items/<citekey>/cards/*.md\`). Its hash is stored in the frontmatter, so a changed quote invalidates the card.
 - \`citegeist.json\`, \`projects/*/exports/\` and the frontmatter of cards.
+- The block between \`<!-- concept:entries\` and \`<!-- /concept:entries -->\` in a concept, and the \`usages\` and \`cards\` of its frontmatter. Change concepts with \`cg concepts\` (\`list\`, \`get\`, \`create\`, \`update\`, \`merge\`, \`describe\`, \`propose\`); entries are rewritten from the member cards and verified against the card quotes.
 
 ## Citekeys and links
 

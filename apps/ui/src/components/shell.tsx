@@ -9,6 +9,7 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import {
+  BookMarked,
   BookOpen,
   ChevronLeft,
   FileInput,
@@ -199,6 +200,7 @@ const FALLBACK_TITLES: ReadonlyArray<readonly [RegExp, MessageKey]> = [
   [/^\/settings/, "nav.settings"],
   [/^\/import/, "nav.import"],
   [/^\/notes/, "nav.notes"],
+  [/^\/concepts/, "nav.concepts"],
   [/^\/graph/, "nav.graph"],
   [/^\/search/, "nav.search"],
   [/^\/projects\/?$/, "nav.projects"],
@@ -398,6 +400,17 @@ function ShellFrame() {
               className={navClass(open, pathname.startsWith("/notes"))}
             >
               <NavBody open={open} icon={<NotebookPen className={ICON} />} label={t("nav.notes")} />
+            </Link>
+            <Link
+              to="/concepts"
+              aria-current={pathname.startsWith("/concepts") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/concepts"))}
+            >
+              <NavBody
+                open={open}
+                icon={<BookMarked className={ICON} />}
+                label={t("nav.concepts")}
+              />
             </Link>
             <Link
               to="/graph"

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // The chat through the real server: a fake ACP agent (a spawned script that speaks the agent side
@@ -121,6 +121,85 @@ describe("chat in the core server", () => {
       });
     expect((await call(server.token)).status).toBe(401);
     expect((await call("not-a-session-token")).status).toBe(401);
+  });
+
+  it("revokes the token of a session when its agent ends (M7)", async () => {
+    const { server } = await start();
+    const chat = server.chat;
+    if (!chat) throw new Error("no chat");
+    const bearer = async (session: string, mode: "chat" | "research") => {
+      const [mcpServer] = await chat.service.host.mcpServers({ session, mode });
+      const header = mcpServer && "headers" in mcpServer ? mcpServer.headers[0]?.value : undefined;
+      return header?.replace("Bearer ", "") ?? "";
+    };
+    const status = (token: string) =>
+      fetch(chat.mcp.url, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: "{}",
+      }).then((r) => r.status);
+
+    const first = await bearer("s1", "chat");
+    expect(await bearer("s1", "chat")).toBe(first);
+    expect(await status(first)).not.toBe(401);
+    chat.service.host.release?.("s1");
+    expect(await status(first)).toBe(401);
+    // The next agent of the session gets a new token; other sessions are untouched.
+    const other = await bearer("s2", "chat");
+    const second = await bearer("s1", "chat");
+    expect(second).not.toBe(first);
+    expect(await status(second)).not.toBe(401);
+    expect(await status(other)).not.toBe(401);
+    chat.service.host.release?.("unknown");
+    expect(await status(other)).not.toBe(401);
+  });
+
+  it("revokes the token when a research session ends and refuses local files to it (M4, M7)", async () => {
+    const { server } = await start();
+    const chat = server.chat;
+    if (!chat) throw new Error("no chat");
+    const session = chat.service.create({ backend: "fake", kind: "research", title: "R" });
+    const [mcpServer] = await chat.service.host.mcpServers({
+      session: session.id,
+      mode: "research",
+    });
+    const token = (mcpServer && "headers" in mcpServer ? mcpServer.headers[0]?.value : "")?.replace(
+      "Bearer ",
+      "",
+    );
+    const secret = join(tmp, "secret.html");
+    writeFileSync(secret, "<html><head><title>Secret</title></head><body>Text</body></html>");
+    const ask = `Hole das.\n@fake mcp add_item ${JSON.stringify({ identifier: secret })}`;
+    const itemFiles = () => readdirSync(join(server.library.root, "items"));
+    const seeded = itemFiles().length;
+    const turn = await chat.service.run(session.id, ask);
+    expect(turn.status).toBe("done");
+    const tool = chat.service.get(session.id).entries.find((e) => e.type === "tool");
+    expect(tool).toMatchObject({ tool: "add_item", status: "failed" });
+    expect(itemFiles()).toHaveLength(seeded);
+
+    // The same call from a chat session, which may read local files, adds the file.
+    const normal = chat.service.create({ backend: "fake", kind: "chat", title: "C" });
+    await chat.service.run(normal.id, ask);
+    expect(itemFiles()).toHaveLength(seeded + 1);
+
+    const status = () =>
+      fetch(chat.mcp.url, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: "{}",
+      }).then((r) => r.status);
+    expect(await status()).not.toBe(401);
+    await chat.service.end(session.id);
+    expect(await status()).toBe(401);
   });
 
   it("starts without a chat when asked to", async () => {

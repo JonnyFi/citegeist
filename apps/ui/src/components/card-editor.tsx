@@ -2,6 +2,7 @@ import { cardsExport, cardsRegenerate, cardsUpdate } from "@citegeist/ops";
 import type { ModelStamp } from "@citegeist/schema";
 import { CardKind } from "@citegeist/schema";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { CardConcepts } from "../concepts/card-concepts";
 import { type I18n, useI18n } from "../i18n";
 import { AI_LANGUAGES } from "../lib/ai-language";
 import { type CardJob, isPending } from "../lib/card-jobs";
@@ -371,6 +372,8 @@ export function QuoteCard({
               <p className="whitespace-pre-line text-[13px] leading-[1.5]">{note}</p>
             </div>
           ) : null}
+
+          <CardConcepts cardId={fm.id} />
 
           {copy ? (
             <p

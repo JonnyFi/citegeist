@@ -92,7 +92,7 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Notizen | Zettel als Obsidian-kompatibles Markdown mit Wiki-Links | v0.2 | Jonny, D6 |
 | Notizen | AI schlägt typisierte Verbindungen aus Freitext vor | v0.2 | Jonny |
 | Notizen | Verbindungspanel pro Paper, Backlinks, Graph-Ansicht | v0.2 | Jonny |
-| Notizen | Begriffsregister: wie verschiedene Paper denselben Begriff verwenden | später | Vorschlag |
+| Notizen | Begriffsregister: wie verschiedene Paper denselben Begriff verwenden, mit belegten Einträgen pro Quelle | v0.3 | Vorschlag, D18 |
 | Projekte | Projektbrief mit Forschungsfragen als Kontext für Agents | v0.1 | Jonny |
 | Projekte | Startseite über alles Gelesene | v0.2 | Jonny |
 | Projekte | Literaturmatrix mit belegten Zellen | v0.3 | Vorschlag |
@@ -109,7 +109,7 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Agents | Fragen an die Bibliothek mit belegten Antworten | v0.2 | Vorschlag |
 | Agents | Schneeballsuche über Referenzen und zitierende Arbeiten (OpenAlex) | v0.3 | Vorschlag |
 | Agents | Externe Agents per Webhook, etwa ein Grok-Bot | v0.3 | Jonny |
-| Agents | Alerts: neue Paper zu Themen, Autoren oder zitierenden Arbeiten | später | Vorschlag |
+| Agents | Alerts: gespeicherte Suchen (arXiv-Kategorie oder -Suche, OpenAlex-Thema oder -Suche, Autor:in, zitierende Arbeiten) laufen im Intervall und legen die besten neuen Paper als Absender „system“ mit „Alert: <Name>“ in die Inbox, auf Wunsch nach dem Projektbrief geordnet | v0.3 | Vorschlag, D7 |
 | Schnittstellen | MCP-Server, CLI `cg`, `AGENTS.md` im Bibliotheksordner, portabler Skill | v0.1 (lesen), v0.2 (schreiben) | Jonny |
 | Inferenz | Claude Code mit eigenem Abo | v0.1 | Jonny |
 | Inferenz | Codex und Cursor mit eigenem Abo, API-Keys, lokale Modelle, Routing pro Aufgabe | v0.2 | Jonny |

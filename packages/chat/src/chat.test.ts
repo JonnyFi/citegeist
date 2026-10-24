@@ -275,6 +275,19 @@ describe("transcripts and persistence", () => {
     expect(h.service.save(session)).toEqual(saved);
   });
 
+  it("tells the host when the agent of a session is gone, so it can revoke the token (M7)", async () => {
+    const released: string[] = [];
+    const h = await harness({ host: { release: (session) => released.push(session) } });
+    const { session } = await h.chat("@fake say eins");
+    expect(released).toEqual([]);
+    await h.service.end(session);
+    expect(released).toEqual([session]);
+    // The next turn starts a new agent, which asks the host for new credentials.
+    await h.service.run(session, "@fake say zwei");
+    await h.service.close();
+    expect(released).toEqual([session, session]);
+  });
+
   it("keeps sessions across a restart", async () => {
     const h = await harness();
     const { session } = await h.chat("@fake say bleibt");

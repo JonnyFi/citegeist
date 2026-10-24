@@ -16,4 +16,11 @@ describe("main preload", () => {
     const source = readFileSync(join(import.meta.dirname, "index.ts"), "utf8");
     expect(source).toMatch(/pathForFile:\s*\(file\)\s*=>\s*webUtils\.getPathForFile\(file\)/);
   });
+
+  it("exposes the native path picker over its own channel", () => {
+    const source = readFileSync(join(import.meta.dirname, "index.ts"), "utf8");
+    expect(source).toContain('"citegeist:pick-paths"');
+    const main = readFileSync(join(import.meta.dirname, "../main/index.ts"), "utf8");
+    expect(main).toContain('"citegeist:pick-paths"');
+  });
 });

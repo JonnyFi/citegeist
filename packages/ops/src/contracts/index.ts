@@ -20,8 +20,10 @@ import {
 } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
+import { ALERT_CONTRACTS } from "./alerts.js";
 import { CHAT_CONTRACTS } from "./chat.js";
-import { GRAPH_CONTRACTS } from "./graph.js";
+import { CONCEPT_CONTRACTS } from "./concepts.js";
+import { GRAPH_CONTRACTS, RetractionSummary } from "./graph.js";
 import { IMPORT_CONTRACTS } from "./import.js";
 import { LITSEARCH_CONTRACTS } from "./litsearch.js";
 import { MATRIX_CONTRACTS } from "./matrix.js";
@@ -58,9 +60,15 @@ const ItemSummary = z.object({
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
   incomplete: z.boolean().optional(),
   incompleteReason: z.string().optional(),
+  /** Outcome of the full text lookup: "missing" shows as "ohne Volltext" in the library table. */
+  fulltext: z.enum(["found", "missing"]).optional(),
+  /** Set when items.checkRetractions found a retraction, withdrawal, concern or correction. */
+  retraction: RetractionSummary.optional(),
 });
 
+export * from "./alerts.js";
 export * from "./chat.js";
+export * from "./concepts.js";
 export * from "./graph.js";
 export * from "./import.js";
 export * from "./litsearch.js";
@@ -109,6 +117,13 @@ export const itemsAdd = defineContract({
     why: z.string().optional(),
   }),
   output: z.object({
+    /**
+     * The item the input belongs to. When the library already has the work and the match is
+     * certain at once (DOI, arXiv id, ISBN, PMID or URL, also one found inside a PDF), this is the
+     * existing citekey and `duplicateOf` repeats it. A PDF that is only recognised after the
+     * conversion (GROBID header, title match) starts as a new item; the ingest job result then
+     * names the final citekey (`citekey`, with `merged` or `renamed`).
+     */
     citekey: Citekey,
     job: JobId,
     duplicateOf: Citekey.optional(),
@@ -191,6 +206,14 @@ export const itemsTrash = defineContract({
   input: ItemRef,
   output: Ok,
   mcp: { tool: "trash_item", readOnly: false },
+});
+export const itemsRestore = defineContract({
+  name: "items.restore",
+  summary:
+    "Put the most recently trashed item with this citekey back into the library, for example right after items.trash. Fails when the citekey is in use again",
+  access: "write",
+  input: ItemRef,
+  output: Ok,
 });
 export const inboxAccept = defineContract({
   name: "inbox.accept",
@@ -584,6 +607,15 @@ const BackendStatus = z.object({
   label: z.string(),
   available: z.boolean(),
   detail: z.string().optional(),
+  /** A missing or logged-out CLI: the agent-ready error whose `fix` names the install and login commands. */
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      fix: z.string(),
+      recovery: z.string(),
+    })
+    .optional(),
 });
 /** Port of the Zotero Connector listener unless the user picks another one. */
 export const DEFAULT_CONNECTOR_PORT = 23119;
@@ -711,6 +743,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   itemsResolve,
   itemsRename,
   itemsTrash,
+  itemsRestore,
   inboxAccept,
   inboxReject,
   documentsRead,
@@ -745,6 +778,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   aiTestBackend,
   workerSetup,
   ...CHAT_CONTRACTS,
+  ...CONCEPT_CONTRACTS,
   ...IMPORT_CONTRACTS,
   ...LITSEARCH_CONTRACTS,
   ...MATRIX_CONTRACTS,
@@ -752,4 +786,5 @@ export const CONTRACTS: readonly OperationContract[] = [
   ...SYNC_CONTRACTS,
   ...GRAPH_CONTRACTS,
   ...WEBHOOK_CONTRACTS,
+  ...ALERT_CONTRACTS,
 ];

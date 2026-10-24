@@ -1,11 +1,13 @@
 export const name = "@citegeist/core";
 
 export * from "./agents-md/index.js";
+export * from "./alerts/index.js";
 export { type AssetsInput, type AssetsResult, documentAssets } from "./assets.js";
 export { CANNED_KIND, CANNED_PARAPHRASE, cannedAiBackend } from "./canned-ai.js";
 export { CardBodyError, parseCardBody, serializeCardBody } from "./card-body.js";
 export * from "./cards/index.js";
 export { type Classified, classify, type FileKind } from "./classify.js";
+export * from "./concepts/index.js";
 export { MarkdownFile } from "./frontmatter.js";
 export { TEMP_FILE, writeFileAtomic } from "./fsutil.js";
 export * from "./graph/index.js";

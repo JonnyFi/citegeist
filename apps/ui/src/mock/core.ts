@@ -10,8 +10,11 @@ import {
   inboxAccept,
   inboxReject,
   itemsAdd,
+  itemsAttach,
   itemsGet,
   itemsList,
+  itemsRestore,
+  itemsTrash,
   itemsUpdate,
   jobsGet,
   libraryStatus,
@@ -20,9 +23,12 @@ import {
   projectsUpdate,
   Registry,
   searchQuery,
+  summarizeRetraction,
 } from "@citegeist/ops";
 import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
+import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
 import { bindChatMock } from "../chat/mock";
+import { bindConceptsMock } from "../concepts/mock";
 import { bindConnectionsMock } from "../connections/mock";
 import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
@@ -47,6 +53,11 @@ export interface MockOptions {
   aiDelayMs?: number;
   /** Seeds the job list with finished and running conversions, so the top bar has something to show. */
   demoJobs?: boolean;
+  /**
+   * Items added by items.add are recognised as the work of this citekey only after the job ran:
+   * the new item disappears and the job result names this one, as after a late PDF merge.
+   */
+  mergeNewInto?: string;
 }
 
 function authorsOf(fm: ItemFrontmatter): string | undefined {
@@ -56,6 +67,7 @@ function authorsOf(fm: ItemFrontmatter): string | undefined {
 
 function summary(fm: ItemFrontmatter) {
   const authors = authorsOf(fm);
+  const retraction = summarizeRetraction((fm as Record<string, unknown>).retraction);
   return {
     citekey: fm.citekey,
     title: fm.title,
@@ -69,6 +81,8 @@ function summary(fm: ItemFrontmatter) {
     ...(fm.incomplete
       ? { incomplete: true, incompleteReason: `${fm.incomplete.code}: ${fm.incomplete.message}` }
       : {}),
+    ...(fm.fulltext ? { fulltext: fm.fulltext.status } : {}),
+    ...(retraction ? { retraction } : {}),
   };
 }
 
@@ -93,6 +107,7 @@ interface MockJob {
   updatedAt: string;
   /** Share of the work done, 0 to 1. Without it a running job reports one half. */
   progress?: number;
+  result?: unknown;
 }
 
 function surname(fm: ItemFrontmatter): string {
@@ -162,6 +177,11 @@ export function createMockRegistry(
   const aiDelayMs = options.aiDelayMs ?? 1500;
   const jobs = new Map<string, MockJob>();
   let importJobs: ImportMockJobs | undefined;
+  /** Items moved to the trash, newest last; items.restore takes the latest of a citekey back. */
+  const trashed: Array<{
+    citekey: string;
+    item: NonNullable<ReturnType<MockData["items"]["get"]>>;
+  }> = [];
 
   /** Starts a fake AI job that fills the paraphrase and, if unset, the kind after the delay. */
   const scheduleAi = (cardId: string, language: string): string => {
@@ -271,7 +291,9 @@ export function createMockRegistry(
         updatedAt: stamp,
       };
       jobs.set(job.id, job);
+      let onDone: (() => void) | undefined;
       setTimeout(() => {
+        onDone?.();
         job.status = "succeeded";
         job.updatedAt = new Date().toISOString();
       }, aiDelayMs);
@@ -306,6 +328,14 @@ export function createMockRegistry(
         }),
       });
       changed(`items/${citekey}/${citekey}.md`);
+      const into = options.mergeNewInto;
+      if (into && data.items.has(into)) {
+        onDone = () => {
+          data.items.delete(citekey);
+          changed(`items/${citekey}/${citekey}.md`);
+          job.result = { citekey: into, merged: { from: citekey, into, job: randomId("j_") } };
+        };
+      }
       return { citekey, job: job.id };
     })
     .bind(itemsGet, async (_ctx, input) => {
@@ -324,6 +354,75 @@ export function createMockRegistry(
       item.frontmatter = { ...item.frontmatter, ...input.patch } as ItemFrontmatter;
       changed(`items/${input.citekey}/${input.citekey}.md`);
       return { frontmatter: item.frontmatter };
+    })
+    .bind(itemsTrash, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      data.items.delete(input.citekey);
+      trashed.push({ citekey: input.citekey, item });
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      return { ok: true as const };
+    })
+    .bind(itemsRestore, async (_ctx, input) => {
+      if (data.items.has(input.citekey)) {
+        throw new Error(`CITEKEY_TAKEN: an item with citekey '${input.citekey}' exists again`);
+      }
+      const at = trashed.map((t) => t.citekey).lastIndexOf(input.citekey);
+      const entry = at >= 0 ? trashed.splice(at, 1)[0] : undefined;
+      if (!entry) throw new Error(`NOT_IN_TRASH: no trashed item with citekey '${input.citekey}'`);
+      data.items.set(input.citekey, entry.item);
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      return { ok: true as const };
+    })
+    .bind(itemsAttach, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      const filename = input.filename ?? input.path.split(/[\\/]/).pop() ?? input.path;
+      if (!/\.(pdf|html?|epub)$/i.test(filename)) {
+        throw new Error(
+          `FILE_TYPE_UNSUPPORTED: files of this type cannot be attached (${filename})`,
+        );
+      }
+      const hash = Array.from(filename)
+        .reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+        .toString(16)
+        .padStart(12, "0")
+        .slice(-12);
+      const have = item.frontmatter.sources.some((src) => src.hash === hash);
+      if (!have) {
+        item.frontmatter = {
+          ...item.frontmatter,
+          sources: [
+            ...item.frontmatter.sources,
+            {
+              hash,
+              kind: /\.pdf$/i.test(filename) ? "pdf" : /\.epub$/i.test(filename) ? "epub" : "html",
+              filename,
+              role: "main",
+              added: { at: new Date().toISOString(), by: "human" },
+            },
+          ],
+        } as ItemFrontmatter;
+        changed(`items/${input.citekey}/${input.citekey}.md`);
+      }
+      const stamp = new Date().toISOString();
+      const job: MockJob = {
+        id: randomId("j_"),
+        status: "running",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      jobs.set(job.id, job);
+      setTimeout(() => {
+        job.status = "succeeded";
+        job.updatedAt = new Date().toISOString();
+      }, aiDelayMs);
+      return {
+        citekey: input.citekey,
+        source: hash,
+        added: !have,
+        ...(have ? {} : { job: job.id }),
+      };
     })
     .bind(inboxAccept, async (_ctx, input) => {
       for (const key of input.citekeys) {
@@ -585,6 +684,7 @@ export function createMockRegistry(
         by: "human" as const,
         createdAt: job.createdAt,
         updatedAt: job.updatedAt,
+        ...(job.result !== undefined ? { result: job.result } : {}),
       };
     })
     .bind(searchQuery, async (_ctx, input) => {
@@ -637,6 +737,7 @@ export function createMockRegistry(
   bindPlanningMock(registry, data, emit);
   bindRelatedMock(registry, data, emit);
   bindMatrixMock(registry, data, emit, jobs, aiDelayMs);
+  bindConceptsMock(registry, data, emit, jobs, aiDelayMs);
   bindLitsearchMock(
     registry,
     createLitsearchMockState(),
@@ -682,6 +783,44 @@ export function createMockRegistry(
       ],
     }),
     emit,
+  );
+  bindAlertsMock(
+    registry,
+    createAlertsMockState({
+      alerts: [
+        {
+          id: "rag-papers",
+          name: "RAG-Paper aus der Informatik",
+          project: "rag-evaluation",
+          source: { kind: "arxiv-query", value: "retrieval augmented generation evaluation" },
+          intervalHours: 24,
+          limit: 5,
+          rank: true,
+          enabled: true,
+          created: "2026-10-20T09:00:00.000Z",
+          lastRun: {
+            at: "2026-10-24T07:00:00.000Z",
+            ok: true,
+            fetched: 30,
+            found: 9,
+            added: 5,
+            ranked: true,
+          },
+        },
+        {
+          id: "neue-nlp-themen",
+          name: "Neue Arbeiten zu NLP",
+          source: { kind: "openalex-topic", value: "T10181" },
+          intervalHours: 168,
+          limit: 10,
+          rank: false,
+          enabled: true,
+          created: "2026-10-18T09:00:00.000Z",
+        },
+      ],
+    }),
+    emit,
+    jobs,
   );
   return bindSettingsMock(registry, settings, emit, false);
 }

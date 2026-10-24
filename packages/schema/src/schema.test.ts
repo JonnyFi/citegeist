@@ -5,6 +5,9 @@ import {
   CardKind,
   CitegeistError,
   ItemFrontmatter,
+  Link,
+  legacyItemPatch,
+  migrateItemData,
   NoteFrontmatter,
   PageInfo,
   ProjectFrontmatter,
@@ -29,6 +32,52 @@ describe("schemas", () => {
     });
     expect(item.status).toBe("unread");
     expect(item["collection-title"]).toBe("stw");
+  });
+
+  it("types the full text marker and reads the old shape as the new one", () => {
+    const base = {
+      id: "01JB8Z3QK7ABCDEFGH",
+      citekey: "luhmann1984soziale",
+      type: "book",
+      title: "Soziale Systeme",
+      created: stamp,
+    };
+    const current = ItemFrontmatter.parse({
+      ...base,
+      fulltext: { status: "found", checked_at: "2026-10-24T10:00:00Z" },
+    });
+    expect(current.fulltext).toEqual({
+      status: "found",
+      tried: [],
+      checked_at: "2026-10-24T10:00:00Z",
+    });
+    const oldShape = {
+      ...base,
+      fulltext: {
+        status: "none",
+        at: "2026-10-24T10:00:00Z",
+        tried: [{ source: "arxiv", outcome: "none" }],
+      },
+    };
+    // the strict schema knows only the current shape; migrateItemData brings old files there
+    expect(ItemFrontmatter.safeParse(oldShape).success).toBe(false);
+    const old = ItemFrontmatter.parse(migrateItemData(oldShape));
+    expect(old.fulltext).toEqual({
+      status: "missing",
+      tried: [{ source: "arxiv", outcome: "none" }],
+      checked_at: "2026-10-24T10:00:00Z",
+    });
+    expect(legacyItemPatch({ fulltext: old.fulltext })).toEqual({});
+    expect(migrateItemData({ ...base })).toEqual(base);
+    expect(ItemFrontmatter.safeParse({ ...base, fulltext: { status: "maybe" } }).success).toBe(
+      false,
+    );
+  });
+
+  it("knows the rejected status of a link", () => {
+    expect(Link.parse({ to: "[[a]]", by: "human", status: "rejected" }).status).toBe("rejected");
+    expect(Link.parse({ to: "[[a]]", by: "human" }).status).toBe("accepted");
+    expect(Link.safeParse({ to: "[[a]]", by: "human", status: "deleted" }).success).toBe(false);
   });
 
   it("rejects bad actors and citekeys", () => {

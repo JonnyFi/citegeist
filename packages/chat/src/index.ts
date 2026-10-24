@@ -12,8 +12,10 @@ export {
   CODEX_ACP_PACKAGE,
   CURSOR,
   checkBackend,
+  cliProblem,
   DEFAULT_BACKENDS,
   findExecutable,
+  installedCli,
   type LoginCheck,
   resolveAdapterEntry,
 } from "./backends.js";

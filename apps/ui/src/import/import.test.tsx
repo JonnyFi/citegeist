@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pollConfig } from "../onboarding/parts";
 import { renderApp } from "../test-utils";
 
@@ -65,6 +65,33 @@ describe("import screen", () => {
     expect(preview()).toBeEnabled();
     expect(run()).toBeDisabled();
     expect(screen.getByText("Prüfe zuerst die Vorschau mit diesen Einstellungen.")).toBeVisible();
+  });
+
+  it("fills the path from the native picker and keeps typed paths in the browser", async () => {
+    const user = userEvent.setup();
+    const pickPaths = vi.fn(async () => ["/Users/me/lit.bib"]);
+    window.citegeist = { pickPaths, onNavigate: () => () => {}, platform: "test" } as never;
+    try {
+      renderApp("/import");
+      await user.click(await screen.findByRole("button", { name: "BibTeX" }));
+      await user.click(screen.getByRole("button", { name: "Wählen: Pfad zur Datei" }));
+      expect(pickPaths).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "file", extensions: ["bib", "bibtex"] }),
+      );
+      await waitFor(() =>
+        expect(screen.getByLabelText("Pfad zur Datei")).toHaveValue("/Users/me/lit.bib"),
+      );
+      await user.click(screen.getByRole("button", { name: "Wählen: Ordner mit PDFs (optional)" }));
+      expect(pickPaths).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "folder" }));
+    } finally {
+      delete window.citegeist;
+    }
+  });
+
+  it("has no picker buttons in the browser preview", async () => {
+    renderApp("/import");
+    await screen.findByLabelText("Pfad zu zotero.sqlite oder zum Zotero-Ordner");
+    expect(screen.queryByRole("button", { name: /^Wählen/ })).toBeNull();
   });
 
   it("previews a BibTeX file with a PDF folder: counts, duplicates and problems", async () => {

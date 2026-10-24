@@ -1,5 +1,8 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { McpServer } from "@agentclientprotocol/sdk";
 import type { AgentDriver, DriverEvent, DriverRequest } from "./driver.js";
 import { citegeistTool } from "./policy.js";
@@ -85,15 +88,35 @@ export class ClaudePrintDriver implements AgentDriver {
   private readonly id = randomUUID();
   private started = false;
   private noted = false;
+  private configDir: string | undefined;
   private readonly names = new Map<string, { title: string; kind: string; tool?: string }>();
 
   constructor(private readonly opts: PrintDriverOptions) {}
 
   async close(): Promise<void> {
-    // One process per turn: nothing stays alive between turns.
+    // One process per turn: nothing stays alive between turns. Only the MCP config is left.
+    if (this.configDir) rmSync(this.configDir, { recursive: true, force: true });
+    this.configDir = undefined;
   }
 
-  buildArgs(): string[] {
+  /**
+   * Path of the MCP config of this session. It holds the session's bearer token, so it goes into
+   * a file with mode 0600 in a private folder (mode 0700) instead of the command line, where
+   * every process of the system could read it with `ps` (M6). `close` removes it.
+   */
+  configFile(): string {
+    if (!this.configDir) {
+      this.configDir = mkdtempSync(join(tmpdir(), "citegeist-mcp-"));
+      chmodSync(this.configDir, 0o700);
+    }
+    const file = join(this.configDir, "mcp.json");
+    writeFileSync(file, mcpConfigJson(this.opts.req.mcpServers), { mode: 0o600 });
+    chmodSync(file, 0o600);
+    return file;
+  }
+
+  /** The arguments of one `claude -p` call. `mcpConfig` is the path of the MCP config file. */
+  buildArgs(mcpConfig: string): string[] {
     const { req } = this.opts;
     const research = req.mode === "research";
     const common = [
@@ -103,7 +126,7 @@ export class ClaudePrintDriver implements AgentDriver {
       "--verbose",
       "--include-partial-messages",
       "--mcp-config",
-      mcpConfigJson(req.mcpServers),
+      mcpConfig,
       "--permission-mode",
       "acceptEdits",
     ];
@@ -149,7 +172,7 @@ export class ClaudePrintDriver implements AgentDriver {
       this.noted = true;
       sink({ type: "notice", level: "info", text: this.opts.note });
     }
-    const child = spawn(command, this.buildArgs(), {
+    const child = spawn(command, this.buildArgs(this.configFile()), {
       cwd: req.cwd,
       env,
       stdio: ["pipe", "pipe", "pipe"],

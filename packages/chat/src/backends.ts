@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { accessSync, constants, readdirSync } from "node:fs";
+import { accessSync, constants, readdirSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
+import { delimiter, dirname, extname, join } from "node:path";
 
 /**
  * The agents the chat can talk to. Every user brings an own subscription through the official CLI
@@ -11,9 +11,10 @@ import { delimiter, dirname, join } from "node:path";
  */
 
 /**
- * The ACP adapters ship with citegeist as dependencies of this package, pinned in package.json
- * because ACP and its adapters change quickly (research note, section 4.5). Nothing is fetched at
- * run time.
+ * The ACP adapters (JavaScript) ship with citegeist as dependencies of this package, pinned in
+ * package.json because ACP and its adapters change quickly (research note, section 4.5). Nothing is
+ * fetched at run time. The CLIs behind them (`claude`, `codex`) do not ship with the app: the
+ * adapters run the ones the user installed.
  */
 export const CLAUDE_ACP_PACKAGE = "@agentclientprotocol/claude-agent-acp";
 export const CODEX_ACP_PACKAGE = "@agentclientprotocol/codex-acp";
@@ -40,14 +41,56 @@ export function resolveAdapterEntry(pkg: string): string | undefined {
  * Command line that runs a bundled adapter with the Node of this process. Inside Electron that
  * is the app binary itself, which acts as plain Node with ELECTRON_RUN_AS_NODE.
  */
-export function adapterLaunch(pkg: string): AcpLaunch | undefined {
+export function adapterLaunch(
+  pkg: string,
+  extraEnv: Record<string, string> = {},
+): AcpLaunch | undefined {
   const entry = resolveAdapterEntry(pkg);
   if (!entry) return undefined;
+  const env = { ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}), ...extraEnv };
   return {
     command: process.execPath,
     args: [entry],
-    ...(process.versions.electron ? { env: { ELECTRON_RUN_AS_NODE: "1" } } : {}),
+    ...(Object.keys(env).length > 0 ? { env } : {}),
   };
+}
+
+/**
+ * True when the file behind `path` is a Node script (an npm shim with a node shebang) and not a
+ * native executable.
+ */
+export function isNodeScript(path: string): boolean {
+  try {
+    return /^\.(c|m)?js$/.test(extname(realpathSync(path)));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The CLI the user installed, when the adapter can run it: a native executable, or a Node script
+ * when `nodeAvailable` says a `node` can be found (a Finder-launched app has a bare PATH, which
+ * `agentEnv` widens). Undefined when there is none.
+ */
+export function installedCli(path: string | undefined, nodeAvailable = false): string | undefined {
+  if (!path) return undefined;
+  try {
+    realpathSync(path);
+  } catch {
+    return undefined;
+  }
+  return isNodeScript(path) && !nodeAvailable ? undefined : path;
+}
+
+/** Why the chat cannot start the CLI of a backend: not installed, or a Node script without Node. */
+export function cliProblem(
+  def: BackendDefinition,
+  find: (name: string) => string | undefined,
+): { kind: "missing" | "needs-node"; path?: string } | undefined {
+  const found = find(def.cli.command);
+  if (!found) return { kind: "missing" };
+  if (isNodeScript(found) && !find("node")) return { kind: "needs-node", path: found };
+  return undefined;
 }
 
 export interface AcpLaunch {
@@ -99,7 +142,7 @@ export const CLAUDE_CODE: BackendDefinition = {
   cli: {
     command: "claude",
     installHint:
-      "Install Claude Code (`npm install -g @anthropic-ai/claude-code`), run `claude` once to log in, then retry.",
+      "Install Claude Code (`npm install -g @anthropic-ai/claude-code`), log in with `claude auth login`, then retry.",
     login: {
       args: ["auth", "status"],
       ok: ({ stdout, code }) =>
@@ -107,8 +150,11 @@ export const CLAUDE_CODE: BackendDefinition = {
       hint: "Run `claude auth login` in a terminal, then retry.",
     },
   },
-  launch() {
-    return adapterLaunch(CLAUDE_ACP_PACKAGE);
+  // The adapter runs the Claude Code the user installed (CLAUDE_CODE_EXECUTABLE). There is no
+  // bundled copy, so without an installed `claude` it cannot start.
+  launch(find) {
+    const cli = installedCli(find("claude"), find("node") !== undefined);
+    return cli ? adapterLaunch(CLAUDE_ACP_PACKAGE, { CLAUDE_CODE_EXECUTABLE: cli }) : undefined;
   },
   // Read by claude-agent-acp. Sandbox: no personal ~/.claude config, only the MCP servers citegeist
   // passes, no shell (research notes, section 4.5, points 3 and 4). Otherwise (A11): the settings
@@ -136,15 +182,18 @@ export const CODEX: BackendDefinition = {
   actor: "codex",
   cli: {
     command: "codex",
-    installHint: "Install Codex (`npm install -g @openai/codex`), run `codex login`, then retry.",
+    installHint:
+      "Install Codex (`npm install -g @openai/codex`), log in with `codex login`, then retry.",
     login: {
       args: ["login", "status"],
       ok: ({ stdout, stderr, code }) => code === 0 && !/not logged in/i.test(`${stdout} ${stderr}`),
       hint: "Run `codex login` in a terminal, then retry.",
     },
   },
-  launch() {
-    return adapterLaunch(CODEX_ACP_PACKAGE);
+  // Same for Codex (CODEX_PATH): the user's own binary, no bundled copy.
+  launch(find) {
+    const cli = installedCli(find("codex"), find("node") !== undefined);
+    return cli ? adapterLaunch(CODEX_ACP_PACKAGE, { CODEX_PATH: cli }) : undefined;
   },
 };
 
@@ -183,6 +232,7 @@ export function extraSearchDirs(): string[] {
   const home = homedir();
   const dirs = [
     join(home, ".local", "bin"),
+    join(home, ".claude", "local"),
     "/opt/homebrew/bin",
     "/usr/local/bin",
     join(home, ".npm-global", "bin"),
@@ -298,10 +348,14 @@ export async function checkBackend(
     return { ...base, available: false, detail: `Not installed. ${def.cli.installHint}` };
   }
   if (!def.launch(find) && !def.fallback) {
+    const problem = cliProblem(def, find);
     return {
       ...base,
       available: false,
-      detail: "The bundled ACP adapter was not found. Reinstall citegeist.",
+      detail:
+        problem?.kind === "needs-node"
+          ? `${def.cli.command} at ${problem.path} is a Node script and no \`node\` was found. Install Node.js, or install ${def.label} with its native installer, then retry.`
+          : "The ACP adapter was not found. Reinstall citegeist.",
     };
   }
   if (def.cli.login) {

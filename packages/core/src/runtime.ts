@@ -7,9 +7,21 @@ import {
   type RunTaskOptions,
   type TaskName,
 } from "@citegeist/ai";
-import { createResolver, type GraphLookup, type MetadataConfig } from "@citegeist/metadata";
+import {
+  type AlertLookup,
+  createResolver,
+  type GraphLookup,
+  type MetadataConfig,
+} from "@citegeist/metadata";
 import { Registry } from "@citegeist/ops";
+import {
+  type AlertSchedule,
+  type AlertService,
+  bindAlertOperations,
+  scheduleAlerts,
+} from "./alerts/index.js";
 import { bindCardOperations } from "./cards/index.js";
+import { bindConceptOperations } from "./concepts/index.js";
 import { bindGraphOperations, type GraphService } from "./graph/index.js";
 import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
@@ -94,6 +106,8 @@ export interface Runtime {
   sync: SyncService;
   /** Citation graph, snowballing and retraction checks. */
   graph: GraphService;
+  /** Saved watches that put new works into the inbox. */
+  alerts: AlertService;
   /** Semantic search. Absent in a one-shot process, which does not run background jobs. */
   semantic?: SemanticController;
   close(): Promise<void>;
@@ -167,6 +181,7 @@ function resolverConfig(s: ResolverSettings): MetadataConfig {
 function followingResolver(initial: ResolverSettings): {
   lookup: MetadataLookup;
   graph: GraphLookup;
+  alerts: AlertLookup;
   use(next: ResolverSettings): void;
 } {
   const make = (s: ResolverSettings) => createResolver({ config: resolverConfig(s) });
@@ -185,6 +200,7 @@ function followingResolver(initial: ResolverSettings): {
       retractionStatus: (doi) => current.retractionStatus(doi),
       findVersions: (key) => current.findVersions(key),
     },
+    alerts: { alertWorks: (query) => current.alertWorks(query) },
     use(next) {
       const key = JSON.stringify(resolverConfig(next));
       if (key === applied) return;
@@ -206,6 +222,18 @@ function noGraphLookup(): GraphLookup {
     retractionStatus: fail,
     findVersions: fail,
   };
+}
+
+/** Stands in for the alert lookups when a caller passes its own resolver that has none. */
+function noAlertLookup(): AlertLookup {
+  return {
+    alertWorks: () =>
+      Promise.reject(new Error("the resolver given to the runtime has no alert lookups")),
+  };
+}
+
+function isAlertLookup(value: object): value is AlertLookup {
+  return "alertWorks" in value;
 }
 
 function isGraphLookup(value: object): value is GraphLookup {
@@ -315,6 +343,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const jobs = opts.autoStart !== false ? aiTaskJobs(ingest.queue) : undefined;
   bindCardOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
   bindLinkOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  bindConceptOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
   bindMatrixOperations(registry, lib, {
     ai,
     ...(jobs ? { jobs } : {}),
@@ -329,6 +358,14 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     lookup: graphLookup,
     addItem: (actor, input) => ingest.addItem(actor, input),
     queue: ingest.queue,
+  });
+  const alerts = bindAlertOperations(registry, lib, {
+    lookup:
+      resolver?.alerts ??
+      (opts.resolver && isAlertLookup(opts.resolver) ? opts.resolver : noAlertLookup()),
+    addItem: (actor, input) => ingest.addItem(actor, input),
+    queue: ingest.queue,
+    rank: async (query, texts) => semantic?.rank(query, texts),
   });
   bindProjectContext(registry);
   // A literature search run is a job; a one-shot process (the CLI) only reads runs.
@@ -374,7 +411,11 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     void controller.configure(stored.enabled, stored.model);
   }
 
-  if (opts.autoStart !== false) graph.schedule();
+  let alertSchedule: AlertSchedule | undefined;
+  if (opts.autoStart !== false) {
+    graph.schedule();
+    alertSchedule = scheduleAlerts(alerts);
+  }
 
   // Last, because it wraps registry.call to commit library changes as the actor of the operation.
   const syncService = bindSyncOperations(registry, lib, {
@@ -393,9 +434,11 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     settings: service,
     sync: syncService,
     graph,
+    alerts,
     ...(semantic ? { semantic } : {}),
     close: async () => {
       graph.stop();
+      alertSchedule?.stop();
       semantic?.close();
       syncService.close();
       await ingest.close();

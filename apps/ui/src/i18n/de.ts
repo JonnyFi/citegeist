@@ -1,8 +1,11 @@
+import { alertsDe } from "../alerts/strings";
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { litsearchDe } from "../litsearch/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
+import { conceptsDe } from "./concepts";
+import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
 import { relatedDe } from "./related";
 
@@ -22,6 +25,10 @@ export const de = {
   "item.incomplete": "unvollständig",
   "item.incomplete.text":
     "Der Import ist nicht fertig geworden. Der Eintrag hat keinen lesbaren Text. Hänge eine passende Datei an oder lösche den Eintrag.",
+  "item.noFulltext": "ohne Volltext",
+  "item.noFulltext.text":
+    "Für diese Quelle wurde keine PDF-Datei gefunden. Hänge die Datei an, um sie zu lesen.",
+  "item.noFulltext.tried": "Geprüft:",
   "nav.projects": "Projekte",
   "shell.mockLibrary": "Mock-Bibliothek",
   "theme.label": "Darstellung",
@@ -293,12 +300,13 @@ export const de = {
   "backend.status.unreachable": "Nicht erreichbar",
   "backend.status.unknown": "Nicht verfügbar",
   "backend.hint.claude-code-cli.not-installed":
-    "Installiere Claude Code mit npm install -g @anthropic-ai/claude-code.",
-  "backend.hint.claude-code-cli.logged-out": "Führe claude auth login im Terminal aus.",
+    "citegeist nutzt das Claude Code, das du installiert hast. Installiere es mit npm install -g @anthropic-ai/claude-code und melde dich dann mit claude auth login im Terminal an.",
+  "backend.hint.claude-code-cli.logged-out":
+    "Führe claude auth login im Terminal aus und prüfe erneut.",
   "backend.hint.claude-code-cli.outdated": "Aktualisiere Claude Code und prüfe erneut.",
   "backend.hint.codex-exec.not-installed":
-    "Installiere die Codex CLI mit npm install -g @openai/codex.",
-  "backend.hint.codex-exec.logged-out": "Führe codex login im Terminal aus.",
+    "citegeist nutzt die Codex CLI, die du installiert hast. Installiere sie mit npm install -g @openai/codex und melde dich dann mit codex login im Terminal an.",
+  "backend.hint.codex-exec.logged-out": "Führe codex login im Terminal aus und prüfe erneut.",
   "backend.hint.ollama.unreachable": "Starte Ollama und prüfe erneut.",
   "task.card.paraphrase": "Paraphrase und Art",
   "task.card.verify": "Zitate prüfen",
@@ -434,11 +442,14 @@ export const de = {
   "graph.noWebgl":
     "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
   ...chatDe,
+  ...alertsDe,
   ...planningDe,
   ...settingsDe,
   ...importDe,
+  ...manageDe,
   ...relatedDe,
   ...matrixDe,
+  ...conceptsDe,
   ...litsearchDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",

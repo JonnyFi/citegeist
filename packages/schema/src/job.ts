@@ -12,6 +12,7 @@ export const JobKind = z.enum([
   "research",
   "import",
   "export",
+  "alerts",
   "worker-setup",
   /** A literature search run (workers/research pipeline.py). */
   "litsearch.run",

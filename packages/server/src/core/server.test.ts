@@ -161,6 +161,23 @@ describe("core server", () => {
     ws.close();
   });
 
+  it("takes the token as a query parameter on the event and file routes only", async () => {
+    const server = await start();
+    const query = `?token=${server.token}`;
+    // Everything but /events and /files/ needs the Authorization header.
+    expect(await rawRequest(server.port, {}, `/health${query}`)).toBe(401);
+    expect(await rawRequest(server.port, {}, `/rpc/items/list${query}`)).toBe(401);
+    expect(await rawRequest(server.port, { authorization: `Bearer ${server.token}` })).toBe(200);
+    // The file route reads it (the answer is a 404 for a missing file, not a 401).
+    expect(await rawRequest(server.port, {}, `/files/none/sources/x.pdf${query}`)).not.toBe(401);
+    const upgrade = new WebSocket(`ws://127.0.0.1:${server.port}/health${query}`);
+    const outcome = await new Promise<string>((resolve) => {
+      upgrade.once("error", () => resolve("error"));
+      upgrade.once("open", () => resolve("open"));
+    });
+    expect(outcome).toBe("error");
+  });
+
   it("rejects WebSocket upgrades without the token", async () => {
     const server = await start();
     const ws = new WebSocket(`ws://127.0.0.1:${server.port}/events`);

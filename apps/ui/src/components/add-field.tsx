@@ -1,4 +1,5 @@
-import { itemsAdd } from "@citegeist/ops";
+import { itemsAdd, jobsGet } from "@citegeist/ops";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { FileUp } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -6,7 +7,7 @@ import { type MessageKey, useI18n } from "../i18n";
 import { useCore, useOpMutation } from "../lib/hooks";
 import { classifyIdentifier } from "../lib/identifier";
 import { cn, describeError } from "../lib/utils";
-import { Label } from "./layout";
+import { Menu } from "./ui/menu";
 
 type Outcome =
   | { kind: "added"; citekey: string }
@@ -22,6 +23,8 @@ const KIND_KEY = {
   bibtex: "add.kind.bibtex",
   path: "add.kind.path",
 } as const satisfies Record<string, MessageKey>;
+
+const TERMINAL = ["succeeded", "failed", "cancelled"];
 
 /** Files dragged over the window carry "Files" in their data transfer types. */
 function hasFiles(event: DragEvent): boolean {
@@ -42,6 +45,31 @@ export function AddField({ project }: { project?: string | undefined }) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
+  const textField = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // A PDF is sometimes recognised only after its conversion: the job then names the item the file
+  // ended up in, which can differ from the one items.add answered with.
+  const [followed, setFollowed] = useState<{ job: string; citekey: string } | null>(null);
+  const followedJob = useQuery({
+    queryKey: ["op", jobsGet.name, followed?.job],
+    enabled: followed !== null,
+    queryFn: () => core.call(jobsGet, { job: followed?.job ?? "" }),
+    refetchInterval: (q) => (TERMINAL.includes(q.state.data?.status ?? "") ? false : 600),
+  });
+  const followedResult = followedJob.data;
+  useEffect(() => {
+    if (!followed || followedResult?.status !== "succeeded") return;
+    const result = followedResult.result as { citekey?: unknown; merged?: unknown } | undefined;
+    setFollowed(null);
+    if (typeof result?.citekey !== "string" || result.citekey === followed.citekey) return;
+    const citekey = result.citekey;
+    setOutcome((current) =>
+      current?.kind === "added" && current.citekey === followed.citekey
+        ? { kind: result.merged ? "duplicate" : "added", citekey }
+        : current,
+    );
+  }, [followed, followedResult]);
 
   const detected = classifyIdentifier(value);
   const hint =
@@ -57,12 +85,14 @@ export function AddField({ project }: { project?: string | undefined }) {
     add.mutate(
       { identifier, target: "library", ...(project ? { projects: [project] } : {}) },
       {
-        onSuccess: (out) =>
+        onSuccess: (out) => {
           setOutcome(
             out.duplicateOf
               ? { kind: "duplicate", citekey: out.duplicateOf }
               : { kind: "added", citekey: out.citekey },
-          ),
+          );
+          if (!out.duplicateOf) setFollowed({ job: out.job, citekey: out.citekey });
+        },
         onError: (err) => setOutcome({ kind: "error", message: describeError(err).message }),
       },
     );
@@ -81,6 +111,24 @@ export function AddField({ project }: { project?: string | undefined }) {
       }
       submit(path);
     }
+  };
+
+  // the desktop app opens the native file dialog; the browser preview uses a plain file input
+  const pickFiles = () => {
+    const pick = window.citegeist?.pickPaths;
+    if (!pick) {
+      fileInput.current?.click();
+      return;
+    }
+    void pick({
+      kind: "file",
+      multiple: true,
+      extensions: ["pdf"],
+      title: t("add.pick.title"),
+    }).then((paths) => {
+      setOutcome(null);
+      for (const path of paths) submit(path);
+    });
   };
 
   useEffect(() => {
@@ -128,17 +176,42 @@ export function AddField({ project }: { project?: string | undefined }) {
       }}
       className="relative flex min-w-0 items-center gap-3"
     >
-      <label htmlFor={id}>
-        <Label className="font-medium tracking-[0.08em]">{t("add.label")}</Label>
-      </label>
+      <Menu
+        label={t("add.menu")}
+        trigger={t("add.menu")}
+        className="inline-flex h-[26px] shrink-0 items-center border border-ink px-2.5 text-[12px] font-medium hover:bg-sunken"
+        entries={[
+          { label: t("add.pick"), onSelect: pickFiles },
+          {
+            label: t("add.menu.type"),
+            onSelect: () => setTimeout(() => textField.current?.focus(), 0),
+          },
+        ]}
+      />
       <input
+        ref={textField}
         id={id}
         type="text"
+        aria-label={t("add.label")}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("add.placeholder")}
         autoComplete="off"
         className="h-[30px] w-[420px] min-w-0 max-w-full border-0 border-b border-line bg-transparent px-0 text-[13px] placeholder:text-muted"
+      />
+      <button type="submit" hidden tabIndex={-1} aria-hidden="true" />
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        multiple
+        hidden
+        data-testid="pdf-file-input"
+        onChange={(e) => {
+          setOutcome(null);
+          dropFiles(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
       />
       {hint ? (
         <span className="shrink-0 font-mono text-[11px] text-muted" aria-live="polite">

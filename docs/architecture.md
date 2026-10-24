@@ -86,6 +86,8 @@ Fehler folgen dem Vertrag für agent-taugliche Fehlermeldungen aus gstack: Sie n
         c_01JB8Z3Q.md                     eine Zitatkarte pro Datei
   notes/
     autopoiesis-erklaert-stabilitaet.md   Zettel mit Frontmatter und Wiki-Links
+    concepts/
+      autopoiesis.md                      Begriff (type: concept) mit Aliasen, Karten und Einträgen pro Quelle
   projects/
     phd-proposal/
       project.md                          Projektbrief, Forschungsfragen, Leseliste
@@ -137,6 +139,8 @@ created: {at: 2026-10-23T10:12:00Z, by: human}
 Citekeys folgen einer Formel im Stil von Better BibTeX (Standard: Nachname, Jahr, erstes Titelwort). Ein Key entsteht einmal und wird nicht still neu berechnet. Eine Umbenennung schreibt alle Wiki-Links und Kartenverweise um. Eine Ausnahme gibt es für Platzhalter: Entsteht der Key aus einem fehlenden Autor oder Jahr (`anonnddemos`), ersetzt ihn der Kern nach einer erfolgreichen Konvertierung durch den Key aus den besseren Daten, sofern weder Karten noch Links auf den Eintrag verweisen.
 
 Ein Eintrag, dessen Import scheitert, bleibt mit dem Feld `incomplete` (Code, Meldung, Zeitpunkt, Job) im Frontmatter stehen. `items.get`, `items.list`, die Problemliste, die Oberfläche und MCP zeigen ihn an. Ein Anhängen oder erneutes Hinzufügen einer funktionierenden Datei, `documents.convert` oder das Löschen beseitigen den Zustand. Eine erfolgreiche Konvertierung entfernt das Feld.
+
+Zwei weitere Zustände eines Eintrags sind getippte Felder im Frontmatter. `fulltext` (`status: found | missing`, `tried` mit den geprüften Quellen, `checked_at`) hält fest, ob die Volltextsuche nach dem Hinzufügen per DOI eine Datei gefunden hat; `items.list` meldet es als Flag, und die Tabelle zeigt bei `missing` den Hinweis „ohne Volltext“. `proposal` (`status`, `source`, `reason`, `candidates`) markiert Metadaten, die nur geraten sind (erste Seite, Dateiname, Webseite) und auf eine Prüfung warten. Ältere Dateien, die `fulltext` noch als `status: none` mit `at` führen, liest der Kern in der neuen Form und schreibt sie beim nächsten Speichern um.
 
 ### Dokument
 
@@ -203,10 +207,10 @@ links:
     why: Kap. 1 begründet …
     evidence: "[[c_01JB8Z3Q]]"
     by: agent:claude-code
-    status: proposed         # proposed | accepted
+    status: proposed         # proposed | accepted | rejected
 ```
 
-Verbindungen dürfen untypisiert bleiben. Ein Typ wird vorgeschlagen und vom Nutzer angenommen. Das Vokabular ist klein und auf die Zitations-Ontologie CiTO abbildbar:
+Verbindungen dürfen untypisiert bleiben. Ein Typ wird vorgeschlagen und vom Nutzer angenommen. Eine abgelehnte Verbindung bleibt mit `status: rejected` in der Datei, damit `links.propose` sie nicht noch einmal vorschlägt. Der Index kennt sie nicht, sie erscheint weder in Rückverweisen noch im Graphen. Das Vokabular ist klein und auf die Zitations-Ontologie CiTO abbildbar:
 
 | Gruppe | Relationen |
 |---|---|
@@ -294,7 +298,7 @@ Der citegeist-MCP-Server kommt in jedem Fall pro Sitzung dazu, mit eigenem Write
 
 Die Sprache aller AI-Texte (Paraphrase, Zusammenfassung) folgt einer Kette: Dropdown an der gerade gelesenen Quelle, sonst Projekteinstellung, sonst Bibliotheksstandard (D9). Das Dropdown ist im Reader jederzeit erreichbar.
 
-Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
+Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
 
 Jede Agent-Antwort mit Zitat geht durch eine Prüfung: Ein Zitat, das zu keiner gespeicherten Stelle passt, wird markiert.
 

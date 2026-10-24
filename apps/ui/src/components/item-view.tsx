@@ -1,5 +1,6 @@
 import { cardsList, itemsGet, itemsResolve, projectsList } from "@citegeist/ops";
-import { Link } from "@tanstack/react-router";
+import type { ItemFrontmatter } from "@citegeist/schema";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Quote } from "lucide-react";
 import type { ReactNode } from "react";
 import { ConnectionsPanel } from "../connections";
@@ -8,8 +9,10 @@ import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { useReadingPosition } from "../lib/reading-position";
+import { useTrashItem } from "../lib/trash";
 import { cn, describeError } from "../lib/utils";
 import { markerOf, RelatedWorks, RetractionBadge, RetractionNote } from "../related";
+import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
@@ -20,6 +23,19 @@ import { Button } from "./ui/button";
 import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
+
+/** The marker ingest leaves when no open source delivered a PDF: which sources it tried. */
+function readNoFulltext(fm: ItemFrontmatter): { tried: string[] } | undefined {
+  const marker = fm.fulltext;
+  if (marker?.status !== "missing") return undefined;
+  const names: Record<string, string> = {
+    unpaywall: "Unpaywall",
+    openalex: "OpenAlex",
+    arxiv: "arXiv",
+    publisher: "Verlagsseite",
+  };
+  return { tried: marker.tried.map((a) => names[a.source] ?? a.source) };
+}
 
 export type ItemTab = "overview" | "read";
 
@@ -105,11 +121,14 @@ export function ItemView({
   const item = useOp(itemsGet, { citekey });
   const cards = useOp(cardsList, itemCardsInput(citekey));
   const projects = useOp(projectsList, {});
+  const trash = useTrashItem();
+  const navigate = useNavigate();
 
   if (item.isPending) return <Loading label={t("item.loading")} />;
   if (item.isError) return <ErrorState error={item.error} />;
 
   const { frontmatter: fm, note } = item.data;
+  const fulltext = readNoFulltext(fm);
   const authors = (fm.author ?? []).map(creatorName);
   const retraction = markerOf(fm.retraction);
   const projectTitle = (slug: string) =>
@@ -166,6 +185,16 @@ export function ItemView({
       <span className="flex-1" />
       {retraction ? <RetractionBadge marker={retraction} /> : null}
       <span className="font-mono text-[12px] text-muted">{fm.citekey}</span>
+      <Button
+        size="sm"
+        onClick={() => {
+          void trash(citekey).then((done) => {
+            if (done) void navigate({ to: "/", search: {} });
+          });
+        }}
+      >
+        {t("item.delete")}
+      </Button>
     </HeaderSlot>
   );
 
@@ -300,6 +329,27 @@ export function ItemView({
                   <span className="font-mono text-[12px] text-muted">
                     {fm.incomplete.code}: {fm.incomplete.message}
                   </span>
+                </div>
+              ) : null}
+              {!fm.incomplete && fulltext ? (
+                <div
+                  role="note"
+                  aria-label={t("item.noFulltext")}
+                  className="flex flex-col gap-1 border border-line px-3 py-2 text-[13px]"
+                >
+                  <span>
+                    <Stamp>{t("item.noFulltext")}</Stamp> {t("item.noFulltext.text")}
+                  </span>
+                  {fulltext.tried.length > 0 ? (
+                    <span className="font-mono text-[12px] text-muted">
+                      {t("item.noFulltext.tried")} {fulltext.tried.join(", ")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              {fm.sources.length === 0 ? (
+                <div className="mb-3">
+                  <AttachPdf citekey={citekey} />
                 </div>
               ) : null}
               <h1 className="font-serif text-[34px] font-medium leading-[1.15] tracking-[-0.01em]">

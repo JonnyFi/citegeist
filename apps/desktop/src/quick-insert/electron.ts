@@ -8,6 +8,7 @@ import {
   shell,
   systemPreferences,
 } from "electron";
+import { isTrustedSender } from "../shared/trusted-sender.js";
 import { QI } from "./channels.js";
 import { type CitationPayload, QuickInsertController, type QuickInsertDeps } from "./controller.js";
 import {
@@ -151,9 +152,12 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
   // Only the palette window may drive the palette.
   const fromPalette = (sender: Electron.WebContents) =>
     Boolean(win && !win.isDestroyed() && sender === win.webContents);
+  // Every handler answers the app's own renderer only (M8): the palette and the settings page.
+  const fromOwnPage = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+    isTrustedSender(event.senderFrame, opts.isOwnUrl);
 
   ipcMain.handle(QI.deliver, async (event, payload: unknown) => {
-    if (!fromPalette(event.sender)) throw new Error("not the palette");
+    if (!fromPalette(event.sender) || !fromOwnPage(event)) throw new Error("not the palette");
     const p = payload as Partial<CitationPayload> | null;
     if (!p || typeof p.text !== "string" || p.text.length > 1_000_000) {
       throw new Error("invalid citation payload");
@@ -162,18 +166,22 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
     return controller.deliver({ text: p.text, html });
   });
   ipcMain.on(QI.close, (event) => {
-    if (fromPalette(event.sender)) void controller.close();
+    if (fromPalette(event.sender) && fromOwnPage(event)) void controller.close();
   });
   ipcMain.on(QI.requestAccessibility, (event) => {
-    if (fromPalette(event.sender)) controller.requestAccessibility();
+    if (fromPalette(event.sender) && fromOwnPage(event)) controller.requestAccessibility();
   });
   ipcMain.on(QI.hotkey, (event) => {
-    event.returnValue = settings.accelerator;
+    event.returnValue = fromOwnPage(event) ? settings.accelerator : "";
   });
-  ipcMain.handle(QI.getSettings, () => settings);
-  ipcMain.handle(QI.setSettings, (_event, patch: unknown) =>
-    update(patch as Partial<QuickInsertSettings>),
-  );
+  ipcMain.handle(QI.getSettings, (event) => {
+    if (!fromOwnPage(event)) throw new Error("not the app's renderer");
+    return settings;
+  });
+  ipcMain.handle(QI.setSettings, (event, patch: unknown) => {
+    if (!fromOwnPage(event)) throw new Error("not the app's renderer");
+    return update(patch as Partial<QuickInsertSettings>);
+  });
 
   const apply = (next: QuickInsertSettings) =>
     controller.setHotkey(next.enabled ? next.accelerator : undefined);

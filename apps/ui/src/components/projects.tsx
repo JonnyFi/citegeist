@@ -10,6 +10,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Pencil } from "lucide-react";
 import { useState } from "react";
+import { AlertsPanel } from "../alerts";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, LIBRARY_AI_LANGUAGE } from "../lib/ai-language";
 import { downloadText } from "../lib/clipboard";
@@ -19,6 +20,7 @@ import { MatrixTab } from "../matrix";
 import { type PlanSearch, PlanTab, type PlanView } from "../planning/plan-tab";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { ProjectCards } from "./project-cards";
+import { ProjectReadingList } from "./project-list";
 import { Prose } from "./prose";
 import { StatusSquare } from "./ui/badge";
 import { Button, ButtonGroup } from "./ui/button";
@@ -218,7 +220,7 @@ function ProjectTabLink({
   );
 }
 
-export type ProjectTab = "brief" | "cards" | "plan" | "matrix";
+export type ProjectTab = "brief" | "list" | "cards" | "plan" | "matrix";
 
 /** The URL state of the project screen: the tab and, on the plan tab, the plan, node and view. */
 export interface ProjectSearch extends PlanSearch {
@@ -232,7 +234,10 @@ const PLAN_VIEWS: readonly PlanView[] = ["doc", "insights", "gaps"];
 export function parseProjectSearch(search: Record<string, unknown>): ProjectSearch {
   const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
   const tab =
-    search.tab === "cards" || search.tab === "plan" || search.tab === "matrix"
+    search.tab === "list" ||
+    search.tab === "cards" ||
+    search.tab === "plan" ||
+    search.tab === "matrix"
       ? search.tab
       : undefined;
   const view = PLAN_VIEWS.find((v) => v === search.view);
@@ -324,14 +329,10 @@ export function ProjectView({
             <ProjectTabLink slug={slug} active={tab === "brief"}>
               {t("project.brief")}
             </ProjectTabLink>
-            <Link
-              to="/"
-              search={{ project: slug }}
-              className="flex items-center border-b-2 border-transparent text-muted hover:text-ink"
-            >
+            <ProjectTabLink slug={slug} tab="list" active={tab === "list"}>
               {t("project.readingList")}
               <span className="ml-1.5 font-mono font-normal">{itemCount}</span>
-            </Link>
+            </ProjectTabLink>
             <ProjectTabLink slug={slug} tab="cards" active={tab === "cards"}>
               {t("project.cardsTab")}
               {cards.data ? (
@@ -359,6 +360,8 @@ export function ProjectView({
             search={search}
             onSearch={(next) => onSearch?.({ ...next, tab: "plan" })}
           />
+        ) : tab === "list" ? (
+          <ProjectReadingList slug={slug} />
         ) : tab === "cards" ? (
           <ProjectCards slug={slug} />
         ) : tab === "matrix" ? (
@@ -403,6 +406,16 @@ export function ProjectView({
                   </ol>
                 </section>
               ) : null}
+
+              <section aria-labelledby="project-alerts">
+                <div className="flex flex-col gap-1">
+                  <h2 id="project-alerts" className="mb-0">
+                    <Label>{t("alerts.title")}</Label>
+                  </h2>
+                  <p className="mb-2 text-[12px] text-muted">{t("alerts.descProject")}</p>
+                </div>
+                <AlertsPanel project={slug} />
+              </section>
 
               {items.isError ? <ErrorState error={items.error} /> : null}
             </div>

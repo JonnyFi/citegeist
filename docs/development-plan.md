@@ -1,6 +1,54 @@
 # citegeist: Entwicklungsplan
 
-Stand: 2026-10-23. Grundlage sind `product.md` und `architecture.md`.
+Grundlage sind `product.md` und `architecture.md`.
+
+## Stand
+
+Stand: 2026-10-24. Die Wellen 0 bis 4 sind gebaut und gemergt, die App läuft als gepackte arm64-App (`pnpm package`, Anleitung in `docs/run.md`).
+
+| Welle | Workstreams | PRs |
+|---|---|---|
+| 0 Fundament | W0.1 bis W0.3, Spikes S1 bis S3 | #1 |
+| 1 Bausteine | W1.1, W1.2, W1.4, W1.5, W1.6, W1.8 | #1 |
+| | W1.3 Konvertierung | #12 |
+| | W1.7 App-Hülle | #2 |
+| 2 v0.1 | W2.1 Ingest | #7 |
+| | W2.2 Highlighter und Karten | #4, #11 |
+| | W2.3 Bibliotheks-Oberfläche | #11 |
+| | W2.4 Agent-Zugang lesen | #3 |
+| | W2.5 Einstellungen und Start | #8, #9 |
+| | Integration der Welle | #7, #13 |
+| 3 v0.2 | W3.1 Notizen | #20 |
+| | W3.2 Verbindungen | #21 |
+| | W3.3 Chat und Recherche | #24 |
+| | W3.4 Semantische Suche | #18 |
+| | W3.5 Agent-Zugang schreiben | #17 |
+| | W3.6 Backends und Quick-Insert | #19 |
+| | W3.7 Einsichten und Pläne | #26 |
+| | W3.8 Planansicht | #32 |
+| | W3.9 Planungs-Chat (im Chat, mit W3.3 und der Integration) | #24, #28 |
+| | W3.10 Design-Umsetzung | #22, #27 |
+| | Integration der Welle | #25, #28 |
+| 4 v0.3 | W4.1, W4.2 Importe | #31 |
+| | W4.3 Sync | #29 |
+| | W4.4 Literaturmatrix | #41 |
+| | W4.5 Schneeballsuche und Rückrufe | #30 |
+| | W4.6 Webhooks | #40 |
+| | Integration der Welle | #33, #47 |
+| Oberfläche zu Welle 4 | Einstellungen, Sync, Webhooks, Import (UI-2b) | #48 |
+| | Matrix, verwandte Werke, Rückruf-Hinweise, Planung auf echten Verträgen (UI-2a) | #49 |
+| Nachbesserung | Fehler aus der ersten echten Chat-Sitzung, Karten-Logik und Prompt | #43, #44, #45, #46 |
+| Werkzeuge | `pnpm app:update`, Linux-CI mit lokalem Pre-push-Gate, Beitragsablauf | #42, #23, #53 |
+| Abschluss | Dateiauswahl, Rückruf-Marker in `items.list`, schlankere App, Hinzufügen-Menü, Löschen mit Rückgängig, PDF anhängen | dieser PR |
+
+Offen sind:
+
+- **iPad.** Die App ist nur für macOS gebaut.
+- **Schreiben.** Ein eigener Schreibeditor oder Add-ins für Word und Google Docs. Eine Entscheidung zwischen diesen Wegen steht aus.
+- **Signierung und Auto-Update.** Die App ist ad hoc signiert und nicht notarisiert. Dafür braucht es die Developer ID und einen Update-Kanal.
+- **Prüfung für den Open-Source-Release (D1).** Die AGPL-Isolation der Abhängigkeiten (der Python-Worker läuft als eigener Prozess), die Nutzungsbedingungen von Gemma für EmbeddingGemma und die CPAL-Namensnennung. Dazu läuft vor dem Release `/cso`.
+- **Erledigt nach Plan:** Alerts (PR #57), Begriffsregister (PR #59), Lizenz- und Sicherheitsprüfung (PR #58).
+
 
 ## Arbeitsweise
 
@@ -201,7 +249,7 @@ Jonnys Design liegt in `docs/design/design-system.md`, `docs/design/boards/*.htm
 
 ## Später
 
-Nach v0.3 kommen ein eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice, das Begriffsregister, Alerts und das iPad dran. Der Open-Source-Release braucht dann noch eine Lizenzprüfung, Signierung (Developer ID, 99 US-Dollar pro Jahr) und Auto-Update.
+Nach v0.3 sind noch ein eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice und das iPad offen. Für einen Open-Source-Release fehlen Signierung (Developer ID, 99 US-Dollar pro Jahr), Auto-Update und eine Lösung für das proprietäre Claude Agent SDK im App-Paket (siehe `docs/licenses.md`).
 
 ## Steckbrief-Vorlage
 

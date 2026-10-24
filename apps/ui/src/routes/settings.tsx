@@ -1,5 +1,6 @@
 import { settingsGet, settingsUpdate } from "@citegeist/ops";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { AlertsSection } from "../alerts";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
@@ -103,7 +104,7 @@ function SettingsFrame({
   );
 }
 
-export const SETTINGS_SECTIONS = ["general", "sync", "webhooks"] as const;
+export const SETTINGS_SECTIONS = ["general", "sync", "alerts", "webhooks"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 /**
@@ -139,7 +140,13 @@ export function SettingsScreen({
   if (section !== "general") {
     return (
       <SettingsFrame section={section} onSection={pick}>
-        {section === "sync" ? <SyncPanel /> : <WebhooksPanel />}
+        {section === "sync" ? (
+          <SyncPanel />
+        ) : section === "alerts" ? (
+          <AlertsSection />
+        ) : (
+          <WebhooksPanel />
+        )}
       </SettingsFrame>
     );
   }

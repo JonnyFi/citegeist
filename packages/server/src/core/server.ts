@@ -169,6 +169,15 @@ export function buildRouter(registry: Registry): Record<string, Node> {
   return root;
 }
 
+/**
+ * Paths that accept the token as a query parameter. A WebSocket upgrade and an image or frame
+ * cannot set an Authorization header, so `/events` and the file route need it. Everywhere else a
+ * token in the address would only end up in logs and histories.
+ */
+export function queryTokenPath(pathname: string): boolean {
+  return pathname === "/events" || pathname.startsWith(FILES_PREFIX);
+}
+
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
@@ -283,7 +292,8 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   const tokenOk = (req: IncomingMessage, url: URL) => {
     const header = req.headers.authorization;
     const bearer = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
-    const given = bearer ?? url.searchParams.get("token") ?? "";
+    const fromQuery = queryTokenPath(url.pathname) ? url.searchParams.get("token") : null;
+    const given = bearer ?? fromQuery ?? "";
     return safeEqual(given, token);
   };
 

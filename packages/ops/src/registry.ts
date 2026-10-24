@@ -7,6 +7,12 @@ export type Access = "read" | "write" | "admin";
 export interface OpContext {
   actor: Actor;
   signal?: AbortSignal;
+  /**
+   * False when the caller may not make the core read local files of this Mac (`items.add` with a
+   * path, `items.attach`). Unset means allowed: the human, `cg` and local MCP clients. MCP tokens
+   * of research sessions carry false.
+   */
+  localFiles?: boolean;
 }
 
 /** MCP exposure: the curated tool name and whether the tool is read-only (readOnlyHint). */

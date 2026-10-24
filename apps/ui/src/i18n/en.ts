@@ -1,9 +1,12 @@
+import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
+import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
+import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
 import { relatedEn } from "./related";
 
@@ -20,6 +23,9 @@ export const en: Record<MessageKey, string> = {
   "item.incomplete": "incomplete",
   "item.incomplete.text":
     "The import did not finish. The item has no readable text. Attach a matching file or delete the item.",
+  "item.noFulltext": "no full text",
+  "item.noFulltext.text": "No PDF was found for this item. Attach the file to read it.",
+  "item.noFulltext.tried": "Checked:",
   "nav.projects": "Projects",
   "shell.mockLibrary": "Mock library",
   "theme.label": "Theme",
@@ -290,12 +296,12 @@ export const en: Record<MessageKey, string> = {
   "backend.status.unreachable": "Not reachable",
   "backend.status.unknown": "Unavailable",
   "backend.hint.claude-code-cli.not-installed":
-    "Install Claude Code with npm install -g @anthropic-ai/claude-code.",
-  "backend.hint.claude-code-cli.logged-out": "Run claude auth login in Terminal.",
+    "citegeist uses the Claude Code you installed. Install it with npm install -g @anthropic-ai/claude-code, then log in with claude auth login in Terminal.",
+  "backend.hint.claude-code-cli.logged-out": "Run claude auth login in Terminal, then check again.",
   "backend.hint.claude-code-cli.outdated": "Update Claude Code, then check again.",
   "backend.hint.codex-exec.not-installed":
-    "Install the Codex CLI with npm install -g @openai/codex.",
-  "backend.hint.codex-exec.logged-out": "Run codex login in Terminal.",
+    "citegeist uses the Codex CLI you installed. Install it with npm install -g @openai/codex, then log in with codex login in Terminal.",
+  "backend.hint.codex-exec.logged-out": "Run codex login in Terminal, then check again.",
   "backend.hint.ollama.unreachable": "Start Ollama, then check again.",
   "task.card.paraphrase": "Paraphrase and kind",
   "task.card.verify": "Check quotes",
@@ -429,11 +435,14 @@ export const en: Record<MessageKey, string> = {
   "graph.noWebgl":
     "The graph needs WebGL and is not available here. The node list next to it still works.",
   ...chatEn,
+  ...alertsEn,
   ...planningEn,
   ...settingsEn,
   ...importEn,
+  ...manageEn,
   ...relatedEn,
   ...matrixEn,
+  ...conceptsEn,
   ...litsearchEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",

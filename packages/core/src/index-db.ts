@@ -439,6 +439,8 @@ export class Index {
     );
     this.putMembership(path, "note", fm.id, fm.tags, fm.projects);
     for (const l of fm.links) {
+      // A rejected link is kept in the file only as a memory for `links.propose`.
+      if (l.status === "rejected") continue;
       const ev = l.evidence ? wikiTarget(l.evidence) : null;
       this.stmt(
         `INSERT INTO links(path, src_kind, src_ref, dst, rel, status, why, evidence, actor, origin)
@@ -453,7 +455,7 @@ export class Index {
       citekey: null,
       title: fm.title,
       ftsTitle: fm.title,
-      ftsBody: `${fm.tags.join(" ")}\n${body}`,
+      ftsBody: `${fm.tags.join(" ")}\n${(fm.aliases ?? []).join(" ")}\n${body}`,
     });
   }
 

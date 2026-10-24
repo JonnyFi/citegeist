@@ -4,6 +4,7 @@ import {
   CardFrontmatter,
   ItemFrontmatter,
   LibraryManifest,
+  migrateItemData,
   NoteFrontmatter,
   ProjectFrontmatter,
 } from "@citegeist/schema";
@@ -89,7 +90,8 @@ export function parseLibraryFile(
     case "item": {
       const fmr = readFrontmatter(raw);
       if (!fmr.ok) return fmr.r;
-      const r = ItemFrontmatter.safeParse(fmr.data);
+      // files written by older versions are read in the current shape
+      const r = ItemFrontmatter.safeParse(migrateItemData(fmr.data));
       if (!r.success) return fail("SCHEMA_INVALID", formatZodError(r.error));
       if (r.data.citekey !== c.key) {
         return fail(

@@ -15,8 +15,10 @@ Die Schemas in `packages/schema/src` sind verbindlich. Diese Seite beschreibt, w
 | `items/<citekey>/derived/<hash>/header.json` | frei, nur wenn der Worker Kopfdaten fand | Worker |
 | `items/<citekey>/derived/<hash>/refs.jsonl`, `doc.md`, `doc.html`, `assets/` | abgeleitet | Worker |
 | `items/<citekey>/cards/<id>.md` | Frontmatter `CardFrontmatter`, Text `CardBody` | Kern; der Abschnitt „Note“ darf frei bearbeitet werden |
+| `alerts.yaml` | wie `projects/<slug>/alerts.yaml`, für Alerts ohne Projekt | Kern, Agents, Menschen |
 | `notes/<slug>.md` | Frontmatter `NoteFrontmatter`, Text frei | Kern, Agents, Menschen |
 | `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, Text Projektbrief | Kern, Agents, Menschen |
+| `projects/<slug>/alerts.yaml` | `alerts:` mit einer Liste von `AlertDef` (Name, Quelle, Intervall, Limit, Ranking). Letzter Lauf und Merkliste liegen nicht hier, sondern maschinenlokal in `alerts-state.json` | Kern, Agents, Menschen |
 | `projects/<slug>/exports/*` | abgeleitet | Kern |
 | `chats/<datum>-<slug>.md` | frei | Kern |
 

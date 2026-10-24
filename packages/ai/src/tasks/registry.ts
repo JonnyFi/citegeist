@@ -3,6 +3,8 @@ import { aiErrors } from "../errors.js";
 import type { InferenceBackend, ModelChoice } from "../types.js";
 import { cardParaphrase } from "./card-paraphrase/index.js";
 import { cardVerify } from "./card-verify/index.js";
+import { conceptDescribe } from "./concept-describe/index.js";
+import { conceptName } from "./concept-name/index.js";
 import { litsearchSuggestQueries } from "./litsearch-suggest-queries/index.js";
 import { matrixFillCell } from "./matrix-fill-cell/index.js";
 import { metadataFromFirstPage } from "./metadata-from-first-page/index.js";
@@ -12,6 +14,8 @@ import type { TaskDefinition } from "./types.js";
 export const TASKS = {
   "card.paraphrase": cardParaphrase,
   "card.verify": cardVerify,
+  "concept.describe": conceptDescribe,
+  "concept.name": conceptName,
   "litsearch.suggestQueries": litsearchSuggestQueries,
   "matrix.fillCell": matrixFillCell,
   "metadata.fromFirstPage": metadataFromFirstPage,

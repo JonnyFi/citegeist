@@ -2,14 +2,16 @@ import type { RequestPermissionRequest } from "@agentclientprotocol/sdk";
 import { describe, expect, it } from "vitest";
 import { citegeistTool, decide, pickOption } from "./policy.js";
 
-const ctx = {
-  mode: "chat" as const,
+type Ctx = Parameters<typeof decide>[1];
+
+const ctx: Ctx = {
+  mode: "chat",
   isolated: true,
   libraryRoot: "/lib",
   scratchDir: "/local/chats/ch_1/cwd",
 };
 /** A11: the user's own environment. */
-const open = { ...ctx, isolated: false };
+const open: Ctx = { ...ctx, isolated: false };
 
 const req = (
   toolCall: Partial<RequestPermissionRequest["toolCall"]>,
@@ -87,13 +89,13 @@ describe("decide", () => {
   });
 
   it("does not open the shell for a research job even when the chat is not isolated", () => {
-    const research = { ...open, mode: "research" as const };
+    const research: Ctx = { ...open, mode: "research" };
     expect(decide(req({ kind: "other", title: "Mystery" }), research).allow).toBe(false);
     expect(decide(req({ kind: "execute", title: "Bash" }), research).allow).toBe(false);
   });
 
   it("keeps research jobs on the inbox path of add_item", () => {
-    const research = { ...ctx, mode: "research" as const };
+    const research: Ctx = { ...ctx, mode: "research" };
     const add = (rawInput: unknown) =>
       decide(req({ name: "mcp__citegeist__add_item", kind: "other", rawInput }), research);
     expect(add({ identifier: "10.1/x", why: "passt" }).allow).toBe(true);
@@ -106,6 +108,86 @@ describe("decide", () => {
     expect(
       decide(req({ kind: "edit", locations: [{ path: "/lib/notes/a.md" }] }), research).allow,
     ).toBe(false);
+  });
+});
+
+describe("reading outside the library", () => {
+  const research: Ctx = { ...ctx, mode: "research" };
+  const read = (path: string, c = ctx, kind: "read" | "search" = "read") =>
+    decide(req({ kind, locations: [{ path }] }), c).allow;
+
+  it("keeps the sandbox and research jobs inside the library and the scratch folder", () => {
+    for (const c of [ctx, research]) {
+      expect(read("/lib/items/a/a.md", c)).toBe(true);
+      expect(read("/lib", c)).toBe(true);
+      expect(read("/local/chats/ch_1/cwd/notes.txt", c)).toBe(true);
+      expect(read("/Users/me/.ssh/id_ed25519", c)).toBe(false);
+      expect(read("/Users/me/Library/Application Support/citegeist/lib1/core.token", c)).toBe(
+        false,
+      );
+      expect(read("/lib/../etc/passwd", c)).toBe(false);
+      expect(read("/lib/items/../../etc/passwd", c, "search")).toBe(false);
+    }
+    // A search names its folder in the raw input.
+    const grep = (path: string) =>
+      decide(req({ kind: "search", rawInput: { path, pattern: "x" } }), ctx).allow;
+    expect(grep("/lib/notes")).toBe(true);
+    expect(grep("/Users/me")).toBe(false);
+    // A folder given relative to the working folder stays inside it; one that climbs out does not.
+    expect(grep(".")).toBe(true);
+    expect(grep("../../../../Users/me")).toBe(false);
+    // The fixed part of a glob or pattern counts as a path.
+    const glob = (pattern: string) =>
+      decide(req({ kind: "search", rawInput: { pattern } }), ctx).allow;
+    expect(glob("/lib/notes/**/*.md")).toBe(true);
+    expect(glob("/Users/me/.ssh/*")).toBe(false);
+    expect(glob("~/.aws/credentials")).toBe(false);
+    expect(glob("**/*.md")).toBe(true);
+    // No path in the request: nothing to check.
+    expect(decide(req({ kind: "read", title: "Read file" }), research).allow).toBe(true);
+  });
+
+  it("lets the user's own environment read anywhere (A11)", () => {
+    expect(read("/Users/me/Documents/paper.pdf", open)).toBe(true);
+    // A research job stays closed even when the chat setting is open.
+    expect(read("/Users/me/Documents/paper.pdf", { ...open, mode: "research" })).toBe(false);
+  });
+});
+
+describe("local files in citegeist tool calls", () => {
+  const research: Ctx = { ...ctx, mode: "research" };
+  const tool = (name: string, rawInput: unknown, c = ctx) =>
+    decide(req({ name: `mcp__citegeist__${name}`, kind: "other", rawInput }), c).allow;
+
+  it("refuses a research job and the sandbox to add a file from elsewhere on the disk", () => {
+    for (const id of [
+      "/Users/me/Documents/taxes.pdf",
+      "~/secret.html",
+      "./x.epub",
+      "file:///Users/me/a.pdf",
+      "secret.pdf",
+    ]) {
+      expect(tool("add_item", { identifier: id, why: "w" }, research), id).toBe(false);
+      expect(tool("add_item", { identifier: id }, ctx), id).toBe(false);
+    }
+    expect(tool("attach_file", { citekey: "a", path: "/Users/me/a.pdf" }, ctx)).toBe(false);
+    expect(tool("attach_file", { citekey: "a", path: "/Users/me/a.pdf" }, research)).toBe(false);
+  });
+
+  it("still lets them add DOIs and URLs, and the sandbox use files of the library", () => {
+    for (const id of [
+      "10.1000/abc.pdf",
+      "doi:10.1000/x",
+      "https://example.org/a.pdf",
+      "arXiv:2401.1",
+    ]) {
+      expect(tool("add_item", { identifier: id, why: "w" }, research), id).toBe(true);
+    }
+    expect(tool("attach_file", { citekey: "a", path: "/local/chats/ch_1/cwd/a.pdf" }, ctx)).toBe(
+      true,
+    );
+    // The user's own environment keeps the feature: the agent downloaded a PDF and adds it.
+    expect(tool("add_item", { identifier: "/tmp/a.pdf" }, open)).toBe(true);
   });
 });
 

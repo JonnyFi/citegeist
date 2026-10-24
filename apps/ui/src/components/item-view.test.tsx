@@ -34,6 +34,30 @@ describe("item view", () => {
     expect(within(note).getByText("CONVERT_FAILED: no article text found")).toBeVisible();
   });
 
+  it("says 'ohne Volltext' when no open source delivered a PDF, and lists what was tried", async () => {
+    const data = createFixtures();
+    const item = data.items.get("latour2005reassembling");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      fulltext: {
+        status: "missing",
+        checked_at: "2026-10-24T10:00:00.000Z",
+        tried: [
+          { source: "unpaywall", outcome: "none" },
+          { source: "openalex", outcome: "failed", detail: "HTTP 500" },
+          { source: "arxiv", outcome: "none" },
+          { source: "publisher", outcome: "none" },
+        ],
+      },
+    });
+    renderApp("/items/latour2005reassembling", data);
+    const note = await screen.findByRole("note", { name: "ohne Volltext" });
+    expect(within(note).getByText(/keine PDF-Datei gefunden/)).toBeVisible();
+    expect(within(note).getByText(/Unpaywall, OpenAlex, arXiv, Verlagsseite/)).toBeVisible();
+    expect(screen.queryByRole("note", { name: "unvollständig" })).toBeNull();
+  });
+
   it("renders the literature note with its headings", async () => {
     renderApp("/items/lewis2020retrieval");
     expect(await screen.findByRole("heading", { level: 2, name: "Open question" })).toBeVisible();

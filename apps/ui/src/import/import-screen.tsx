@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type DragEvent, useEffect, useId, useRef, useState } from "react";
 import type { z } from "zod";
+import type { PickPathsOptions } from "../bridge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
@@ -55,6 +56,12 @@ const INITIAL: Form = {
   automaticTags: true,
 };
 
+const FILE_EXTENSIONS: Partial<Record<SourceKind, readonly string[]>> = {
+  bibtex: ["bib", "bibtex"],
+  ris: ["ris"],
+  "csl-json": ["json"],
+};
+
 const isZotero = (kind: SourceKind) => kind === "zotero-sqlite" || kind === "zotero-api";
 
 /** The input of import.preview and import.run for the form, or undefined while it is incomplete. */
@@ -92,10 +99,13 @@ function PathField({
   label,
   value,
   onChange,
+  pick,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** What the native picker offers; without it, or in the browser preview, the path is typed. */
+  pick: PickPathsOptions;
 }) {
   const { t } = useI18n();
   const id = useId();
@@ -108,15 +118,29 @@ function PathField({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        value={value}
-        placeholder={t("import.path.placeholder")}
-        onChange={(e) => onChange(e.target.value)}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={drop}
-        className="font-mono"
-      />
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          value={value}
+          placeholder={t("import.path.placeholder")}
+          onChange={(e) => onChange(e.target.value)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={drop}
+          className="min-w-0 flex-1 font-mono"
+        />
+        {window.citegeist?.pickPaths ? (
+          <Button
+            aria-label={`${t("import.pick")}: ${label}`}
+            onClick={() => {
+              void window.citegeist?.pickPaths?.({ ...pick, title: label }).then((paths) => {
+                if (paths[0]) onChange(paths[0]);
+              });
+            }}
+          >
+            {t("import.pick")}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -258,11 +282,13 @@ export function ImportScreen() {
               label={t("import.path.sqlite")}
               value={form.path}
               onChange={(v) => set("path", v)}
+              pick={{ kind: "any" }}
             />
             <PathField
               label={t("import.path.storage")}
               value={form.storage}
               onChange={(v) => set("storage", v)}
+              pick={{ kind: "folder" }}
             />
           </>
         ) : form.kind === "zotero-api" ? (
@@ -283,11 +309,13 @@ export function ImportScreen() {
               label={t("import.path.file")}
               value={form.path}
               onChange={(v) => set("path", v)}
+              pick={{ kind: "file", extensions: FILE_EXTENSIONS[form.kind] ?? [] }}
             />
             <PathField
               label={t("import.path.pdfFolder")}
               value={form.pdfFolder}
               onChange={(v) => set("pdfFolder", v)}
+              pick={{ kind: "folder" }}
             />
           </>
         )}

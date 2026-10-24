@@ -4,10 +4,17 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { type Actor, CitegeistError, ItemFrontmatter } from "@citegeist/schema";
+import {
+  type Actor,
+  CitegeistError,
+  ItemFrontmatter,
+  legacyItemPatch,
+  migrateItemData,
+} from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
 import type { ChangeEvent, Library } from "../library.js";
 
@@ -41,7 +48,9 @@ export function saveItem(
   item: LoadedItem,
   patch: Record<string, unknown>,
 ): void {
-  item.file.patch({ ...patch, modified: lib.stamp(actor) });
+  // Keys that older versions wrote in another shape are rewritten with every save.
+  const migrated = legacyItemPatch(item.file.data ?? {});
+  item.file.patch({ ...migrated, ...patch, modified: lib.stamp(actor) });
   lib.writeFile(item.rel, item.file.toString());
 }
 
@@ -89,7 +98,7 @@ export function updateItem(
       );
     }
   }
-  const merged: Record<string, unknown> = { ...(item.file.data ?? {}) };
+  const merged: Record<string, unknown> = migrateItemData(item.file.data ?? {});
   const today = lib.stamp(actor).at.slice(0, 10);
   const provenance: Record<string, string> = { ...(item.fm.provenance ?? {}) };
   const filePatch: Record<string, unknown> = {};
@@ -192,6 +201,55 @@ export function trashItem(
   return { trashedTo: dest };
 }
 
+/**
+ * items.restore: moves the newest trashed folder of a citekey back to `items/` and indexes it
+ * again. The marker `trashed.json` is removed.
+ */
+export function restoreItem(lib: Library, citekey: string): void {
+  if (existsSync(lib.paths.itemDir(citekey))) {
+    throw problem(
+      "CITEKEY_TAKEN",
+      `cannot restore ${citekey}: an item with that citekey exists again`,
+      "Rename the item that is there, then restore.",
+      { citekey },
+    );
+  }
+  const trash = join(lib.root, ".trash");
+  const candidates = existsSync(trash)
+    ? readdirSync(trash)
+        .filter(
+          (name) => name.startsWith(`${citekey}-`) && existsSync(join(trash, name, "trashed.json")),
+        )
+        .filter((name) => {
+          try {
+            const meta = JSON.parse(readFileSync(join(trash, name, "trashed.json"), "utf8")) as {
+              citekey?: string;
+            };
+            return meta.citekey === citekey;
+          } catch {
+            return false;
+          }
+        })
+        .sort()
+    : [];
+  const newest = candidates[candidates.length - 1];
+  if (!newest) {
+    throw problem(
+      "NOT_IN_TRASH",
+      `no trashed item with citekey ${citekey}`,
+      "Check the citekey, or look in the .trash folder of the library.",
+      { citekey },
+    );
+  }
+  const from = join(trash, newest);
+  renameSync(from, lib.paths.itemDir(citekey));
+  rmSync(join(lib.paths.itemDir(citekey), "trashed.json"), { force: true });
+  const rel = `items/${citekey}/${citekey}.md`;
+  const result = lib.indexer.indexFile(rel);
+  lib.emit("change", { ...result, external: false } satisfies ChangeEvent);
+  lib.sync();
+}
+
 export function acceptInbox(lib: Library, actor: Actor, citekeys: string[]): void {
   const items = citekeys.map((c) => loadItem(lib, c));
   for (const item of items) {
@@ -266,6 +324,8 @@ export function markdownFiles(lib: Library): string[] {
   }
   for (const e of ls("notes"))
     if (e.isFile() && e.name.endsWith(".md")) out.push(`notes/${e.name}`);
+  for (const e of ls("notes/concepts"))
+    if (e.isFile() && e.name.endsWith(".md")) out.push(`notes/concepts/${e.name}`);
   for (const p of ls("projects")) {
     if (p.isDirectory() && existsSync(join(lib.root, "projects", p.name, "project.md"))) {
       out.push(`projects/${p.name}/project.md`);
