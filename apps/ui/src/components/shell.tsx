@@ -23,6 +23,7 @@ import {
   Search,
   Settings,
   Sun,
+  Telescope,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { LANGS, type Lang, type MessageKey, useI18n } from "../i18n";
@@ -365,6 +366,17 @@ function ShellFrame() {
                 label={t("nav.inbox")}
                 badge={inboxCount}
                 badgeLabel={inboxCount > 0 ? t("nav.inboxNew", { n: inboxCount }) : t("nav.inbox")}
+              />
+            </Link>
+            <Link
+              to="/litsearch"
+              aria-current={pathname.startsWith("/litsearch") ? "page" : undefined}
+              className={navClass(open, pathname.startsWith("/litsearch"))}
+            >
+              <NavBody
+                open={open}
+                icon={<Telescope className={ICON} />}
+                label={t("nav.litsearch")}
               />
             </Link>
             <Link

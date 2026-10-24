@@ -12,7 +12,7 @@ export {
   runPipeline,
   scriptEnv,
 } from "./runner.js";
-export { LitsearchService, workOf } from "./service.js";
+export { type LitsearchDeps, LitsearchService, runIdFor, workOf } from "./service.js";
 export {
   listRunSummaries,
   paperKey,
@@ -21,5 +21,6 @@ export {
   readProgressEvents,
   readRunMeta,
   readRunPapers,
+  readRunState,
   stagesFromEvents,
 } from "./store.js";

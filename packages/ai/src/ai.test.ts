@@ -147,6 +147,7 @@ describe("task registry", () => {
     expect(TASK_NAMES).toEqual([
       "card.paraphrase",
       "card.verify",
+      "litsearch.suggestQueries",
       "matrix.fillCell",
       "metadata.fromFirstPage",
       "note.proposeLinks",

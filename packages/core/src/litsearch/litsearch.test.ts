@@ -3,12 +3,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Registry } from "@citegeist/ops";
 import { afterEach, describe, expect, it } from "vitest";
+import { JobQueue } from "../jobs/queue.js";
 import { Library } from "../library.js";
 import { IGNORE_LINES } from "../sync/versioning.js";
-import { cleanTmpDirs, itemData, tmpDir } from "../test-helpers.js";
+import { cleanTmpDirs, itemData, tmpDir, until } from "../test-helpers.js";
 import { parseCsv } from "./csv.js";
 import { bindLitsearchOperations } from "./ops.js";
 import { runPipeline } from "./runner.js";
+import { runIdFor } from "./service.js";
 import { progressOf, readProgressEvents, readRunPapers, stagesFromEvents } from "./store.js";
 
 const FIXTURES = join(
@@ -127,11 +129,11 @@ describe("stagesFromEvents", () => {
 
 /** A stand-in for pipeline.py: prints progress events, then exits as the mode says. */
 function stubPipeline(dir: string, mode: "done" | "fail" | "hang"): string {
-  const path = join(dir, `stub-${mode}.mjs`);
+  const path = join(dir, `stub-${mode}.cjs`);
   const body = {
     done: `
       const out = process.argv[process.argv.indexOf("--out") + 1];
-      const fs = await import("node:fs");
+      const fs = require("node:fs");
       fs.writeFileSync(out + "/papers.csv", "section,title\\nmain,A\\n");
       emit({ type: "plan", stages: [{ id: "search", label: "Search" }] });
       emit({ type: "stage", stage: "search", status: "started" });
@@ -388,5 +390,167 @@ describe("library folder", () => {
         "research/runs/*/works/",
       ]),
     );
+  });
+});
+
+describe("litsearch.start, cancel and resume", () => {
+  async function wired(mode: "done" | "hang") {
+    const lib = await library();
+    const queue = new JobQueue({ dbPath: join(tmpDir(), "state.sqlite") });
+    queue.start();
+    const scriptsDir = tmpDir();
+    writeFileSync(join(scriptsDir, "pipeline.py"), readFileSync(stubPipeline(tmpDir(), mode)));
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      queue,
+      command: { command: process.execPath, args: [] },
+      scriptsDir,
+      cacheDir: tmpDir(),
+      credentials: async () => ({ openalexKey: "oa-key", mailto: "me@example.org" }),
+      now: () => new Date("2026-10-24T14:00:00Z"),
+      ai: {
+        run: async () => ({
+          output: {
+            queries: [
+              { query: '"agent protocol"', variants: ['"agent protocols"', '"agents protocol"'] },
+              { query: '"multi-agent communication"', variants: [] },
+            ],
+          },
+        }),
+      },
+    });
+    const call = <T>(name: string, input: unknown) =>
+      registry.call(name, { actor: "human" }, input) as Promise<T>;
+    return { lib, queue, call };
+  }
+
+  it("runs a search as a job, reports progress and lists the run as done", async () => {
+    // protects: litsearch.start makes a dated run folder and a litsearch.run job that ends with the pipeline
+    // fails_when: the job does not succeed, the run id ignores date and topic, or the run lists as running
+    // no_claim: a node stub stands in for pipeline.py; uv and the real scripts are not started
+    const { queue, call } = await wired("done");
+    const started = await call<{ runId: string; job: string }>("litsearch.start", {
+      topic: "Agent Protocols: A Survey!",
+      queries: ['  "agent  protocol" '],
+    });
+    expect(started.runId).toBe("2026-10-24-agent-protocols-a-survey");
+    const job = await queue.waitFor(started.job);
+    expect(job).toMatchObject({ kind: "litsearch.run", status: "succeeded", progress: 1 });
+    const runs = await call<{ runs: Array<{ id: string; status: string; queries: string[] }> }>(
+      "litsearch.runs",
+      { limit: 10 },
+    );
+    expect(runs.runs).toMatchObject([
+      { id: started.runId, status: "done", queries: ['"agent protocol"'] },
+    ]);
+    queue.close();
+  });
+
+  it("refuses a second run while one is open and cancels the open one", async () => {
+    // protects: one search at a time per library; cancel ends it and run.json says cancelled
+    // fails_when: a second start is accepted, or the cancelled run stays running
+    // no_claim: a node stub that never ends stands in for a slow pipeline.py
+    const { lib, queue, call } = await wired("hang");
+    const first = await call<{ runId: string; job: string }>("litsearch.start", {
+      topic: "slow topic",
+      queries: ["a"],
+    });
+    await until(() => queue.get(first.job)?.status === "running");
+    await expect(
+      call("litsearch.start", { topic: "another topic", queries: ["b"] }),
+    ).rejects.toMatchObject({ detail: { code: "LITSEARCH_RUN_ACTIVE" } });
+    await call("litsearch.cancel", { runId: first.runId });
+    expect((await queue.waitFor(first.job)).status).toBe("cancelled");
+    await until(
+      () =>
+        JSON.parse(readFileSync(join(lib.paths.litsearchRunDir(first.runId), "run.json"), "utf8"))
+          .status === "cancelled",
+    );
+    await expect(call("litsearch.cancel", { runId: first.runId })).rejects.toMatchObject({
+      detail: { code: "LITSEARCH_RUN_NOT_RUNNING" },
+    });
+    queue.close();
+  });
+
+  it("resumes a cancelled run in the same folder and refuses to resume a finished one", async () => {
+    // protects: resume keeps the folder (and its query cache) and the run's own settings
+    // fails_when: resume makes a new folder, loses the queries, or reruns a done run
+    // no_claim: the cache reuse itself happens inside pipeline.py and is not exercised by the stub
+    const { lib, queue, call } = await wired("done");
+    const dir = copyRun(lib, "2026-10-01-older");
+    writeFileSync(
+      join(dir, "run.json"),
+      JSON.stringify({
+        topic: "older",
+        queries: ["x y"],
+        status: "cancelled",
+        created: "2026-10-01T09:00:00",
+        attempts: 1,
+        disabled_sources: ["dblp"],
+      }),
+    );
+    const resumed = await call<{ runId: string; job: string }>("litsearch.resume", {
+      runId: "2026-10-01-older",
+    });
+    expect(resumed.runId).toBe("2026-10-01-older");
+    expect((await queue.waitFor(resumed.job)).status).toBe("succeeded");
+    expect(JSON.parse(readFileSync(join(dir, "run.json"), "utf8"))).toMatchObject({
+      status: "done",
+      attempts: 2,
+      queries: ["x y"],
+      disabled_sources: ["dblp"],
+      created: "2026-10-01T09:00:00",
+    });
+    await expect(call("litsearch.resume", { runId: "2026-10-01-older" })).rejects.toMatchObject({
+      detail: { code: "LITSEARCH_RUN_NOT_RESUMABLE" },
+    });
+    queue.close();
+  });
+
+  it("reads a run left running by a dead process as interrupted", async () => {
+    // protects: after a crash or quit the list does not show a run as running forever
+    // fails_when: status stays running although no job and no process is alive
+    // no_claim: pid 999999 is assumed not to exist on the test machine
+    const { lib, call } = await wired("done");
+    const dir = copyRun(lib, "2026-10-02-dead");
+    writeFileSync(
+      join(dir, "run.json"),
+      JSON.stringify({
+        topic: "dead",
+        status: "running",
+        created: "2026-10-02T09:00:00",
+        pid: 999999,
+      }),
+    );
+    const got = await call<{ run: { status: string } }>("litsearch.get", {
+      runId: "2026-10-02-dead",
+    });
+    expect(got.run.status).toBe("interrupted");
+  });
+
+  it("suggests queries through the AI router, core queries first and without plural duplicates", async () => {
+    // protects: the suggestion list follows research-pipeline's rule (cap, cores first, no plural/case twins)
+    // fails_when: "agent protocols" survives next to "agent protocol", or the cap is exceeded
+    // no_claim: the model is a stub; prompt quality is the eval's job
+    const { call } = await wired("done");
+    const out = await call<{ queries: string[] }>("litsearch.suggest", {
+      topic: "agent protocols",
+      maxQueries: 2,
+    });
+    expect(out.queries).toEqual(['"agent protocol"', '"multi-agent communication"']);
+  });
+});
+
+describe("runIdFor", () => {
+  it("dates and slugs the topic and counts up when the folder exists", () => {
+    // protects: run folders are readable, sortable and never overwrite each other
+    // fails_when: umlauts or punctuation leak into the id, or an existing id is reused
+    // no_claim: none beyond protects
+    const date = new Date("2026-10-24T23:30:00Z");
+    expect(runIdFor("Systemtheorie & Plattformökonomie", date, () => false)).toBe(
+      "2026-10-24-systemtheorie-plattformokonomie",
+    );
+    const taken = new Set(["2026-10-24-x", "2026-10-24-x-2"]);
+    expect(runIdFor("x", date, (id) => taken.has(id))).toBe("2026-10-24-x-3");
+    expect(runIdFor("!!!", date, () => false)).toBe("2026-10-24-run");
   });
 });

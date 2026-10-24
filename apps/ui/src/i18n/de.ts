@@ -1,5 +1,6 @@
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
+import { litsearchDe } from "../litsearch/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { matrixDe } from "./matrix";
@@ -438,6 +439,7 @@ export const de = {
   ...importDe,
   ...relatedDe,
   ...matrixDe,
+  ...litsearchDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",

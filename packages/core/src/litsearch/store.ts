@@ -68,6 +68,13 @@ export function readRunMeta(dir: string, id: string): LitsearchRunMeta | undefin
   };
 }
 
+/** What a run needs to start again: its pid while running and the sources it switched off. */
+export function readRunState(dir: string): { pid?: number; disableSources: string[] } {
+  const raw = readJson(join(dir, "run.json")) ?? {};
+  const pid = int(raw.pid);
+  return { ...(pid && pid > 0 ? { pid } : {}), disableSources: strings(raw.disabled_sources) };
+}
+
 /** All runs under `runsDir`, newest first. */
 export function listRunSummaries(runsDir: string): LitsearchRunSummary[] {
   if (!existsSync(runsDir)) return [];

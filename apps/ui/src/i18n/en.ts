@@ -1,5 +1,6 @@
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
+import { litsearchEn } from "../litsearch/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import type { MessageKey } from "./de";
@@ -433,6 +434,7 @@ export const en: Record<MessageKey, string> = {
   ...importEn,
   ...relatedEn,
   ...matrixEn,
+  ...litsearchEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",

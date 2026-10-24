@@ -27,6 +27,12 @@ export {
 } from "./tasks/card-paraphrase/index.js";
 export { CardVerifyInput, CardVerifyOutput } from "./tasks/card-verify/index.js";
 export {
+  LitsearchSuggestQueriesInput,
+  LitsearchSuggestQueriesOutput,
+  planSuggestedQueries,
+  queryKey,
+} from "./tasks/litsearch-suggest-queries/index.js";
+export {
   MAX_EVIDENCE,
   MatrixFillCellInput,
   MatrixFillCellOutput,

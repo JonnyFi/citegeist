@@ -14,6 +14,7 @@ import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
 import { type GraphDepth, GraphScreen } from "./graph";
 import { ImportScreen } from "./import";
+import { LitsearchNewScreen, LitsearchRunScreen, LitsearchRunsScreen } from "./litsearch";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SETTINGS_SECTIONS, SettingsScreen, type SettingsSection } from "./routes/settings";
 
@@ -209,9 +210,33 @@ const importRoute = createRoute({
   component: ImportScreen,
 });
 
+const litsearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch",
+  component: LitsearchRunsScreen,
+});
+
+const litsearchNewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/new",
+  component: LitsearchNewScreen,
+});
+
+const litsearchRunRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/$runId",
+  component: function LitsearchRun() {
+    const { runId } = litsearchRunRoute.useParams();
+    return <LitsearchRunScreen key={runId} runId={runId} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   libraryRoute,
   inboxRoute,
+  litsearchRoute,
+  litsearchNewRoute,
+  litsearchRunRoute,
   itemRoute,
   projectsRoute,
   projectRoute,

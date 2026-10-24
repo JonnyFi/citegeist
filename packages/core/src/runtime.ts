@@ -16,7 +16,12 @@ import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
 import type { Library } from "./library.js";
 import { bindLinkOperations } from "./links/index.js";
-import { bindLitsearchOperations } from "./litsearch/index.js";
+import {
+  bindLitsearchOperations,
+  defaultLitsearchEnvDir,
+  type LitsearchCommand,
+  litsearchCommand,
+} from "./litsearch/index.js";
 import { aiTaskJobs, bindMatrixOperations } from "./matrix/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
@@ -35,6 +40,7 @@ import {
   createSettingsDeps,
   type DefaultSettingsOptions,
   NCBI_KEY_PROVIDER,
+  OPENALEX_KEY_PROVIDER,
   type SettingsService,
 } from "./settings/index.js";
 import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
@@ -72,6 +78,11 @@ export interface RuntimeOptions {
   sync?: Omit<BindSyncOptions, "autoStart" | "onError">;
   /** Receives errors of background work such as sync commits. */
   onError?: (err: unknown) => void;
+  /**
+   * Literature search (workers/research). `sourceDir` defaults to the repository checkout; the
+   * packaged app passes its resources. `command` replaces the uv command, for tests.
+   */
+  litsearch?: { sourceDir?: string; command?: LitsearchCommand };
 }
 
 export interface Runtime {
@@ -319,7 +330,29 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     queue: ingest.queue,
   });
   bindProjectContext(registry);
-  bindLitsearchOperations(registry, lib);
+  // A literature search run is a job; a one-shot process (the CLI) only reads runs.
+  const litsearchSource = opts.litsearch?.sourceDir ?? join(repoRoot(), "workers", "research");
+  bindLitsearchOperations(registry, lib, {
+    ai: {
+      run: async (task, input) => ai.run(task, input),
+    },
+    ...(opts.autoStart !== false
+      ? {
+          queue: ingest.queue,
+          command:
+            opts.litsearch?.command ??
+            litsearchCommand({
+              sourceDir: litsearchSource,
+              envDir: defaultLitsearchEnvDir(localBase),
+            }),
+          scriptsDir: join(litsearchSource, "scripts"),
+        }
+      : {}),
+    credentials: async () => ({
+      openalexKey: await deps.keychain.get(OPENALEX_KEY_PROVIDER).catch(() => undefined),
+      mailto: deps.store.load().mailto ?? opts.mailto,
+    }),
+  });
 
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {

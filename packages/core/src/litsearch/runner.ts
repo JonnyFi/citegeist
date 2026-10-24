@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { finished } from "node:stream/promises";
 import type { LitsearchRunStatus } from "@citegeist/ops";
 import { writeFileAtomic } from "../fsutil.js";
 import { extendedPath, findExecutable } from "../settings/executables.js";
@@ -128,6 +129,7 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
     status: "running",
     counts: {},
     attempts,
+    ...(request.disableSources?.length ? { disabled_sources: request.disableSources } : {}),
     ...(request.watch ? { watchlist: request.watch } : {}),
   };
   writeMeta(dir, meta);
@@ -157,6 +159,8 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
       env: { ...process.env, ...run.command.env, ...scriptEnv(run.env) },
       cwd: dir,
     });
+    // The pid tells a reader whether a "running" run is still alive (watch.py writes it too).
+    if (child.pid) writeMeta(dir, { ...meta, pid: child.pid });
     let buffer = "";
     let counts: Record<string, number> = {};
     let lastError: string | undefined;
@@ -211,8 +215,6 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
       if (killTimer) clearTimeout(killTimer);
       run.signal?.removeEventListener("abort", onAbort);
       if (buffer) onLine(buffer);
-      progress.end();
-      stderr.end();
       const status: PipelineOutcome["status"] = cancelled
         ? "cancelled"
         : code === 0
@@ -222,14 +224,21 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
         status === "failed"
           ? (startError ?? lastError ?? `pipeline.py exited with code ${code}`)
           : undefined;
-      writeMeta(dir, {
-        ...meta,
-        status,
-        counts,
-        finished: iso(now()),
-        ...(error ? { error } : {}),
-      });
-      resolve({ status, counts, ...(error ? { error } : {}) });
+      // run.json says "done" only once both logs are on disk, so a reader never sees a cut log.
+      progress.end();
+      if (!child.stderr.readableEnded) stderr.end();
+      void Promise.all([finished(progress), finished(stderr)])
+        .catch(() => undefined)
+        .then(() => {
+          writeMeta(dir, {
+            ...meta,
+            status,
+            counts,
+            finished: iso(now()),
+            ...(error ? { error } : {}),
+          });
+          resolve({ status, counts, ...(error ? { error } : {}) });
+        });
     };
     child.on("error", (err) =>
       finish(null, `could not start the literature search: ${err.message}`),
