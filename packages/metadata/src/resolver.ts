@@ -3,17 +3,41 @@
  * Agents and the MCP server call this, never the remote APIs directly.
  */
 
-import { type FetchLike, type HttpCache, HttpClient, type RateLimit } from "./http.js";
+import type {
+  CitingPage,
+  GraphLookup,
+  ReferencePage,
+  RetractionStatus,
+  VersionResult,
+  WorkKey,
+} from "./graph-types.js";
+import {
+  DEFAULT_LIMITS,
+  type FetchLike,
+  type HttpCache,
+  HttpClient,
+  type RateLimit,
+} from "./http.js";
 import { detectIdentifier, type Identifier } from "./identifiers.js";
 import { type MatchResult, matchTitle, type TitleQuery, titleSimilarity } from "./match.js";
 import { type MergeResult, mergeRecords } from "./merge.js";
 import { fetchArxiv } from "./sources/arxiv.js";
+import {
+  fetchCrossrefReferences,
+  fetchOpenAlexCiting,
+  fetchOpenAlexDoi,
+  fetchOpenAlexReferences,
+} from "./sources/citations.js";
 import type { SourceContext } from "./sources/context.js";
 import { fetchCrossrefWork, searchCrossref } from "./sources/crossref.js";
 import { fetchDoiCsl } from "./sources/doi-org.js";
 import { fetchDnb, fetchK10plus } from "./sources/library-catalogs.js";
 import { fetchOpenAlexWork } from "./sources/openalex.js";
 import { fetchOpenLibrary } from "./sources/openlibrary.js";
+import { fetchPubmed } from "./sources/pubmed.js";
+import { fetchRetractionStatus } from "./sources/retraction.js";
+import { fetchUnpaywall } from "./sources/unpaywall.js";
+import { findVersions } from "./sources/versions.js";
 import { foldForCompare, isoDate } from "./text.js";
 import type {
   Enrichment,
@@ -58,7 +82,7 @@ export interface TitleResolveResult {
 
 const SAME_WORK_TITLE = 0.85;
 
-export class MetadataResolver {
+export class MetadataResolver implements GraphLookup {
   readonly http: HttpClient;
   private readonly ctx: SourceContext;
   private readonly config: MetadataConfig;
@@ -69,10 +93,19 @@ export class MetadataResolver {
     const userAgent = `${this.config.userAgent ?? "citegeist/0.0.0"}${
       this.config.mailto ? ` (mailto:${this.config.mailto})` : ""
     }`;
+    // Keys raise the allowance: OpenAlex 30 requests per second, NCBI 10 (docs section 4 and 9).
+    const keyed: Record<string, RateLimit> = {
+      ...(this.config.openalexApiKey
+        ? {
+            openalex: { minIntervalMs: 35, concurrency: DEFAULT_LIMITS.openalex?.concurrency ?? 2 },
+          }
+        : {}),
+      ...(this.config.ncbiApiKey ? { ncbi: { minIntervalMs: 110, concurrency: 1 } } : {}),
+    };
     this.http = new HttpClient({
       ...(options.fetch ? { fetch: options.fetch } : {}),
       ...(options.cache ? { cache: options.cache } : {}),
-      ...(options.limits ? { limits: options.limits } : {}),
+      limits: { ...keyed, ...options.limits },
       ...(options.sleep ? { sleep: options.sleep } : {}),
       ...(options.random ? { random: options.random } : {}),
       now,
@@ -96,6 +129,8 @@ export class MetadataResolver {
         return this.resolveArxiv(id, options, errors);
       case "isbn":
         return this.resolveIsbn(id, options, errors);
+      case "pmid":
+        return this.resolvePmid(id, options, errors);
       default:
         return this.finish([], id, options, "unsupported", [
           { source: id.kind, message: `resolving ${id.kind} identifiers is not implemented` },
@@ -135,11 +170,94 @@ export class MetadataResolver {
     const records: SourceRecord[] = [ra];
     const extras = await Promise.all([
       this.parentBookRecords(ra, errors),
+      this.unpaywallRecord(id.value, errors),
       this.openAlexRecord(id.value, errors),
     ]);
     records.push(...extras[0]);
+    // Unpaywall before OpenAlex: the first record with open-access data wins the merge, and
+    // OpenAlex lists wrong PDF locations now and then (docs section 4).
     if (extras[1]) records.push(extras[1]);
+    if (extras[2]) records.push(extras[2]);
     return this.finish(records, id, options, "resolved", errors);
+  }
+
+  /** PubMed record first, then the DOI path when PubMed names a DOI (Crossref wins the citation fields). */
+  private async resolvePmid(
+    id: Identifier,
+    options: ResolveOptions,
+    errors: ResolveResult["errors"],
+  ): Promise<ResolveResult> {
+    let pubmed: SourceRecord | undefined;
+    try {
+      pubmed = await fetchPubmed(this.ctx, id.value);
+    } catch (err) {
+      errors.push({ source: "pubmed", message: errorMessage(err) });
+    }
+    if (!pubmed) return this.finish([], id, options, "not-found", errors);
+    const doi = pubmed.fields.DOI;
+    const records: SourceRecord[] = [];
+    if (doi) {
+      const ra = await this.registrationAgencyRecord(doi, errors);
+      if (ra) records.push(ra);
+    }
+    records.push(pubmed);
+    if (doi) {
+      const [unpaywall, openalex] = await Promise.all([
+        this.unpaywallRecord(doi, errors),
+        this.openAlexRecord(doi, errors),
+      ]);
+      if (unpaywall) records.push(unpaywall);
+      if (openalex) records.push(openalex);
+    }
+    return this.finish(records, id, options, "resolved", errors);
+  }
+
+  private async unpaywallRecord(
+    doi: string,
+    errors: ResolveResult["errors"],
+  ): Promise<SourceRecord | undefined> {
+    if (this.config.unpaywall === false || !this.config.mailto) return undefined;
+    try {
+      return await fetchUnpaywall(this.ctx, doi);
+    } catch (err) {
+      errors.push({ source: "unpaywall", message: errorMessage(err) });
+      return undefined;
+    }
+  }
+
+  /** Open-access status and PDF url of a DOI. Undefined without a configured email or when Unpaywall does not know it. */
+  async findOpenAccess(doi: string): Promise<Enrichment["openAccess"] | undefined> {
+    if (this.config.unpaywall === false) return undefined;
+    return (await fetchUnpaywall(this.ctx, doi))?.enrichment?.openAccess;
+  }
+
+  // Citation graph, retractions, versions (GraphLookup) ----------------------------------------
+
+  crossrefReferences(doi: string, limit: number): Promise<ReferencePage | undefined> {
+    return fetchCrossrefReferences(this.ctx, doi, limit);
+  }
+
+  openAlexReferences(key: WorkKey, limit: number): Promise<ReferencePage | undefined> {
+    return fetchOpenAlexReferences(this.ctx, key, limit);
+  }
+
+  openAlexCiting(
+    key: WorkKey,
+    options: { limit: number; cursor?: string | undefined },
+  ): Promise<CitingPage | undefined> {
+    return fetchOpenAlexCiting(this.ctx, key, options);
+  }
+
+  openAlexDoi(openalex: string): Promise<string | undefined> {
+    return fetchOpenAlexDoi(this.ctx, openalex);
+  }
+
+  retractionStatus(doi: string): Promise<RetractionStatus> {
+    return fetchRetractionStatus(this.ctx, doi);
+  }
+
+  findVersions(key: { doi?: string; arxiv?: string }): Promise<VersionResult> {
+    return findVersions(this.ctx, key);
   }
 
   private async registrationAgencyRecord(

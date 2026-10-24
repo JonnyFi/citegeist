@@ -36,6 +36,8 @@ export type SourceName =
   | "crossref"
   | "doi.org"
   | "openalex"
+  | "pubmed"
+  | "unpaywall"
   | "arxiv"
   | "dnb"
   | "k10plus"
@@ -77,6 +79,12 @@ export interface MetadataConfig {
   mailto?: string;
   /** Optional free OpenAlex key. */
   openalexApiKey?: string;
+  /** Optional free NCBI key (E-utilities): 10 requests per second instead of 3. */
+  ncbiApiKey?: string;
+  /** `tool` parameter NCBI asks for with every E-utilities call. Default "citegeist". */
+  ncbiTool?: string;
+  /** Ask Unpaywall for open-access PDFs (default true). Needs `mailto`: Unpaywall requires an email. */
+  unpaywall?: boolean;
   /** Enrich with OpenAlex (default true). */
   openalex?: boolean;
   /** Resolve the published DOI named by an arXiv record (default true). */
