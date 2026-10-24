@@ -19,6 +19,10 @@ export const DEFAULT_LIMITS: Record<string, RateLimit> = {
   "crossref-list": { minIntervalMs: 400, concurrency: 1 },
   "doi.org": { minIntervalMs: 120, concurrency: 1 },
   openalex: { minIntervalMs: 100, concurrency: 2 },
+  // NCBI E-utilities: 3 requests per second without a key (10 with one, see resolver).
+  ncbi: { minIntervalMs: 350, concurrency: 1 },
+  // Unpaywall asks for at most 100,000 calls a day.
+  unpaywall: { minIntervalMs: 100, concurrency: 2 },
   // arXiv terms: one request every three seconds, one connection at a time.
   arxiv: { minIntervalMs: 3000, concurrency: 1 },
   dnb: { minIntervalMs: 1000, concurrency: 1 },

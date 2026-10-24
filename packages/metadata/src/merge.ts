@@ -26,6 +26,7 @@ type Order = SourceName[];
 const CITATION: Order = [
   "crossref",
   "doi.org",
+  "pubmed",
   "arxiv",
   "dnb",
   "k10plus",
@@ -35,6 +36,7 @@ const CITATION: Order = [
 const ABSTRACT: Order = [
   "crossref",
   "doi.org",
+  "pubmed",
   "arxiv",
   "openalex",
   "dnb",
@@ -44,6 +46,7 @@ const ABSTRACT: Order = [
 const LANGUAGE: Order = [
   "crossref",
   "doi.org",
+  "pubmed",
   "dnb",
   "k10plus",
   "arxiv",
@@ -54,6 +57,7 @@ const LANGUAGE: Order = [
 /** Authority tiers for list fields. Inside a tier the most complete list wins. */
 const LIST_TIERS: SourceName[][] = [
   ["crossref", "doi.org"],
+  ["pubmed"],
   ["arxiv"],
   ["dnb", "k10plus", "openlibrary"],
   ["openalex"],

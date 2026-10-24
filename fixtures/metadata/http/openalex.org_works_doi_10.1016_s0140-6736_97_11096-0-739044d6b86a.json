@@ -1,0 +1,7 @@
+{
+  "url": "https://api.openalex.org/works/doi:10.1016/s0140-6736(97)11096-0?select=id%2Cdoi%2Creferenced_works",
+  "accept": "application/json",
+  "status": 200,
+  "contentType": "application/json",
+  "body": "{\"id\":\"https://openalex.org/W2117847125\",\"doi\":\"https://doi.org/10.1016/s0140-6736(97)11096-0\",\"referenced_works\":[\"https://openalex.org/W19804704\",\"https://openalex.org/W40430408\",\"https://openalex.org/W141317774\",\"https://openalex.org/W1966535127\",\"https://openalex.org/W1967035877\",\"https://openalex.org/W1978222253\",\"https://openalex.org/W1979047426\",\"https://openalex.org/W1992308980\",\"https://openalex.org/W1998420106\",\"https://openalex.org/W1999722248\",\"https://openalex.org/W2005383370\",\"https://openalex.org/W2015151182\",\"https://openalex.org/W2024571744\",\"https://openalex.org/W2047024130\",\"https://openalex.org/W2052072164\",\"https://openalex.org/W2060419140\",\"https://openalex.org/W2077238261\",\"https://openalex.org/W2106182761\",\"https://openalex.org/W2136857670\",\"https://openalex.org/W2151181921\",\"https://openalex.org/W2159011576\",\"https://openalex.org/W2276306589\",\"https://openalex.org/W3033949515\",\"https://openalex.org/W4205253110\",\"https://openalex.org/W6600804475\"]}\n"
+}

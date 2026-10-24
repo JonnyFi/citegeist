@@ -1,0 +1,7 @@
+{
+  "url": "https://api.crossref.org/works/10.9999/citegeist.unknown",
+  "accept": "application/json",
+  "status": 404,
+  "contentType": "text/plain",
+  "body": "Resource not found."
+}

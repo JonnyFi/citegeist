@@ -1,0 +1,7 @@
+{
+  "url": "https://api.crossref.org/works?filter=updates%3A10.1038%2Fs41586-020-2649-2&rows=20&select=DOI%2Cupdate-to",
+  "accept": "application/json",
+  "status": 200,
+  "contentType": "application/json",
+  "body": "{\"status\":\"ok\",\"message-type\":\"work-list\",\"message-version\":\"1.0.0\",\"message\":{\"facets\":{},\"total-results\":0,\"items\":[],\"items-per-page\":20,\"query\":{\"start-index\":0,\"search-terms\":null}}}"
+}
