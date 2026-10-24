@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Index } from "../index-db.js";
+import { HeadingTracker } from "./heading-path.js";
 
 /** Longest chunk in characters: about 400 tokens of German text, below the 512 token limit. */
 export const MAX_CHUNK_CHARS = 1600;
@@ -16,7 +17,10 @@ export interface Chunk {
   seq: number;
   /** The chunk's own text, shown as the snippet. */
   text: string;
-  /** What the model reads: the title above the text. */
+  /**
+   * What the model reads: the title of a note or item, or the path of headings above a block,
+   * then the text.
+   */
   input: string;
   /** Hash of `input` together with the model id; equal hashes mean the stored vector is current. */
   hash: string;
@@ -76,10 +80,55 @@ interface DocRow {
   body: string;
 }
 
+/** Path of headings for every body block, keyed by `citekey \0 source:id`. */
+function headingPaths(index: Index): Map<string, string> {
+  const out = new Map<string, string>();
+  let group = "";
+  let tracker = new HeadingTracker();
+  for (const b of index.all<{
+    citekey: string;
+    source: string;
+    id: string;
+    type: string;
+    sec: string | null;
+    text: string;
+  }>(
+    "SELECT citekey, source, id, type, sec, text FROM blocks WHERE flow = 'body' ORDER BY rowid",
+  )) {
+    const g = `${b.citekey}\0${b.source}`;
+    if (g !== group) {
+      group = g;
+      tracker = new HeadingTracker();
+    }
+    const path = tracker.next(b);
+    if (path) out.set(`${b.citekey}\0${b.source}:${b.id}`, path);
+  }
+  return out;
+}
+
+/** The line above a chunk's text: the title of a note or item, the heading path of a block. */
+function leadOf(r: DocRow, path: string, text: string): string {
+  if (r.kind === "block") {
+    // A heading block is the last element of its own path; it does not need to say it twice.
+    const own = text.trim();
+    return (path.endsWith(own) ? path.slice(0, path.length - own.length) : path).replace(
+      / > $/,
+      "",
+    );
+  }
+  return r.kind === "card" ? "" : r.fts_title.trim();
+}
+
 /**
  * Every searchable document of the index as embedding chunks: blocks of converted documents,
  * cards, notes and items (title, abstract, note). Order: cards, notes, items, blocks, so the
  * small and valuable material is embedded first.
+ *
+ * A block is embedded together with the headings above it (like Docling's `contextualize`), so
+ * a paragraph that says "the method" carries which section it belongs to. Title, authors and
+ * year of the item are deliberately not added: on the golden set they lowered hit@5 from 86% to
+ * 79% (see docs/decisions.md, D-W5.3). A change in the context changes the hash of exactly the
+ * chunks it touches, so only those are embedded again.
  */
 export function collectChunks(index: Index, modelId: string): Chunk[] {
   const rows = index.all<DocRow>(
@@ -87,14 +136,15 @@ export function collectChunks(index: Index, modelId: string): Chunk[] {
      FROM docs d JOIN fts_tri f ON f.rowid = d.id
      ORDER BY CASE d.kind WHEN 'card' THEN 0 WHEN 'note' THEN 1 WHEN 'item' THEN 2 ELSE 3 END, d.id`,
   );
+  const headings = headingPaths(index);
   const out: Chunk[] = [];
   for (const r of rows) {
-    const title = (r.kind === "block" ? r.doc_title : r.fts_title).trim();
     const pieces = splitBody(r.body).slice(0, MAX_CHUNKS_PER_DOC);
     let seq = 0;
     for (const text of pieces) {
       if (text.length < MIN_CHUNK_CHARS) continue;
-      const input = title && !text.startsWith(title) ? `${title}\n${text}` : text;
+      const lead = leadOf(r, headings.get(`${r.citekey}\0${r.ref}`) ?? "", text);
+      const input = lead && !text.startsWith(lead) ? `${lead}\n${text}` : text;
       out.push({
         path: r.path,
         kind: r.kind,

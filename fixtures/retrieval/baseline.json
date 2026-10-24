@@ -10,8 +10,8 @@
   },
   "hybrid": {
     "embeddinggemma-300m": {
-      "hit5": 0.86,
-      "mrr": 0.728
+      "hit5": 0.884,
+      "mrr": 0.738
     }
   }
 }
