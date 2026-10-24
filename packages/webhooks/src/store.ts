@@ -16,11 +16,21 @@ export interface SecretStore {
 /** Keychain account of a connector's current and previous secret. */
 export const secretAccount = (name: string): string => `webhook-${name}`;
 export const previousSecretAccount = (name: string): string => `webhook-${name}-prev`;
+/** Keychain account of the value of the outbound auth header. */
+export const authValueAccount = (name: string): string => `webhook-${name}-auth`;
+/** Keychain account of the bearer token for the MCP endpoint. */
+export const mcpTokenAccount = (name: string): string => `webhook-${name}-mcp`;
+/** Keychain account of the inbound bearer token. */
+export const inboundTokenAccount = (name: string): string => `webhook-${name}-inbound`;
 
 export interface ConnectorRecord {
   name: string;
   kind: WebhookKind;
   url?: string;
+  /** Name of the outbound auth header. Its value is in the Keychain, never in this file. */
+  authHeader?: string;
+  /** The agent may use the MCP endpoint with its token (in the Keychain). Absent means no access. */
+  mcpScope?: "read" | "write";
   createdAt: string;
   /** ISO time until which the previous secret is accepted. */
   previousSecretUntil?: string;

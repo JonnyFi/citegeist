@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 // Signing scheme, shared by inbound and outbound requests:
 //
@@ -90,6 +90,29 @@ export function verifyRequest(input: VerifyInput): VerifyResult {
     for (const candidate of given) if (equalStrings(candidate, expected)) matched = true;
   }
   return matched ? { ok: true, id } : { ok: false, reason: "bad-signature" };
+}
+
+/** A fresh inbound bearer token. */
+export function generateInboundToken(): string {
+  return `whtok_${randomBytes(32).toString("base64url")}`;
+}
+
+/** A fresh bearer token for the MCP endpoint. */
+export function generateMcpToken(): string {
+  return `whmcp_${randomBytes(32).toString("base64url")}`;
+}
+
+/** Constant-time comparison that also hides the length of the secret. */
+export function tokensEqual(given: string, expected: string): boolean {
+  const a = createHash("sha256").update(given).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+/** The token of an `Authorization: Bearer <token>` header, if there is one. */
+export function bearerToken(header: string | undefined): string | undefined {
+  const match = /^Bearer[ \t]+(\S+)$/i.exec(header?.trim() ?? "");
+  return match?.[1];
 }
 
 /** A fresh secret: 32 random bytes, URL-safe. */

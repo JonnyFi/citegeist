@@ -5,6 +5,7 @@ export {
   type WebhooksHost,
 } from "./attach.js";
 export { createHooksHandler, MAX_BODY_BYTES } from "./http.js";
+export { FailureLimiter } from "./limit.js";
 export * from "./payload.js";
 export {
   connectorActor,
@@ -17,6 +18,8 @@ export {
 export {
   computeSignature,
   DEFAULT_TOLERANCE_SECONDS,
+  generateInboundToken,
+  generateMcpToken,
   generateSecret,
   ID_HEADER,
   ReplayGuard,
@@ -24,6 +27,7 @@ export {
   type SignedHeaders,
   signRequest,
   TIMESTAMP_HEADER,
+  tokensEqual,
   type VerifyResult,
   verifyRequest,
 } from "./sign.js";
