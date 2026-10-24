@@ -19,6 +19,10 @@ import {
 } from "./settings.js";
 import { macFrontApp, noFrontApp } from "./system.js";
 
+/** System Settings, Privacy & Security, Accessibility. */
+const ACCESSIBILITY_PANE =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+
 export interface RegisterQuickInsertOptions {
   /** Electron's userData directory; the settings file lives there. */
   userDataDir: string;
@@ -142,7 +146,11 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
       isTrusted: () =>
         process.platform === "darwin" && systemPreferences.isTrustedAccessibilityClient(false),
       prompt: () => {
-        if (process.platform === "darwin") systemPreferences.isTrustedAccessibilityClient(true);
+        if (process.platform !== "darwin") return;
+        // macOS shows its own prompt only once per app. Afterwards the call does nothing visible,
+        // so the button always opens the Accessibility list as well.
+        systemPreferences.isTrustedAccessibilityClient(true);
+        void shell.openExternal(ACCESSIBILITY_PANE);
       },
     },
     delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),

@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "pnpm run build && playwright test",
-    "package": "pnpm run build && electron-builder --config electron-builder.yml --mac dir --arm64"
+    "package": "pnpm run build && sh ../../scripts/package-mac.sh"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.95.0",

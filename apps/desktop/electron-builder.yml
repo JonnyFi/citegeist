@@ -112,8 +112,12 @@ mac:
   target:
     - target: dir
       arch: arm64
-  # Ad-hoc signature ("-"): the app starts on the machine that built it without a developer account.
+  # Ad-hoc signature ("-") by default: the app starts without a developer account. scripts/package-mac.sh
+  # overrides it with the self-signed identity "citegeist local signing" when the keychain has it, so
+  # the signature, and with it the Accessibility grant, stays the same across builds.
   identity: "-"
+  extendInfo:
+    NSAppleEventsUsageDescription: citegeist tippt eingefügte Zitate über System Events in die App, aus der du die Palette geöffnet hast.
   hardenedRuntime: false
   gatekeeperAssess: false
   notarize: false
