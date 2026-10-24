@@ -16,13 +16,15 @@ describe("projects", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "PhD proposal" })).toBeVisible();
     expect(screen.getByText(/Das Proposal untersucht Plattformen/)).toBeVisible();
     expect(screen.getByText(/Wie laesst sich Luhmanns Kommunikationsbegriff/)).toBeVisible();
-    expect(await screen.findAllByTestId("item-row")).toHaveLength(3);
+    // the reading list is a link into the filtered library, not a second table
+    const list = await screen.findByRole("link", { name: /Leseliste/ });
+    expect(list).toHaveAttribute("href", "/?project=phd-proposal");
+    expect(list).toHaveTextContent("3");
   });
 
   it("says so when a project has no brief", async () => {
     renderApp("/projects/reading-group");
     expect(await screen.findByText("Dieses Projekt hat noch keinen Brief.")).toBeVisible();
-    expect(await screen.findByText("Noch keine Quellen in diesem Projekt.")).toBeVisible();
   });
 });
 

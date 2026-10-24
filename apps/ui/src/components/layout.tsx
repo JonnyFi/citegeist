@@ -143,11 +143,14 @@ export function RightColumn({
   const sunken = current?.sunken ?? false;
 
   const base =
-    "flex min-w-0 items-center justify-center gap-2 text-label font-semibold uppercase tracking-[0.1em]";
+    "flex min-w-0 items-center justify-center overflow-hidden text-label font-semibold uppercase";
+  // three tabs share 360px, so the lettering tightens a little and the agent name moves to a tooltip
+  const crowded = tabs.length > 1;
   const tabClass = (on: boolean, first: boolean) =>
     cn(
       base,
-      "flex-1 px-2",
+      "flex-1",
+      crowded ? "gap-1.5 px-1 tracking-[0.06em]" : "gap-2 px-2 tracking-[0.1em]",
       on ? "bg-ink text-bg" : "text-ink hover:bg-sunken",
       !first && !on && "border-l border-line",
     );
@@ -190,13 +193,11 @@ export function RightColumn({
           aria-selected={active === "agent"}
           aria-controls="aside-panel-agent"
           onClick={() => setTab("agent")}
-          className={cn(
-            tabClass(active === "agent", tabs.length === 0),
-            tabs.length > 1 && "flex-[1.4]",
-          )}
+          title={agentName}
+          className={tabClass(active === "agent", tabs.length === 0)}
         >
           {t("agent.tab")}
-          {agentName ? (
+          {agentName && !crowded ? (
             <span
               className={cn(
                 "truncate font-mono font-normal normal-case tracking-normal",

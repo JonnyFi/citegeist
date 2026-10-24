@@ -27,7 +27,7 @@ describe("item view", () => {
     const first = cards[0] as HTMLElement;
     expect(within(first).getByText(/Soziale Systeme bestehen aus Kommunikationen/)).toBeVisible();
     expect(within(first).getByText("S. 31")).toBeVisible();
-    expect(within(first).getAllByText("KI").length).toBeGreaterThan(0);
+    expect(within(first).getAllByText(/claude-code/).length).toBeGreaterThan(0);
     expect(within(cards[1] as HTMLElement).getByText(/Compare with Maturana/)).toBeVisible();
     expect(within(cards[2] as HTMLElement).getByText(/Possible counter-position/)).toBeVisible();
   });
@@ -40,7 +40,8 @@ describe("item view", () => {
 
   it("explains why an agent put an item in the inbox", async () => {
     renderApp("/items/zuboff2019age");
-    expect(await screen.findByText(/Vorgeschlagen von claude-code/)).toBeVisible();
+    expect(await screen.findByText(/Vorgeschlagen von/)).toBeVisible();
+    expect(screen.getByText("agent:claude-code")).toBeVisible();
   });
 
   it("shows the error for an unknown citekey", async () => {
@@ -50,7 +51,9 @@ describe("item view", () => {
 
   it("links to the item's projects", async () => {
     renderApp("/items/luhmann1984soziale");
-    const link = await screen.findByRole("link", { name: "phd-proposal" });
-    expect(link).toHaveAttribute("href", "/projects/phd-proposal");
+    const links = await screen.findAllByRole("link", { name: "PhD proposal" });
+    // the crumb filters the library, the chip opens the project
+    expect(links.map((l) => l.getAttribute("href"))).toContain("/projects/phd-proposal");
+    expect(links.map((l) => l.getAttribute("href"))).toContain("/?project=phd-proposal");
   });
 });

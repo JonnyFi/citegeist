@@ -1,16 +1,18 @@
 import { citeFormat, itemsList, projectsGet, projectsList, projectsUpdate } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
-import { Download, FolderOpen, Pencil } from "lucide-react";
+import { FolderOpen, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, LIBRARY_AI_LANGUAGE } from "../lib/ai-language";
 import { downloadText } from "../lib/clipboard";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
-import { ItemsTable } from "./items-table";
+import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { Prose } from "./prose";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { StatusSquare } from "./ui/badge";
+import { Button, ButtonGroup } from "./ui/button";
+import { Textarea } from "./ui/input";
+import { Segmented } from "./ui/segmented";
 import { Select } from "./ui/select";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
@@ -19,31 +21,32 @@ export function ProjectsScreen() {
   const projects = useOp(projectsList, {});
   return (
     <div className="mx-auto w-full max-w-5xl px-8 py-8">
-      <h1 className="mb-6 font-serif text-2xl font-semibold">{t("nav.projects")}</h1>
+      <h1 className="mb-6 font-serif text-[24px] font-medium leading-tight">{t("nav.projects")}</h1>
       {projects.isPending ? (
         <Loading label={t("projects.loading")} />
       ) : projects.isError ? (
         <ErrorState error={projects.error} />
       ) : projects.data.projects.length === 0 ? (
         <EmptyState
-          icon={<FolderOpen className="size-6" />}
+          icon={<FolderOpen />}
           title={t("projects.emptyTitle")}
           description={t("projects.emptyDescription")}
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-px border border-line bg-line sm:grid-cols-2">
           {projects.data.projects.map((p) => (
-            <li key={p.slug}>
+            <li key={p.slug} className="bg-bg">
               <Link
                 to="/projects/$slug"
                 params={{ slug: p.slug }}
-                className="block h-full border border-line bg-surface p-4 hover:border-accent"
+                className="block h-full p-4 hover:bg-sunken"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-serif text-lg font-semibold">{p.title}</h2>
-                  <Badge tone={p.status === "active" ? "accent" : "neutral"}>
+                  <h2 className="font-serif text-[20px] font-medium leading-tight">{p.title}</h2>
+                  <span className="flex items-center gap-2 text-[12px]">
+                    <StatusSquare filled={p.status === "active"} />
                     {t(`project.status.${p.status}`)}
-                  </Badge>
+                  </span>
                 </div>
                 <p className="mt-1 text-muted">
                   {p.questions.length === 0
@@ -61,13 +64,13 @@ export function ProjectsScreen() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 border-b border-line pb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-      {children}
+    <h2 className="mb-2">
+      <Label>{children}</Label>
     </h2>
   );
 }
 
-/** The project brief that agents read before every project task, with an inline editor. */
+/** The project brief that agents read before every project task, in a bordered box with an inline editor. */
 function BriefEditor({ slug, brief }: { slug: string; brief: string }) {
   const { t } = useI18n();
   const update = useOpMutation(projectsUpdate);
@@ -76,11 +79,13 @@ function BriefEditor({ slug, brief }: { slug: string; brief: string }) {
   if (draft === null) {
     return (
       <>
-        {brief.trim() ? (
-          <Prose text={brief} />
-        ) : (
-          <p className="text-muted">{t("project.noBrief")}</p>
-        )}
+        <div className="border border-line px-4 py-3.5">
+          {brief.trim() ? (
+            <Prose text={brief} size="card" />
+          ) : (
+            <p className="text-muted">{t("project.noBrief")}</p>
+          )}
+        </div>
         <Button size="sm" className="mt-3" onClick={() => setDraft(brief)}>
           <Pencil className="size-3.5" />
           {t("project.editBrief")}
@@ -96,12 +101,12 @@ function BriefEditor({ slug, brief }: { slug: string; brief: string }) {
         update.mutate({ slug, patch: {}, brief: draft }, { onSuccess: () => setDraft(null) });
       }}
     >
-      <textarea
+      <Textarea
         aria-label={t("project.briefLabel")}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={12}
-        className="w-full border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed"
+        className="p-3 font-mono leading-relaxed"
       />
       <div className="mt-2 flex items-center gap-2">
         <Button type="submit" variant="primary" size="sm" disabled={update.isPending}>
@@ -144,31 +149,36 @@ function ProjectExport({ slug, citekeys }: { slug: string; citekeys: readonly st
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        size="sm"
-        disabled={state.busy || citekeys.length === 0}
-        onClick={() => void run("bibtex")}
-      >
-        <Download className="size-3.5" />
-        {t("project.exportBib")}
-      </Button>
-      <Button
-        size="sm"
-        disabled={state.busy || citekeys.length === 0}
-        onClick={() => void run("csl-json")}
-      >
-        <Download className="size-3.5" />
-        {t("project.exportCsl")}
-      </Button>
+    <div className="flex items-center gap-2">
       {state.error ? (
         <span role="alert" className="text-danger">
           {state.error}
         </span>
       ) : null}
+      <span className="text-[12px] text-muted">{t("project.export")}</span>
+      <ButtonGroup>
+        <Button
+          size="sm"
+          aria-label={t("project.exportBib")}
+          disabled={state.busy || citekeys.length === 0}
+          onClick={() => void run("bibtex")}
+        >
+          .bib
+        </Button>
+        <Button
+          size="sm"
+          aria-label={t("project.exportCsl")}
+          disabled={state.busy || citekeys.length === 0}
+          onClick={() => void run("csl-json")}
+        >
+          CSL-JSON
+        </Button>
+      </ButtonGroup>
     </div>
   );
 }
+
+const STATUSES = ["active", "paused", "done"] as const;
 
 export function ProjectView({ slug }: { slug: string }) {
   const { t, tn } = useI18n();
@@ -180,58 +190,121 @@ export function ProjectView({ slug }: { slug: string }) {
   if (project.isError) return <ErrorState error={project.error} />;
 
   const { frontmatter: fm, brief } = project.data;
-  return (
-    <div className="mx-auto w-full max-w-4xl px-8 py-10">
-      <header>
-        <div className="mb-2 flex items-center gap-2">
-          <Badge tone={fm.status === "active" ? "accent" : "neutral"}>
-            {t(`project.status.${fm.status}`)}
-          </Badge>
-          <span className="text-muted">{tn("items.count", project.data.items)}</span>
-        </div>
-        <h1 className="font-serif text-3xl font-semibold">{fm.title}</h1>
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+  const itemCount = project.data.items;
+
+  const settings = (
+    <dl className="flex flex-col overflow-y-auto">
+      <div className="flex flex-col gap-1.5 border-b border-line-soft px-4 py-3.5">
+        <dt className="text-[12px] text-muted">{t("project.statusLabel")}</dt>
+        <dd>
+          <Segmented
+            label={t("project.statusLabel")}
+            value={fm.status}
+            onChange={(status) => update.mutate({ slug, patch: { status } })}
+            options={STATUSES.map((s) => ({ value: s, label: t(`project.status.${s}`) }))}
+          />
+        </dd>
+      </div>
+      <div className="flex flex-col gap-1.5 border-b border-line-soft px-4 py-3.5">
+        <dt className="text-[12px] text-muted">{t("project.aiLanguage")}</dt>
+        <dd>
           <Select
             label={t("project.aiLanguage")}
             value={fm.ai_language ?? LIBRARY_AI_LANGUAGE}
             onChange={(v) => update.mutate({ slug, patch: { ai_language: v } })}
             options={AI_LANGUAGES.map((l) => ({ value: l, label: t(`aiLang.${l}`) }))}
+            className="w-full"
           />
-          <ProjectExport slug={slug} citekeys={items.data?.items.map((i) => i.citekey) ?? []} />
+        </dd>
+      </div>
+      <div className="flex flex-col gap-1.5 border-b border-line-soft px-4 py-3.5">
+        <dt className="text-[12px] text-muted">{t("project.citationStyle")}</dt>
+        <dd className="font-mono text-[12px]">{fm.style}</dd>
+      </div>
+    </dl>
+  );
+
+  return (
+    <div className="flex h-full min-h-0">
+      <HeaderSlot>
+        <nav
+          aria-label={t("item.breadcrumb")}
+          className="flex min-w-0 items-center gap-2 whitespace-nowrap text-muted"
+        >
+          <Link to="/projects" className="hover:text-ink">
+            {t("nav.projects")}
+          </Link>
+          <span aria-hidden="true">/</span>
+          <span className="truncate font-medium text-ink">{fm.title}</span>
+        </nav>
+        <span className="flex items-center gap-2 text-[12px] text-ink">
+          <StatusSquare filled={fm.status === "active"} />
+          {t(`project.status.${fm.status}`)}
+        </span>
+      </HeaderSlot>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <SubBar>
+          <div className="flex items-stretch gap-6 text-[13px] font-medium">
+            <span aria-current="page" className="flex items-center border-b-2 border-ink text-ink">
+              {t("project.brief")}
+            </span>
+            <Link
+              to="/"
+              search={{ project: slug }}
+              className="flex items-center border-b-2 border-transparent text-muted hover:text-ink"
+            >
+              {t("project.readingList")}
+              <span className="ml-1.5 font-mono font-normal">{itemCount}</span>
+            </Link>
+          </div>
+          <div className="flex items-center">
+            <ProjectExport slug={slug} citekeys={items.data?.items.map((i) => i.citekey) ?? []} />
+          </div>
+        </SubBar>
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-9">
+          <div className="flex max-w-[680px] flex-col gap-7">
+            <header className="flex flex-col gap-2">
+              <h1 className="font-serif text-[30px] font-medium leading-[1.2] tracking-[-0.01em]">
+                {fm.title}
+              </h1>
+              <p className="text-muted">{tn("items.count", itemCount)}</p>
+            </header>
+
+            <section>
+              <div className="flex items-center justify-between">
+                <SectionTitle>{t("project.brief")}</SectionTitle>
+                <span className="text-[11px] text-muted">{t("project.briefHint")}</span>
+              </div>
+              <BriefEditor slug={slug} brief={brief} />
+            </section>
+
+            {fm.questions.length > 0 ? (
+              <section>
+                <SectionTitle>{t("project.questions")}</SectionTitle>
+                <ol className="flex flex-col border-t border-line">
+                  {fm.questions.map((q) => (
+                    <li
+                      key={q.id}
+                      className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 border-b border-line-soft py-2.5 text-[14px]"
+                    >
+                      <span className="font-mono text-[12px] text-muted">
+                        {t("project.questionShort", { n: q.id.replace(/^q/, "") })}
+                      </span>
+                      <span>{q.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ) : null}
+
+            {items.isError ? <ErrorState error={items.error} /> : null}
+          </div>
         </div>
-      </header>
-
-      <section className="mt-8">
-        <SectionTitle>{t("project.brief")}</SectionTitle>
-        <BriefEditor slug={slug} brief={brief} />
-      </section>
-
-      {fm.questions.length > 0 ? (
-        <section className="mt-8">
-          <SectionTitle>{t("project.questions")}</SectionTitle>
-          <ol className="flex flex-col gap-2 font-serif text-base">
-            {fm.questions.map((q) => (
-              <li key={q.id} className="flex gap-3">
-                <span className="font-sans text-xs text-muted">{q.id.toUpperCase()}</span>
-                {q.text}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      <section className="mt-8">
-        <SectionTitle>{t("project.readingList")}</SectionTitle>
-        {items.isPending ? (
-          <Loading label={t("items.loading")} />
-        ) : items.isError ? (
-          <ErrorState error={items.error} />
-        ) : items.data.items.length === 0 ? (
-          <p className="text-muted">{t("project.noItems")}</p>
-        ) : (
-          <ItemsTable items={items.data.items} />
-        )}
-      </section>
+      </div>
+      <RightColumn
+        label={t("project.settingsTab")}
+        tabs={[{ id: "settings", label: t("project.settingsTab"), content: settings }]}
+      />
     </div>
   );
 }

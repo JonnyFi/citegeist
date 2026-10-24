@@ -139,7 +139,7 @@ body {
   position: relative;
 }
 .prose-read p + p {
-  margin-top: 18px;
+  margin-top: var(--prose-gap, 18px);
 }
 .prose-read h1 {
   font-size: 30px;
@@ -158,6 +158,17 @@ body {
 .prose-read ul {
   list-style: disc;
   padding-left: 1.25em;
+}
+.prose-read.prose-sm {
+  --prose-gap: 8px;
+  font-size: 16px;
+  max-width: none;
+}
+.prose-read.prose-card {
+  --prose-gap: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: none;
 }
 .page-mark {
   position: absolute;
@@ -217,11 +228,11 @@ input[type="radio"] {
 }
 
 /* Reader: packages/reader injects its own plain CSS; these rules fit it to the app palette. */
-.cg-reader {
+body .cg-reader {
   background: var(--bg);
 }
 /* The reader toolbar is the 44px sub bar of the reading tab: tabs left, language and view right. */
-.cg-toolbar {
+body .cg-toolbar {
   box-sizing: border-box;
   height: 44px;
   flex-shrink: 0;
@@ -233,16 +244,16 @@ input[type="radio"] {
   font: inherit;
   font-size: 13px;
 }
-.cg-toolbar-spacer {
+body .cg-toolbar-spacer {
   display: none;
 }
-.cg-toolbar > label {
+body .cg-toolbar > label {
   order: 2;
   margin-left: auto;
   color: var(--muted);
   font-size: 12px;
 }
-.cg-toolbar > select {
+body .cg-toolbar > select {
   order: 2;
   margin-left: -8px;
   height: 26px;
@@ -254,32 +265,34 @@ input[type="radio"] {
   font-size: 12px;
   padding: 0 8px;
 }
-.cg-toolbar > .cg-view-switch {
+body .cg-toolbar > .cg-view-switch {
   order: 3;
 }
-.cg-reflow-body {
+body .cg-reflow-body {
   color: var(--ink);
+  max-width: 684px;
+  padding: 48px 32px 64px;
 }
-.cg-doc {
+body .cg-doc {
   font-family: var(--font-serif);
   font-size: 19px;
   line-height: 1.55;
 }
-.cg-doc h2 {
+body .cg-doc h2 {
   font-weight: 500;
   font-style: italic;
   font-size: 1em;
   margin: 1.4em 0 16px;
 }
-.cg-doc p + p {
+body .cg-doc p + p {
   margin-top: 18px;
 }
-.cg-doc section + section {
+body .cg-doc section + section {
   margin-top: 1.5em;
   padding-top: 1.5em;
   border-top: 1px solid var(--line-soft);
 }
-.cg-hl {
+body .cg-hl {
   /* The reader draws one box per line. The box stays empty; the 2px underline sits 4px under it. */
   mix-blend-mode: normal;
   border-radius: 0;
@@ -288,11 +301,11 @@ input[type="radio"] {
     no-repeat 0 100% / 100% 2px;
   transform: translateY(3px);
 }
-.cg-page {
+body .cg-page {
   box-shadow: none;
   border: 1px solid var(--line-soft);
 }
-.cg-status {
+body .cg-status {
   color: var(--muted);
   font-family: var(--font-sans);
   font-size: 13px;

@@ -72,8 +72,9 @@ describe("project export", () => {
   it("downloads the project's bibliography as .bib", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/projects/phd-proposal");
-    await screen.findAllByTestId("item-row");
-    await user.click(screen.getByRole("button", { name: "Als .bib exportieren" }));
+    const bib = await screen.findByRole("button", { name: "Als .bib exportieren" });
+    await waitFor(() => expect(bib).toBeEnabled());
+    await user.click(bib);
     await waitFor(() => expect(downloads).toHaveLength(1));
 
     expect(calls.find((c) => c.name === "cite.format")?.input).toMatchObject({
@@ -95,8 +96,9 @@ describe("project export", () => {
   it("downloads the project's bibliography as CSL-JSON", async () => {
     const user = userEvent.setup();
     renderApp("/projects/rag-evaluation");
-    await screen.findAllByTestId("item-row");
-    await user.click(screen.getByRole("button", { name: "Als CSL-JSON exportieren" }));
+    const csl = await screen.findByRole("button", { name: "Als CSL-JSON exportieren" });
+    await waitFor(() => expect(csl).toBeEnabled());
+    await user.click(csl);
     await waitFor(() => expect(downloads).toHaveLength(1));
     expect(downloads[0]?.name).toBe("rag-evaluation.json");
     const entries = JSON.parse((await downloads[0]?.blob.text()) ?? "[]") as Array<{ id: string }>;

@@ -11,15 +11,17 @@ import {
 import type { ItemFrontmatter } from "@citegeist/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import type { z } from "zod";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
-import { anchorFromSelection, type CardsListOutput, itemCardsInput } from "../lib/cards";
+import { anchorFromSelection, type CardsListOutput, itemCardsInput, kindColor } from "../lib/cards";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
+import { CardList } from "./card-list";
 import { CardPanel } from "./card-panel";
+import { SubBar } from "./layout";
 import { PageBanner } from "./page-banner";
 import { hideReaderPopover, SelectionActions } from "./selection-actions";
 import { Segmented } from "./ui/segmented";
@@ -40,23 +42,43 @@ export function ReaderTab({
   cards,
   selectedId,
   onSelect,
+  tabs,
+  renderColumn,
 }: {
   fm: ItemFrontmatter;
   cards: CardsListOutput["cards"];
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
+  /** The Übersicht/Lesen tab row, drawn at the left of the sub bar. */
+  tabs: ReactNode;
+  /** The right column around the given card panel; the item view adds its other tabs. */
+  renderColumn: (cardsContent: ReactNode, count: number) => ReactNode;
 }) {
   const { t } = useI18n();
   const assets = useOp(documentsAssets, { citekey: fm.citekey });
 
-  if (assets.isPending) return <Loading label={t("reader.loading")} />;
-  if (assets.isError) {
+  if (assets.isPending || assets.isError) {
     return (
-      <EmptyState
-        icon={<FileX className="size-6" />}
-        title={t("reader.unavailableTitle")}
-        description={`${t("reader.unavailableDescription")} ${describeError(assets.error).message}`}
-      />
+      <div className="flex h-full min-h-0">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <SubBar>{tabs}</SubBar>
+          {assets.isPending ? (
+            <Loading label={t("reader.loading")} />
+          ) : (
+            <EmptyState
+              icon={<FileX />}
+              title={t("reader.unavailableTitle")}
+              description={`${t("reader.unavailableDescription")} ${describeError(assets.error).message}`}
+            />
+          )}
+        </div>
+        {renderColumn(
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CardList cards={cards} onOpen={(id) => onSelect(id)} />
+          </div>,
+          cards.length,
+        )}
+      </div>
     );
   }
   return (
@@ -67,6 +89,8 @@ export function ReaderTab({
       cards={cards}
       selectedId={selectedId}
       onSelect={onSelect}
+      tabs={tabs}
+      renderColumn={renderColumn}
     />
   );
 }
@@ -77,12 +101,16 @@ function ReaderLoaded({
   cards,
   selectedId,
   onSelect,
+  tabs,
+  renderColumn,
 }: {
   fm: ItemFrontmatter;
   data: DocumentAssets;
   cards: CardsListOutput["cards"];
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
+  tabs: ReactNode;
+  renderColumn: (cardsContent: ReactNode, count: number) => ReactNode;
 }) {
   const { t } = useI18n();
   const core = useCore();
@@ -115,9 +143,9 @@ function ReaderLoaded({
       cards.map((c) => ({
         id: c.frontmatter.id,
         anchor: { pdf: c.frontmatter.anchor.pdf, text: c.frontmatter.anchor.text },
-        ...(c.frontmatter.id === selectedId ? { color: "rgba(255, 150, 0, 0.55)" } : {}),
+        color: kindColor(c.frontmatter.kind),
       })),
-    [cards, selectedId],
+    [cards],
   );
   const orphaned = useMemo(
     () =>
@@ -211,10 +239,11 @@ function ReaderLoaded({
 
   return (
     <div className="flex h-full min-h-0">
+      {/* the card of the open selection gets a soft fill behind its underline */}
+      {selectedId ? (
+        <style>{`[data-highlight-id="${selectedId}"]{background-color:var(--line-soft);box-shadow:0 0 0 2px var(--line-soft)}`}</style>
+      ) : null}
       <div className="flex min-w-0 flex-1 flex-col">
-        {data.pages && !data.pages.confirmed ? (
-          <PageBanner citekey={fm.citekey} pages={data.pages} />
-        ) : null}
         <ReaderToolbar
           language={language.value}
           languages={languages}
@@ -223,17 +252,27 @@ function ReaderLoaded({
             setLanguage.mutate({ citekey: fm.citekey, patch: { ai_language: value } })
           }
         >
+          {tabs}
           {views.length > 0 ? (
-            <Segmented label={t("reader.view")} value={view} onChange={setView} options={views} />
+            <Segmented
+              label={t("reader.view")}
+              value={view}
+              onChange={setView}
+              options={views}
+              className="cg-view-switch"
+            />
           ) : null}
         </ReaderToolbar>
+        {data.pages && !data.pages.confirmed ? (
+          <PageBanner citekey={fm.citekey} pages={data.pages} />
+        ) : null}
         <div className="min-h-0 flex-1">
           {view === "pdf" ? (
             pdf.data ? (
               <PdfView data={pdf.data} source={data.source} pageLabels={pageLabels} {...shared} />
             ) : pdf.isError ? (
               <EmptyState
-                icon={<FileX className="size-6" />}
+                icon={<FileX />}
                 title={t("reader.pdfFailed")}
                 description={describeError(pdf.error).message}
               />
@@ -243,11 +282,11 @@ function ReaderLoaded({
           ) : data.html ? (
             <ReflowView html={data.html} {...shared} />
           ) : (
-            <EmptyState icon={<FileX className="size-6" />} title={t("reader.noView")} />
+            <EmptyState icon={<FileX />} title={t("reader.noView")} />
           )}
         </div>
       </div>
-      <aside className="flex w-[26rem] shrink-0 flex-col border-l border-line bg-sunken/30">
+      {renderColumn(
         <CardPanel
           cards={cards}
           selectedId={selectedId}
@@ -256,8 +295,9 @@ function ReaderLoaded({
           onJob={track}
           defaultLanguage={language.value}
           orphaned={orphaned}
-        />
-      </aside>
+        />,
+        cards.length,
+      )}
       {selection ? (
         <SelectionActions
           range={selection.range}
@@ -268,7 +308,7 @@ function ReaderLoaded({
       {create.error ? (
         <p
           role="alert"
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-danger px-3 py-2 text-white"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 border border-danger bg-bg px-3 py-2 text-danger"
         >
           {describeError(create.error).message}
         </p>

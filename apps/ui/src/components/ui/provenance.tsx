@@ -22,10 +22,16 @@ export function Star({ className }: { className?: string }) {
  */
 export function Provenance({
   who,
+  tail,
   children,
   className,
   ...props
-}: Omit<HTMLAttributes<HTMLSpanElement>, "children"> & { who?: string; children?: ReactNode }) {
+}: Omit<HTMLAttributes<HTMLSpanElement>, "children"> & {
+  who?: string | undefined;
+  /** Text after the name, such as ": fits research question 2". */
+  tail?: string | undefined;
+  children?: ReactNode;
+}) {
   return (
     <span
       className={cn("inline-flex items-center gap-2 text-[12px] text-muted", className)}
@@ -34,7 +40,13 @@ export function Provenance({
       <Star />
       <span>
         {children}
-        {who ? <span className="font-mono">{who}</span> : null}
+        {who ? (
+          <>
+            {" "}
+            <span className="font-mono">{who}</span>
+          </>
+        ) : null}
+        {tail}
       </span>
     </span>
   );

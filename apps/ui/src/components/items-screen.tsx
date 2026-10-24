@@ -3,6 +3,7 @@ import { BookOpen } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
 import { ItemsTable } from "./items-table";
+import { HeaderSlot, SubBar } from "./layout";
 import { Button } from "./ui/button";
 import { Segmented } from "./ui/segmented";
 import { Select } from "./ui/select";
@@ -34,67 +35,91 @@ export function ItemsScreen({
   const filtered = filters.project !== undefined || filters.status !== undefined;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-8 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-serif text-2xl font-semibold">{t("nav.library")}</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            label={t("filter.project")}
-            value={filters.project ?? "all"}
-            onChange={(v) => onFiltersChange({ ...filters, project: v === "all" ? undefined : v })}
-            options={[
-              { value: "all", label: t("filter.allProjects") },
-              ...(projects.data?.projects ?? []).map((p) => ({ value: p.slug, label: p.title })),
-            ]}
-          />
-          <Segmented
-            label={t("filter.status")}
-            value={filters.status ?? "any"}
-            onChange={(v) => onFiltersChange({ ...filters, status: v === "any" ? undefined : v })}
-            options={[
-              { value: "any", label: t("filter.all") },
-              { value: "unread", label: t("status.unread") },
-              { value: "reading", label: t("status.reading") },
-              { value: "read", label: t("status.read") },
-            ]}
-          />
-        </div>
-      </header>
-
-      {pages.isPending ? (
-        <Loading label={t("items.loading")} />
-      ) : pages.isError ? (
-        <ErrorState error={pages.error} />
-      ) : items.length === 0 ? (
-        filtered ? (
-          <EmptyState
-            icon={<BookOpen className="size-6" />}
-            title={t("items.noMatch")}
-            action={<Button onClick={() => onFiltersChange({})}>{t("items.clearFilters")}</Button>}
-          />
-        ) : (
-          <EmptyState
-            icon={<BookOpen className="size-6" />}
-            title={t("items.emptyTitle")}
-            description={t("items.emptyDescription")}
-          />
-        )
-      ) : (
-        <>
-          <ItemsTable items={items} />
-          <div className="mt-4 flex items-center justify-between text-muted">
-            <span>{tn("items.count", items.length)}</span>
-            {pages.hasNextPage ? (
-              <Button
-                disabled={pages.isFetchingNextPage}
-                onClick={() => void pages.fetchNextPage()}
-              >
-                {t("items.loadMore")}
-              </Button>
-            ) : null}
+    <div className="flex h-full min-h-0 flex-col">
+      <HeaderSlot>
+        <h1 className="text-[13px] font-medium">{t("nav.library")}</h1>
+        {pages.data ? (
+          <span className="font-mono text-[12px] text-muted">
+            {tn("items.count", items.length)}
+          </span>
+        ) : null}
+      </HeaderSlot>
+      <SubBar className="items-center">
+        <div className="flex items-center gap-5 text-[12px]">
+          <div className="flex items-center gap-2">
+            <span className="text-muted">{t("filter.project")}</span>
+            <Select
+              label={t("filter.project")}
+              value={filters.project ?? "all"}
+              active={filters.project !== undefined}
+              onChange={(v) =>
+                onFiltersChange({ ...filters, project: v === "all" ? undefined : v })
+              }
+              options={[
+                { value: "all", label: t("filter.allProjects") },
+                ...(projects.data?.projects ?? []).map((p) => ({ value: p.slug, label: p.title })),
+              ]}
+            />
           </div>
-        </>
-      )}
+          <div className="flex items-center gap-2">
+            <span className="text-muted">{t("filter.status")}</span>
+            <Segmented
+              label={t("filter.status")}
+              value={filters.status ?? "any"}
+              onChange={(v) => onFiltersChange({ ...filters, status: v === "any" ? undefined : v })}
+              options={[
+                { value: "any", label: t("filter.all") },
+                { value: "unread", label: t("status.unread") },
+                { value: "reading", label: t("status.reading") },
+                { value: "read", label: t("status.read") },
+              ]}
+            />
+          </div>
+        </div>
+        {pages.data ? (
+          <span className="flex items-center font-mono text-[12px] text-muted">
+            {tn("items.matches", items.length)}
+          </span>
+        ) : null}
+      </SubBar>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {pages.isPending ? (
+          <Loading label={t("items.loading")} />
+        ) : pages.isError ? (
+          <ErrorState error={pages.error} />
+        ) : items.length === 0 ? (
+          filtered ? (
+            <EmptyState
+              icon={<BookOpen />}
+              title={t("items.noMatch")}
+              action={
+                <Button onClick={() => onFiltersChange({})}>{t("items.clearFilters")}</Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={<BookOpen />}
+              title={t("items.emptyTitle")}
+              description={t("items.emptyDescription")}
+            />
+          )
+        ) : (
+          <>
+            <ItemsTable items={items} />
+            {pages.hasNextPage ? (
+              <div className="px-8 py-4">
+                <Button
+                  disabled={pages.isFetchingNextPage}
+                  onClick={() => void pages.fetchNextPage()}
+                >
+                  {t("items.loadMore")}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
