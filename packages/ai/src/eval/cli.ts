@@ -3,7 +3,7 @@
  *
  *   pnpm --filter @citegeist/ai eval -- --task card.paraphrase --backend claude --max-calls 5
  *
- * Backends: claude, codex, or an OpenAI-compatible preset (openai, anthropic, openrouter,
+ * Backends: claude, codex, cursor, or an OpenAI-compatible preset (openai, anthropic, openrouter,
  * xai, ollama) with the API key in the environment variable CITEGEIST_API_KEY.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { ClaudeCodeCliBackend } from "../backends/claude-cli.js";
 import { CodexExecBackend } from "../backends/codex-exec.js";
+import { CursorCliBackend } from "../backends/cursor-cli.js";
 import { OPENAI_COMPAT_PRESETS, OpenAiCompatBackend } from "../backends/openai-http.js";
 import { nodeRunner, type ProcessRunner } from "../runner.js";
 import { TASK_NAMES, type TaskName } from "../tasks/registry.js";
@@ -78,6 +79,11 @@ function makeBackend(id: string): InferenceBackend {
   if (id === "codex") {
     return new CodexExecBackend({
       runner: budgetRunner(nodeRunner, (a) => a[0] === "exec"),
+    });
+  }
+  if (id === "cursor") {
+    return new CursorCliBackend({
+      runner: budgetRunner(nodeRunner, (a) => a.includes("-p")),
     });
   }
   if (id in OPENAI_COMPAT_PRESETS) {

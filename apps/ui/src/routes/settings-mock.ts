@@ -76,6 +76,19 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
           recovery: "do-first",
         },
       },
+      {
+        id: "cursor-cli",
+        kind: "subscription-cli",
+        label: "Cursor CLI",
+        available: false,
+        detail: "not-installed",
+        error: {
+          code: "AI_CLI_MISSING",
+          message: "The `agent` command was not found on PATH or in the usual install folders.",
+          fix: "Install the Cursor CLI (https://cursor.com/cli), run `agent login`, then retry.",
+          recovery: "do-first",
+        },
+      },
       { id: "ollama", kind: "local", label: "Ollama", available: false, detail: "unreachable" },
       { id: "openai", kind: "api-key", label: "OpenAI API", available: false, detail: "no-key" },
       {

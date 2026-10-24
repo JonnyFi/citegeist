@@ -19,7 +19,7 @@ export function snippet(text: string, max = 400): string {
 }
 
 export const aiErrors = {
-  cliMissing: (cli: "claude" | "codex", installHint: string) =>
+  cliMissing: (cli: "claude" | "codex" | "agent", installHint: string) =>
     make(
       "AI_CLI_MISSING",
       "do-first",
@@ -27,7 +27,7 @@ export const aiErrors = {
       installHint,
       { cli },
     ),
-  cliLoggedOut: (cli: "claude" | "codex", loginCommand: string, detail = "") =>
+  cliLoggedOut: (cli: "claude" | "codex" | "agent", loginCommand: string, detail = "") =>
     make(
       "AI_CLI_LOGGED_OUT",
       "do-first",
@@ -35,12 +35,17 @@ export const aiErrors = {
       `Run \`${loginCommand}\` in a terminal, then retry.`,
       { cli },
     ),
-  cliVersion: (cli: "claude", found: string, pinned: string) =>
+  cliVersion: (
+    cli: "claude" | "agent",
+    found: string,
+    pinned: string,
+    upgradeHint = `Install ${cli} ${pinned} (for example \`npm install -g @anthropic-ai/claude-code@${pinned}\`), or set the backend option pinnedVersion to ${found} after testing it.`,
+  ) =>
     make(
       "AI_CLI_VERSION_MISMATCH",
       "fix-and-retry",
       `Found ${cli} ${found}, but citegeist is pinned to ${pinned}.`,
-      `Install ${cli} ${pinned} (for example \`npm install -g @anthropic-ai/claude-code@${pinned}\`), or set the backend option pinnedVersion to ${found} after testing it.`,
+      upgradeHint,
       { cli, found, pinned },
     ),
   timeout: (backend: string, task: string, timeoutMs: number) =>

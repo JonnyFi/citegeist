@@ -6,6 +6,11 @@ export {
   PINNED_CLAUDE_VERSION,
 } from "./backends/claude-cli.js";
 export { CodexExecBackend, type CodexExecOptions } from "./backends/codex-exec.js";
+export {
+  CursorCliBackend,
+  type CursorCliOptions,
+  PINNED_CURSOR_VERSION,
+} from "./backends/cursor-cli.js";
 export { MockBackend, type MockResponse } from "./backends/mock.js";
 export {
   OPENAI_COMPAT_PRESETS,

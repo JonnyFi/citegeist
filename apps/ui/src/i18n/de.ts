@@ -308,6 +308,11 @@ export const de = {
   "backend.hint.codex-exec.not-installed":
     "citegeist nutzt die Codex CLI, die du installiert hast. Installiere sie mit npm install -g @openai/codex und melde dich dann mit codex login im Terminal an.",
   "backend.hint.codex-exec.logged-out": "Führe codex login im Terminal aus und prüfe erneut.",
+  "backend.hint.cursor-cli.not-installed":
+    "citegeist nutzt die Cursor CLI, die du installiert hast. Installiere sie von cursor.com/cli und melde dich dann mit agent login im Terminal an.",
+  "backend.hint.cursor-cli.logged-out": "Führe agent login im Terminal aus und prüfe erneut.",
+  "backend.hint.cursor-cli.outdated":
+    "Aktualisiere die Cursor CLI mit agent update und prüfe erneut.",
   "backend.hint.ollama.unreachable": "Starte Ollama und prüfe erneut.",
   "task.card.paraphrase": "Paraphrase und Art",
   "task.card.verify": "Zitate prüfen",

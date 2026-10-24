@@ -303,6 +303,10 @@ export const en: Record<MessageKey, string> = {
   "backend.hint.codex-exec.not-installed":
     "citegeist uses the Codex CLI you installed. Install it with npm install -g @openai/codex, then log in with codex login in Terminal.",
   "backend.hint.codex-exec.logged-out": "Run codex login in Terminal, then check again.",
+  "backend.hint.cursor-cli.not-installed":
+    "citegeist uses the Cursor CLI you installed. Install it from cursor.com/cli, then log in with agent login in Terminal.",
+  "backend.hint.cursor-cli.logged-out": "Run agent login in Terminal, then check again.",
+  "backend.hint.cursor-cli.outdated": "Update the Cursor CLI with agent update, then check again.",
   "backend.hint.ollama.unreachable": "Start Ollama, then check again.",
   "task.card.paraphrase": "Paraphrase and kind",
   "task.card.verify": "Check quotes",

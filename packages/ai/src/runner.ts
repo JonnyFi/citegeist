@@ -65,6 +65,9 @@ export const CLAUDE_ENV_BLOCKLIST = /^(CLAUDECODE$|CLAUDE_CODE_|ANTHROPIC_|AI_AG
 /** Parent Codex session variables. CODEX_HOME stays, because it can hold the login. */
 export const CODEX_ENV_BLOCKLIST = /^(CODEX_(SANDBOX|THREAD|CI)|AI_AGENT)/i;
 
+/** Parent agent session variables. CURSOR_API_KEY stays, because the Cursor CLI takes its login from it. */
+export const CURSOR_ENV_BLOCKLIST = /^(CURSOR_AGENT$|AI_AGENT)/i;
+
 /** Environment for child CLIs with session-specific variables removed. */
 export function cleanEnv(
   blocklist: RegExp,
