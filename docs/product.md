@@ -92,7 +92,7 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Notizen | Zettel als Obsidian-kompatibles Markdown mit Wiki-Links | v0.2 | Jonny, D6 |
 | Notizen | AI schlägt typisierte Verbindungen aus Freitext vor | v0.2 | Jonny |
 | Notizen | Verbindungspanel pro Paper, Backlinks, Graph-Ansicht | v0.2 | Jonny |
-| Notizen | Begriffsregister: wie verschiedene Paper denselben Begriff verwenden | später | Vorschlag |
+| Notizen | Begriffsregister: wie verschiedene Paper denselben Begriff verwenden, mit belegten Einträgen pro Quelle | v0.3 | Vorschlag, D18 |
 | Projekte | Projektbrief mit Forschungsfragen als Kontext für Agents | v0.1 | Jonny |
 | Projekte | Startseite über alles Gelesene | v0.2 | Jonny |
 | Projekte | Literaturmatrix mit belegten Zellen | v0.3 | Vorschlag |

@@ -455,7 +455,7 @@ export class Index {
       citekey: null,
       title: fm.title,
       ftsTitle: fm.title,
-      ftsBody: `${fm.tags.join(" ")}\n${body}`,
+      ftsBody: `${fm.tags.join(" ")}\n${(fm.aliases ?? []).join(" ")}\n${body}`,
     });
   }
 

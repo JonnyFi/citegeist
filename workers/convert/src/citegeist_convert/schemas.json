@@ -783,11 +783,102 @@
       "type": {
         "default": "permanent",
         "type": "string",
-        "enum": ["permanent", "literature", "question", "claim", "project", "daily"]
+        "enum": ["permanent", "literature", "question", "claim", "project", "daily", "concept"]
       },
       "title": {
         "type": "string",
         "minLength": 1
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "cards": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^c_[0-9A-HJKMNP-TV-Z]{10,26}$"
+        }
+      },
+      "usages": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+            },
+            "role": {
+              "type": "string",
+              "enum": ["defines", "uses"]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "card": {
+                    "type": "string",
+                    "pattern": "^c_[0-9A-HJKMNP-TV-Z]{10,26}$"
+                  },
+                  "quote": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "page": {
+                    "default": null,
+                    "type": ["string", "null"]
+                  }
+                },
+                "required": ["card", "quote"]
+              }
+            },
+            "basis": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^c_[0-9A-HJKMNP-TV-Z]{10,26}$"
+              }
+            },
+            "stamp": {
+              "type": "object",
+              "properties": {
+                "by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "language": {
+                  "type": "string",
+                  "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+                },
+                "checked": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["by", "at"]
+            },
+            "promptVersion": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": ["item", "role", "text", "evidence", "stamp"]
+        }
       },
       "links": {
         "default": [],

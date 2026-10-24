@@ -211,6 +211,34 @@ describe("createRuntime settings", () => {
     expect(done.result).toMatchObject({ filled: expect.any(Number), failed: expect.any(Number) });
   });
 
+  it("binds the concept operations and runs a proposal as an ai-task job with a result", async () => {
+    const s = await setup();
+    for (const name of [
+      "concepts.list",
+      "concepts.get",
+      "concepts.create",
+      "concepts.update",
+      "concepts.merge",
+      "concepts.describe",
+      "concepts.propose",
+    ]) {
+      expect(s.rt.registry.get(name), name).toBeDefined();
+    }
+    const created = await s.call<{ concept: { id: string; title: string }; merged: boolean }>(
+      "concepts.create",
+      { term: "Autopoiesis", aliases: ["Autopoiese"] },
+    );
+    expect(created).toMatchObject({ merged: false, concept: { title: "Autopoiesis" } });
+    const again = await s.call<{ concept: { id: string }; merged: boolean }>("concepts.create", {
+      term: "autopoiese",
+    });
+    expect(again).toMatchObject({ merged: true, concept: { id: created.concept.id } });
+    const started = await s.call<{ job: string }>("concepts.propose", {});
+    const done = await s.rt.ingest.queue.waitFor(started.job);
+    expect(done.status).toBe("succeeded");
+    expect(done.result).toMatchObject({ proposals: expect.any(Array) });
+  });
+
   it("starts the worker setup as a worker-setup job", async () => {
     const s = await setup();
     const started = await s.call<{ job: string }>("worker.setup", { force: false });

@@ -3,6 +3,7 @@ import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
+import { conceptsDe } from "./concepts";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
 import { relatedDe } from "./related";
@@ -447,6 +448,7 @@ export const de = {
   ...manageDe,
   ...relatedDe,
   ...matrixDe,
+  ...conceptsDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",

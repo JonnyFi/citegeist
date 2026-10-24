@@ -1,4 +1,5 @@
 import { notesGet } from "@citegeist/ops";
+import { Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -81,6 +82,10 @@ export function NoteView({ id }: { id: string }) {
 
   if (note.isPending) return <Loading label={t("notes.loading")} />;
   if (note.isError) return <ErrorState error={note.error} />;
+  // a concept has its own page
+  if (note.data.frontmatter.type === "concept") {
+    return <Navigate to="/concepts/$id" params={{ id }} replace />;
+  }
 
   return (
     <NoteBodyLoaded

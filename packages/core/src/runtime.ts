@@ -21,6 +21,7 @@ import {
   scheduleAlerts,
 } from "./alerts/index.js";
 import { bindCardOperations } from "./cards/index.js";
+import { bindConceptOperations } from "./concepts/index.js";
 import { bindGraphOperations, type GraphService } from "./graph/index.js";
 import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
@@ -329,6 +330,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const jobs = opts.autoStart !== false ? aiTaskJobs(ingest.queue) : undefined;
   bindCardOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
   bindLinkOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  bindConceptOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
   bindMatrixOperations(registry, lib, {
     ai,
     ...(jobs ? { jobs } : {}),

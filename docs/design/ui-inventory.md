@@ -122,6 +122,7 @@ Ergebnisliste nach Art gekennzeichnet (Quelle, Karte, Notiz, Textstelle), mit Au
 - **Recherche-Jobs:** Auftrag, Fortschritt, Ergebnisse landen in der Inbox
 - **Quick-Insert:** schwebende Suchpalette per globalem Hotkey über jeder App (wie Spotlight), Karte suchen, Zitat mit Beleg einfügen
 - **Literaturmatrix:** Tabelle Quellen mal Spalten (Fragestellung, Methode, Befund, Grenzen), jede Zelle mit Beleg
+- **Begriffe:** Liste aller Begriffe mit Zahl der Quellen und Karten; die Seite eines Begriffs zeigt Name, Aliase, eigene Notiz und pro Quelle den KI-Eintrag (definiert oder verwendet) mit Belegzitaten, Seitenzahlen und Links zu den Karten; Vorschläge aus Definitionskarten und wiederkehrenden Wörtern; auf der Karte ein Link zum Begriff
 - **Schneeballsuche:** Referenzen und zitierende Arbeiten einer Quelle, markiert, was schon in der Bibliothek ist
 
 ## Wiederkehrende Elemente

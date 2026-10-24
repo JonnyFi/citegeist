@@ -23,7 +23,7 @@ import { TEMP_FILE, writeFileAtomic } from "./fsutil.js";
 import { newNoteId, slugify } from "./ids.js";
 import { Index, type Scope, scopeClauses } from "./index-db.js";
 import { Indexer, type IndexResult, type SyncSummary } from "./indexer.js";
-import { renameNoteFile } from "./notes/rename.js";
+import { noteSlugTaken, renameNoteFile } from "./notes/rename.js";
 import { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 import { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
 import { type SearchHit, type SearchInput, search } from "./search.js";
@@ -542,7 +542,7 @@ export class Library extends EventEmitter {
     const id = newNoteId(this.now().getTime());
     const base = slugify(input.title);
     let slug = base;
-    for (let n = 2; existsSync(this.paths.noteFile(slug)); n++) slug = `${base}-${n}`;
+    for (let n = 2; noteSlugTaken(this, slug); n++) slug = `${base}-${n}`;
     const fm = NoteFrontmatter.parse({
       id,
       type: input.type,
@@ -551,7 +551,7 @@ export class Library extends EventEmitter {
       created: this.stamp(actor),
     });
     this.writeFile(
-      `notes/${slug}.md`,
+      `${input.type === "concept" ? "notes/concepts" : "notes"}/${slug}.md`,
       MarkdownFile.create(fm as Record<string, unknown>, input.body).toString(),
     );
     return this.getNote(id);
