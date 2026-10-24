@@ -67,11 +67,13 @@ fi
 mkdir -p "$DEST_DIR"
 DEST="$DEST_DIR/citegeist.app"
 
-if pgrep -f "citegeist.app/Contents/MacOS/" >/dev/null 2>&1; then
+# Only the copy that is about to be replaced is quit, not another one elsewhere on the disk.
+RUNNING="$DEST/Contents/MacOS/"
+if pgrep -f "$RUNNING" >/dev/null 2>&1; then
   say "Quitting the running citegeist ..."
-  osascript -e 'tell application "citegeist" to quit' >/dev/null 2>&1 || true
+  osascript -e "tell application \"$DEST\" to quit" >/dev/null 2>&1 || true
   i=0
-  while pgrep -f "citegeist.app/Contents/MacOS/" >/dev/null 2>&1; do
+  while pgrep -f "$RUNNING" >/dev/null 2>&1; do
     i=$((i + 1))
     [ "$i" -le 20 ] || fail "citegeist did not quit. Quit it and run the installer again."
     sleep 1
