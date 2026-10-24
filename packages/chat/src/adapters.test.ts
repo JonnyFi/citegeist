@@ -22,3 +22,27 @@ describe("bundled ACP adapters", () => {
     expect(adapterLaunch("@citegeist/no-such-adapter")).toBeUndefined();
   });
 });
+
+describe("session settings of Claude Code (A11)", () => {
+  it("loads the user and project settings and the shell outside the sandbox", () => {
+    expect(CLAUDE_CODE.sessionMeta?.(false)).toEqual({
+      claudeCode: { options: { settingSources: ["user", "project"] } },
+    });
+  });
+
+  it("switches off settings, foreign MCP servers and the shell in the sandbox", () => {
+    expect(CLAUDE_CODE.sessionMeta?.(true)).toEqual({
+      claudeCode: {
+        options: {
+          settingSources: [],
+          strictMcpConfig: true,
+          disallowedTools: ["Bash", "BashOutput", "KillShell"],
+        },
+      },
+    });
+  });
+
+  it("leaves Codex on the user's own config in both modes", () => {
+    expect(CODEX.sessionMeta).toBeUndefined();
+  });
+});

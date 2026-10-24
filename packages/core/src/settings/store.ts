@@ -11,6 +11,8 @@ export interface StoredSettings {
   /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
   semantic: { enabled: boolean; model?: EmbeddingModelKey };
   connector: { enabled: boolean; port: number };
+  /** A11: true restores the sandbox for chat agents. */
+  chat: { isolated: boolean };
 }
 
 export const DEFAULT_SETTINGS: StoredSettings = {
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   uiLanguage: "de",
   semantic: { enabled: false },
   connector: { enabled: false, port: 23119 },
+  chat: { isolated: false },
 };
 
 function validPort(value: unknown): number {
@@ -37,6 +40,7 @@ function sanitize(raw: unknown): StoredSettings {
     uiLanguage?: unknown;
     semantic?: { enabled?: unknown; model?: unknown };
     connector?: { enabled?: unknown; port?: unknown };
+    chat?: { isolated?: unknown };
   };
   const routing: Record<string, string> = {};
   if (v.ai?.routing && typeof v.ai.routing === "object") {
@@ -53,6 +57,7 @@ function sanitize(raw: unknown): StoredSettings {
       ...(isModelKey(v.semantic?.model) ? { model: v.semantic.model } : {}),
     },
     connector: { enabled: v.connector?.enabled === true, port: validPort(v.connector?.port) },
+    chat: { isolated: v.chat?.isolated === true },
   };
 }
 

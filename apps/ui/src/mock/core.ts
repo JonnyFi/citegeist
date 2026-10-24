@@ -55,6 +55,9 @@ function summary(fm: ItemFrontmatter) {
     inbox: fm.inbox !== undefined,
     ...(fm.inbox ? { inboxBy: fm.inbox.by } : {}),
     ...(fm.inbox?.why ? { inboxWhy: fm.inbox.why } : {}),
+    ...(fm.incomplete
+      ? { incomplete: true, incompleteReason: `${fm.incomplete.code}: ${fm.incomplete.message}` }
+      : {}),
   };
 }
 

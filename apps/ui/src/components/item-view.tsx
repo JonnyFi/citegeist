@@ -15,7 +15,7 @@ import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
-import { Badge, StatusSquare } from "./ui/badge";
+import { Badge, Stamp, StatusSquare } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
@@ -284,6 +284,20 @@ export function ItemView({
                 >
                   {t("item.suggestedBy")}
                 </Provenance>
+              ) : null}
+              {fm.incomplete ? (
+                <div
+                  role="note"
+                  aria-label={t("item.incomplete")}
+                  className="flex flex-col gap-1 border border-danger px-3 py-2 text-[13px]"
+                >
+                  <span>
+                    <Stamp tone="danger">{t("item.incomplete")}</Stamp> {t("item.incomplete.text")}
+                  </span>
+                  <span className="font-mono text-[12px] text-muted">
+                    {fm.incomplete.code}: {fm.incomplete.message}
+                  </span>
+                </div>
               ) : null}
               <h1 className="font-serif text-[34px] font-medium leading-[1.15] tracking-[-0.01em]">
                 {fm.title}

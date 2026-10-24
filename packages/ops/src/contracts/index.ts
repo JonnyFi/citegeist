@@ -596,6 +596,12 @@ export const Settings = z.object({
       port: ConnectorPort.default(DEFAULT_CONNECTOR_PORT),
     })
     .default({ enabled: false, port: DEFAULT_CONNECTOR_PORT }),
+  /**
+   * A11: chat agents run in the user's own environment (shell, the user's MCP servers and
+   * settings) unless this is on. "Isolierter Agent" restores the sandbox: no shell, no user
+   * settings, only the citegeist tools.
+   */
+  chat: z.object({ isolated: z.boolean().default(false) }).default({ isolated: false }),
 });
 /** Where the embedding model stands. `progress` (0 to 1) is set while the files download. */
 export const SemanticStatus = z.object({
@@ -648,6 +654,7 @@ export const settingsUpdate = defineContract({
       connector: z
         .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })
         .optional(),
+      chat: z.object({ isolated: z.boolean().optional() }).optional(),
     }),
     apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
   }),

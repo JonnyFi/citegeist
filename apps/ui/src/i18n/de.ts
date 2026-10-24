@@ -14,6 +14,9 @@ export const de = {
   "nav.main": "Hauptnavigation",
   "nav.library": "Bibliothek",
   "nav.inbox": "Inbox",
+  "item.incomplete": "unvollständig",
+  "item.incomplete.text":
+    "Der Import ist nicht fertig geworden. Der Eintrag hat keinen lesbaren Text. Hänge eine passende Datei an oder lösche den Eintrag.",
   "nav.projects": "Projekte",
   "shell.mockLibrary": "Mock-Bibliothek",
   "theme.label": "Darstellung",
@@ -251,6 +254,13 @@ export const de = {
   "settings.connector.portInvalid": "Der Port muss zwischen 1024 und 65535 liegen.",
   "settings.connector.listening": "Der Empfänger hört auf 127.0.0.1:{port} zu.",
   "settings.connector.error": "Der Empfänger startet nicht: {detail}",
+  "settings.chat.title": "Chat-Agent",
+  "settings.chat.desc":
+    "Der Agent im Chat hat die Umgebung deines eigenen Claude Code: Shell, deine MCP-Server und deine Einstellungen. Recherche-Aufträge laufen immer isoliert.",
+  "settings.chat.switch": "Isolierter Agent",
+  "settings.chat.on": "Der Agent hat keine Shell und nur die Werkzeuge von citegeist.",
+  "settings.chat.off":
+    "Der Agent arbeitet in deiner Umgebung. Die Änderung gilt ab dem nächsten Beitrag im Chat.",
   "settings.quickInsert.title": "Schnelleingabe",
   "settings.quickInsert.desc":
     "Ein Tastenkürzel öffnet in jedem Programm eine Suche über deine Karten und fügt das gewählte Zitat ein.",

@@ -99,6 +99,39 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
   );
 }
 
+/** A11: chat agents run in the user's environment unless "Isolierter Agent" is on. */
+export function ChatPanel({ data }: { data: SettingsData }) {
+  const { t } = useI18n();
+  const update = useOpMutation(settingsUpdate);
+  const [error, setError] = useState<string>();
+  const isolated = data.settings.chat.isolated;
+
+  const toggle = async (next: boolean) => {
+    setError(undefined);
+    try {
+      await update.mutateAsync({ patch: { chat: { isolated: next } } });
+    } catch (err) {
+      const { message, fix } = describeError(err);
+      setError(fix ? `${message} ${fix}` : message);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Switch
+        checked={isolated}
+        onChange={(next) => void toggle(next)}
+        label={t("settings.chat.switch")}
+        disabled={update.isPending}
+      />
+      <p role="status" className="text-sm text-muted">
+        {isolated ? t("settings.chat.on") : t("settings.chat.off")}
+      </p>
+      <ErrorLine error={error} />
+    </div>
+  );
+}
+
 /** Switch and port of the Zotero Connector listener. */
 export function ConnectorPanel({ data }: { data: SettingsData }) {
   const { t } = useI18n();

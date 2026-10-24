@@ -2,7 +2,14 @@ import type { RequestPermissionRequest } from "@agentclientprotocol/sdk";
 import { describe, expect, it } from "vitest";
 import { citegeistTool, decide, pickOption } from "./policy.js";
 
-const ctx = { mode: "chat" as const, libraryRoot: "/lib", scratchDir: "/local/chats/ch_1/cwd" };
+const ctx = {
+  mode: "chat" as const,
+  isolated: true,
+  libraryRoot: "/lib",
+  scratchDir: "/local/chats/ch_1/cwd",
+};
+/** A11: the user's own environment. */
+const open = { ...ctx, isolated: false };
 
 const req = (
   toolCall: Partial<RequestPermissionRequest["toolCall"]>,
@@ -59,6 +66,30 @@ describe("decide", () => {
     expect(decide(req({ kind: "execute", title: "Bash" }), ctx).allow).toBe(false);
     expect(decide(req({ kind: "other", title: "Mystery" }), ctx).allow).toBe(false);
     expect(decide(req({ kind: "switch_mode", title: "ExitPlanMode" }), ctx).allow).toBe(false);
+  });
+
+  it("lets an agent in the user's own environment use the shell and the user's tools (A11)", () => {
+    expect(decide(req({ kind: "execute", title: "Bash" }), open).allow).toBe(true);
+    expect(decide(req({ kind: "other", title: "mcp__github__create_issue" }), open).allow).toBe(
+      true,
+    );
+    expect(decide(req({ kind: "edit", locations: [{ path: "/etc/hosts" }] }), open).allow).toBe(
+      true,
+    );
+  });
+
+  it("still protects derived data, sources and the manifest outside the sandbox", () => {
+    const edit = (path: string) => decide(req({ kind: "edit", locations: [{ path }] }), open);
+    expect(edit("/lib/items/a/derived/abc/doc.md").allow).toBe(false);
+    expect(edit("/lib/items/a/sources/x.pdf").allow).toBe(false);
+    expect(edit("/lib/citegeist.json").allow).toBe(false);
+    expect(edit("/lib/notes/idee.md").allow).toBe(true);
+  });
+
+  it("does not open the shell for a research job even when the chat is not isolated", () => {
+    const research = { ...open, mode: "research" as const };
+    expect(decide(req({ kind: "other", title: "Mystery" }), research).allow).toBe(false);
+    expect(decide(req({ kind: "execute", title: "Bash" }), research).allow).toBe(false);
   });
 
   it("keeps research jobs on the inbox path of add_item", () => {

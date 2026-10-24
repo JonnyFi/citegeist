@@ -29,6 +29,7 @@ export interface SettingsMockState {
   };
   semanticPolls: number;
   connector: { enabled: boolean; port: number; error?: string };
+  chat: { isolated: boolean };
   /** Result of `ai.testBackend` per backend id. Missing ids succeed after 1.2 s. */
   tests: Record<string, TestResult>;
   /** Polls of `jobs.get` before the setup job ends. */
@@ -71,6 +72,7 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
     semantic: { enabled: false, state: "downloading", progress: 0 },
     semanticPolls: 3,
     connector: { enabled: false, port: 23119 },
+    chat: { isolated: false },
     tests: {},
     setupPolls: 2,
     ...over,
@@ -95,6 +97,7 @@ export function bindSettingsMock(
     uiLanguage: state.uiLanguage,
     semantic: { enabled: state.semantic.enabled },
     connector: { enabled: state.connector.enabled, port: state.connector.port },
+    chat: { isolated: state.chat.isolated },
   });
   let semanticReads = 0;
   const semanticStatus = () => {
@@ -162,6 +165,7 @@ export function bindSettingsMock(
         state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;
         state.connector.port = patch.connector.port ?? state.connector.port;
       }
+      if (patch.chat?.isolated !== undefined) state.chat.isolated = patch.chat.isolated;
       emit({ type: "change", path: "settings", external: false });
       return { settings: settings() };
     })
