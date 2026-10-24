@@ -97,6 +97,8 @@
   --radius-xl: 0px;
 
   --spacing-rail: 56px;
+  /* macOS: the collapsed rail holds the three window buttons (x 16 to 68) with 16px on both sides */
+  --spacing-rail-mac: 84px;
   --spacing-rail-open: 240px;
   --spacing-aside: 360px;
   --spacing-topbar: 48px;

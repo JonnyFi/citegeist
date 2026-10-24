@@ -268,7 +268,9 @@ function ShellFrame() {
         <div
           className={cn(
             "flex shrink-0 items-center border-r border-line",
-            open ? "w-rail-open gap-3 px-4" : "w-rail justify-center",
+            open
+              ? "w-rail-open gap-3 px-4"
+              : cn(darwin ? "w-rail-mac" : "w-rail", "justify-center"),
             darwin && open && "pl-[84px]",
           )}
         >
@@ -316,7 +318,7 @@ function ShellFrame() {
           aria-label={t("nav.main")}
           className={cn(
             "flex shrink-0 flex-col justify-between overflow-y-auto border-r border-line py-3",
-            open ? "w-rail-open" : "w-rail items-center",
+            open ? "w-rail-open" : cn(darwin ? "w-rail-mac" : "w-rail", "items-center"),
           )}
         >
           <div className={cn("flex flex-col", !open && "items-center gap-1")}>
