@@ -173,6 +173,8 @@ describe("BackendRegistry status", () => {
       keychain: new InMemoryKeychain(),
       fetch,
       find: () => undefined,
+      // a CURSOR_API_KEY in the developer's shell would count as a Cursor login
+      env: { PATH: process.env.PATH },
     });
     const by = Object.fromEntries((await reg.status()).map((s) => [s.id, s]));
     expect(by["claude-code-cli"]?.detail).toBe("logged-out");
