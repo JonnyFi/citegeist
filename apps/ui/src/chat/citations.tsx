@@ -33,17 +33,17 @@ export function splitCitations(text: string): TextPart[] {
 /** What the library knows, to tell a real citation from an invented one. */
 interface Known {
   items: ReadonlySet<string>;
-  cards: ReadonlyMap<string, { item: string; kind: string }>;
+  cards: ReadonlyMap<string, { item: string; kind: string | undefined }>;
 }
 
 /** Card kinds keep their colors from the design system; the word stays in the label. */
 const KIND_COLOR: Record<string, string> = {
-  quote: "bg-card-quote",
+  thesis: "bg-card-thesis",
   finding: "bg-card-finding",
   definition: "bg-card-definition",
   method: "bg-card-method",
+  example: "bg-card-example",
   critique: "bg-card-critique",
-  comment: "bg-card-comment",
 };
 
 const CHIP =
@@ -76,7 +76,7 @@ function Citation({
       >
         <span
           aria-hidden="true"
-          className={`size-1.5 ${KIND_COLOR[card.kind] ?? "bg-card-quote"}`}
+          className={`size-1.5 ${(card.kind && KIND_COLOR[card.kind]) || "bg-card-none"}`}
         />
         {shown}
       </Link>

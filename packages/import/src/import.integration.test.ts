@@ -119,16 +119,15 @@ describe("Zotero import into a real library", () => {
     expect(fm.sources[0]).toMatchObject({ kind: "pdf", filename: "paper.pdf", role: "main" });
     const hash = fm.sources[0]?.hash as string;
 
-    // Annotations became cards: quote verbatim, comment in "In my words", page label as locator,
+    // Annotations became cards: quote verbatim, comment in the note, page label as locator,
     // rectangles in the PDF anchor.
     const { cards } = await call<{
       cards: { frontmatter: CardFrontmatter; body: CardBody }[];
     }>("cards.list", { citekey: "luhmann1984" });
     const first = cards.find((c) => c.body.quote === "Systems differ from their environment.");
-    expect(first?.body.ownWords).toBe("This is the core claim.");
+    expect(first?.body.note).toBe("This is the core claim.");
     expect(first?.frontmatter).toMatchObject({
       item: "luhmann1984",
-      kind: "quote",
       source: hash,
       locator: { label: "page", start: "33", confirmed: true },
       anchor: { pdf: { page: 1, quads: [[100.5, 600.25, 300.75, 612.5]], file: hash } },
@@ -139,7 +138,7 @@ describe("Zotero import into a real library", () => {
     const second = cards.find((c) => c.body.quote === "Second passage.");
     expect(second?.frontmatter.anchor.pdf).toMatchObject({ page: 2, file: hash });
     expect(second?.frontmatter.anchor.pdf?.quads).toHaveLength(2);
-    expect(second?.body.ownWords).toBeUndefined();
+    expect(second?.body.note).toBeUndefined();
 
     // Notes: the child note is a literature note that links the item, the loose one stands alone.
     const { notes } = await call<{ notes: { id: string; title: string; type: string }[] }>(

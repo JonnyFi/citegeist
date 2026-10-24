@@ -299,7 +299,7 @@ describe("annotation to card", () => {
       card: {
         ref: "A1",
         quote: "Quoted text.\nSecond line.",
-        ownWords: "my thought",
+        note: "my thought",
         page: 3,
         quads: [
           [1, 2, 3, 4],
@@ -313,7 +313,7 @@ describe("annotation to card", () => {
 
   it("converts underlines and leaves out the comment when there is none", () => {
     const r = annotationToCard({ ...base, type: "underline", comment: "" });
-    expect("card" in r && r.card.ownWords).toBeUndefined();
+    expect("card" in r && r.card.note).toBeUndefined();
   });
 
   it("skips what has no verbatim quote or no PDF position", () => {

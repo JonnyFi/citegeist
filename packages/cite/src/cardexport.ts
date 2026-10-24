@@ -14,7 +14,7 @@ export type CardExportMode = "direct" | "indirect";
 
 export interface CardExportEntry {
   card: Pick<CardFrontmatter, "locator">;
-  body: Pick<CardBody, "quote" | "paraphrase" | "ownWords">;
+  body: Pick<CardBody, "quote" | "paraphrase" | "note">;
   item: ItemFrontmatter;
   /** The secondary source for "zit. n." citations (CardFrontmatter.via), resolved by the caller. */
   via?: ItemFrontmatter | undefined;
@@ -25,7 +25,7 @@ export interface CardExportOptions {
   format?: CardExportFormat | undefined;
   style?: string | undefined;
   locale?: string | undefined;
-  /** The project's ExportPolicy. Defaults to own paraphrase, else AI paraphrase, without label. */
+  /** The project's ExportPolicy. Defaults to the note, else the AI paraphrase, without label. */
   policy?: { paraphrase?: ParaphraseSource; labelAi?: boolean } | undefined;
 }
 
@@ -193,7 +193,7 @@ function paraphraseText(
   body: CardExportEntry["body"],
   policy: ResolvedPolicy,
 ): { text: string; ai: boolean } | undefined {
-  const own = body.ownWords?.trim() || undefined;
+  const own = body.note?.trim() || undefined;
   const ai = body.paraphrase?.trim() || undefined;
   switch (policy.paraphrase) {
     case "none":

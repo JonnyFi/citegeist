@@ -4,6 +4,7 @@ import { exportCards } from "@citegeist/cite";
 import { Registry } from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
 import { afterEach, describe, expect, it } from "vitest";
+import { quoteSha256 } from "../hash.js";
 import { Library } from "../library.js";
 import { bindCoreOperations } from "../ops.js";
 import { cleanTmpDirs, itemData, itemFile, STAMP, tmpDir, writeRaw } from "../test-helpers.js";
@@ -80,7 +81,7 @@ async function setup(opts: { item?: Record<string, unknown>; deps?: Partial<Card
   writeRaw(lib.root, `${dir}/pages.json`, JSON.stringify(pagesJson));
   lib.sync();
   const mock = new MockBackend({
-    "card.paraphrase": { paraphrase: "Systeme erzeugen sich selbst.", core: "Autopoiesis." },
+    "card.paraphrase": { paraphrase: "Systeme erzeugen sich selbst.", kind: "definition" },
     "card.verify": { faithful: true, issues: [] },
   });
   const ai = new AiRouter([mock], { routing: { "*": "mock" } });
@@ -96,7 +97,7 @@ const pdfAnchor = (page: number) => ({
 });
 
 describe("cards.create", () => {
-  it("returns within 300 ms without AI, then fills paraphrase and core", async () => {
+  it("returns within 300 ms without AI, then fills paraphrase and kind", async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => {
       release = r;
@@ -104,7 +105,7 @@ describe("cards.create", () => {
     const { reg, mock, cards } = await setup();
     mock.set("card.paraphrase", async () => {
       await gate;
-      return { paraphrase: "Systeme erzeugen sich selbst.", core: "Autopoiesis." };
+      return { paraphrase: "Systeme erzeugen sich selbst.", kind: "definition" as const };
     });
     const quote = "Kommunikation ist ihre Operation.";
     const t0 = performance.now();
@@ -119,6 +120,7 @@ describe("cards.create", () => {
     expect(out.card.body.quote).toBe(quote);
     expect(out.card.body.paraphrase).toBeUndefined();
     expect(out.card.frontmatter.paraphrase).toBeUndefined();
+    expect(out.card.frontmatter.kind).toBeUndefined();
     expect(out.card.frontmatter.source).toBe(HASH);
     expect(out.card.frontmatter.locator).toMatchObject({ label: "page", start: "213" });
     expect(out.card.frontmatter.anchor.text?.block).toBe("b1aaaaaa");
@@ -130,10 +132,11 @@ describe("cards.create", () => {
     await cards.detached?.idle();
     const done = cards.getCard(out.card.frontmatter.id);
     expect(done.body.paraphrase).toBe("Systeme erzeugen sich selbst.");
-    expect(done.body.core).toBe("Autopoiesis.");
+    expect(done.body.core).toBeUndefined();
+    expect(done.frontmatter.kind).toBe("definition");
     expect(done.body.quote).toBe(quote);
     expect(done.frontmatter.paraphrase).toMatchObject({ by: "mock:mock-fast", language: "de" });
-    expect(done.frontmatter.core).toMatchObject({ by: "mock:mock-fast", language: "de" });
+    expect(done.frontmatter.core).toBeUndefined();
     // the file on disk is valid for the index: quote hash still matches
     expect(reg.cards.getCard(done.frontmatter.id).frontmatter.quote_sha256).toBe(
       out.card.frontmatter.quote_sha256,
@@ -237,7 +240,7 @@ describe("language", () => {
     expect(mock.calls.at(-1)?.prompt).toContain(quote);
   });
 
-  it("regenerates in another language and keeps own words", async () => {
+  it("regenerates in another language and keeps the note and a kind the reader set", async () => {
     const { reg, cards, mock } = await setup();
     const quote = "Kommunikation ist ihre Operation.";
     const { card } = cards.create("human", { citekey: CITEKEY, anchor: pdfAnchor(0), quote });
@@ -245,9 +248,9 @@ describe("language", () => {
     const id = card.frontmatter.id;
     await reg.call("cards.update", human, {
       id,
-      patch: { ownWords: "Meine Worte", comment: "Merken" },
+      patch: { note: "Meine Worte", kind: "critique" },
     });
-    mock.set("card.paraphrase", { paraphrase: "Systems create themselves.", core: "Autopoiesis." });
+    mock.set("card.paraphrase", { paraphrase: "Systems create themselves.", kind: "thesis" });
     const r = (await reg.call("cards.regenerate", human, { id, language: "en" })) as {
       job: string;
     };
@@ -257,9 +260,9 @@ describe("language", () => {
     expect(after.body).toMatchObject({
       quote,
       paraphrase: "Systems create themselves.",
-      ownWords: "Meine Worte",
-      comment: "Merken",
+      note: "Meine Worte",
     });
+    expect(after.frontmatter.kind).toBe("critique");
     expect(after.frontmatter.paraphrase?.language).toBe("en");
     expect(mock.calls.at(-1)?.language).toBe("en");
   });
@@ -324,7 +327,7 @@ describe("card.verify", () => {
 });
 
 describe("cards.update", () => {
-  it("edits own words, comment, kind, tags and locator", async () => {
+  it("edits note, kind, tags and locator", async () => {
     const { reg, cards } = await setup();
     const { card } = cards.create("human", {
       citekey: CITEKEY,
@@ -335,9 +338,9 @@ describe("cards.update", () => {
     const id = card.frontmatter.id;
     const out = (await reg.call("cards.update", human, {
       id,
-      patch: { ownWords: "Eigene Worte", kind: "definition", tags: ["a", "b"] },
+      patch: { note: "Eigene Worte", kind: "definition", tags: ["a", "b"] },
     })) as { card: CardFile };
-    expect(out.card.body.ownWords).toBe("Eigene Worte");
+    expect(out.card.body.note).toBe("Eigene Worte");
     expect(out.card.frontmatter).toMatchObject({ kind: "definition", tags: ["a", "b"] });
     expect(out.card.frontmatter.modified).toMatchObject({ by: "human" });
 
@@ -373,11 +376,117 @@ describe("cards.update", () => {
 
     // through the registry the same agent-ready error arrives
     await expect(
-      reg.call("cards.update", human, { id, patch: { quote: "Geändert", comment: "x" } }),
+      reg.call("cards.update", human, { id, patch: { quote: "Geändert", note: "x" } }),
     ).rejects.toThrow(/CARD_QUOTE_IMMUTABLE/);
     const after = cards.getCard(id);
     expect(after.body.quote).toBe(quote);
     expect(lib.status().problems).toEqual([]);
+  });
+});
+
+describe("cards from before D15 to D17", () => {
+  const ID = "c_01JB8Z3Q7KABCDEFGH";
+  const QUOTE = "Kommunikation ist ihre Operation.";
+  const legacy = (kind: string) => `---
+id: ${ID}
+item: ${CITEKEY}
+source: ${HASH}
+kind: ${kind}
+anchor:
+  text:
+    exact: ${QUOTE}
+quote_sha256: ${quoteSha256(QUOTE)}
+paraphrase: {by: claude-code/haiku, at: 2026-10-23T11:02:00Z, language: de}
+core: {by: claude-code/haiku, at: 2026-10-23T11:02:00Z, language: de}
+tags: []
+projects: []
+created: {at: 2026-10-23T11:01:40Z, by: human}
+---
+> ${QUOTE}
+
+## Paraphrase
+
+Alte Paraphrase.
+
+## Core statement
+
+Kernaussage zeppelin.
+
+## In my words
+
+Meine Worte.
+
+## Comment
+
+Mein Kommentar.
+`;
+
+  async function withLegacy(kind: string) {
+    const ctx = await setup();
+    writeRaw(ctx.lib.root, `items/${CITEKEY}/cards/${ID}.md`, legacy(kind));
+    ctx.lib.sync();
+    return ctx;
+  }
+
+  it("reads own words and comment as one note, an old quote kind as unset, and shows no core", async () => {
+    const { cards, lib } = await withLegacy("quote");
+    const card = cards.getCard(ID);
+    expect(card.frontmatter.kind).toBeUndefined();
+    expect(card.body.note).toBe("Meine Worte.\n\nMein Kommentar.");
+    expect(card.body.paraphrase).toBe("Alte Paraphrase.");
+    expect(lib.status().problems).toEqual([]);
+    // the core statement is not searchable any more
+    expect(lib.search({ q: "zeppelin" })).toEqual([]);
+    expect(lib.search({ q: "Kommentar" }).length).toBeGreaterThan(0);
+  });
+
+  it("rewrites the file with a Note section, drops the old kind and keeps the core", async () => {
+    const { cards, lib } = await withLegacy("quote");
+    cards.update("human", { id: ID, patch: { tags: ["x"] } });
+    const text = readFileSync(lib.paths.cardFile(CITEKEY, ID), "utf8");
+    expect(text).toContain("## Note\n\nMeine Worte.\n\nMein Kommentar.");
+    expect(text).not.toMatch(/^## (In my words|Comment)$/m);
+    expect(text).not.toMatch(/^kind:/m);
+    expect(text).toContain("## Core statement\n\nKernaussage zeppelin.");
+    expect(text).toMatch(/^core:/m);
+    expect(cards.getCard(ID).body.note).toBe("Meine Worte.\n\nMein Kommentar.");
+    expect(lib.status().problems).toEqual([]);
+  });
+
+  it("keeps a kind that still exists and maps comment to unset", async () => {
+    const finding = await withLegacy("finding");
+    expect(finding.cards.getCard(ID).frontmatter.kind).toBe("finding");
+    await finding.lib.close();
+    const comment = await withLegacy("comment");
+    expect(comment.cards.getCard(ID).frontmatter.kind).toBeUndefined();
+  });
+
+  it("lets the AI classify a card without kind when it is regenerated, but not override one", async () => {
+    const { cards, mock } = await withLegacy("quote");
+    mock.set("card.paraphrase", { paraphrase: "Neu.", kind: "method" });
+    cards.regenerate("human", { id: ID });
+    await cards.detached?.idle();
+    const after = cards.getCard(ID);
+    expect(after.frontmatter.kind).toBe("method");
+    expect(after.body.paraphrase).toBe("Neu.");
+    expect(after.body.core).toBe("Kernaussage zeppelin.");
+
+    cards.update("human", { id: ID, patch: { kind: "example" } });
+    mock.set("card.paraphrase", { paraphrase: "Nochmal.", kind: "thesis" });
+    cards.regenerate("human", { id: ID });
+    await cards.detached?.idle();
+    expect(cards.getCard(ID).frontmatter.kind).toBe("example");
+  });
+
+  it("clears the kind with null and rejects the retired patch keys", async () => {
+    const { cards } = await withLegacy("finding");
+    cards.update("human", { id: ID, patch: { kind: null } });
+    expect(cards.getCard(ID).frontmatter.kind).toBeUndefined();
+    for (const key of ["ownWords", "comment", "core"]) {
+      expect(() => cards.update("human", { id: ID, patch: { [key]: "x" } })).toThrow(
+        /INVALID_PATCH/,
+      );
+    }
   });
 });
 
@@ -411,8 +520,8 @@ describe("cards.export", () => {
       "Systeme erzeugen sich selbst. [KI-generierte Paraphrase] (vgl. Luhmann, 1984, S. 213)",
     );
 
-    // own words win under own-else-ai and drop the label
-    cards.update("human", { id, patch: { ownWords: "Gesellschaft ist Kommunikation." } });
+    // the note wins under own-else-ai and drop the label
+    cards.update("human", { id, patch: { note: "Gesellschaft ist Kommunikation." } });
     const own = (await reg.call("cards.export", human, {
       ids: [id],
       project: "phd",

@@ -2,6 +2,8 @@ import type { Block } from "@citegeist/schema";
 import { describe, expect, it } from "vitest";
 import {
   buildBlockStream,
+  buildPageStream,
+  createSelectionAnchor,
   createTextAnchor,
   findQuote,
   fromString,
@@ -10,6 +12,7 @@ import {
   normalize,
   normalizeText,
   resolveAnchor,
+  snapToWordBoundaries,
   snapToWords,
 } from "./index.js";
 
@@ -50,6 +53,89 @@ describe("word-boundary snapping", () => {
   it("leaves ranges that sit on word boundaries alone", () => {
     const t = "one two three";
     expect(snapToWords(t, 4, 7)).toEqual({ start: 4, end: 7 });
+  });
+});
+
+describe("snapping a card selection to word boundaries", () => {
+  const t =
+    "the nature of modern life: the problem of Kommunikationsschwierigkeiten, Luhmann's view";
+  const snap = (from: string, to: string) => {
+    const s = t.indexOf(from);
+    const e = t.indexOf(to, s) + to.length;
+    const r = snapToWordBoundaries(t, s, e);
+    return t.slice(r.start, r.end);
+  };
+
+  it("completes a word that the selection ends in", () => {
+    // the reported bug: the selection ended in "th" of "the"
+    expect(snap("nature of modern life: th", "life: th")).toBe("nature of modern life: the");
+  });
+
+  it("completes a word that the selection starts in", () => {
+    expect(snap("ature of modern", "modern")).toBe("nature of modern");
+    expect(snap("odern life", "life")).toBe("modern life");
+  });
+
+  it("completes both edges at once and keeps long German compounds whole", () => {
+    expect(snap("ommunikationsschwier", "schwier")).toBe("Kommunikationsschwierigkeiten");
+  });
+
+  it("treats an apostrophe between letters as part of the word", () => {
+    expect(snap("Luhmann", "Luhmann")).toBe("Luhmann's");
+    expect(snap("Luhmann'", "Luhmann'")).toBe("Luhmann's");
+    expect(snap("s view", "view")).toBe("Luhmann's view");
+  });
+
+  it("leaves a selection on word boundaries alone, and a hyphen splits words", () => {
+    expect(snap("of modern", "modern")).toBe("of modern");
+    const h = "a state-of-the-art method";
+    const s = h.indexOf("of");
+    expect(snapToWordBoundaries(h, s, s + 2)).toEqual({ start: s, end: s + 2 });
+  });
+
+  it("trims edge whitespace and punctuation stays out", () => {
+    const s = t.indexOf(" nature");
+    const e = t.indexOf("life:") + 5;
+    const r = snapToWordBoundaries(t, s, e);
+    expect(t.slice(r.start, r.end)).toBe("nature of modern life:");
+  });
+
+  it("leaves a runaway token alone and never crosses into the neighbouring word", () => {
+    const digits = `x ${"1234567890".repeat(20)} y`;
+    const r = snapToWordBoundaries(digits, 100, 110);
+    expect(r).toEqual({ start: 100, end: 110 });
+    expect(snap("life: the", "the")).toBe("life: the");
+  });
+
+  it("never grows an empty selection", () => {
+    const r = snapToWordBoundaries(t, 5, 5);
+    expect(r.end).toBeLessThanOrEqual(r.start);
+  });
+
+  it("builds the anchor from the snapped range, with the context around it", () => {
+    const stream = buildPageStream(["Intro text. The nature of modern life: the problem is deep."]);
+    const s = stream.text.indexOf("nature");
+    const e = stream.text.indexOf("life: th") + "life: th".length;
+    const plain = createTextAnchor(stream, s, e);
+    expect(plain?.exact).toBe("nature of modern life: th");
+    const snapped = createSelectionAnchor(stream, s, e);
+    expect(snapped?.exact).toBe("nature of modern life: the");
+    expect(snapped?.start).toBe(s);
+    expect(snapped?.end).toBe(e + 1);
+    expect(snapped?.prefix.endsWith("The ")).toBe(true);
+    expect(snapped?.suffix.startsWith(" problem")).toBe(true);
+    // the snapped quote resolves back to itself
+    const r = resolveAnchor(stream, snapped as NonNullable<typeof snapped>);
+    expect(r).toMatchObject({ status: "anchored", method: "position" });
+  });
+
+  it("does not join words across the units of a stream", () => {
+    const stream = buildPageStream(["end of page one", "start of page two"]);
+    const s = stream.text.indexOf("one");
+    const snapped = createSelectionAnchor(stream, s, s + 2);
+    expect(snapped?.exact).toBe("one");
+    const start = stream.text.indexOf("start") + 2;
+    expect(createSelectionAnchor(stream, start - 6, start)?.exact).toBe("one start");
   });
 });
 

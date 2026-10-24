@@ -241,13 +241,13 @@ export const documentsAssets = defineContract({
 export const cardsCreate = defineContract({
   name: "cards.create",
   summary:
-    "Create a quote card from an anchored selection; AI paraphrase and core statement follow asynchronously",
+    "Create a quote card from an anchored selection; the AI paraphrase and kind follow asynchronously",
   access: "write",
   input: z.object({
     citekey: Citekey,
     anchor: CardFrontmatter.shape.anchor,
     quote: z.string().min(1),
-    kind: CardKind.default("quote"),
+    kind: CardKind.optional(),
     ai: z.boolean().default(true),
     language: Language.optional(),
     projects: z.array(ProjectSlug).default([]),
@@ -258,15 +258,16 @@ export const cardsCreate = defineContract({
 });
 export const cardsUpdate = defineContract({
   name: "cards.update",
-  summary: "Edit own words, comment, kind, tags or locator of a card (never the quote)",
+  summary: "Edit note, paraphrase, kind, tags or locator of a card (never the quote)",
   access: "write",
   input: z.object({
     id: CardFrontmatter.shape.id,
     // Loose, so a "quote" key reaches the handler, which rejects it with CARD_QUOTE_IMMUTABLE.
-    patch: CardBody.omit({ quote: true })
+    patch: CardBody.omit({ quote: true, core: true })
       .partial()
       .extend({
-        kind: CardKind.optional(),
+        /** null clears the kind. */
+        kind: CardKind.nullable().optional(),
         tags: z.array(z.string()).optional(),
         locator: Locator.partial().optional(),
       })
@@ -288,7 +289,7 @@ export const cardsList = defineContract({
 });
 export const cardsRegenerate = defineContract({
   name: "cards.regenerate",
-  summary: "Rewrite the AI paraphrase and core statement, optionally in another language",
+  summary: "Rewrite the AI paraphrase, optionally in another language",
   access: "write",
   input: z.object({ id: CardFrontmatter.shape.id, language: Language.optional() }),
   output: JobHandle,

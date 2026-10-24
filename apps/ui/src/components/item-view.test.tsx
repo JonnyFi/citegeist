@@ -27,7 +27,10 @@ describe("item view", () => {
     const first = cards[0] as HTMLElement;
     expect(within(first).getByText(/Soziale Systeme bestehen aus Kommunikationen/)).toBeVisible();
     expect(within(first).getByText("S. 31")).toBeVisible();
-    expect(within(first).getAllByText(/claude-code/).length).toBeGreaterThan(0);
+    // the paraphrase is marked as AI text; the model stamp is a tooltip
+    expect(within(first).getByText("Paraphrase")).toBeVisible();
+    expect(within(first).getByTitle(/claude-code/)).toBeInTheDocument();
+    expect(within(first).queryByText(/claude-code/)).toBeNull();
     expect(within(cards[1] as HTMLElement).getByText(/Compare with Maturana/)).toBeVisible();
     expect(within(cards[2] as HTMLElement).getByText(/Possible counter-position/)).toBeVisible();
   });

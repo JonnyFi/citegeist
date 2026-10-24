@@ -11,7 +11,7 @@ const entry: CardExportEntry = {
   body: {
     quote: "Soziale Systeme sind „autopoietisch“ organisiert & operieren [sic] 100% 'selbst'.",
     paraphrase: "Soziale Systeme erzeugen ihre Elemente selbst.",
-    ownWords: "Gesellschaft reproduziert sich über Kommunikation.",
+    note: "Gesellschaft reproduziert sich über Kommunikation.",
   },
   item: luhmann,
 };
@@ -88,12 +88,10 @@ describe("direct quote", () => {
     const plain = { ...entry, body: { quote: "Wortlaut" } };
     const o = { mode: "indirect", locale: "de-DE" } as const;
     expect(
-      exportCard({ ...plain, body: { ownWords: "Text", quote: "q" } }, { ...o, format: "pandoc" })
-        .text,
+      exportCard({ ...plain, body: { note: "Text", quote: "q" } }, { ...o, format: "pandoc" }).text,
     ).toBe("Text [vgl. @luhmann1984soziale, S. 31]");
     expect(
-      exportCard({ ...plain, body: { ownWords: "Text", quote: "q" } }, { ...o, format: "latex" })
-        .text,
+      exportCard({ ...plain, body: { note: "Text", quote: "q" } }, { ...o, format: "latex" }).text,
     ).toBe("Text \\parencite[vgl.][31]{luhmann1984soziale}");
   });
 });
@@ -146,8 +144,37 @@ describe("indirect quote", () => {
   });
 });
 
+describe("note in indirect citations (D17)", () => {
+  const opts = { mode: "indirect", format: "text", locale: "de-DE", style: "apa" } as const;
+
+  it("uses the note for own-else-ai and flattens its paragraphs", () => {
+    const multi: CardExportEntry = {
+      ...entry,
+      body: { ...entry.body, note: "Erster Gedanke.\n\nZweiter Gedanke." },
+    };
+    expect(
+      exportCard(multi, { ...opts, policy: { paraphrase: "own-else-ai" } }),
+    ).toMatchInlineSnapshot(`
+      {
+        "text": "Erster Gedanke. Zweiter Gedanke. (vgl. Luhmann, 1984, S. 31)",
+      }
+    `);
+  });
+
+  it("falls back to the AI paraphrase when the note is blank", () => {
+    const blank: CardExportEntry = { ...entry, body: { ...entry.body, note: "  \n " } };
+    expect(exportCard(blank, opts).text).toBe(
+      "Soziale Systeme erzeugen ihre Elemente selbst. (vgl. Luhmann, 1984, S. 31)",
+    );
+  });
+
+  it("never mentions the note in a direct quote", () => {
+    expect(exportCard(entry, { ...opts, mode: "direct" }).text).not.toContain("Gesellschaft");
+  });
+});
+
 describe("export policy", () => {
-  const aiOnly: CardExportEntry = { ...entry, body: { ...entry.body, ownWords: undefined } };
+  const aiOnly: CardExportEntry = { ...entry, body: { ...entry.body, note: undefined } };
   const opts = { mode: "indirect", format: "text", locale: "de-DE", style: "apa" } as const;
 
   it("prefers own words, then the AI paraphrase", () => {

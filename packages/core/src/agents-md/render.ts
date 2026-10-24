@@ -32,7 +32,7 @@ The folder is a valid Obsidian vault. Files are UTF-8 with LF line endings and Y
 ## What you may edit
 
 - Body text of literature notes (\`items/<citekey>/<citekey>.md\`), notes (\`notes/*.md\`) and project briefs (\`projects/<slug>/project.md\`).
-- The section "In my words" of a card.
+- The section "Note" of a card.
 - Keep the YAML frontmatter valid. Files that fail validation appear in the problem list and are not indexed.
 
 ## What you must not touch

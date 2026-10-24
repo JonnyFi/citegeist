@@ -244,7 +244,7 @@ describe("operations", () => {
     lib.writeItem(itemData("b2xx", { tags: ["sys", "x"], inbox: { by: "agent:x" } }));
     lib.writeItem(itemData("c3xx", { author: [{ literal: "OECD" }], issued: "2021-03" }));
     const card = cardData("a1xx", "Quote one", { tags: ["t1"] });
-    lib.writeCard(card.fm, { ...card.body, paraphrase: "Para", ownWords: "Eigene Worte" });
+    lib.writeCard(card.fm, { ...card.body, paraphrase: "Para", note: "Eigene Worte" });
     const card2 = cardData("b2xx", "Quote two", { kind: "finding" });
     lib.writeCard(card2.fm, card2.body);
 
@@ -291,10 +291,10 @@ describe("operations", () => {
     expect(page2.next).toBeUndefined();
 
     const cards = (await reg.call("cards.list", human, { citekey: "a1xx" })) as {
-      cards: { frontmatter: { id: string }; body: { quote: string; ownWords?: string } }[];
+      cards: { frontmatter: { id: string }; body: { quote: string; note?: string } }[];
     };
     expect(cards.cards).toHaveLength(1);
-    expect(cards.cards[0]?.body).toMatchObject({ quote: "Quote one", ownWords: "Eigene Worte" });
+    expect(cards.cards[0]?.body).toMatchObject({ quote: "Quote one", note: "Eigene Worte" });
     const byKind = (await reg.call("cards.list", human, { kind: "finding" })) as {
       cards: unknown[];
     };

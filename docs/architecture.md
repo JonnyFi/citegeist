@@ -159,14 +159,13 @@ Eine Markdown-Datei pro Karte, damit zwei Rechner gleichzeitig markieren können
 id: c_01JB8Z3Q
 item: luhmann1984soziale
 source: 3f9a1c2e7b4d
-kind: quote                  # quote | finding | method | definition | critique | comment
+kind: definition             # optional: thesis | finding | method | definition | example | critique
 locator: {label: page, start: "31", end: "32"}
 anchor:
   pdf: {page: 42, quads: [[72.0, 310.2, 290.1, 330.0]], file: 3f9a1c2e7b4d}
   text: {block: b7f3k2q, exact: "…", prefix: "…", suffix: "…"}
 quote_sha256: 9c1d…         # Hash des Wortlauts, Abweichungen werden markiert
 paraphrase: {by: "claude-code/haiku", at: 2026-10-23T11:02:00Z, checked: false}
-core: {by: "claude-code/haiku", at: 2026-10-23T11:02:00Z}
 tags: [kommunikation]
 projects: [phd-proposal]
 created: {at: 2026-10-23T11:01:40Z, by: human}
@@ -176,14 +175,17 @@ created: {at: 2026-10-23T11:01:40Z, by: human}
 ## Paraphrase
 …
 
-## Kernaussage
-…
-
-## Eigene Worte
+## Note
 …
 ```
 
-Der Wortlaut steht im Zitatblock und bleibt unverändert, Auslassungen wie „[…]“ sind explizite Bearbeitungen. Jede Paraphrase trägt ihre Herkunft. Die Abschnitte haben feste Überschriften, die ein strenger Parser liest. Unbekannte Abschnitte bleiben erhalten. Welche Teile beim Export mitkommen, legt eine Einstellung pro Projekt fest.
+Der Wortlaut steht im Zitatblock und bleibt unverändert, Auslassungen wie „[…]“ sind explizite Bearbeitungen. Die Karte trägt einen AI-Text, die Paraphrase mit einem bis drei Sätzen (D15), und die Paraphrase trägt ihre Herkunft. Die Art (D16) kommt aus derselben Anfrage wie die Paraphrase: Die AI ordnet die Karte beim Anlegen einer Art zu, der Nutzer ändert sie jederzeit, und eine gesetzte Art überschreibt die AI beim Neuschreiben nie. Der Abschnitt „Note“ (D17) ist ein freies Feld des Nutzers. Die Abschnitte haben feste Überschriften, die ein strenger Parser liest. Unbekannte Abschnitte bleiben erhalten. Welche Teile beim Export mitkommen, legt eine Einstellung pro Projekt fest. Die Regel `own-else-ai` nimmt für sinngemäße Zitate die Notiz, sonst die Paraphrase.
+
+Karten aus früheren Fassungen bleiben lesbar. Der Parser liest die Abschnitte „In my words“ und „Comment“ als Notiz (eigene Worte, Leerzeile, Kommentar) und schreibt beim nächsten Speichern nur noch „Note“. Die Arten `quote` und `comment` gelten als nicht gesetzt, die übrigen alten Arten gelten unverändert. Ein gespeicherter Abschnitt „Core statement“ mit seinem Stempel `core` bleibt beim Umschreiben erhalten, die Oberfläche zeigt ihn nirgends, und die Suche liest ihn nicht.
+
+Die Karte in der Oberfläche besteht aus Kopfzeile (Art und Belegstelle), Wortlaut, Paraphrase-Block, Notiz und zwei Aktionen. Der Paraphrase-Block trägt Stern und Titel, Modell und Zeit stehen in einem Tooltip, und die kleine Aktion „Neu schreiben“ mit der Sprachwahl sitzt in seiner Kopfzeile. „Wörtlich zitieren“ kopiert das Zitat mit Beleg, „Sinngemäß zitieren“ kopiert die Notiz oder die Paraphrase mit „vgl.“-Beleg.
+
+Die Auswahl im Reader rastet an Wortgrenzen ein. `packages/anchoring` rückt beide Ränder einer Auswahl nach außen, bis sie nicht mehr in einem Wort stehen (`snapToWordBoundaries`, ein Apostroph zwischen Buchstaben gehört zum Wort, ein Bindestrich nicht), und der Textanker entsteht aus dem erweiterten Bereich (`createSelectionAnchor`). Der PDF-Viewer und der Textviewer setzen die sichtbare Auswahl auf denselben Bereich, sobald der Zeiger losgelassen ist, und die Vierecke des PDF-Ankers folgen dem erweiterten Bereich.
 
 Die Karte hat zwei Anker: einen PDF-Anker (Seite, Vierecke, Datei-Hash) im Zotero-kompatiblen Positionsformat und einen Textanker nach W3C (exakter Text, Kontext davor und danach, Block-ID als Hinweis). Fehlt ein Anker nach einer Neukonvertierung, sucht der Kern die Stelle unscharf wie der Hypothesis-Client.
 
@@ -271,7 +273,7 @@ Zwei Punkte aus der Recherche bestimmen die Konfiguration. `claude -p --bare` li
 
 ### Aufgaben
 
-Die Sprache aller AI-Texte (Paraphrase, Kernaussage, Zusammenfassung) folgt einer Kette: Dropdown an der gerade gelesenen Quelle, sonst Projekteinstellung, sonst Bibliotheksstandard (D9). Das Dropdown ist im Reader jederzeit erreichbar.
+Die Sprache aller AI-Texte (Paraphrase, Zusammenfassung) folgt einer Kette: Dropdown an der gerade gelesenen Quelle, sonst Projekteinstellung, sonst Bibliotheksstandard (D9). Das Dropdown ist im Reader jederzeit erreichbar.
 
 Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
 

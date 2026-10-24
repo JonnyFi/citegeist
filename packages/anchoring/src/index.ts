@@ -1,5 +1,12 @@
 export type { TextAnchorRecord } from "./anchor.js";
-export { CONTEXT_LEN, createTextAnchor, trimRange, unitAt } from "./anchor.js";
+export {
+  CONTEXT_LEN,
+  createSelectionAnchor,
+  createTextAnchor,
+  snapToWordBoundaries,
+  trimRange,
+  unitAt,
+} from "./anchor.js";
 export type { BlockSlice, Location, PageRef } from "./locate.js";
 export { locate, locatorFor, pageOfRange } from "./locate.js";
 export type { Mapped } from "./mapped.js";

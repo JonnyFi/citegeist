@@ -10,9 +10,12 @@ export function itemCardsInput(citekey: string) {
 export type CardsListOutput = z.output<typeof cardsList.output>;
 type CardAnchor = z.input<typeof cardsCreate.input>["anchor"];
 
-/** CSS colour of a card kind, from the theme tokens, so it follows light and dark. */
-export function kindColor(kind: string): string {
-  return `var(--card-${kind})`;
+/**
+ * CSS colour of a card kind, from the theme tokens, so it follows light and dark. A card without a
+ * kind has the neutral colour.
+ */
+export function kindColor(kind: string | undefined): string {
+  return `var(--card-${kind ?? "none"})`;
 }
 
 /** cards.create anchor from what the reader reports for a selection; drops undefined fields. */

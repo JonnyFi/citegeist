@@ -217,14 +217,13 @@ async function importItem(
             citekey,
             anchor: { pdf: { page: card.page, quads: card.quads, file: source } },
             quote: card.quote,
-            kind: "quote",
             ai: false,
             projects: planned.projects,
             tags: card.tags,
           })) as { card: { frontmatter: { id: string } } };
           out.cards++;
           const patch: Record<string, unknown> = {};
-          if (card.ownWords) patch.ownWords = card.ownWords;
+          if (card.note) patch.note = card.note;
           if (card.pageLabel) patch.locator = { label: "page", start: card.pageLabel };
           if (Object.keys(patch).length > 0) {
             await call("cards.update", { id: created.card.frontmatter.id, patch });

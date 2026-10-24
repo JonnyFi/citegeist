@@ -76,7 +76,7 @@ describe("notes.backlinks", () => {
     });
     lib.writeItem(itemData("a1xx"), "Notiz zu [[ziel]].");
     const card = cardData("a1xx", "Das System beobachtet sich selbst.");
-    lib.writeCard(card.fm, { ...card.body, comment: "Vgl. [[ziel]]" });
+    lib.writeCard(card.fm, { ...card.body, note: "Vgl. [[ziel]]" });
     lib.writeFile(
       "notes/typed.md",
       noteFile(
@@ -164,7 +164,7 @@ describe("notes.update", () => {
     });
     lib.writeItem(itemData("a1xx"), "Notiz zu [[alter-titel]].");
     const card = cardData("a1xx", "Das System beobachtet sich selbst.");
-    lib.writeCard(card.fm, { ...card.body, comment: "Vgl. [[alter-titel]]" });
+    lib.writeCard(card.fm, { ...card.body, note: "Vgl. [[alter-titel]]" });
     lib.writeFile(
       "notes/typed.md",
       noteFile(

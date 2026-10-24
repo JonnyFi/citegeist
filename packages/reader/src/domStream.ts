@@ -1,4 +1,11 @@
-import { buildStream, type StreamUnit, type TextStream, toSource } from "@citegeist/anchoring";
+import {
+  buildStream,
+  rangeFromSource,
+  type StreamUnit,
+  snapToWordBoundaries,
+  type TextStream,
+  toSource,
+} from "@citegeist/anchoring";
 
 const BLOCK_ID = /^b[0-9a-z]{6,12}$/;
 
@@ -96,5 +103,43 @@ export function domRangesOfStreamRange(ds: DomStream, start: number, end: number
     r.setEnd(node, b);
     out.push(r);
   }
+  return out;
+}
+
+/** Text node and offset for a source-space offset. For a range end the offset follows the last character. */
+function domPointOfSource(
+  ds: DomStream,
+  src: number,
+  isEnd: boolean,
+): { node: Text; offset: number } | null {
+  const at = isEnd ? src - 1 : src;
+  for (const { node, start } of ds.nodes) {
+    if (at >= start && at < start + node.data.length) {
+      return { node, offset: src - start };
+    }
+  }
+  return null;
+}
+
+/**
+ * The DOM range with its edges moved to word boundaries, or null when it already sits on them
+ * (or cannot be mapped). The words are those of the stream, so a word that the document splits
+ * over two text nodes counts as one.
+ */
+export function snapDomRangeToWords(ds: DomStream, range: Range): Range | null {
+  const src = sourceRangeOfDomRange(ds, range);
+  if (!src) return null;
+  const r = rangeFromSource(ds.stream, src.start, src.end);
+  if (!r) return null;
+  const snapped = snapToWordBoundaries(ds.stream.text, r.start, r.end);
+  if (snapped.start === r.start && snapped.end === r.end) return null;
+  const s = toSource(ds.stream, snapped.start, snapped.end);
+  if (!s) return null;
+  const a = domPointOfSource(ds, s.start, false);
+  const b = domPointOfSource(ds, s.end, true);
+  if (!a || !b) return null;
+  const out = document.createRange();
+  out.setStart(a.node, a.offset);
+  out.setEnd(b.node, b.offset);
   return out;
 }

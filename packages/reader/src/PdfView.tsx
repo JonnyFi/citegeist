@@ -1,4 +1,10 @@
-import { rangeFromSource, resolveAnchor, type TextStream, toSource } from "@citegeist/anchoring";
+import {
+  rangeFromSource,
+  resolveAnchor,
+  snapToWordBoundaries,
+  type TextStream,
+  toSource,
+} from "@citegeist/anchoring";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { anchorsForRange } from "./anchors.js";
@@ -7,6 +13,7 @@ import {
   buildPageTexts,
   buildPdfStream,
   domRectsToPdfRects,
+  itemOfSource,
   type PdfPageText,
   pdfRectToBox,
   type RawTextItem,
@@ -183,7 +190,8 @@ export function PdfView({
     if (doc) resolvedRef.current?.(placed.status);
   }, [statusKey, doc]);
 
-  const compute = (range: Range): SelectionAnchors | null => {
+  /** Stream range of a DOM range in the text layer, without any snapping. */
+  const streamRangeOf = (range: Range): { start: number; end: number; page: number } | null => {
     if (!doc || !pdfStream) return null;
     const a = boundary(doc.texts, range.startContainer, range.startOffset, true);
     const b = boundary(doc.texts, range.endContainer, range.endOffset, false);
@@ -196,24 +204,70 @@ export function PdfView({
     const srcStart = first.base + startItem.start + a.offset;
     const srcEnd = last.base + endItem.start + b.offset;
     const r = rangeFromSource(pdfStream, srcStart, srcEnd);
-    if (!r) return null;
-    const anchors = anchorsForRange(pdfStream, r.start, r.end, stream);
+    return r ? { ...r, page: a.page } : null;
+  };
+
+  /** DOM range in the text layer for a range of the PDF stream. */
+  const domRangeOf = (start: number, end: number): Range | null => {
+    if (!doc || !pdfStream) return null;
+    const src = toSource(pdfStream, start, end);
+    if (!src) return null;
+    const a = itemOfSource(doc.texts, src.start, false);
+    const b = itemOfSource(doc.texts, src.end, true);
+    if (!a || !b) return null;
+    const textOf = (p: { page: number; item: number }) =>
+      scrollRef.current?.querySelector<HTMLElement>(
+        `.cg-page[data-page="${p.page}"] span[data-item="${p.item}"]`,
+      )?.firstChild;
+    const na = textOf(a);
+    const nb = textOf(b);
+    if (!na || !nb) return null;
+    const out = document.createRange();
+    out.setStart(na, a.offset);
+    out.setEnd(nb, b.offset);
+    return out;
+  };
+
+  /** The selection with its edges on word boundaries, or null when it is already there. */
+  const snap = (range: Range): Range | null => {
+    const sr = streamRangeOf(range);
+    if (!sr || !pdfStream) return null;
+    const s = snapToWordBoundaries(pdfStream.text, sr.start, sr.end);
+    if (s.start === sr.start && s.end === sr.end) return null;
+    return domRangeOf(s.start, s.end);
+  };
+
+  const compute = (range: Range): SelectionAnchors | null => {
+    if (!pdfStream) return null;
+    const sr = streamRangeOf(range);
+    if (!sr) return null;
+    // The anchors always use whole words, even while the live selection has not been snapped yet.
+    const s = snapToWordBoundaries(pdfStream.text, sr.start, sr.end);
+    const anchors = anchorsForRange(pdfStream, s.start, s.end, stream);
     if (!anchors) return null;
-    const pageEl = scrollRef.current?.querySelector<HTMLElement>(`.cg-page[data-page="${a.page}"]`);
-    const vp = viewports[a.page];
+    const moved = s.start !== sr.start || s.end !== sr.end;
+    const effective = (moved ? domRangeOf(s.start, s.end) : null) ?? range;
+    const startPage = (() => {
+      const src = toSource(pdfStream, s.start, s.end);
+      return (src && doc ? itemOfSource(doc.texts, src.start, false)?.page : undefined) ?? sr.page;
+    })();
+    const pageEl = scrollRef.current?.querySelector<HTMLElement>(
+      `.cg-page[data-page="${startPage}"]`,
+    );
+    const vp = viewports[startPage];
     if (!pageEl || !vp) return { ...anchors };
     const box = pageEl.getBoundingClientRect();
     // quads for the part of the selection on the first page
-    const onPage = [...range.getClientRects()].filter((c) => {
+    const onPage = [...effective.getClientRects()].filter((c) => {
       const cy = (c.top + c.bottom) / 2;
       return cy >= box.top && cy <= box.bottom && c.right >= box.left && c.left <= box.right;
     });
     const quads = domRectsToPdfRects(onPage, { left: box.left, top: box.top }, vp);
     if (quads.length === 0) return { ...anchors };
-    return { ...anchors, pdfAnchor: { page: a.page, quads, file: source } };
+    return { ...anchors, pdfAnchor: { page: startPage, quads, file: source } };
   };
 
-  const pending = useSelection(scrollRef, compute, onSelectionChange);
+  const pending = useSelection(scrollRef, compute, onSelectionChange, undefined, snap);
 
   return (
     <div className="cg-reader cg-pdf">

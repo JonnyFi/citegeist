@@ -14,6 +14,7 @@ import {
   type Actor,
   type CardBody,
   CardFrontmatter,
+  CardKind,
   type ItemFrontmatter,
   Locator,
   type ModelStamp,
@@ -66,16 +67,7 @@ export interface ExportCardsInput {
   project?: string | undefined;
 }
 
-const PATCH_KEYS = new Set([
-  "ownWords",
-  "comment",
-  "paraphrase",
-  "core",
-  "extra",
-  "kind",
-  "tags",
-  "locator",
-]);
+const PATCH_KEYS = new Set(["note", "paraphrase", "extra", "kind", "tags", "locator"]);
 
 /** Card operations of the core: create, update, regenerate, export and page label confirmation. */
 export class CardService {
@@ -114,7 +106,7 @@ export class CardService {
 
   // Create ---------------------------------------------------------------------------------------
 
-  /** Writes the card file at once. Paraphrase and core statement follow from a background job. */
+  /** Writes the card file at once. Paraphrase and kind follow from a background job. */
   create(actor: Actor, input: CreateCardInput): { card: CardFile; job?: string } {
     const item = this.lib.getItem(input.citekey).frontmatter;
     const quote = normalizeNewlines(input.quote).trim();
@@ -131,7 +123,7 @@ export class CardService {
       id: newCardId(Date.parse(created.at)),
       item: item.citekey,
       ...(resolved.source ? { source: resolved.source } : {}),
-      kind: input.kind ?? "quote",
+      ...(input.kind ? { kind: input.kind } : {}),
       ...(resolved.locator ? { locator: resolved.locator } : {}),
       anchor: resolved.anchor,
       quote_sha256: quoteSha256(quote),
@@ -265,7 +257,7 @@ export class CardService {
     });
   }
 
-  /** Runs card.paraphrase (and card.verify when enabled) and writes the result into the card. */
+  /** Runs card.paraphrase (and card.verify when enabled), writes the paraphrase and, if unset, the kind. */
   private async generate(id: string, language: string, fillOnly: boolean): Promise<void> {
     const { body } = this.getCard(id);
     const passage = body.quote;
@@ -275,7 +267,7 @@ export class CardService {
       try {
         const v = await this.deps.ai.run(
           "card.verify",
-          { passage, paraphrase: r.output.paraphrase, core: r.output.core },
+          { passage, paraphrase: r.output.paraphrase },
           { language },
         );
         checked = v.output.faithful;
@@ -285,7 +277,7 @@ export class CardService {
     }
     this.applyAi(id, fillOnly, {
       paraphrase: r.output.paraphrase,
-      core: r.output.core,
+      kind: r.output.kind,
       stamp: r.stamp,
       checked,
     });
@@ -296,7 +288,7 @@ export class CardService {
     fillOnly: boolean,
     ai: {
       paraphrase: string;
-      core: string;
+      kind: CardKind;
       stamp: { by: string; at: string; language: string };
       checked: boolean | undefined;
     },
@@ -310,20 +302,22 @@ export class CardService {
     // Read after the await so edits made while the model ran are kept.
     const file = MarkdownFile.parse(readFileSync(this.lib.paths.abs(rel), "utf8"));
     const body = parseCardBody(file.body);
-    if (fillOnly && (body.paraphrase !== undefined || body.core !== undefined)) return;
+    if (fillOnly && body.paraphrase !== undefined) return;
     body.paraphrase = ai.paraphrase;
-    body.core = ai.core;
     const stamp: ModelStamp = { by: ai.stamp.by, at: ai.stamp.at, language: ai.stamp.language };
+    // The reader's choice wins: the AI only sets a kind that is still unset (D16). A retired kind
+    // ("quote", "comment") counts as unset.
+    const kindIsSet = CardKind.safeParse(file.data?.kind).success;
     file.patch({
       paraphrase: ai.checked === undefined ? stamp : { ...stamp, checked: ai.checked },
-      core: stamp,
+      ...(kindIsSet ? {} : { kind: ai.kind }),
       modified: this.lib.stamp("system"),
     });
     file.setBody(serializeCardBody(body));
     this.lib.writeFile(rel, file.toString());
   }
 
-  /** Rewrites paraphrase and core statement, optionally in another language. */
+  /** Rewrites the paraphrase, optionally in another language. */
   regenerate(actor: Actor, input: { id: string; language?: string | undefined }): { job: string } {
     const { frontmatter } = this.getCard(input.id);
     const item = this.lib.getItem(frontmatter.item).frontmatter;
@@ -333,7 +327,7 @@ export class CardService {
 
   // Update ---------------------------------------------------------------------------------------
 
-  /** Edits own words, comment, kind, tags or locator. The quote can never change. */
+  /** Edits note, paraphrase, kind, tags or locator. The quote can never change. */
   update(actor: Actor, input: { id: string; patch: Record<string, unknown> }): { card: CardFile } {
     const { id, patch } = input;
     if ("quote" in patch) throw cardErrors.quoteImmutable(id);
@@ -353,7 +347,7 @@ export class CardService {
     const fm: Record<string, unknown> = {};
     const stamp = this.lib.stamp(actor);
 
-    const setText = (key: "ownWords" | "comment" | "paraphrase" | "core", v: unknown): void => {
+    const setText = (key: "note" | "paraphrase", v: unknown): void => {
       if (v === undefined) return;
       if (typeof v !== "string") {
         throw cardErrors.invalidPatch(id, `'${key}' must be a string`, `Pass '${key}' as text.`);
@@ -361,20 +355,19 @@ export class CardService {
       if (v === "") delete body[key];
       else body[key] = v;
     };
-    setText("ownWords", patch.ownWords);
-    setText("comment", patch.comment);
+    setText("note", patch.note);
     if (patch.paraphrase !== undefined) {
       setText("paraphrase", patch.paraphrase);
       fm.paraphrase = patch.paraphrase === "" ? undefined : { by: actor, at: stamp.at };
     }
-    if (patch.core !== undefined) {
-      setText("core", patch.core);
-      fm.core = patch.core === "" ? undefined : { by: actor, at: stamp.at };
-    }
     if (patch.extra !== undefined) {
       body.extra = (patch.extra as CardBody["extra"]) ?? [];
     }
-    if (patch.kind !== undefined) fm.kind = patch.kind;
+    // null clears the kind. A retired kind in the file is dropped as soon as the card is rewritten.
+    if (patch.kind !== undefined) fm.kind = patch.kind ?? undefined;
+    else if (file.data?.kind !== undefined && !CardKind.safeParse(file.data.kind).success) {
+      fm.kind = undefined;
+    }
     if (patch.tags !== undefined) fm.tags = patch.tags;
     if (patch.locator !== undefined) {
       const l = Locator.safeParse(patch.locator);

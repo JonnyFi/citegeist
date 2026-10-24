@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 const answer = (paraphrase: string) => ({
-  "card.paraphrase": { paraphrase, core: "Kern." },
+  "card.paraphrase": { paraphrase, kind: "finding" },
 });
 
 async function setup() {

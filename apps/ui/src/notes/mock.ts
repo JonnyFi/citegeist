@@ -216,7 +216,7 @@ export function bindNotesMock(
         });
       }
       for (const card of data.cards) {
-        const text = [card.body.ownWords, card.body.comment].filter(Boolean).join("\n");
+        const text = card.body.note ?? "";
         if (!hits(text)) continue;
         backlinks.push({
           kind: "card",
