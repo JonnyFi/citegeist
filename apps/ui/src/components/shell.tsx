@@ -266,7 +266,7 @@ function ShellFrame() {
       <header className="drag-region flex h-topbar shrink-0 items-stretch border-b border-line">
         <div
           className={cn(
-            "no-drag flex shrink-0 items-center border-r border-line",
+            "flex shrink-0 items-center border-r border-line",
             open ? "w-rail-open gap-3 px-4" : "w-rail justify-center",
             darwin && open && "pl-[84px]",
           )}
@@ -304,10 +304,7 @@ function ShellFrame() {
             </button>
           )}
         </div>
-        <div
-          ref={headerRef}
-          className="no-drag flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]"
-        >
+        <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]">
           {fallback ? <div className="font-medium">{t(fallback[1])}</div> : null}
         </div>
         <JobStatus />
