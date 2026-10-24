@@ -140,7 +140,7 @@ Abnahme:
 - [ ] Rundreise von outline.yaml ohne Verlust
 - [ ] history.revertTurn stellt alle Dateien eines Zugs wieder her und führt eine Handänderung dazwischen per Drei-Wege-Merge zusammen
 - [ ] Schreibende Operationen eines Hintergrundjobs und im Prüfmodus erzeugen Vorschläge
-- [ ] note_insight, find_insights, get_outline, edit_outline und edit_plan_doc bestehen den MCP-Client-Test
+- [ ] note_insight, find_insights, get_project, edit_outline und edit_plan_doc bestehen den MCP-Client-Test
 - [ ] pnpm verify grün
 Modell: Sonnet. Größe: L.
 ```

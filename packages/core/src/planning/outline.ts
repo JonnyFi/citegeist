@@ -117,7 +117,7 @@ function find(outline: Outline, id: string): OutlineNode {
     throw fail(
       "OUTLINE_NODE_NOT_FOUND",
       `no outline node ${id}`,
-      "Call get_outline to see the node ids.",
+      "Call get_project to see the node ids.",
       { id },
     );
   }
@@ -223,7 +223,7 @@ export function resolveNode(outline: Outline, ref: string): NumberedNode {
     throw fail(
       "OUTLINE_NODE_NOT_FOUND",
       `no outline node '${ref}'`,
-      "Call get_outline and use a node id or a number from it.",
+      "Call get_project and use a node id or a number from it.",
       { ref },
     );
   }

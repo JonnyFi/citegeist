@@ -56,7 +56,8 @@ If the citegeist app is open, `cg` and `cg mcp` hand every call to it, so the ap
 3. The call returns at once with `citekey` and `job`. Poll `jobs_get {job}` (CLI: `cg jobs get <job> --json`) until the status is `succeeded` or `failed`. Wait a few seconds between polls.
 4. If `duplicateOf` is set, the paper exists already. Use that citekey and do not add again.
 5. For many DOIs use the CLI in a loop; it costs fewer tokens than one MCP call each.
-6. Tell the user what landed in the inbox and why. They accept or reject it in the app (`cg inbox accept <citekey>` for the user).
+6. To find papers around one you have, call MCP `related_works {citekey, direction: "references" | "citing"}` (CLI: `cg graph related <citekey> --direction citing --json`). Each work is marked `library`, `inbox` or `new`. Pass the `doi` or `arxiv` id of a work marked `new` to `add_item` with a `why`.
+7. Tell the user what landed in the inbox and why. They accept or reject it in the app (`cg inbox accept <citekey>` for the user).
 
 ## Workflow: add a paper straight to the library
 

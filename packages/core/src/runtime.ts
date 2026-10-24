@@ -7,10 +7,11 @@ import {
   type RunTaskOptions,
   type TaskName,
 } from "@citegeist/ai";
-import { createResolver } from "@citegeist/metadata";
+import { createResolver, type GraphLookup } from "@citegeist/metadata";
 import { Registry } from "@citegeist/ops";
 import { bindCardOperations } from "./cards/index.js";
 import type { CardJobQueue } from "./cards/jobs.js";
+import { bindGraphOperations, type GraphService } from "./graph/index.js";
 import { bindIngestOperations } from "./ingest/index.js";
 import type { IngestService, MetadataLookup } from "./ingest/service.js";
 import { ChildProcessConvertWorker, type ConvertWorker } from "./ingest/worker.js";
@@ -19,6 +20,7 @@ import { bindLinkOperations } from "./links/index.js";
 import { bindNoteOperations } from "./notes/index.js";
 import { bindCoreOperations } from "./ops.js";
 import { bindPlanningOperations } from "./planning/index.js";
+import { bindProjectContext } from "./project-context.js";
 import {
   type AttachSemanticOptions,
   type ModelEmbedder,
@@ -33,6 +35,7 @@ import {
   type DefaultSettingsOptions,
   type SettingsService,
 } from "./settings/index.js";
+import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
 
 export interface RuntimeOptions {
   /**
@@ -63,12 +66,20 @@ export interface RuntimeOptions {
   /** Tuning and test hooks for semantic search. Only used when background jobs run. */
   semantic?: Omit<AttachSemanticOptions, "embedder"> &
     Pick<SemanticControllerOptions, "createEmbedder">;
+  /** Tuning and test hooks for versioning and sync (quiet period, brctl runner, LFS check). */
+  sync?: Omit<BindSyncOptions, "autoStart" | "onError">;
+  /** Receives errors of background work such as sync commits. */
+  onError?: (err: unknown) => void;
 }
 
 export interface Runtime {
   registry: Registry;
   ingest: IngestService;
   settings: SettingsService;
+  /** Versioning and sync of the library folder (D5, A9). */
+  sync: SyncService;
+  /** Citation graph, snowballing and retraction checks. */
+  graph: GraphService;
   /** Semantic search. Absent in a one-shot process, which does not run background jobs. */
   semantic?: SemanticController;
   close(): Promise<void>;
@@ -120,6 +131,7 @@ function fixedBackends(list: InferenceBackend[]): BackendProvider {
 /** Metadata resolver that follows the contact address in the settings. */
 function followingResolver(initial: string | undefined): {
   lookup: MetadataLookup;
+  graph: GraphLookup;
   use(mailto: string | undefined): void;
 } {
   const make = (mailto: string | undefined) => createResolver(mailto ? { config: { mailto } } : {});
@@ -130,12 +142,38 @@ function followingResolver(initial: string | undefined): {
       resolve: (input, options) => current.resolve(input, options),
       resolveByTitle: (query, options) => current.resolveByTitle(query, options),
     },
+    graph: {
+      crossrefReferences: (doi, limit) => current.crossrefReferences(doi, limit),
+      openAlexReferences: (key, limit) => current.openAlexReferences(key, limit),
+      openAlexCiting: (key, options) => current.openAlexCiting(key, options),
+      openAlexDoi: (openalex) => current.openAlexDoi(openalex),
+      retractionStatus: (doi) => current.retractionStatus(doi),
+      findVersions: (key) => current.findVersions(key),
+    },
     use(next) {
       if (next === mailto) return;
       mailto = next;
       current = make(next);
     },
   };
+}
+
+/** Stands in for the graph lookups when a caller passes its own resolver that has none. */
+function noGraphLookup(): GraphLookup {
+  const fail = (): Promise<never> =>
+    Promise.reject(new Error("the resolver given to the runtime has no citation graph lookups"));
+  return {
+    crossrefReferences: fail,
+    openAlexReferences: fail,
+    openAlexCiting: fail,
+    openAlexDoi: fail,
+    retractionStatus: fail,
+    findVersions: fail,
+  };
+}
+
+function isGraphLookup(value: object): value is GraphLookup {
+  return "crossrefReferences" in value && "openAlexCiting" in value && "findVersions" in value;
 }
 
 /**
@@ -180,9 +218,12 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   };
 
   const resolver = opts.resolver ? undefined : followingResolver(opts.mailto);
+  // Sync is bound last, but ingest asks it for evicted iCloud files while converting.
+  let sync: SyncService | undefined;
   const ingest = bindIngestOperations(registry, lib, {
     resolver: opts.resolver ?? (resolver as NonNullable<typeof resolver>).lookup,
     worker,
+    ensureLocal: async (rel) => (sync ? sync.ensureLocal(rel) : true),
     ...(opts.autoStart === undefined ? {} : { autoStart: opts.autoStart }),
   });
 
@@ -237,6 +278,16 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   bindCardOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
   bindLinkOperations(registry, lib, { ai, ...(cardJobs ? { jobs: cardJobs } : {}) });
 
+  const graphLookup: GraphLookup =
+    resolver?.graph ??
+    (opts.resolver && isGraphLookup(opts.resolver) ? opts.resolver : noGraphLookup());
+  const graph = bindGraphOperations(registry, lib, {
+    lookup: graphLookup,
+    addItem: (actor, input) => ingest.addItem(actor, input),
+    queue: ingest.queue,
+  });
+  bindProjectContext(registry);
+
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {
     const { createEmbedder, ...tuning } = opts.semantic ?? {};
@@ -253,13 +304,30 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     void controller.configure(stored.enabled, stored.model);
   }
 
+  if (opts.autoStart !== false) graph.schedule();
+
+  // Last, because it wraps registry.call to commit library changes as the actor of the operation.
+  const syncService = bindSyncOperations(registry, lib, {
+    ...opts.sync,
+    ...(opts.onError ? { onError: opts.onError } : {}),
+    ...(opts.autoStart === false ? { autoStart: false } : {}),
+  });
+  sync = syncService;
+  if (opts.autoStart !== false) {
+    void syncService.start().catch((err) => opts.onError?.(err));
+  }
+
   return {
     registry,
     ingest,
     settings: service,
+    sync: syncService,
+    graph,
     ...(semantic ? { semantic } : {}),
     close: async () => {
+      graph.stop();
       semantic?.close();
+      syncService.close();
       await ingest.close();
     },
   };

@@ -16,7 +16,9 @@
   "dependencies": {
     "@citegeist/chat": "workspace:*",
     "@citegeist/core": "workspace:*",
+    "@citegeist/import": "workspace:*",
     "@citegeist/mcp": "workspace:*",
+    "@citegeist/metadata": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
     "@orpc/server": "^1.16.1",

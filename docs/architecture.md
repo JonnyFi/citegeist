@@ -287,7 +287,7 @@ Die Abos bieten keine Embeddings, deshalb laufen sie lokal mit Transformers.js. 
 
 - TypeScript-SDK v2 (`@modelcontextprotocol/server`), Spec-Revision 2026-07-28, ältere Clients bleiben über den Kompatibilitätsmodus des SDK bedient.
 - `cg mcp` als stdio-Shim für alle lokalen Clients, dazu Streamable HTTP auf `127.0.0.1` mit Bearer-Token sowie Origin- und Host-Prüfung. Für Claude Desktop gibt es zusätzlich ein `.mcpb`-Paket.
-- Etwa zehn Tools: `search`, `get_item`, `read_document` (nach Seite, Abschnitt oder Block), `list_cards`, `add_item`, `create_card`, `create_note`, `link`, `get_project`, `cite`, `jobs_get`. Lesende Tools tragen `readOnlyHint`, jede Antwort hat einen kurzen Text plus `structuredContent`, Volltexte kommen als `resource_link`.
+- Etwa zehn Tools: `search`, `get_item`, `read_document` (nach Seite, Abschnitt oder Block), `list_cards`, `add_item`, `create_card`, `create_note`, `link`, `get_project` (Projekt, Pläne und Gliederung in einem Aufruf), `related_works` (zitierte und zitierende Werke eines Eintrags, `direction`), `cite`, `jobs_get`. Lesende Tools tragen `readOnlyHint`, jede Antwort hat einen kurzen Text plus `structuredContent`, Volltexte kommen als `resource_link`.
 - Server-Anweisungen unter 4.096 Zeichen, weil Claude Code beim Start nur Tool-Namen und Anweisungen lädt.
 
 ### CLI

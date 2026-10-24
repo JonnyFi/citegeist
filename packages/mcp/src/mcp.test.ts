@@ -20,9 +20,9 @@ const READ_ARGS: Record<string, Record<string, unknown>> = {
   read_document: { citekey: FIXTURE_CITEKEY, pages: "31-32" },
   list_cards: { citekey: FIXTURE_CITEKEY },
   get_project: { slug: "systems" },
+  related_works: { citekey: FIXTURE_CITEKEY, direction: "references" },
   cite: { items: [{ citekey: FIXTURE_CITEKEY, locator: "31" }] },
   jobs_get: { job: "j_01JB8Z3QK7ABCDEFGH" },
-  get_outline: { project: "systems" },
   find_insights: { project: "systems", query: "Mechanismus" },
 };
 

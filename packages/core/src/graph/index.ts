@@ -3,6 +3,7 @@ import {
   graphAddCandidates,
   graphCiting,
   graphReferences,
+  graphRelated,
   itemsCheckRetractions,
   type Registry,
 } from "@citegeist/ops";
@@ -127,6 +128,37 @@ export function bindGraphOperations(
   registry
     .bind(graphReferences, async (_ctx, input) => listReferences(lib, deps.lookup, input))
     .bind(graphCiting, async (_ctx, input) => listCiting(lib, deps.lookup, input))
+    .bind(graphRelated, async (_ctx, input) => {
+      if (input.direction === "references") {
+        const out = await listReferences(lib, deps.lookup, {
+          citekey: input.citekey,
+          limit: input.limit,
+        });
+        return {
+          citekey: out.citekey,
+          direction: input.direction,
+          ...(out.source ? { source: out.source } : {}),
+          total: out.total,
+          works: out.references,
+          counts: out.counts,
+          errors: out.errors,
+        };
+      }
+      const out = await listCiting(lib, deps.lookup, {
+        citekey: input.citekey,
+        limit: input.limit,
+        ...(input.cursor ? { cursor: input.cursor } : {}),
+      });
+      return {
+        citekey: out.citekey,
+        direction: input.direction,
+        total: out.total,
+        works: out.citing,
+        counts: out.counts,
+        errors: [],
+        ...(out.next ? { next: out.next } : {}),
+      };
+    })
     .bind(graphAddCandidates, async (ctx, input) =>
       addCandidates(
         ctx.actor,

@@ -83,6 +83,33 @@ export const graphCiting = defineContract({
   }),
 });
 
+export const graphRelated = defineContract({
+  name: "graph.related",
+  summary:
+    "Related works of an item. direction 'references' lists what the item cites (refs.jsonl, else the Crossref deposit, else OpenAlex); 'citing' lists the works that cite it (OpenAlex, most cited first). Each work is marked as in the library, in the inbox or new. To add a work marked new, pass its DOI or arXiv id to add_item",
+  access: "read",
+  input: z.object({
+    citekey: Citekey,
+    direction: z.enum(["references", "citing"]),
+    limit: z.number().int().positive().max(200).default(50),
+    cursor: z.string().optional().describe("the `next` of the previous page (citing only)"),
+  }),
+  output: z.object({
+    citekey: Citekey,
+    direction: z.enum(["references", "citing"]),
+    /** Where a reference list comes from. Absent for citing works and when no source has a list. */
+    source: ReferenceSource.optional(),
+    /** Works the source lists, before `limit` cut the list. */
+    total: z.number().int().nonnegative(),
+    works: z.array(MarkedWork),
+    counts: StatusCounts,
+    /** Sources that failed while looking, so that an empty list is not mistaken for no works. */
+    errors: z.array(z.string()),
+    next: z.string().optional(),
+  }),
+  mcp: { tool: "related_works", readOnly: true },
+});
+
 /** What identifies a candidate: the first of DOI, arXiv id and OpenAlex id that is present. */
 export const Candidate = GraphWork.refine((w) => Boolean(w.doi || w.arxiv || w.openalex), {
   message: "a candidate needs a doi, an arxiv id or an openalex id",
@@ -181,6 +208,7 @@ export const itemsCheckRetractions = defineContract({
 export const GRAPH_CONTRACTS: readonly OperationContract[] = [
   graphReferences,
   graphCiting,
+  graphRelated,
   graphAddCandidates,
   itemsCheckRetractions,
 ];

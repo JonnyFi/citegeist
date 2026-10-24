@@ -9,7 +9,15 @@ import {
   statSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, extname, isAbsolute, join, resolve as resolvePath } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve as resolvePath,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateCitekey, parseBibtex, resolveImportedCitekey } from "@citegeist/cite";
 import {
@@ -60,6 +68,11 @@ export interface IngestDeps {
   /** Use an existing queue instead of one in the library's state.sqlite. */
   queue?: JobQueue;
   backoffMs?: (attempt: number) => number;
+  /**
+   * Makes sure a library file is on disk before it is read: iCloud keeps big files as
+   * placeholders. `rel` is relative to the library root. Default: every file is local.
+   */
+  ensureLocal?: (rel: string) => Promise<boolean>;
   /** Start running jobs immediately. Default true. */
   autoStart?: boolean;
 }
@@ -818,6 +831,7 @@ export class IngestService {
       source.kind === "pdf" ? "pdf" : source.kind === "epub" ? "epub" : "html",
     );
     mkdirSync(dirname(finalDir), { recursive: true });
+    await this.deps.ensureLocal?.(relative(lib.root, sourcePath));
     try {
       const result = await this.deps.worker.convert(
         {

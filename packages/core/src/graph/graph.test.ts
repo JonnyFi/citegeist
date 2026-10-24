@@ -241,6 +241,34 @@ describe("graph.citing", () => {
   });
 });
 
+describe("graph.related", () => {
+  it("answers both directions through one operation", async () => {
+    const e = await setup();
+    put(e, "wakefield1998", { DOI: WAKEFIELD });
+    const refs = await e.call<Refs>("graph.references", { citekey: "wakefield1998" });
+    const related = await e.call<{
+      direction: string;
+      source?: string;
+      total: number;
+      works: Marked[];
+      counts: Refs["counts"];
+    }>("graph.related", { citekey: "wakefield1998", direction: "references", limit: 200 });
+    expect(related.direction).toBe("references");
+    expect(related.source).toBe("crossref");
+    expect(related.total).toBe(refs.total);
+    expect(related.works).toEqual(refs.references);
+    expect(related.counts).toEqual(refs.counts);
+
+    const citing = await e.call<{ direction: string; works: Marked[]; next?: string }>(
+      "graph.related",
+      { citekey: "wakefield1998", direction: "citing", limit: 5 },
+    );
+    expect(citing.direction).toBe("citing");
+    expect(citing.works).toHaveLength(5);
+    expect(citing.next).toBeTruthy();
+  });
+});
+
 describe("graph.addCandidates", () => {
   const added: Array<{ actor: Actor; identifier: string; target: string; why?: string }> = [];
   const fakeLookup = {

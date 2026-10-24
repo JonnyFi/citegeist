@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { createRuntime, defaultLocalBase, Library, LocalPaths } from "@citegeist/core";
 import { CONTRACTS, defineContract, Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
-import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/server";
+import { bindImport, type CoreServer, LockHeldError, startCoreServer } from "@citegeist/server";
 import { z } from "zod";
 import { actorNotForwardable, findRunningCore, forwardCall, type RunningCore } from "./forward.js";
 import { resolveLibraryPath } from "./library-path.js";
@@ -119,6 +119,7 @@ export function createWiredRegistry(env: NodeJS.ProcessEnv, options: WiredOption
           ...(localBase ? { localBase } : {}),
         });
         const runtime = createRuntime(lib, { autoStart: false });
+        bindImport(runtime, lib);
         return { lib, runtime, registry: runtime.registry };
       } catch (err) {
         if (err instanceof CitegeistError && err.detail.code === "LIBRARY_NOT_FOUND") {

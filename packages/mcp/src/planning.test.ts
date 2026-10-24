@@ -74,11 +74,13 @@ describe("planning tools over stdio", () => {
     expect(hint("edit_outline")).toBe(false);
     expect(hint("edit_plan_doc")).toBe(false);
     expect(hint("find_insights")).toBe(true);
-    expect(hint("get_outline")).toBe(true);
+    expect(hint("get_project")).toBe(true);
+    expect(tools.find((t) => t.name === "get_outline")).toBeUndefined();
   });
 
   it("note_insight writes into the chapter document and find_insights brings it back", async () => {
-    const outline = await call<{ nodes: Node[] }>("get_outline", { project: "phd" });
+    const outline = (await call<{ outline: { nodes: Node[] } }>("get_project", { slug: "phd" }))
+      .outline;
     const chapter = outline.nodes.find((n) => n.title === "Theoretischer Rahmen");
     expect(chapter?.doc).toBeTruthy();
 
@@ -122,7 +124,8 @@ describe("planning tools over stdio", () => {
   });
 
   it("edit_outline adds a section, edit_plan_doc gives it a document", async () => {
-    const outline = await call<{ nodes: Node[] }>("get_outline", { project: "phd" });
+    const outline = (await call<{ outline: { nodes: Node[] } }>("get_project", { slug: "phd" }))
+      .outline;
     const methods = outline.nodes.find((n) => n.title === "Methodisches Vorgehen");
     const edited = await call<{ added: string[]; nodes: Node[] }>("edit_outline", {
       project: "phd",

@@ -111,6 +111,16 @@ describe("BibLaTeX round trip", () => {
     `);
   });
 
+  it("leaves the Zotero key out of eprint", () => {
+    const luhmann = SAMPLE_ITEMS[0];
+    if (!luhmann) throw new Error("no sample");
+    const bib = toBibtex([{ ...luhmann, ids: { zotero: "ABCD1234" } }]);
+    expect(bib).not.toContain("eprint");
+    expect(bib).not.toContain("ABCD1234");
+    const withPmcid = toBibtex([{ ...luhmann, ids: { zotero: "ABCD1234", pmcid: "PMC1" } }]);
+    expect(withPmcid).not.toContain("eprint");
+  });
+
   it("round trips a second time without drift", () => {
     const once = toBibtex(parseBibtex(toBibtex(items)).items.map(toFrontmatter));
     expect(once).toBe(toBibtex(items));

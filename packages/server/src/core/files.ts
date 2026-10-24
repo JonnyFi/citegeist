@@ -26,12 +26,8 @@ export function contentTypeOf(path: string): string {
 
 export const FILES_PREFIX = "/files/";
 
-/**
- * Maps a request path `/files/<citekey>/sources/<hash>.<ext>` to a file below `<library>/items`.
- * Returns undefined for anything that is not a plain file inside that directory: path traversal,
- * hidden segments, symlinks that point out, directories.
- */
-export function resolveLibraryFile(libraryRoot: string, pathname: string): string | undefined {
+/** The path segments below `items/` of a request path, or undefined for an unusable path. */
+export function fileSegments(pathname: string): string[] | undefined {
   if (!pathname.startsWith(FILES_PREFIX)) return undefined;
   let decoded: string;
   try {
@@ -45,6 +41,17 @@ export function resolveLibraryFile(libraryRoot: string, pathname: string): strin
   if (segments.some((s) => s === "" || s === "." || s === ".." || s.startsWith("."))) {
     return undefined;
   }
+  return segments;
+}
+
+/**
+ * Maps a request path `/files/<citekey>/sources/<hash>.<ext>` to a file below `<library>/items`.
+ * Returns undefined for anything that is not a plain file inside that directory: path traversal,
+ * hidden segments, symlinks that point out, directories.
+ */
+export function resolveLibraryFile(libraryRoot: string, pathname: string): string | undefined {
+  const segments = fileSegments(pathname);
+  if (!segments) return undefined;
   try {
     const base = realpathSync(join(libraryRoot, "items"));
     const real = realpathSync(join(base, ...segments));
@@ -59,12 +66,14 @@ export function resolveLibraryFile(libraryRoot: string, pathname: string): strin
  * Serves one library file to the renderer. The caller has checked host, origin and token already.
  * HTML is sandboxed, so a converted web page cannot run script in the core's origin.
  */
-export function serveLibraryFile(
+export async function serveLibraryFile(
   libraryRoot: string,
   pathname: string,
   req: IncomingMessage,
   res: ServerResponse,
-): void {
+  /** Downloads an evicted iCloud file first. `rel` is relative to the library root. */
+  ensureLocal?: (rel: string) => Promise<unknown>,
+): Promise<void> {
   const fail = (status: number, error: string): void => {
     res.writeHead(status, { "content-type": "application/json" });
     res.end(JSON.stringify({ error }));
@@ -73,6 +82,8 @@ export function serveLibraryFile(
     fail(405, "method not allowed");
     return;
   }
+  const segments = fileSegments(pathname);
+  if (segments && ensureLocal) await ensureLocal(`items/${segments.join("/")}`).catch(() => {});
   const file = resolveLibraryFile(libraryRoot, pathname);
   if (!file) {
     fail(404, "not found");
