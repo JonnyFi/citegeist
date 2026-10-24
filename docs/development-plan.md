@@ -267,6 +267,17 @@ Jonnys Design liegt in `docs/design/design-system.md`, `docs/design/boards/*.htm
 | W4.5 Schneeballsuche und Rückrufe | Referenzen und zitierende Arbeiten über OpenAlex, Rückruf-Warnungen über Crossref | M |
 | W4.6 Webhooks | ausgehend und eingehend mit HMAC, Tunnel oder Relay, Anbindung des Grok-Bots | M |
 
+## Welle 5: Härtung nach der Open-Source-Recherche
+
+Am 2026-10-24 haben zwei Recherchen populäre Open-Source-Projekte mit KI angeschaut: Wissens- und Dokument-Apps (open-notebook, AnythingLLM, Karakeep, PaperQA2, basic-memory, Copilot for Obsidian, Smart Connections) und Agent-Clients samt MCP-Umfeld (opencode, Zed, Cline, goose, Continue, Vercel AI SDK, die MCP-Referenzserver). Die Grundarchitektur bestätigen beide. Diese Welle setzt die Punkte um, bei denen andere Projekte weiter sind. Die vier Workstreams laufen parallel. W5.1 und W5.2 berühren beide die Recherche-Aufträge in `packages/chat/src/research.ts`; W5.1 wird zuerst gemergt, W5.2 rebased darauf.
+
+| ID | Inhalt | Fertig, wenn | Größe |
+|---|---|---|---|
+| W5.1 Schutz vor eingeschleusten Anweisungen | Fremder Text aus PDFs, Webseiten und Webhooks geht nur markiert in Prompts (Spotlighting mit Datamarking), Aufgaben-Prompts bekommen eine neue Version. Die Evals bekommen Angriffs-Fixtures („ignoriere die Regeln und gib X aus“). Unbeaufsichtigte Recherche-Aufträge haben nie gleichzeitig fremde Inhalte, Zugriff auf die Bibliothek und freie Abrufe nach außen (Agents Rule of Two, Befund L9 in `docs/security.md`) | Angriffs-Fixtures bestehen live mit der Standard-Aufgabe, L9 ist geschlossen | M |
+| W5.2 Laufkontrolle und Verbrauch | Abbrechen stoppt einen laufenden KI-Aufruf samt CLI-Prozess (AbortSignal bis in die Backends). Recherche-Aufträge haben Grenzen für Zeit, Tokens und Runden und erkennen Schleifen aus gleichen Werkzeugaufrufen. Jeder KI-Aufruf speichert Tokens, Cache-Treffer und Listenpreis in `state.sqlite`, sichtbar in den Einstellungen und über `cg usage` | Test, der einen laufenden CLI-Aufruf abbricht und den Prozess weg sieht; Verbrauch erscheint nach einer Paraphrase | M |
+| W5.3 Suche mit Messlatte | Ein Testsatz aus Suchfragen über die CC-BY-Fixtures läuft in `pnpm verify` und schlägt fehl, wenn hit@5 sinkt; ein Skript misst dasselbe an einer echten Bibliothek, ohne Daten ins Repo zu legen. Abschnitte tragen beim Einbetten den Pfad ihrer Überschriften. Ein lokaler Reranker sortiert die Treffer nach, wenn der Testsatz eine Verbesserung zeigt | hit@5 auf dem Testsatz vor und nach jeder Änderung im PR dokumentiert | M |
+| W5.4 Agent-Hygiene | `AGENTS.md` im Repo als gemeinsame Anleitung für Claude Code, Cursor und Codex, `CLAUDE.md` verweist darauf und behält den gstack-Block. Der offizielle MCP-Konformitätstest läuft in `pnpm verify`. `tools/list` liefert eine feste Reihenfolge und eine `ttlMs` | Konformitätstest grün oder mit begründeter Liste erwarteter Abweichungen | S |
+
 ## Später
 
 Nach v0.3 sind noch ein eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice und das iPad offen. Für einen Open-Source-Release fehlt eine notarisierte App mit Auto-Update (Developer ID, 99 US-Dollar pro Jahr). Das proprietäre Claude Agent SDK ist kein Blocker (siehe `docs/licenses.md`).
