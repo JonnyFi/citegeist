@@ -17,6 +17,7 @@ import { ImportScreen } from "./import";
 import {
   LitsearchCompareScreen,
   LitsearchNewScreen,
+  LitsearchPreprintsScreen,
   LitsearchRunScreen,
   LitsearchRunsScreen,
   LitsearchWatchesScreen,
@@ -234,6 +235,12 @@ const litsearchWatchesRoute = createRoute({
   component: LitsearchWatchesScreen,
 });
 
+const litsearchPreprintsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/preprints",
+  component: LitsearchPreprintsScreen,
+});
+
 const litsearchCompareRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/litsearch/compare",
@@ -263,6 +270,7 @@ const routeTree = rootRoute.addChildren([
   litsearchNewRoute,
   litsearchCompareRoute,
   litsearchWatchesRoute,
+  litsearchPreprintsRoute,
   litsearchRunRoute,
   itemRoute,
   projectsRoute,

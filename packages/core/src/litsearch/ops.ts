@@ -3,6 +3,9 @@ import {
   litsearchCompare,
   litsearchExport,
   litsearchGet,
+  litsearchPreprints,
+  litsearchPreprintsCheck,
+  litsearchPreprintsImport,
   litsearchReport,
   litsearchResume,
   litsearchRuns,
@@ -22,7 +25,7 @@ import { type LitsearchDeps, LitsearchService } from "./service.js";
 
 /**
  * Binds litsearch.suggest, start, resume, cancel, runs, get, export, report, toInbox,
- * compare and the watchlist operations. A run is a job of kind
+ * compare, the watchlist and the preprint operations. A run is a job of kind
  * "litsearch.run" on `deps.queue`. The other litsearch.* contracts answer OPERATION_NOT_IMPLEMENTED
  * until their part of issue #50 lands.
  */
@@ -50,6 +53,9 @@ export function bindLitsearchOperations(
     .bind(litsearchWatchBackground, async (_ctx, input) =>
       litsearch.watchBackground(input.id, input.enabled),
     )
-    .bind(litsearchWatchSeen, async (_ctx, input) => litsearch.watchSeen(input.id));
+    .bind(litsearchWatchSeen, async (_ctx, input) => litsearch.watchSeen(input.id))
+    .bind(litsearchPreprints, async () => litsearch.preprints())
+    .bind(litsearchPreprintsImport, async (_ctx, input) => litsearch.preprintsImport(input.path))
+    .bind(litsearchPreprintsCheck, async (ctx) => litsearch.preprintsCheck(ctx.actor));
   return Object.assign(registry, { litsearch });
 }

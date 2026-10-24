@@ -1,5 +1,6 @@
 import {
   type LitsearchPaper,
+  type LitsearchPreprint,
   type LitsearchRunMeta,
   type LitsearchStage,
   type LitsearchWatch,
@@ -7,6 +8,9 @@ import {
   litsearchCompare,
   litsearchExport,
   litsearchGet,
+  litsearchPreprints,
+  litsearchPreprintsCheck,
+  litsearchPreprintsImport,
   litsearchReport,
   litsearchResume,
   litsearchRuns,
@@ -144,6 +148,8 @@ interface MockRun {
 export interface LitsearchMockState {
   runs: Map<string, MockRun>;
   watches: Map<string, LitsearchWatch>;
+  preprints: Map<string, LitsearchPreprint>;
+  lastCheck?: string;
 }
 
 /** A finished run and one that failed at snowballing, so the list has something to show. */
@@ -228,7 +234,35 @@ export function createLitsearchMockState(): LitsearchMockState {
     lastNew: 1,
     unseen: 1,
   });
-  return { runs, watches };
+  const preprints = new Map<string, LitsearchPreprint>([
+    [
+      "arxiv:2601.01234",
+      {
+        id: "arxiv:2601.01234",
+        title: "LLM Agents Talking: A Benchmark",
+        doi: "10.48550/arxiv.2601.01234",
+        arxiv: "2601.01234",
+        status: "preprint",
+        from: ["run:2026-10-20-agent-communication-protocols"],
+        hints: [],
+      },
+    ],
+    [
+      "arxiv:2410.00042",
+      {
+        id: "arxiv:2410.00042",
+        title: "Toolformer Agents in the Wild",
+        doi: "10.48550/arxiv.2410.00042",
+        arxiv: "2410.00042",
+        status: "published",
+        from: ["import:references.bib"],
+        checked: "2026-10-23T08:00:00",
+        published: { doi: "10.1145/3711111", venue: "ACM Computing Surveys", year: 2026 },
+        hints: [],
+      },
+    ],
+  ]);
+  return { runs, watches, preprints, lastCheck: "2026-10-23T08:00:00" };
 }
 
 function stagesOf(run: MockRun): LitsearchStage[] {
@@ -580,6 +614,43 @@ export function bindLitsearchMock(
       if (run) run.meta = { ...run.meta, watch: w.id };
       state.watches.set(w.id, { ...w, running: true });
       return out;
+    })
+    .bind(litsearchPreprints, async () => {
+      const all = [...state.preprints.values()];
+      return {
+        tracked: all.filter((p) => p.status !== "published"),
+        published: all.filter((p) => p.status === "published"),
+        ...(state.lastCheck ? { lastCheck: state.lastCheck } : {}),
+      };
+    })
+    .bind(litsearchPreprintsImport, async (_ctx, input) => {
+      const id = "arxiv:2602.00001";
+      const added = state.preprints.has(id) ? 0 : 1;
+      state.preprints.set(id, {
+        id,
+        title: "A Second Preprint",
+        doi: "10.48550/arxiv.2602.00001",
+        arxiv: "2602.00001",
+        status: "preprint",
+        from: [`import:${input.path.split("/").pop()}`],
+        hints: [],
+      });
+      return { added };
+    })
+    .bind(litsearchPreprintsCheck, async () => {
+      setTimeout(() => {
+        const p = state.preprints.get("arxiv:2601.01234");
+        if (p) {
+          state.preprints.set(p.id, {
+            ...p,
+            status: "published",
+            published: { doi: "10.1145/3722222", venue: "TOSEM", year: 2026 },
+          });
+        }
+        state.lastCheck = new Date().toISOString().slice(0, 19);
+        emit({ type: "change", path: "research/watches/preprints.json", external: false });
+      }, stepMs);
+      return { job: mockJobId() };
     })
     .bind(litsearchGet, async (_ctx, input) => {
       const run = state.runs.get(input.runId);

@@ -357,3 +357,33 @@ describe("watchlists", () => {
     expect(within(first).getByText("neu")).toBeVisible();
   });
 });
+
+describe("preprint tracking", () => {
+  it("groups tracked and published preprints, imports a list and checks them", async () => {
+    // protects: the preprint tab shows what was published since, takes a reference list and starts the check
+    // fails_when: a published preprint is listed as tracked, the import path is not sent, or the check result does not show
+    // no_claim: the mock publishes one preprint on check; the real evidence (OpenAlex, Crossref) is preprints.py's
+    const user = userEvent.setup();
+    const { calls } = renderApp("/litsearch");
+    await user.click(await screen.findByRole("button", { name: "Preprints" }));
+    expect(await screen.findByText("Inzwischen erschienen")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /Erschienen in ACM Computing Surveys/ }),
+    ).toHaveAttribute("href", "https://doi.org/10.1145/3711111");
+    expect(screen.getByText("Verfolgt")).toBeVisible();
+    await user.type(screen.getByLabelText("Pfad der Datei"), "/papers/references.bib");
+    await user.click(screen.getByRole("button", { name: "Importieren" }));
+    expect(calls.find((c) => c.name === "litsearch.preprintsImport")?.input).toEqual({
+      path: "/papers/references.bib",
+    });
+    expect(await screen.findByText("1 Preprint neu verfolgt")).toBeVisible();
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-preprint")).toHaveLength(3));
+    await user.click(screen.getByRole("button", { name: "Jetzt prüfen" }));
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /Erschienen in TOSEM/ })).toHaveAttribute(
+        "href",
+        "https://doi.org/10.1145/3722222",
+      ),
+    );
+  });
+});

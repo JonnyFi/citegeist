@@ -210,6 +210,32 @@ export const litsearchDe = {
   "litsearch.weekday.4": "Donnerstag",
   "litsearch.weekday.5": "Freitag",
   "litsearch.weekday.6": "Samstag",
+  "litsearch.preprints": "Preprints",
+  "litsearch.preprints.loading": "Preprints werden geladen",
+  "litsearch.preprints.desc":
+    "Jedes Preprint aus deinen Läufen und aus importierten Literaturlisten wird darauf geprüft, ob es inzwischen begutachtet erschienen ist. Eine neue DOI zählt erst, wenn sie bei Crossref oder DataCite auflöst. Mit eingeschalteten Beobachtungen läuft die Prüfung wöchentlich mit.",
+  "litsearch.preprints.check": "Jetzt prüfen",
+  "litsearch.preprints.checking": "Prüft",
+  "litsearch.preprints.lastCheck": "Zuletzt geprüft {date}",
+  "litsearch.preprints.neverChecked": "Noch nicht geprüft",
+  "litsearch.preprints.import": "Literaturliste importieren",
+  "litsearch.preprints.importHint":
+    "Eine references.bib oder eine Markdown-Literaturliste, etwa aus einem Manuskript. Verfolgt werden nur die Preprints darin.",
+  "litsearch.preprints.pick": "Datei auswählen",
+  "litsearch.preprints.path": "Pfad der Datei",
+  "litsearch.preprints.importButton": "Importieren",
+  "litsearch.preprints.imported.one": "{n} Preprint neu verfolgt",
+  "litsearch.preprints.imported.other": "{n} Preprints neu verfolgt",
+  "litsearch.preprints.published": "Inzwischen erschienen",
+  "litsearch.preprints.accepted": "Angenommen, noch ohne DOI",
+  "litsearch.preprints.hint": "Hinweis ohne geprüfte DOI",
+  "litsearch.preprints.tracked": "Verfolgt",
+  "litsearch.preprints.emptyTitle": "Keine Preprints",
+  "litsearch.preprints.emptyDescription":
+    "Sobald ein Lauf Preprints findet oder du eine Literaturliste importierst, erscheinen sie hier.",
+  "litsearch.preprints.publishedIn": "Erschienen in {venue}",
+  "litsearch.preprints.acceptedAt": "Angenommen bei {venue}",
+  "litsearch.preprints.from": "Aus",
 };
 
 export const litsearchEn: Record<keyof typeof litsearchDe, string> = {
@@ -418,4 +444,30 @@ export const litsearchEn: Record<keyof typeof litsearchDe, string> = {
   "litsearch.weekday.4": "Thursday",
   "litsearch.weekday.5": "Friday",
   "litsearch.weekday.6": "Saturday",
+  "litsearch.preprints": "Preprints",
+  "litsearch.preprints.loading": "Loading preprints",
+  "litsearch.preprints.desc":
+    "Every preprint from your runs and from imported reference lists is checked for a peer-reviewed version. A new DOI counts only once it resolves at Crossref or DataCite. With watchlists in the background, the check runs weekly too.",
+  "litsearch.preprints.check": "Check now",
+  "litsearch.preprints.checking": "Checking",
+  "litsearch.preprints.lastCheck": "Last checked {date}",
+  "litsearch.preprints.neverChecked": "Not checked yet",
+  "litsearch.preprints.import": "Import a reference list",
+  "litsearch.preprints.importHint":
+    "A references.bib or a Markdown reference list, for example from a manuscript. Only its preprints are tracked.",
+  "litsearch.preprints.pick": "Pick a file",
+  "litsearch.preprints.path": "Path of the file",
+  "litsearch.preprints.importButton": "Import",
+  "litsearch.preprints.imported.one": "{n} preprint newly tracked",
+  "litsearch.preprints.imported.other": "{n} preprints newly tracked",
+  "litsearch.preprints.published": "Published since",
+  "litsearch.preprints.accepted": "Accepted, no DOI yet",
+  "litsearch.preprints.hint": "Hint without a verified DOI",
+  "litsearch.preprints.tracked": "Tracked",
+  "litsearch.preprints.emptyTitle": "No preprints",
+  "litsearch.preprints.emptyDescription":
+    "As soon as a run finds preprints or you import a reference list, they show here.",
+  "litsearch.preprints.publishedIn": "Published in {venue}",
+  "litsearch.preprints.acceptedAt": "Accepted at {venue}",
+  "litsearch.preprints.from": "From",
 };

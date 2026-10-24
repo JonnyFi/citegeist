@@ -802,3 +802,49 @@ describe.skipIf(!python3())("litsearch watchlists", () => {
     expect(got.papers.filter((p) => p.newInWatch).map((p) => p.key)).toEqual(["W4600000003"]);
   });
 });
+
+describe.skipIf(!python3())("litsearch preprints", () => {
+  it("lists the preprints of the runs and tracks those of an imported reference list", async () => {
+    // protects: the preprint tab shows every preprint of the library's runs; importing a .bib adds its preprints
+    // fails_when: a run's preprint is missing, a journal paper is tracked, or the import count is wrong
+    // no_claim: no network; the published check is a job that calls OpenAlex and Crossref and is not run here
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      command: {
+        command: python3() as string,
+        args: [],
+        env: { CITEGEIST_LITSEARCH_NO_LAUNCHD: "1" },
+      },
+      scriptsDir: join(FIXTURES, "..", "..", "scripts"),
+    });
+    const call = <T>(name: string, input: unknown) =>
+      registry.call(name, { actor: "human" }, input) as Promise<T>;
+    const first = await call<{
+      tracked: Array<{ id: string; status: string; from: string[] }>;
+      published: unknown[];
+    }>("litsearch.preprints", {});
+    expect(first.tracked).toEqual([
+      expect.objectContaining({
+        id: "arxiv:2601.01234",
+        status: "preprint",
+        from: ["run:run-sample"],
+      }),
+    ]);
+    expect(first.published).toEqual([]);
+    const bib = join(tmpDir(), "references.bib");
+    writeFileSync(
+      bib,
+      "@article{a,\n  title={A Second Preprint},\n  doi={10.48550/arXiv.2602.00001}\n}\n" +
+        "@article{b,\n  title={A Journal Paper},\n  doi={10.1145/3700001}\n}\n",
+    );
+    expect(await call("litsearch.preprintsImport", { path: bib })).toEqual({ added: 1 });
+    const after = await call<{ tracked: Array<{ id: string }> }>("litsearch.preprints", {});
+    expect(after.tracked.map((p) => p.id).sort()).toEqual(["arxiv:2601.01234", "arxiv:2602.00001"]);
+    await expect(
+      call("litsearch.preprintsImport", { path: "/no/such/file.bib" }),
+    ).rejects.toMatchObject({
+      detail: { code: "LITSEARCH_IMPORT_FILE_MISSING" },
+    });
+  });
+});

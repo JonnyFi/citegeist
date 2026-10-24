@@ -24,7 +24,7 @@ import { ErrorLine, FieldLabel, useGuarded } from "../settings/parts";
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
 /** "Runs | Watchlists" in the sub bar of both lists. */
-export function LitsearchTabs({ active }: { active: "runs" | "watches" }) {
+export function LitsearchTabs({ active }: { active: "runs" | "watches" | "preprints" }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   return (
@@ -32,10 +32,20 @@ export function LitsearchTabs({ active }: { active: "runs" | "watches" }) {
       variant="tabs"
       label={t("litsearch.tabs")}
       value={active}
-      onChange={(v) => void navigate({ to: v === "runs" ? "/litsearch" : "/litsearch/watches" })}
+      onChange={(v) =>
+        void navigate({
+          to:
+            v === "runs"
+              ? "/litsearch"
+              : v === "watches"
+                ? "/litsearch/watches"
+                : "/litsearch/preprints",
+        })
+      }
       options={[
         { value: "runs", label: t("litsearch.runs") },
         { value: "watches", label: t("litsearch.watches") },
+        { value: "preprints", label: t("litsearch.preprints") },
       ]}
     />
   );

@@ -4,6 +4,7 @@ import { planSuggestedQueries } from "@citegeist/ai";
 import type {
   GraphWork,
   LitsearchPaper,
+  LitsearchPreprint,
   LitsearchRunMeta,
   LitsearchRunSummary,
   LitsearchWatch,
@@ -160,6 +161,7 @@ export class LitsearchService {
     private readonly deps: LitsearchDeps = {},
   ) {
     deps.queue?.register(JOB_KIND, (ctx) => this.runJob(ctx), { maxAttempts: 1 });
+    deps.queue?.register("litsearch.preprints", () => this.checkPreprints(), { maxAttempts: 1 });
   }
 
   runDir(runId: string): string {
@@ -521,18 +523,24 @@ export class LitsearchService {
 
   /** Runs watch.py with arguments and parses its JSON answer. Exit 2 carries a user message. */
   private async watchScript(args: string[]): Promise<unknown> {
+    return this.script("watch.py", args);
+  }
+
+  /** Runs a script of workers/research and parses the JSON on its last output line. */
+  private async script(name: string, args: string[], timeoutMs?: number): Promise<unknown> {
     const { command, scriptsDir } = this.deps;
     if (!command || !scriptsDir) throw unavailable("watchlists are kept by the citegeist app");
     const res = await runScript({
       command,
-      script: join(scriptsDir, "watch.py"),
+      script: join(scriptsDir, name),
       args,
       env: await this.env(),
+      ...(timeoutMs ? { timeoutMs } : {}),
     });
     if (res.code !== 0) {
       throw new CitegeistError({
         code: res.code === 2 ? "LITSEARCH_WATCH_INVALID" : "LITSEARCH_WATCH_FAILED",
-        message: res.stderr.trim().split("\n").pop() || `watch.py exited with ${res.code}`,
+        message: res.stderr.trim().split("\n").pop() || `${name} exited with ${res.code}`,
         fix: "Check the watchlist's topic, queries, weekday (0 to 6) and time (HH:MM).",
         recovery: "fix-and-retry",
         sideEffects: "none",
@@ -662,6 +670,89 @@ export class LitsearchService {
     );
   }
 
+  /** Tracked preprints of the library, after collecting those of all runs. */
+  async preprints() {
+    const out = (await this.script("preprints.py", ["list", "--json"])) as {
+      items: RawPreprint[];
+      last_check: string | null;
+    };
+    const all = out.items.map(toPreprint);
+    return {
+      tracked: all.filter((p) => p.status !== "published"),
+      published: all.filter((p) => p.status === "published"),
+      ...(out.last_check ? { lastCheck: out.last_check } : {}),
+    };
+  }
+
+  /** Tracks the preprints cited in a references.bib or a Markdown reference list. */
+  async preprintsImport(path: string): Promise<{ added: number }> {
+    if (!existsSync(path)) {
+      throw new CitegeistError({
+        code: "LITSEARCH_IMPORT_FILE_MISSING",
+        message: `There is no file at ${path}.`,
+        fix: "Pick a references.bib or a Markdown reference list.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    const before = (await this.preprints()).tracked.length;
+    const { command, scriptsDir } = this.deps;
+    if (!command || !scriptsDir) throw unavailable("preprints are tracked by the citegeist app");
+    const res = await runScript({
+      command,
+      script: join(scriptsDir, "preprints.py"),
+      args: ["import", path],
+      env: await this.env(),
+    });
+    if (res.code !== 0) {
+      throw new CitegeistError({
+        code: "LITSEARCH_IMPORT_FAILED",
+        message: res.stderr.trim().split("\n").pop() || `preprints.py exited with ${res.code}`,
+        fix: "Check that the file is BibTeX or a Markdown list of references.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    const after = (await this.preprints()).tracked.length;
+    return { added: Math.max(0, after - before) };
+  }
+
+  /** Starts the check of every tracked preprint as a job (network, minutes for long lists). */
+  preprintsCheck(actor: Actor): { job: string } {
+    const queue = this.requireQueue();
+    const open = queue.open().find((j) => j.kind === "litsearch.preprints");
+    if (open) return { job: open.id };
+    return { job: queue.enqueue({ kind: "litsearch.preprints", input: {}, by: actor }).id };
+  }
+
+  private async checkPreprints(): Promise<unknown> {
+    const { command, scriptsDir } = this.deps;
+    if (!command || !scriptsDir) throw unavailable("preprints are checked by the citegeist app");
+    const res = await runScript({
+      command,
+      script: join(scriptsDir, "preprints.py"),
+      args: ["check", "--all"],
+      env: { ...(await this.env()), ...(await this.credentials()) },
+      timeoutMs: 30 * 60_000,
+    });
+    if (res.code !== 0) {
+      throw new CitegeistError({
+        code: "LITSEARCH_PREPRINTS_FAILED",
+        message: res.stderr.trim().split("\n").pop() || `preprints.py exited with ${res.code}`,
+        fix: "Try again later; the sources may be rate limited.",
+        recovery: "retry",
+        sideEffects: "partial",
+      });
+    }
+    return { published: res.stdout.trim().split("\n").filter(Boolean) };
+  }
+
+  private async credentials() {
+    type Creds = Awaited<ReturnType<NonNullable<LitsearchDeps["credentials"]>>>;
+    const creds: Creds = (await this.deps.credentials?.().catch(() => ({}))) ?? {};
+    return { openalexKey: creds.openalexKey };
+  }
+
   private requireQueue(): JobQueue {
     if (!this.deps.queue || !this.deps.command || !this.deps.scriptsDir) {
       throw unavailable("a literature search runs in the citegeist app, not in a one-shot process");
@@ -750,6 +841,49 @@ interface RawWatch {
   last_status?: string | null;
   last_new?: number | null;
   unseen?: number;
+}
+
+/** One preprint as preprints.py's `list --json` prints it. */
+interface RawPreprint {
+  id: string;
+  title?: string;
+  doi?: string;
+  arxiv_id?: string;
+  status?: string;
+  origins?: string[];
+  last_checked?: string | null;
+  published?: { doi?: string; venue?: string; year?: number } | null;
+  openreview?: { status?: string; venue?: string } | null;
+  hints?: string[];
+}
+
+const PREPRINT_STATUSES = new Set(["preprint", "hint", "accepted", "published"]);
+
+function toPreprint(raw: RawPreprint): LitsearchPreprint {
+  const status = (
+    PREPRINT_STATUSES.has(raw.status ?? "") ? raw.status : "preprint"
+  ) as LitsearchPreprint["status"];
+  const pub = raw.published;
+  return {
+    id: raw.id,
+    title: raw.title ?? "",
+    ...(raw.doi ? { doi: raw.doi } : {}),
+    ...(raw.arxiv_id ? { arxiv: raw.arxiv_id } : {}),
+    status,
+    from: raw.origins ?? [],
+    ...(raw.last_checked ? { checked: raw.last_checked } : {}),
+    ...(pub?.doi
+      ? {
+          published: {
+            doi: pub.doi,
+            venue: pub.venue ?? "",
+            ...(Number.isInteger(pub.year) ? { year: pub.year } : {}),
+          },
+        }
+      : {}),
+    ...(status === "accepted" && raw.openreview?.venue ? { acceptedAt: raw.openreview.venue } : {}),
+    hints: (raw.hints ?? []).filter((h): h is string => typeof h === "string"),
+  };
 }
 
 /** Marks the papers <run>/watch.json lists as new against the watchlist's previous run. */

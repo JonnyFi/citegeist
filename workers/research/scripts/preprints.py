@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Research Pipeline preprint tracking: has a tracked preprint been published in a peer-reviewed venue?
+"""Preprint tracking of the citegeist literature search: has a tracked preprint been published?
 
 Usage:
   python3 preprints.py sync                    # collect the preprints of all runs
   python3 preprints.py import FILE [FILE ...]  # a references.bib or a Markdown reference list
   python3 preprints.py check [--all]           # check due preprints (weekly with every watchlist run)
-  python3 preprints.py list
+  python3 preprints.py list [--json]          # --json: syncs the runs first, for the app
 
 Evidence, per preprint: OpenAlex (a merged work whose DOI or locations point to a journal or
 conference, or a separate work with the same title and an author in common), Crossref
@@ -431,7 +431,7 @@ def main():
     imp.add_argument("files", nargs="+")
     c = sub.add_parser("check")
     c.add_argument("--all", action="store_true", help="also preprints checked in the last days")
-    sub.add_parser("list")
+    sub.add_parser("list").add_argument("--json", action="store_true")
     args = ap.parse_args()
     if args.cmd == "sync":
         print(f"{sync_from_runs()} new preprints from runs")
@@ -442,6 +442,11 @@ def main():
     elif args.cmd == "check":
         for it in check(force=args.all):
             print(report(it))
+    elif args.json:
+        sync_from_runs()
+        items = list(load()["items"].values())
+        checked = [it["last_checked"] for it in items if it.get("last_checked")]
+        print(json.dumps({"items": items, "last_check": max(checked) if checked else None}, ensure_ascii=False))
     else:
         for it in sorted(load()["items"].values(), key=lambda i: i["status"]):
             print(f"[{it['status']}] {it['title'][:80]} · {it['doi']} · {', '.join(it['origins'])}")
