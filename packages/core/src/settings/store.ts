@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { EMBEDDING_MODEL_KEYS, type EmbeddingModelKey } from "@citegeist/ops";
+import { DEFAULT_HOOKS_PORT, EMBEDDING_MODEL_KEYS, type EmbeddingModelKey } from "@citegeist/ops";
 import { writeFileAtomic } from "../fsutil.js";
 
 /** What is stored on disk. `ai.apiKeys` is derived from the Keychain, so it is never persisted. */
@@ -15,6 +15,8 @@ export interface StoredSettings {
   /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
   semantic: { enabled: boolean; model?: EmbeddingModelKey };
   connector: { enabled: boolean; port: number };
+  /** Port of the hooks listener and the address of the tunnel in front of it. */
+  webhooks: { port: number; publicUrl?: string };
   /** A11: true restores the sandbox for chat agents. */
   chat: { isolated: boolean };
 }
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   uiLanguage: "de",
   semantic: { enabled: false },
   connector: { enabled: false, port: 23119 },
+  webhooks: { port: DEFAULT_HOOKS_PORT },
   chat: { isolated: false },
 };
 
@@ -31,6 +34,12 @@ function validPort(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1024 && value <= 65535
     ? value
     : DEFAULT_SETTINGS.connector.port;
+}
+
+function validHooksPort(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1024 && value <= 65535
+    ? value
+    : DEFAULT_HOOKS_PORT;
 }
 
 function isModelKey(value: unknown): value is EmbeddingModelKey {
@@ -46,6 +55,7 @@ function sanitize(raw: unknown): StoredSettings {
     uiLanguage?: unknown;
     semantic?: { enabled?: unknown; model?: unknown };
     connector?: { enabled?: unknown; port?: unknown };
+    webhooks?: { port?: unknown; publicUrl?: unknown };
     chat?: { isolated?: unknown };
   };
   const routing: Record<string, string> = {};
@@ -67,6 +77,12 @@ function sanitize(raw: unknown): StoredSettings {
       ...(isModelKey(v.semantic?.model) ? { model: v.semantic.model } : {}),
     },
     connector: { enabled: v.connector?.enabled === true, port: validPort(v.connector?.port) },
+    webhooks: {
+      port: validHooksPort(v.webhooks?.port),
+      ...(typeof v.webhooks?.publicUrl === "string" && v.webhooks.publicUrl
+        ? { publicUrl: v.webhooks.publicUrl }
+        : {}),
+    },
     chat: { isolated: v.chat?.isolated === true },
   };
 }

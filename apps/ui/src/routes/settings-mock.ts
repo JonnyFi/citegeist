@@ -33,6 +33,7 @@ export interface SettingsMockState {
   };
   semanticPolls: number;
   connector: { enabled: boolean; port: number; error?: string };
+  webhooks: { port: number; publicUrl?: string };
   chat: { isolated: boolean };
   /** Result of `ai.testBackend` per backend id. Missing ids succeed after 1.2 s. */
   tests: Record<string, TestResult>;
@@ -89,6 +90,7 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
     semantic: { enabled: false, model: "embeddinggemma-300m", state: "downloading", progress: 0 },
     semanticPolls: 3,
     connector: { enabled: false, port: 23119 },
+    webhooks: { port: 47321 },
     chat: { isolated: false },
     tests: {},
     setupPolls: 2,
@@ -119,6 +121,10 @@ export function bindSettingsMock(
       model: state.semantic.model ?? "embeddinggemma-300m",
     },
     connector: { enabled: state.connector.enabled, port: state.connector.port },
+    webhooks: {
+      port: state.webhooks.port,
+      ...(state.webhooks.publicUrl ? { publicUrl: state.webhooks.publicUrl } : {}),
+    },
     chat: { isolated: state.chat.isolated },
   });
   let semanticReads = 0;
@@ -194,6 +200,14 @@ export function bindSettingsMock(
       if (patch.connector) {
         state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;
         state.connector.port = patch.connector.port ?? state.connector.port;
+      }
+      if (patch.webhooks) {
+        state.webhooks.port = patch.webhooks.port ?? state.webhooks.port;
+        if (patch.webhooks.publicUrl !== undefined) {
+          const url = patch.webhooks.publicUrl.trim().replace(/\/+$/, "");
+          if (url) state.webhooks.publicUrl = url;
+          else delete state.webhooks.publicUrl;
+        }
       }
       if (patch.chat?.isolated !== undefined) state.chat.isolated = patch.chat.isolated;
       emit({ type: "change", path: "settings", external: false });

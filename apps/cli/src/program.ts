@@ -111,6 +111,12 @@ export function buildProgram(registry: Registry, io: CliIO, onExit: (code: numbe
       } else {
         leaf.option(`--${f.flag} <value>`, desc);
       }
+      if (contract.secretInputs?.includes(f.prop)) {
+        leaf.option(
+          `--${f.flag}-stdin`,
+          `read ${f.flag} from standard input, so it stays out of the process list and the shell history`,
+        );
+      }
     }
     leaf
       .option("--input <json>", "whole input as a JSON object; flags override its fields")
@@ -174,6 +180,25 @@ export function buildProgram(registry: Registry, io: CliIO, onExit: (code: numbe
         : (rawPositional as string | string[] | undefined);
     const flags: Record<string, unknown> = {};
     for (const f of spec.flags) flags[f.prop] = opts[camel(f.flag)];
+    const fromStdin = spec.flags.filter(
+      (f) => contract.secretInputs?.includes(f.prop) && opts[camel(`${f.flag}-stdin`)] === true,
+    );
+    if (fromStdin.length > 1) {
+      throw usage(
+        "Only one value can be read from standard input.",
+        "Pass the other value with its plain flag.",
+      );
+    }
+    for (const f of fromStdin) {
+      const text = (await io.readStdin()).replace(/\r?\n$/, "");
+      if (!text) {
+        throw usage(
+          `--${f.flag}-stdin got nothing on standard input.`,
+          `Pipe the value in, for example: printf '%s' "$KEY" | cg ... --${f.flag}-stdin`,
+        );
+      }
+      flags[f.prop] = text;
+    }
     const input = buildInput(
       spec,
       { positional: spec.positional ? positional : undefined, flags },

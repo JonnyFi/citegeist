@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Registry } from "@citegeist/ops";
+import type { Actor } from "@citegeist/schema";
 import {
   localhostHostValidation,
   localhostOriginValidation,
@@ -44,10 +45,13 @@ export interface McpTokenGrant {
 }
 
 /** What a token allows. */
-interface Access {
+export interface McpAccess {
   scope: McpScope;
   localFiles: boolean;
+  /** Fixed actor of the connection. Without one the actor comes from the client's name. */
+  actor?: Actor;
 }
+type Access = McpAccess;
 
 /** Entry in AuthInfo.scopes for a token that may not read local files. */
 const NO_LOCAL_FILES = "no-local-files";
@@ -141,28 +145,38 @@ interface LegacySession {
   access: Access;
 }
 
+export interface McpRequestHandler {
+  /**
+   * Serves one request that is already authenticated: `access` says what the caller may do.
+   * Reads the body, picks the transport for the client's protocol version and answers.
+   */
+  handle(req: IncomingMessage, res: ServerResponse, access: McpAccess): Promise<void>;
+  close(): Promise<void>;
+}
+
+/** Answers with a JSON-RPC style error body, for callers that sit in front of the handler. */
+export function replyMcpError(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+): void {
+  reply(res, status, code, message);
+}
+
 /**
- * Streamable HTTP on loopback. Every request passes Host and Origin validation (DNS rebinding),
- * then a bearer token check. The token decides the scope of the connection.
+ * The request handling of the Streamable HTTP server without a listener, Host check or login, so
+ * `startMcpHttpServer` (loopback, fixed tokens) and the core's tunnel listener (connector tokens)
+ * share one implementation and expose the same tools.
  *
  * 2026-07-28 clients are served per request by createMcpHandler and name themselves in every
  * request. 2025-era clients get sessions, because only the initialize call carries their
  * clientInfo and the actor of each later call needs it.
  */
-export async function startMcpHttpServer(
+export function createMcpRequestHandler(
   registry: Registry,
-  options: McpHttpOptions,
-): Promise<McpHttpHandle> {
-  const host = options.host ?? "127.0.0.1";
-  if (!LOOPBACK.has(host)) {
-    throw new Error(`MCP HTTP binds to loopback only, got host ${host}. Use 127.0.0.1.`);
-  }
-  if (options.tokens.length === 0) {
-    throw new Error("MCP HTTP needs at least one bearer token. Generate one with generateToken().");
-  }
-  const path = options.path ?? "/mcp";
-  const validateHost = localhostHostValidation();
-  const validateOrigin = localhostOriginValidation();
+  options: { onerror?: (e: Error) => void } = {},
+): McpRequestHandler {
   const fail = (err: unknown) =>
     options.onerror?.(err instanceof Error ? err : new Error(String(err)));
 
@@ -170,7 +184,12 @@ export async function startMcpHttpServer(
     // Fail closed: a request without a scope sees the read-only tools.
     const scope: McpScope = ctx.authInfo?.scopes.includes("write") ? "write" : "read";
     const localFiles = ctx.authInfo !== undefined && !ctx.authInfo.scopes.includes(NO_LOCAL_FILES);
-    return createMcpServer(registry, { scope, localFiles });
+    const actor = ctx.authInfo?.extra?.actor;
+    return createMcpServer(registry, {
+      scope,
+      localFiles,
+      ...(typeof actor === "string" ? { actor: actor as Actor } : {}),
+    });
   };
   const mcp = createMcpHandler(modernFactory, {
     legacy: "reject",
@@ -195,7 +214,8 @@ export async function startMcpHttpServer(
       }
       if (
         session.access.scope !== access.scope ||
-        session.access.localFiles !== access.localFiles
+        session.access.localFiles !== access.localFiles ||
+        session.access.actor !== access.actor
       ) {
         reply(res, 403, "FORBIDDEN", "This session belongs to a token with another scope.");
         return;
@@ -210,6 +230,7 @@ export async function startMcpHttpServer(
     const server = createMcpServer(registry, {
       scope: access.scope,
       localFiles: access.localFiles,
+      ...(access.actor ? { actor: access.actor } : {}),
     });
     const transport: NodeStreamableHTTPServerTransport = new NodeStreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
@@ -223,6 +244,75 @@ export async function startMcpHttpServer(
     await server.connect(transport);
     await transport.handleRequest(req, res, body);
   }
+
+  return {
+    async handle(req, res, access) {
+      try {
+        const authed = req as IncomingMessage & { auth?: AuthInfo };
+        authed.auth = {
+          token: "redacted",
+          clientId: "citegeist-mcp",
+          scopes: [
+            ...(access.scope === "write" ? ["read", "write"] : ["read"]),
+            ...(access.localFiles ? [] : [NO_LOCAL_FILES]),
+          ],
+          ...(access.actor ? { extra: { actor: access.actor } } : {}),
+        };
+        let body: unknown;
+        try {
+          body = await readJsonBody(req);
+        } catch (err) {
+          if (err instanceof BodyError) {
+            reply(res, err.status, "BAD_REQUEST", err.message);
+            return;
+          }
+          throw err;
+        }
+        const probe = await toWebRequest(
+          req as unknown as Parameters<typeof toWebRequest>[0],
+          body,
+        );
+        if (await isLegacyRequest(probe)) {
+          await serveLegacy(authed, res, body, access);
+        } else {
+          await modern(req as unknown as Parameters<typeof modern>[0], res, body);
+        }
+      } catch (err) {
+        fail(err);
+        if (!res.headersSent) reply(res, 500, "INTERNAL_ERROR", "Request failed.");
+        else res.end();
+      }
+    },
+    async close() {
+      await mcp.close();
+      await Promise.all([...sessions.values()].map((s) => s.transport.close().catch(fail)));
+    },
+  };
+}
+
+/**
+ * Streamable HTTP on loopback. Every request passes Host and Origin validation (DNS rebinding),
+ * then a bearer token check. The token decides the scope of the connection.
+ */
+export async function startMcpHttpServer(
+  registry: Registry,
+  options: McpHttpOptions,
+): Promise<McpHttpHandle> {
+  const host = options.host ?? "127.0.0.1";
+  if (!LOOPBACK.has(host)) {
+    throw new Error(`MCP HTTP binds to loopback only, got host ${host}. Use 127.0.0.1.`);
+  }
+  if (options.tokens.length === 0) {
+    throw new Error("MCP HTTP needs at least one bearer token. Generate one with generateToken().");
+  }
+  const path = options.path ?? "/mcp";
+  const validateHost = localhostHostValidation();
+  const validateOrigin = localhostOriginValidation();
+  const fail = (err: unknown) =>
+    options.onerror?.(err instanceof Error ? err : new Error(String(err)));
+  const handler = createMcpRequestHandler(registry, {
+    ...(options.onerror ? { onerror: options.onerror } : {}),
+  });
 
   const httpServer: Server = createServer((req, res) => {
     void (async () => {
@@ -238,31 +328,7 @@ export async function startMcpHttpServer(
         reply(res, 404, "NOT_FOUND", `The MCP endpoint is ${path}.`);
         return;
       }
-      const authed = req as IncomingMessage & { auth?: AuthInfo };
-      authed.auth = {
-        token: "redacted",
-        clientId: "citegeist-mcp",
-        scopes: [
-          ...(access.scope === "write" ? ["read", "write"] : ["read"]),
-          ...(access.localFiles ? [] : [NO_LOCAL_FILES]),
-        ],
-      };
-      let body: unknown;
-      try {
-        body = await readJsonBody(req);
-      } catch (err) {
-        if (err instanceof BodyError) {
-          reply(res, err.status, "BAD_REQUEST", err.message);
-          return;
-        }
-        throw err;
-      }
-      const probe = await toWebRequest(req as unknown as Parameters<typeof toWebRequest>[0], body);
-      if (await isLegacyRequest(probe)) {
-        await serveLegacy(authed, res, body, access);
-      } else {
-        await modern(req as unknown as Parameters<typeof modern>[0], res, body);
-      }
+      await handler.handle(req, res, access);
     })().catch((err: unknown) => {
       fail(err);
       if (!res.headersSent) reply(res, 500, "INTERNAL_ERROR", "Request failed.");
@@ -281,8 +347,7 @@ export async function startMcpHttpServer(
   const urlHost = host === "::1" ? "[::1]" : host;
   let closing: Promise<void> | undefined;
   const close = async () => {
-    await mcp.close();
-    await Promise.all([...sessions.values()].map((s) => s.transport.close().catch(fail)));
+    await handler.close();
     httpServer.closeAllConnections();
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   };

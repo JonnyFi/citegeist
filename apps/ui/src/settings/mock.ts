@@ -9,6 +9,9 @@ import {
   webhooksDelete,
   webhooksList,
   webhooksRotateSecret,
+  webhooksSetAuth,
+  webhooksSetInboundToken,
+  webhooksSetMcpAccess,
   webhooksTest,
 } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
@@ -193,31 +196,66 @@ export function bindSyncMock(
 // Webhooks --------------------------------------------------------------------------------------------
 
 export interface WebhooksMockState {
+  /** Public address from the environment variable, which wins over the setting. */
   publicBaseUrl?: string;
   hooks: Hook[];
-  /** Port the local receiver is "bound" to, for the inbound address. */
+  /** Port of the core itself, for the inbound address while the hooks listener is not running. */
   port: number;
+  /** Set to make the hooks listener report a taken port. */
+  portTaken?: boolean;
   /** Secrets handed out so far, so tests can compare. */
   secrets: Record<string, string>;
+  /** Tokens handed out so far: inbound bearer tokens and MCP tokens. */
+  tokens: Record<string, string>;
+  /** Values of the outbound auth headers; the list never returns them. */
+  authValues: Record<string, string>;
 }
 
 export function createWebhooksMockState(over: Partial<WebhooksMockState> = {}): WebhooksMockState {
-  return { hooks: [], port: 51234, secrets: {}, ...over };
+  return { hooks: [], port: 51234, secrets: {}, tokens: {}, authValues: {}, ...over };
 }
 
 let secretCounter = 0;
-function newSecret(): string {
+function newSecret(prefix = "whsec_"): string {
   secretCounter += 1;
-  return `whsec_${"k7Qp2xVd9LmN4aBc".repeat(2)}${secretCounter.toString().padStart(4, "0")}`;
+  return `${prefix}${"k7Qp2xVd9LmN4aBc".repeat(2)}${secretCounter.toString().padStart(4, "0")}`;
 }
 
-/** webhooks.list, create, rotateSecret, delete and test over in-memory state. */
+/** The webhook settings the mock reads: the fixed port and the stored public address. */
+export type WebhooksSettingsSource = () => { port: number; publicUrl?: string };
+
+/** webhooks.list, create, rotateSecret, setAuth, setInboundToken, setMcpAccess, delete and test over in-memory state. */
 export function bindWebhooksMock(
   registry: Registry,
   state: WebhooksMockState,
   emit: (e: CoreEvent) => void = () => {},
+  settings: WebhooksSettingsSource = () => ({ port: 47321 }),
 ): Registry {
-  const base = () => state.publicBaseUrl ?? `http://127.0.0.1:${state.port}`;
+  const publicUrl = () => state.publicBaseUrl ?? settings().publicUrl;
+  const listener = () => {
+    const { port } = settings();
+    if (state.hooks.length === 0) return { state: "off" as const };
+    if (state.portTaken) {
+      return {
+        state: "error" as const,
+        port,
+        code: "HOOKS_PORT_IN_USE",
+        detail: `Port ${port} is already in use by another program.`,
+        fix: "Choose another port in Settings > Webhooks.",
+      };
+    }
+    return { state: "listening" as const, port };
+  };
+  const base = () => {
+    const l = listener();
+    return publicUrl() ?? `http://127.0.0.1:${l.state === "listening" ? l.port : state.port}`;
+  };
+  const view = (hook: Hook): Hook => ({
+    ...hook,
+    inboundUrl: `${base()}/hooks/${hook.name}`,
+    hasAuthValue: state.authValues[hook.name] !== undefined,
+    hasInboundToken: state.tokens[`in:${hook.name}`] !== undefined,
+  });
   const find = (name: string) => {
     const hook = state.hooks.find((h) => h.name === name);
     if (!hook) {
@@ -233,10 +271,17 @@ export function bindWebhooksMock(
   const changed = () => emit({ type: "change", path: "settings", external: false });
 
   return registry
-    .bind(webhooksList, async () => ({
-      ...(state.publicBaseUrl ? { publicBaseUrl: state.publicBaseUrl } : {}),
-      webhooks: state.hooks.map((h) => ({ ...h, inboundUrl: `${base()}/hooks/${h.name}` })),
-    }))
+    .bind(webhooksList, async () => {
+      const url = publicUrl();
+      return {
+        ...(url ? { publicBaseUrl: url } : {}),
+        ...(url
+          ? { publicBaseUrlSource: state.publicBaseUrl ? ("env" as const) : ("settings" as const) }
+          : {}),
+        listener: listener(),
+        webhooks: state.hooks.map(view),
+      };
+    })
     .bind(webhooksCreate, async (_ctx, input) => {
       if (state.hooks.some((h) => h.name === input.name)) {
         throw new CitegeistError({
@@ -250,7 +295,9 @@ export function bindWebhooksMock(
         name: input.name,
         kind: input.kind,
         ...(input.url ? { url: input.url } : {}),
-        inboundUrl: `${base()}/hooks/${input.name}`,
+        ...(input.authHeader ? { authHeader: input.authHeader } : {}),
+        ...(input.mcp ? { mcpScope: input.mcp } : {}),
+        inboundUrl: "",
         actor: `agent:${input.name}`,
         hasSecret: true,
         createdAt: new Date().toISOString(),
@@ -258,8 +305,24 @@ export function bindWebhooksMock(
       const secret = newSecret();
       state.hooks.push(hook);
       state.secrets[input.name] = secret;
+      if (input.authValue) state.authValues[input.name] = input.authValue;
+      let inboundToken: string | undefined;
+      if (input.inboundToken) {
+        inboundToken = newSecret("whtok_");
+        state.tokens[`in:${input.name}`] = inboundToken;
+      }
+      let mcpToken: string | undefined;
+      if (input.mcp) {
+        mcpToken = newSecret("whmcp_");
+        state.tokens[`mcp:${input.name}`] = mcpToken;
+      }
       changed();
-      return { webhook: hook, secret };
+      return {
+        webhook: view(hook),
+        secret,
+        ...(inboundToken ? { inboundToken } : {}),
+        ...(mcpToken ? { mcpToken } : {}),
+      };
     })
     .bind(webhooksRotateSecret, async (_ctx, input) => {
       const hook = find(input.name);
@@ -271,12 +334,53 @@ export function bindWebhooksMock(
         delete hook.previousSecretUntil;
       }
       changed();
-      return { webhook: { ...hook, inboundUrl: `${base()}/hooks/${hook.name}` }, secret };
+      return { webhook: view(hook), secret };
+    })
+    .bind(webhooksSetAuth, async (_ctx, input) => {
+      const hook = find(input.name);
+      if (input.authHeader && input.authValue) {
+        hook.authHeader = input.authHeader;
+        state.authValues[input.name] = input.authValue;
+      } else {
+        delete hook.authHeader;
+        delete state.authValues[input.name];
+      }
+      changed();
+      return { webhook: view(hook) };
+    })
+    .bind(webhooksSetInboundToken, async (_ctx, input) => {
+      const hook = find(input.name);
+      if (!input.enabled) {
+        delete state.tokens[`in:${input.name}`];
+        changed();
+        return { webhook: view(hook) };
+      }
+      const token = newSecret("whtok_");
+      state.tokens[`in:${input.name}`] = token;
+      changed();
+      return { webhook: view(hook), token };
+    })
+    .bind(webhooksSetMcpAccess, async (_ctx, input) => {
+      const hook = find(input.name);
+      if (!input.enabled) {
+        delete hook.mcpScope;
+        delete state.tokens[`mcp:${input.name}`];
+        changed();
+        return { webhook: view(hook) };
+      }
+      const token = newSecret("whmcp_");
+      hook.mcpScope = input.scope;
+      state.tokens[`mcp:${input.name}`] = token;
+      changed();
+      return { webhook: view(hook), token };
     })
     .bind(webhooksDelete, async (_ctx, input) => {
       find(input.name);
       state.hooks = state.hooks.filter((h) => h.name !== input.name);
       delete state.secrets[input.name];
+      delete state.authValues[input.name];
+      delete state.tokens[`in:${input.name}`];
+      delete state.tokens[`mcp:${input.name}`];
       changed();
       return { ok: true as const };
     })

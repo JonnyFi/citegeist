@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Registry, WebhookInfo, WebhookKind } from "@citegeist/ops";
+import type { HooksListenerStatus, Registry, WebhookInfo, WebhookKind } from "@citegeist/ops";
 import { type Actor, CitegeistError, Citekey } from "@citegeist/schema";
 import {
   InboundPayload,
@@ -12,17 +12,24 @@ import {
 } from "./payload.js";
 import { assertRemoteSafe } from "./remote-input.js";
 import {
+  bearerToken,
+  generateInboundToken,
+  generateMcpToken,
   generateSecret,
   ID_HEADER,
   ReplayGuard,
   SIGNATURE_HEADER,
   signRequest,
   TIMESTAMP_HEADER,
+  tokensEqual,
   verifyRequest,
 } from "./sign.js";
 import {
+  authValueAccount,
   type ConnectorRecord,
   type ConnectorStore,
+  inboundTokenAccount,
+  mcpTokenAccount,
   previousSecretAccount,
   type SecretStore,
   secretAccount,
@@ -49,6 +56,12 @@ export interface WebhookServiceOptions {
   tasks: TaskTracker;
   /** Public address of this Mac (tunnel). Absent until the user sets one up. */
   publicBaseUrl: () => string | undefined;
+  /** Where the public address comes from, for the settings screen. */
+  publicBaseUrlSource?: () => "env" | "settings" | undefined;
+  /** State of the dedicated hooks listener, reported by `list`. */
+  listenerStatus?: () => HooksListenerStatus;
+  /** Called after a connector was created or deleted, so the listener can start or stop. */
+  onConnectorsChanged?: () => void;
   /** Address on this Mac, such as http://127.0.0.1:41234. Used when no public address is set. */
   localBaseUrl: () => string | undefined;
   fetch?: typeof fetch;
@@ -56,6 +69,22 @@ export interface WebhookServiceOptions {
   log?: (message: string) => void;
   /** Longest wait for the connector to answer an outbound request. Default 15 seconds. */
   timeoutMs?: number;
+  /**
+   * Waits between delivery attempts of a task. A response without 2xx counts as a failure, and a
+   * routine that is switched off does not queue the request, so the delivery is tried again.
+   * Default 1 and 5 seconds, which makes three attempts.
+   */
+  retryDelaysMs?: readonly number[];
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** Statuses where trying again cannot help: the key is wrong, or the address does not exist. */
+const NO_RETRY_STATUS = new Set([401, 403, 404, 405, 410]);
+
+class DeliveryRefused extends Error {
+  constructor(readonly status: number) {
+    super(`the connector answered with HTTP ${status}`);
+  }
 }
 
 export const HOOKS_PREFIX = "/hooks/";
@@ -80,6 +109,16 @@ interface PaperResult {
 function describeError(err: unknown): { code: string; message: string } {
   if (err instanceof CitegeistError) return { code: err.detail.code, message: err.detail.message };
   return { code: "WEBHOOK_ITEM_FAILED", message: err instanceof Error ? err.message : String(err) };
+}
+
+/** The `id` field of a JSON body, for requests that carry no id header. */
+function idFromBody(raw: Buffer): string | undefined {
+  try {
+    const id = (JSON.parse(raw.toString("utf8")) as { id?: unknown } | null)?.id;
+    return typeof id === "string" && id.length > 0 && id.length <= 200 ? id : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const excerpt = (text: string, max: number): string => {
@@ -117,6 +156,10 @@ export class WebhookService {
       inboundUrl: `${this.baseUrl()}${HOOKS_PREFIX}${record.name}`,
       actor: connectorActor(record.name),
       hasSecret: await this.opts.secrets.has(secretAccount(record.name)),
+      ...(record.authHeader ? { authHeader: record.authHeader } : {}),
+      hasAuthValue: await this.opts.secrets.has(authValueAccount(record.name)),
+      hasInboundToken: await this.opts.secrets.has(inboundTokenAccount(record.name)),
+      ...(record.mcpScope ? { mcpScope: record.mcpScope } : {}),
       ...(previousValid && record.previousSecretUntil
         ? { previousSecretUntil: record.previousSecretUntil }
         : {}),
@@ -136,10 +179,18 @@ export class WebhookService {
     return record;
   }
 
-  async list(): Promise<{ publicBaseUrl?: string; webhooks: WebhookInfo[] }> {
+  async list(): Promise<{
+    publicBaseUrl?: string;
+    publicBaseUrlSource?: "env" | "settings";
+    listener: HooksListenerStatus;
+    webhooks: WebhookInfo[];
+  }> {
     const publicBaseUrl = this.opts.publicBaseUrl();
+    const source = publicBaseUrl ? this.opts.publicBaseUrlSource?.() : undefined;
     return {
       ...(publicBaseUrl ? { publicBaseUrl: publicBaseUrl.replace(/\/+$/, "") } : {}),
+      ...(source ? { publicBaseUrlSource: source } : {}),
+      listener: this.opts.listenerStatus?.() ?? { state: "off" },
       webhooks: await Promise.all(this.opts.store.list().map((r) => this.info(r))),
     };
   }
@@ -148,7 +199,11 @@ export class WebhookService {
     name: string;
     kind: WebhookKind;
     url?: string | undefined;
-  }): Promise<{ webhook: WebhookInfo; secret: string }> {
+    authHeader?: string | undefined;
+    authValue?: string | undefined;
+    inboundToken?: boolean | undefined;
+    mcp?: "read" | "write" | undefined;
+  }): Promise<{ webhook: WebhookInfo; secret: string; inboundToken?: string; mcpToken?: string }> {
     if (this.opts.store.get(input.name)) {
       throw error(
         "WEBHOOK_EXISTS",
@@ -159,16 +214,135 @@ export class WebhookService {
     if (input.kind !== "inbound" && !input.url) {
       throw error("WEBHOOK_URL_REQUIRED", "an outbound connector needs a url", "Pass `url`.");
     }
+    if (input.authHeader !== undefined && input.kind === "inbound") {
+      throw error(
+        "WEBHOOK_AUTH_NOT_OUTBOUND",
+        "an inbound connector sends nothing, so it has no outbound auth header",
+        "Use kind outbound or both, or leave out the auth header.",
+      );
+    }
     const secret = generateSecret();
     await this.opts.secrets.set(secretAccount(input.name), secret);
     const record: ConnectorRecord = {
       name: input.name,
       kind: input.kind,
       ...(input.url ? { url: input.url } : {}),
+      ...(input.authHeader && input.authValue ? { authHeader: input.authHeader } : {}),
+      ...(input.mcp ? { mcpScope: input.mcp } : {}),
       createdAt: this.now().toISOString(),
     };
+    if (input.authHeader && input.authValue) {
+      await this.opts.secrets.set(authValueAccount(input.name), input.authValue);
+    }
+    let inboundToken: string | undefined;
+    if (input.inboundToken) {
+      inboundToken = generateInboundToken();
+      await this.opts.secrets.set(inboundTokenAccount(input.name), inboundToken);
+    }
+    let mcpToken: string | undefined;
+    if (input.mcp) {
+      mcpToken = generateMcpToken();
+      await this.opts.secrets.set(mcpTokenAccount(input.name), mcpToken);
+    }
     this.opts.store.put(record);
-    return { webhook: await this.info(record), secret };
+    this.opts.onConnectorsChanged?.();
+    return {
+      webhook: await this.info(record),
+      secret,
+      ...(inboundToken ? { inboundToken } : {}),
+      ...(mcpToken ? { mcpToken } : {}),
+    };
+  }
+
+  async setMcpAccess(input: {
+    name: string;
+    enabled: boolean;
+    scope: "read" | "write";
+  }): Promise<{ webhook: WebhookInfo; token?: string }> {
+    const record = this.require(input.name);
+    const next: ConnectorRecord = { ...record };
+    let token: string | undefined;
+    if (input.enabled) {
+      token = generateMcpToken();
+      await this.opts.secrets.set(mcpTokenAccount(record.name), token);
+      next.mcpScope = input.scope;
+    } else {
+      await this.opts.secrets.delete(mcpTokenAccount(record.name));
+      delete next.mcpScope;
+    }
+    this.opts.store.put(next);
+    this.opts.onConnectorsChanged?.();
+    return { webhook: await this.info(next), ...(token ? { token } : {}) };
+  }
+
+  /** True while at least one connector exists, which is when the hooks listener runs. */
+  hasConnectors(): boolean {
+    return this.opts.store.list().length > 0;
+  }
+
+  /** True while at least one connector may use the MCP endpoint. */
+  hasMcpAccess(): boolean {
+    return this.opts.store.list().some((r) => r.mcpScope !== undefined);
+  }
+
+  /**
+   * Checks the bearer token of an MCP request against every connector with MCP access. Compares
+   * with all of them, so the time does not show which one matched. Returns the connector's actor
+   * and scope, or undefined.
+   */
+  async authenticateMcp(
+    authorization: string | undefined,
+  ): Promise<{ actor: Actor; scope: "read" | "write"; name: string } | undefined> {
+    const presented = bearerToken(authorization);
+    if (presented === undefined) return undefined;
+    let found: { actor: Actor; scope: "read" | "write"; name: string } | undefined;
+    for (const record of this.opts.store.list()) {
+      if (!record.mcpScope) continue;
+      const token = await this.opts.secrets.get(mcpTokenAccount(record.name));
+      if (token && tokensEqual(presented, token) && !found) {
+        found = { actor: connectorActor(record.name), scope: record.mcpScope, name: record.name };
+      }
+    }
+    return found;
+  }
+
+  async setAuth(input: {
+    name: string;
+    authHeader?: string | undefined;
+    authValue?: string | undefined;
+  }): Promise<{ webhook: WebhookInfo }> {
+    const record = this.require(input.name);
+    const next: ConnectorRecord = { ...record };
+    if (input.authHeader && input.authValue) {
+      if (record.kind === "inbound") {
+        throw error(
+          "WEBHOOK_AUTH_NOT_OUTBOUND",
+          `connector '${record.name}' is inbound only, so it sends nothing`,
+          "Auth headers belong to outbound or both connectors.",
+        );
+      }
+      await this.opts.secrets.set(authValueAccount(record.name), input.authValue);
+      next.authHeader = input.authHeader;
+    } else {
+      await this.opts.secrets.delete(authValueAccount(record.name));
+      delete next.authHeader;
+    }
+    this.opts.store.put(next);
+    return { webhook: await this.info(next) };
+  }
+
+  async setInboundToken(input: {
+    name: string;
+    enabled: boolean;
+  }): Promise<{ webhook: WebhookInfo; token?: string }> {
+    const record = this.require(input.name);
+    if (!input.enabled) {
+      await this.opts.secrets.delete(inboundTokenAccount(record.name));
+      return { webhook: await this.info(record) };
+    }
+    const token = generateInboundToken();
+    await this.opts.secrets.set(inboundTokenAccount(record.name), token);
+    return { webhook: await this.info(record), token };
   }
 
   async rotateSecret(input: {
@@ -197,7 +371,11 @@ export class WebhookService {
     this.require(name);
     await this.opts.secrets.delete(secretAccount(name));
     await this.opts.secrets.delete(previousSecretAccount(name));
+    await this.opts.secrets.delete(authValueAccount(name));
+    await this.opts.secrets.delete(inboundTokenAccount(name));
+    await this.opts.secrets.delete(mcpTokenAccount(name));
     this.opts.store.remove(name);
+    this.opts.onConnectorsChanged?.();
     return { ok: true };
   }
 
@@ -217,12 +395,17 @@ export class WebhookService {
     }
     const body = JSON.stringify(payload);
     const headers = signRequest(secret, body, { now: this.now() });
+    // The agent's own key, for platforms whose trigger checks a header and cannot verify our HMAC.
+    const authValue = record.authHeader
+      ? await this.opts.secrets.get(authValueAccount(record.name))
+      : undefined;
     const started = Date.now();
     const res = await this.fetchFn(record.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "user-agent": "citegeist-webhooks",
+        ...(record.authHeader && authValue ? { [record.authHeader]: authValue } : {}),
         ...headers,
       },
       body,
@@ -319,20 +502,35 @@ export class WebhookService {
       ...(project ? { project } : {}),
       callback: { url: `${this.baseUrl()}${HOOKS_PREFIX}${record.name}`, event: "task.result" },
     };
-    try {
-      const { status } = await this.postSigned(record, payload);
-      if (status < 200 || status >= 300)
-        throw new Error(`the connector answered with HTTP ${status}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.opts.tasks.fail(task, `delivery failed: ${message}`);
-      throw error(
-        "WEBHOOK_DELIVERY_FAILED",
-        `could not deliver the task to '${record.name}': ${message}`,
-        "Run webhooks.test for this connector and check its url.",
-      );
+    const delays = this.opts.retryDelaysMs ?? [1000, 5000];
+    const sleep = this.opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    let attempt = 0;
+    for (;;) {
+      try {
+        const { status } = await this.postSigned(record, payload);
+        if (status < 200 || status >= 300) throw new DeliveryRefused(status);
+        return { job: task };
+      } catch (err) {
+        const delay = delays[attempt];
+        const hopeless = err instanceof DeliveryRefused && NO_RETRY_STATUS.has(err.status);
+        if (delay !== undefined && !hopeless) {
+          attempt += 1;
+          this.log(`webhook ${record.name}: delivery failed, trying again in ${delay} ms`);
+          await sleep(delay);
+          continue;
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        const tries = attempt > 0 ? ` after ${attempt + 1} attempts` : "";
+        this.opts.tasks.fail(task, `delivery failed${tries}: ${message}`);
+        throw error(
+          "WEBHOOK_DELIVERY_FAILED",
+          `could not deliver the task to '${record.name}'${tries}: ${message}`,
+          err instanceof DeliveryRefused && err.status === 401
+            ? "The agent refused the key. Check the auth header and its value with webhooks.setAuth."
+            : "Run webhooks.test for this connector and check its url and auth header. A switched-off routine does not accept requests.",
+        );
+      }
     }
-    return { job: task };
   }
 
   // Inbound ------------------------------------------------------------------------------------
@@ -355,29 +553,51 @@ export class WebhookService {
     };
 
     const record = this.opts.store.get(name);
-    const secrets: string[] = [];
-    if (record) {
-      const current = await this.opts.secrets.get(secretAccount(name));
-      if (current) secrets.push(current);
-      if (
-        record.previousSecretUntil &&
-        Date.parse(record.previousSecretUntil) > this.now().getTime()
-      ) {
-        const previous = await this.opts.secrets.get(previousSecretAccount(name));
-        if (previous) secrets.push(previous);
+    let deliveryId: string;
+    const presentedToken = bearerToken(req.headers.authorization);
+    if (req.headers[SIGNATURE_HEADER] === undefined && presentedToken !== undefined) {
+      // Alternative for agents that cannot compute an HMAC: a bearer token the user turned on for
+      // this connector. An unknown connector or one without a token fails the same way.
+      const expected = record ? await this.opts.secrets.get(inboundTokenAccount(name)) : undefined;
+      const same = tokensEqual(presentedToken, expected ?? randomUUID());
+      if (!record || !expected || !same) return deny("bad-token");
+      const id = req.headers[ID_HEADER]?.trim() || idFromBody(req.rawBody);
+      if (!id) {
+        return {
+          status: 400,
+          body: {
+            error: "missing id",
+            reason: `a request with a bearer token needs a unique id: the ${ID_HEADER} header or an "id" field in the body`,
+          },
+        };
       }
+      deliveryId = id;
+    } else {
+      const secrets: string[] = [];
+      if (record) {
+        const current = await this.opts.secrets.get(secretAccount(name));
+        if (current) secrets.push(current);
+        if (
+          record.previousSecretUntil &&
+          Date.parse(record.previousSecretUntil) > this.now().getTime()
+        ) {
+          const previous = await this.opts.secrets.get(previousSecretAccount(name));
+          if (previous) secrets.push(previous);
+        }
+      }
+      // An unknown connector runs the same checks against no secret, so it looks like a bad signature.
+      const verdict = verifyRequest({
+        id: req.headers[ID_HEADER],
+        timestamp: req.headers[TIMESTAMP_HEADER],
+        signature: req.headers[SIGNATURE_HEADER],
+        rawBody: req.rawBody,
+        secrets,
+        now: this.now(),
+      });
+      if (!record || !verdict.ok) return deny(verdict.ok ? "bad-signature" : verdict.reason);
+      deliveryId = verdict.id;
     }
-    // An unknown connector runs the same checks against no secret, so it looks like a bad signature.
-    const verdict = verifyRequest({
-      id: req.headers[ID_HEADER],
-      timestamp: req.headers[TIMESTAMP_HEADER],
-      signature: req.headers[SIGNATURE_HEADER],
-      rawBody: req.rawBody,
-      secrets,
-      now: this.now(),
-    });
-    if (!record || !verdict.ok) return deny(verdict.ok ? "bad-signature" : verdict.reason);
-    if (!this.replay.claim(`${name}:${verdict.id}`, this.now().getTime())) {
+    if (!this.replay.claim(`${name}:${deliveryId}`, this.now().getTime())) {
       this.log(`webhook ${name}: refused (replayed id)`);
       return {
         status: 409,

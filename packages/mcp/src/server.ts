@@ -1,4 +1,5 @@
 import { localizeError, type OperationContract, type Registry } from "@citegeist/ops";
+import type { Actor } from "@citegeist/schema";
 import { CLIENT_INFO_META_KEY, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { actorFromClientName } from "./actor.js";
@@ -16,6 +17,8 @@ export interface CreateMcpServerOptions {
    * passes what the token grants.
    */
   localFiles?: boolean;
+  /** Fixed actor of every call (a webhook connector). Without it the client's name decides. */
+  actor?: Actor;
   name?: string;
   version?: string;
 }
@@ -89,7 +92,7 @@ export function createMcpServer(
       async (args: unknown, ctx) => {
         const clientName =
           clientNameFromEnvelope(ctx.mcpReq.envelope) ?? server.server.getClientVersion()?.name;
-        const actor = actorFromClientName(clientName);
+        const actor = options.actor ?? actorFromClientName(clientName);
         try {
           const output = await registry.call(
             contract.name,

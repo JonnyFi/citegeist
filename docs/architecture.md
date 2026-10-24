@@ -330,7 +330,11 @@ citegeist erzeugt und pflegt eine `AGENTS.md`, die das Ordnerformat erklärt und
 
 ### Webhooks und externe Agents
 
-Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC. Eingehend nimmt ein lokaler Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Für Aufrufe aus dem Internet braucht es einen Tunnel (Tailscale Funnel, Cloudflare Tunnel) oder ein kleines Relay, das der Kern abfragt. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
+Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC und auf Wunsch mit dem eigenen Schlüssel der Plattform des Agents in einem Auth-Header (Wert im Schlüsselbund). Eingehend nimmt ein Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Neben der HMAC-Signatur lässt sich pro Connector ein Bearer-Token für Agents einschalten, die keine Signatur berechnen können. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
+
+Der Kern lauscht auf einem zufälligen, privaten Port. Für Aufrufe aus dem Internet öffnet er, solange ein Connector existiert, einen zweiten Listener auf `127.0.0.1` und einem festen Port (Standard 47321, einstellbar). Dieser Listener bedient nur `/hooks/<name>` und `/mcp`; ein Tunnel (Tailscale Funnel, Cloudflare Tunnel) zeigt auf ihn. Die öffentliche Adresse des Tunnels steht in den Einstellungen und wird für alle Rückruf-Adressen verwendet.
+
+Auf `/mcp` liegt der MCP-Server des Kerns mit Streamable HTTP, derselbe Werkzeugsatz und dieselbe Implementierung wie bei `cg mcp --http`. Zugang bekommen nur Connectors, bei denen der Nutzer ihn einschaltet, mit eigenem Token im Schlüsselbund. Der Akteur ist `agent:<connector>`, Neues landet in der Inbox, `admin`-Operationen und Zugriff auf lokale Dateien sind ausgeschlossen (D21).
 
 ### Zotero-Kompatibilität
 
