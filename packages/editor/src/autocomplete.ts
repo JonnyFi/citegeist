@@ -5,6 +5,7 @@ import {
   type CompletionResult,
 } from "@codemirror/autocomplete";
 import type { Extension } from "@codemirror/state";
+import { citationSource } from "./citations";
 import { configFacet } from "./config";
 import type { EditorLabels, Suggestion } from "./types";
 
@@ -82,7 +83,7 @@ export async function wikiLinkSource(context: CompletionContext): Promise<Comple
 }
 
 export const wikiLinkAutocomplete: Extension = autocompletion({
-  override: [wikiLinkSource],
+  override: [wikiLinkSource, citationSource],
   activateOnTyping: true,
   icons: false,
   closeOnBlur: true,

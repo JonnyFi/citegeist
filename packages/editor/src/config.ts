@@ -1,5 +1,6 @@
 import { Facet, StateEffect } from "@codemirror/state";
 import {
+  type CitationProvider,
   DEFAULT_LABELS,
   type EditorLabels,
   type OpenLinkEvent,
@@ -8,6 +9,8 @@ import {
 
 export interface EditorConfig {
   provider: WikiLinkProvider | undefined;
+  /** Pandoc citations (`[@key]`): completion after `@` and marks for unknown keys. Texts only. */
+  citations?: CitationProvider | undefined;
   labels: EditorLabels;
   onOpenLink: ((event: OpenLinkEvent) => void) | undefined;
 }

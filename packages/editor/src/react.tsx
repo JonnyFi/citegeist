@@ -1,12 +1,14 @@
 import { useEffect, useRef } from "react";
 import { createNoteEditor, type NoteEditor } from "./editor";
-import type { EditorLabels, OpenLinkEvent, WikiLinkProvider } from "./types";
+import type { CitationProvider, EditorLabels, OpenLinkEvent, WikiLinkProvider } from "./types";
 
 export interface NoteEditorProps {
   value: string;
   /** Called with the full text after each edit. */
   onChange?: (value: string) => void;
   provider?: WikiLinkProvider;
+  /** Pandoc citations: completion after `@` and marks for unknown citekeys. */
+  citations?: CitationProvider;
   labels?: Partial<EditorLabels>;
   onOpenLink?: (event: OpenLinkEvent) => void;
   readOnly?: boolean;
@@ -35,6 +37,7 @@ export function NoteEditorView(props: NoteEditorProps) {
       parent: host.current,
       value: p.value,
       ...(p.provider ? { provider: p.provider } : {}),
+      ...(p.citations ? { citations: p.citations } : {}),
       ...(p.labels ? { labels: p.labels } : {}),
       ...(p.readOnly ? { readOnly: true } : {}),
       ...(p.placeholder ? { placeholder: p.placeholder } : {}),
@@ -56,8 +59,12 @@ export function NoteEditorView(props: NoteEditorProps) {
   }, [props.value]);
 
   useEffect(() => {
-    editor.current?.configure({ provider: props.provider, labels: props.labels ?? {} });
-  }, [props.provider, props.labels]);
+    editor.current?.configure({
+      provider: props.provider,
+      citations: props.citations,
+      labels: props.labels ?? {},
+    });
+  }, [props.provider, props.citations, props.labels]);
 
   return <div ref={host} className={props.className} data-testid="note-editor" />;
 }
