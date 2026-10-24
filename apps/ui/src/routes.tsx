@@ -19,6 +19,7 @@ import {
   LitsearchNewScreen,
   LitsearchRunScreen,
   LitsearchRunsScreen,
+  LitsearchWatchesScreen,
 } from "./litsearch";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SETTINGS_SECTIONS, SettingsScreen, type SettingsSection } from "./routes/settings";
@@ -227,6 +228,12 @@ const litsearchNewRoute = createRoute({
   component: LitsearchNewScreen,
 });
 
+const litsearchWatchesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/watches",
+  component: LitsearchWatchesScreen,
+});
+
 const litsearchCompareRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/litsearch/compare",
@@ -255,6 +262,7 @@ const routeTree = rootRoute.addChildren([
   litsearchRoute,
   litsearchNewRoute,
   litsearchCompareRoute,
+  litsearchWatchesRoute,
   litsearchRunRoute,
   itemRoute,
   projectsRoute,

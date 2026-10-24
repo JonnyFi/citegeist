@@ -724,3 +724,81 @@ describe("litsearch.compare", () => {
     ]);
   });
 });
+
+describe.skipIf(!python3())("litsearch watchlists", () => {
+  it("saves a watchlist from a run with background off, turns background on and off, and deletes it", async () => {
+    // protects: the app keeps watchlists through watch.py in <library>/research/watches; background is opt-in
+    // fails_when: a new watchlist starts with background on, the toggle does not stick, or delete leaves it behind
+    // no_claim: launchd is switched off (CITEGEIST_LITSEARCH_NO_LAUNCHD); installing the agent is tested in workers/research
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      command: {
+        command: python3() as string,
+        args: [],
+        env: { CITEGEIST_LITSEARCH_NO_LAUNCHD: "1" },
+      },
+      scriptsDir: join(FIXTURES, "..", "..", "scripts"),
+    });
+    const call = <T>(name: string, input: unknown) =>
+      registry.call(name, { actor: "human" }, input) as Promise<T>;
+    expect(await call("litsearch.watches", {})).toEqual({ watches: [] });
+    const saved = await call<{
+      watch: { id: string; background: boolean; queries: string[]; time: string };
+    }>("litsearch.watchSave", {
+      fromRun: "run-sample",
+      topic: "agent communication protocols",
+      queries: ['"agent communication protocol"'],
+      weekday: 1,
+      time: "08:00",
+    });
+    expect(saved.watch).toMatchObject({
+      id: "agent-communication-protocols",
+      background: false,
+      queries: ['"agent communication protocol"'],
+      time: "08:00",
+    });
+    expect(existsSync(join(lib.paths.litsearchWatchesDir, "watchlists.json"))).toBe(true);
+    const on = await call<{ watch: { background: boolean } }>("litsearch.watchBackground", {
+      id: saved.watch.id,
+      enabled: true,
+    });
+    expect(on.watch.background).toBe(true);
+    const off = await call<{ watch: { background: boolean } }>("litsearch.watchBackground", {
+      id: saved.watch.id,
+      enabled: false,
+    });
+    expect(off.watch.background).toBe(false);
+    await expect(
+      call("litsearch.watchSave", { topic: "x", queries: ["y"], weekday: 1, time: "25:00" }),
+    ).rejects.toThrow();
+    await call("litsearch.watchDelete", { id: saved.watch.id });
+    expect((await call<{ watches: unknown[] }>("litsearch.watches", {})).watches).toEqual([]);
+  });
+
+  it("marks the papers a watchlist run found new against its previous run", async () => {
+    // protects: the "new" badge in a watchlist's run comes from its watch.json
+    // fails_when: a paper listed in watch.json is not marked, or others are
+    // no_claim: watch.json is written by hand here; its creation is tested in workers/research
+    const lib = await library();
+    const dir = copyRun(lib, "run-sample");
+    writeFileSync(
+      join(dir, "watch.json"),
+      JSON.stringify({
+        watchlist: "w",
+        status: "done",
+        new: [{ key: "W4600000003" }],
+        dropped: [],
+      }),
+    );
+    const registry = bindLitsearchOperations(new Registry(), lib);
+    const got = (await registry.call(
+      "litsearch.get",
+      { actor: "human" },
+      { runId: "run-sample" },
+    )) as {
+      papers: Array<{ key: string; newInWatch?: boolean }>;
+    };
+    expect(got.papers.filter((p) => p.newInWatch).map((p) => p.key)).toEqual(["W4600000003"]);
+  });
+});

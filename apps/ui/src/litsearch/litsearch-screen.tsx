@@ -25,6 +25,7 @@ import { Bar, ErrorLine, FieldLabel, Section, useGuarded } from "../settings/par
 import { ResultCharts } from "./charts";
 import { CompareWith } from "./compare";
 import { Downloads, PaperDetail, ResultsTable } from "./results";
+import { LitsearchTabs, SaveAsWatch } from "./watches";
 
 const SOURCES: readonly LitsearchSource[] = ["dblp", "openreview", "unpaywall", "orcid"];
 /** How often an open run is read again while it runs. */
@@ -87,7 +88,7 @@ export function LitsearchRunsScreen() {
         ) : null}
       </Title>
       <SubBar className="items-center">
-        <Label>{t("litsearch.runs")}</Label>
+        <LitsearchTabs active="runs" />
         <Button variant="primary" size="sm" onClick={toNew}>
           <Plus className="size-3.5" />
           {t("litsearch.new")}
@@ -501,6 +502,7 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
                 </dl>
                 <Downloads runId={runId} />
               </section>
+              <SaveAsWatch run={run} />
               <details className="group border-t border-line pt-4">
                 <summary className="cursor-pointer select-none">
                   <Label>{t("litsearch.charts")}</Label>

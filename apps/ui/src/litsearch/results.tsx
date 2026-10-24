@@ -439,6 +439,7 @@ export function ResultsTable({
                       {p.authors.length > 3 ? " et al." : ""}
                     </span>
                     <Mark paper={p} />
+                    {p.newInWatch ? <Badge tone="accent">{t("litsearch.new.badge")}</Badge> : null}
                     {!p.verified && p.section !== "rejected" ? (
                       <Stamp tone="danger">{t("litsearch.notVerified")}</Stamp>
                     ) : null}

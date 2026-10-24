@@ -49,7 +49,8 @@ LABEL_PREFIX = f"app.citegeist.litsearch.{LIBRARY_ID}."
 # what a LaunchAgent needs to find the library and the key (never the key itself)
 AGENT_ENV = ("CITEGEIST_LITSEARCH_DIR", "CITEGEIST_LITSEARCH_CACHE", "CITEGEIST_KEYCHAIN_SERVICE",
              "CITEGEIST_LIBRARY_ID", "OPENDRAFT_CONTACT_EMAIL", "SSL_CERT_FILE")
-SCHEDULER = sys.platform == "darwin"  # weekly re-runs and notifications need launchd and osascript
+# weekly re-runs and notifications need launchd and osascript; tests switch both off
+SCHEDULER = sys.platform == "darwin" and not os.environ.get("CITEGEIST_LITSEARCH_NO_LAUNCHD")
 WEEKDAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]  # launchd: 0 = Sunday
 
 

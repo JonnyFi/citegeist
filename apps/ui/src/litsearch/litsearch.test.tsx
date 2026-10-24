@@ -295,3 +295,65 @@ describe("comparing runs", () => {
     );
   });
 });
+
+describe("watchlists", () => {
+  it("lists the watchlists with schedule, unseen count and the background switch", async () => {
+    // protects: the watchlist tab shows when a search repeats, what is new and whether it runs in the background
+    // fails_when: the tab is missing, the schedule or the unseen count is wrong, or the switch does not call core
+    // no_claim: launchd is core's and watch.py's; the mock only flips the flag
+    const user = userEvent.setup();
+    const { calls } = renderApp("/litsearch");
+    await user.click(await screen.findByRole("button", { name: "Beobachtungen" }));
+    const row = await screen.findByTestId("litsearch-watch");
+    expect(within(row).getByText(/Montags um 08:00/)).toBeVisible();
+    expect(within(row).getByText("1 neu seit deinem letzten Blick")).toBeVisible();
+    const toggle = within(row).getByRole("switch", { name: "Im Hintergrund ausführen" });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(calls.find((c) => c.name === "litsearch.watchBackground")?.input).toEqual({
+      id: "agent-communication-protocols",
+      enabled: false,
+    });
+    await waitFor(() => expect(toggle).not.toBeChecked());
+  });
+
+  it("saves a finished run as a watchlist with background off", async () => {
+    // protects: "Save as watchlist" takes the run's topic and queries and the chosen schedule
+    // fails_when: the run's queries are not passed, or the new watchlist starts with background on
+    // no_claim: none beyond protects
+    const user = userEvent.setup();
+    const { calls } = renderApp("/litsearch/2026-10-10-agent-communication-protocols");
+    await user.click(await screen.findByRole("button", { name: "Als Beobachtung speichern" }));
+    await user.selectOptions(screen.getByLabelText("Wochentag"), "3");
+    await user.click(screen.getByRole("button", { name: "Beobachtung anlegen" }));
+    expect(calls.find((c) => c.name === "litsearch.watchSave")?.input).toEqual({
+      fromRun: "2026-10-10-agent-communication-protocols",
+      topic: "agent communication protocols",
+      queries: ['"agent communication protocol"'],
+      weekday: 3,
+      time: "08:00",
+    });
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-watch")).toHaveLength(2));
+    const created = screen
+      .getAllByTestId("litsearch-watch")
+      .find((r) => r.textContent?.includes("Mittwochs um 08:00")) as HTMLElement;
+    expect(
+      within(created).getByRole("switch", { name: "Im Hintergrund ausführen" }),
+    ).not.toBeChecked();
+  });
+
+  it("runs a watchlist now and marks the papers its run found new", async () => {
+    // protects: "Run now" starts a run of the watchlist and the result list badges new papers
+    // fails_when: no run starts, the page does not open, or the badge is missing
+    // no_claim: which papers are new is the mock's choice; the diff itself is tested in workers/research
+    const user = userEvent.setup();
+    renderApp("/litsearch/watches");
+    const row = await screen.findByTestId("litsearch-watch");
+    await user.click(within(row).getByRole("button", { name: "Jetzt ausführen" }));
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-paper")).toHaveLength(2), {
+      timeout: 4000,
+    });
+    const first = screen.getAllByTestId("litsearch-paper")[0] as HTMLElement;
+    expect(within(first).getByText("neu")).toBeVisible();
+  });
+});
