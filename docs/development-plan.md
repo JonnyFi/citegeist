@@ -228,6 +228,24 @@ Abnahme:
 Modell: Sonnet. Größe: M.
 ```
 
+```markdown
+## W3.11 Texte
+
+Ziel: Jonny schreibt ein Kapitel in citegeist, belegt es aus seinen Karten und exportiert es nach Word oder LaTeX.
+Besitzt: packages/core/src/texts/**, packages/editor/src/citations.ts, apps/ui/src/texts/**
+Liest: D20, docs/spec/library-format.md Abschnitt „Texte“, W3.1, W3.3
+Darf nicht ändern: Hotspots (der Lead hat `packages/schema/src/texts.ts` und `packages/ops/src/contracts/texts.ts` geliefert)
+Abnahme:
+- [x] `[@` im Editor bietet die Bibliothek an, Quellen des Projekts zuerst, und ein unbekannter Citekey ist markiert
+- [x] „Wörtlich zitieren“ und „Sinngemäß zitieren“ einer Karte fügen Zitat und Beleg an der Cursorposition des offenen Texts ein
+- [x] `texts.export` erzeugt docx, LaTeX (ZIP mit `main.tex` und `references.bib`), PDF und Markdown, das Verzeichnis enthält nur zitierte Quellen
+- [x] Pandoc wird im PATH und in den Homebrew-Ordnern gefunden, sonst lädt `pandoc.setup` das festgelegte Release mit Prüfsumme
+- [x] Ein echter Export mit Pandoc 3.12.1 gegen eine Fixture-Bibliothek enthält den formatierten Beleg und das Literaturverzeichnis
+- [x] Agents erreichen Texte über `cg texts ...` und die Dateien, ohne neues MCP-Werkzeug
+- [ ] Ein PDF-Export gegen eine installierte LaTeX-Engine oder Typst (von Hand zu prüfen)
+Modell: Sonnet. Größe: L.
+```
+
 ### Design-Umsetzung
 
 Jonnys Design liegt in `docs/design/design-system.md`, `docs/design/boards/*.html` (acht Referenz-Mockups) und als Tailwind-Theme in `apps/ui/src/styles.css`. Bei Widerspruch gilt `styles.css`. Die Umsetzung läuft als eigener Workstream, weil sie fast jede Komponente in `apps/ui` berührt, und startet, sobald W3.2 und W3.3 gemergt sind, damit Chat und Graph gleich im neuen Look entstehen.
