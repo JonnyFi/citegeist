@@ -6,5 +6,6 @@
 | [architecture.md](architecture.md) | Prozesse, Ordnerformat, Datenmodell, Ingest, AI-Schicht, Zugänge für Agents, Stack, Risiken |
 | [development-plan.md](development-plan.md) | Wellen, Workstreams, Abnahmekriterien, gstack-Ablauf in Conductor |
 | [decisions.md](decisions.md) | Entscheidungsprotokoll |
+| [run.md](run.md) | Dev-App und gebaute App starten, Einrichtung beim ersten Start |
 | [design/design-system.md](design/design-system.md) | Design-System I: Tokens, Raster, Bausteine, Entscheidungen; [design/ui-inventory.md](design/ui-inventory.md) als Briefing |
 | [research/](research/) | Sieben Rechercheberichte (Englisch) mit Quellen |

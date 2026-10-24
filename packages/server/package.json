@@ -1,0 +1,33 @@
+{
+  "name": "@citegeist/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./lockfile": "./src/shared/lockfile.ts",
+    "./connect": "./src/shared/connect.ts",
+    "./testing": "./src/testing/seed.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@citegeist/chat": "workspace:*",
+    "@citegeist/core": "workspace:*",
+    "@citegeist/mcp": "workspace:*",
+    "@citegeist/ops": "workspace:*",
+    "@citegeist/schema": "workspace:*",
+    "@orpc/server": "^1.16.1",
+    "ws": "^8.22.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@orpc/client": "^1.16.1",
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

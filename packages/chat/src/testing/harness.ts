@@ -115,7 +115,7 @@ export async function createHarness(
       drivers: createDrivers({
         workspaceRoot: join(localDir, "agent-workspace"),
         backends: [opts.backend ?? fakeBackend()],
-        find: (name) => (name === "npx" ? process.execPath : undefined),
+        find: () => undefined,
         handshakeTimeoutMs: 20_000,
       }),
       notifyIntervalMs: 5,

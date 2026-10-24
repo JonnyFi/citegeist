@@ -14,6 +14,8 @@ The core is TypeScript on Node, conversion runs in a Python worker, and the UI s
 | `packages/cite`      | CSL, BibTeX, RIS, citekeys, citation export                | W1.4             |
 | `packages/ai`        | Inference backends, tasks, evals                           | W1.5             |
 | `packages/mcp`       | MCP server built on ops                                    | W1.8             |
+| `packages/chat`      | Agent chat over ACP, turn undo, research jobs              | W3.3             |
+| `packages/server`    | Core process: HTTP/oRPC/WebSocket, lockfile, chat wiring   | Lead             |
 | `packages/anchoring` | Anchor library (pure TypeScript)                           | W1.6             |
 | `packages/reader`    | PDF and text view with highlight layer                     | W1.6             |
 | `apps/cli`           | `cg` command, including `cg mcp`                           | W1.8             |
@@ -41,6 +43,7 @@ If your workstream needs a new dependency, add it to your own package's `package
 ```
 pnpm install                              install all JS dependencies
 pnpm verify                               biome check, typecheck, vitest, pytest (must pass before every commit; the pre-push hook enforces it)
+pnpm package                              build the unsigned arm64 citegeist.app (apps/desktop/dist)
 pnpm lint                                 biome check .
 pnpm format                               biome format --write .
 pnpm typecheck                            tsc --noEmit in every package via turbo

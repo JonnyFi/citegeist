@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { EMBEDDING_MODEL_KEYS, type EmbeddingModelKey } from "@citegeist/ops";
 import { writeFileAtomic } from "../fsutil.js";
 
 /** What is stored on disk. `ai.apiKeys` is derived from the Keychain, so it is never persisted. */
@@ -7,7 +8,8 @@ export interface StoredSettings {
   ai: { routing: Record<string, string> };
   mailto?: string;
   uiLanguage: "de" | "en";
-  semantic: { enabled: boolean };
+  /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
+  semantic: { enabled: boolean; model?: EmbeddingModelKey };
   connector: { enabled: boolean; port: number };
 }
 
@@ -24,12 +26,16 @@ function validPort(value: unknown): number {
     : DEFAULT_SETTINGS.connector.port;
 }
 
+function isModelKey(value: unknown): value is EmbeddingModelKey {
+  return (EMBEDDING_MODEL_KEYS as readonly unknown[]).includes(value);
+}
+
 function sanitize(raw: unknown): StoredSettings {
   const v = (raw ?? {}) as {
     ai?: { routing?: unknown };
     mailto?: unknown;
     uiLanguage?: unknown;
-    semantic?: { enabled?: unknown };
+    semantic?: { enabled?: unknown; model?: unknown };
     connector?: { enabled?: unknown; port?: unknown };
   };
   const routing: Record<string, string> = {};
@@ -42,7 +48,10 @@ function sanitize(raw: unknown): StoredSettings {
     ai: { routing: Object.keys(routing).length > 0 ? routing : { ...DEFAULT_SETTINGS.ai.routing } },
     ...(typeof v.mailto === "string" && v.mailto ? { mailto: v.mailto } : {}),
     uiLanguage: v.uiLanguage === "en" ? "en" : "de",
-    semantic: { enabled: v.semantic?.enabled === true },
+    semantic: {
+      enabled: v.semantic?.enabled === true,
+      ...(isModelKey(v.semantic?.model) ? { model: v.semantic.model } : {}),
+    },
     connector: { enabled: v.connector?.enabled === true, port: validPort(v.connector?.port) },
   };
 }

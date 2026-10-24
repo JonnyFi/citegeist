@@ -12,10 +12,10 @@ import {
   Library,
   type Runtime,
 } from "@citegeist/core";
-import { LockHeldError, startCoreServer } from "@citegeist/desktop/core-server";
 import { createReplayFetch, createResolver } from "@citegeist/metadata";
 import type { Registry } from "@citegeist/ops";
 import { Actor, CitegeistError } from "@citegeist/schema";
+import { LockHeldError, startCoreServer } from "@citegeist/server";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { ORPCError, os } from "@orpc/server";

@@ -59,7 +59,7 @@ beforeEach(() => {
     {
       drivers: createDrivers({
         workspaceRoot: join(base, "local", "agent-workspace"),
-        // The adapter cannot start: no npx on this machine.
+        // The adapter cannot start: its launcher does not exist.
         backends: [
           { ...CLAUDE_CODE, launch: () => ({ command: join(base, "no-such-adapter"), args: [] }) },
         ],

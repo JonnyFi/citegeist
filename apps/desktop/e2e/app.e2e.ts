@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { SEED, seedLibrary } from "@citegeist/server/testing";
 import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
-import { SEED, seedLibrary } from "../src/testing/seed.js";
 
 let tmp: string;
 let library: string;

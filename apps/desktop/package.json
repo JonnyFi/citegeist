@@ -5,8 +5,7 @@
   "type": "module",
   "main": "./out/main/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./core-server": "./src/core/server.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "dev": "electron-vite dev",
@@ -14,26 +13,27 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "pnpm run build && playwright test"
+    "test:e2e": "pnpm run build && playwright test",
+    "package": "pnpm run build && electron-builder --config electron-builder.yml --mac dir --arm64"
   },
   "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "0.95.0",
+    "@agentclientprotocol/codex-acp": "2.2.2",
     "@citegeist/core": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
+    "@citegeist/server": "workspace:*",
     "@huggingface/transformers": "^4.3.1",
-    "@orpc/server": "^1.16.1",
     "@parcel/watcher": "^2.6.0",
     "better-sqlite3": "^13.0.3",
-    "sqlite-vec": "^0.1.9",
-    "ws": "^8.22.0",
-    "zod": "^4.0.0"
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@citegeist/ui": "workspace:*",
     "@orpc/client": "^1.16.1",
     "@playwright/test": "^1.64.1",
-    "@types/ws": "^8.18.1",
     "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "catalog:",
     "vite": "^8.3.5",

@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileX } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import type { z } from "zod";
+import { publishChatSelection } from "../chat";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
@@ -203,14 +204,26 @@ function ReaderLoaded({
     },
   });
 
-  const onSelectionChange = useCallback((anchors: SelectionAnchors | null) => {
-    const sel = window.getSelection();
-    if (!anchors || !sel || sel.rangeCount === 0) {
-      setSelection(null);
-      return;
-    }
-    setSelection({ anchors, range: sel.getRangeAt(0).cloneRange() });
-  }, []);
+  const onSelectionChange = useCallback(
+    (anchors: SelectionAnchors | null) => {
+      const sel = window.getSelection();
+      if (!anchors || !sel || sel.rangeCount === 0) {
+        setSelection(null);
+        publishChatSelection(null);
+        return;
+      }
+      setSelection({ anchors, range: sel.getRangeAt(0).cloneRange() });
+      // the chat shows the marked passage as a context chip
+      const page = anchors.location.first?.label;
+      publishChatSelection({
+        citekey: fm.citekey,
+        text: anchors.quote.slice(0, 8000),
+        ...(page ? { page } : {}),
+      });
+    },
+    [fm.citekey],
+  );
+  useEffect(() => () => publishChatSelection(null), []);
 
   // bring the selected card's highlight into view in whichever view is open
   // biome-ignore lint/correctness/useExhaustiveDependencies: view change re-places the highlights
