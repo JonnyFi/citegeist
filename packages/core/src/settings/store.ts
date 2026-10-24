@@ -1,6 +1,11 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { DEFAULT_HOOKS_PORT, EMBEDDING_MODEL_KEYS, type EmbeddingModelKey } from "@citegeist/ops";
+import {
+  DEFAULT_HOOKS_PORT,
+  DEFAULT_RESEARCH_LIMITS,
+  EMBEDDING_MODEL_KEYS,
+  type EmbeddingModelKey,
+} from "@citegeist/ops";
 import { writeFileAtomic } from "../fsutil.js";
 
 /** What is stored on disk. `ai.apiKeys` is derived from the Keychain, so it is never persisted. */
@@ -19,6 +24,8 @@ export interface StoredSettings {
   webhooks: { port: number; publicUrl?: string };
   /** A11: true restores the sandbox for chat agents. */
   chat: { isolated: boolean };
+  /** Limits of research jobs. Zero switches a limit off. */
+  research: { maxMinutes: number; maxTokens: number; maxToolCalls: number };
 }
 
 export const DEFAULT_SETTINGS: StoredSettings = {
@@ -28,7 +35,12 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   connector: { enabled: false, port: 23119 },
   webhooks: { port: DEFAULT_HOOKS_PORT },
   chat: { isolated: false },
+  research: { ...DEFAULT_RESEARCH_LIMITS },
 };
+
+function limit(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
+}
 
 function validPort(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1024 && value <= 65535
@@ -57,6 +69,7 @@ function sanitize(raw: unknown): StoredSettings {
     connector?: { enabled?: unknown; port?: unknown };
     webhooks?: { port?: unknown; publicUrl?: unknown };
     chat?: { isolated?: unknown };
+    research?: { maxMinutes?: unknown; maxTokens?: unknown; maxToolCalls?: unknown };
   };
   const routing: Record<string, string> = {};
   if (v.ai?.routing && typeof v.ai.routing === "object") {
@@ -85,6 +98,11 @@ function sanitize(raw: unknown): StoredSettings {
         : {}),
     },
     chat: { isolated: v.chat?.isolated === true },
+    research: {
+      maxMinutes: limit(v.research?.maxMinutes, DEFAULT_RESEARCH_LIMITS.maxMinutes),
+      maxTokens: limit(v.research?.maxTokens, DEFAULT_RESEARCH_LIMITS.maxTokens),
+      maxToolCalls: limit(v.research?.maxToolCalls, DEFAULT_RESEARCH_LIMITS.maxToolCalls),
+    },
   };
 }
 

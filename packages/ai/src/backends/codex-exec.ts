@@ -6,6 +6,7 @@ import { CODEX_ENV_BLOCKLIST, cleanEnv, nodeRunner, type ProcessRunner } from ".
 import { structured, toModelJsonSchema } from "../structured.js";
 import {
   type AgentSession,
+  type AiUsage,
   type CompleteRequest,
   type InferenceBackend,
   isModelClass,
@@ -25,6 +26,33 @@ export interface CodexExecOptions {
 
 const INSTALL_HINT =
   "Install the Codex CLI (`npm install -g @openai/codex`), run `codex login`, then retry.";
+
+const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/**
+ * Usage from the JSONL events of `codex exec --json`: every `turn.completed` carries
+ * `usage.{input_tokens, cached_input_tokens, output_tokens}`. OpenAI counts the cached tokens as
+ * part of `input_tokens`, so they are taken out of it. Codex reports no price.
+ */
+export function codexUsage(stdout: string): AiUsage | undefined {
+  let usage: AiUsage | undefined;
+  for (const line of stdout.split("\n")) {
+    if (!line.startsWith("{")) continue;
+    let ev: { type?: string; usage?: Record<string, unknown> };
+    try {
+      ev = JSON.parse(line) as typeof ev;
+    } catch {
+      continue;
+    }
+    if (ev.type !== "turn.completed" || !ev.usage) continue;
+    const cached = num(ev.usage.cached_input_tokens);
+    usage ??= { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+    usage.inputTokens += Math.max(0, num(ev.usage.input_tokens) - cached);
+    usage.outputTokens += num(ev.usage.output_tokens);
+    usage.cacheReadTokens += cached;
+  }
+  return usage;
+}
 
 /**
  * `codex exec --output-schema --ephemeral`, fresh process per call. Flags are the ones written in
@@ -93,6 +121,7 @@ export class CodexExecBackend implements InferenceBackend {
         "--output-schema",
         schemaFile,
         "--ephemeral",
+        "--json",
         "--skip-git-repo-check",
         "--ignore-user-config",
         "--ignore-rules",
@@ -120,7 +149,11 @@ export class CodexExecBackend implements InferenceBackend {
             env: this.env,
             stdin: req.system ? `${req.system}\n\n${prompt}` : prompt,
             timeoutMs: this.timeoutMs,
+            ...(req.signal ? { signal: req.signal } : {}),
           });
+          if (r.aborted || req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
+          const used = codexUsage(r.stdout);
+          if (used) req.onUsage?.(used);
           if (r.timedOut) throw aiErrors.timeout(this.id, req.task, this.timeoutMs);
           if (r.spawnError === "ENOENT") throw aiErrors.cliMissing("codex", INSTALL_HINT);
           if (r.exitCode !== 0) {

@@ -2,7 +2,7 @@ import { CslType } from "@citegeist/schema";
 import { z } from "zod";
 import { defineTask } from "../types.js";
 import { metadataFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v1.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v2.js";
 
 export const MetadataFromFirstPageInput = z.object({
   /** Text of page 1 as extracted by the converter. */

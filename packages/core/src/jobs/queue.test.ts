@@ -1,8 +1,9 @@
 import { join } from "node:path";
 import { CitegeistError, type Job } from "@citegeist/schema";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanTmpDirs, tmpDir } from "../test-helpers.js";
+import { cleanTmpDirs, tmpDir, until } from "../test-helpers.js";
 import { JobQueue, TransientError } from "./queue.js";
+import { currentJobScope } from "./scope.js";
 
 afterEach(cleanTmpDirs);
 
@@ -206,6 +207,49 @@ describe("JobQueue", () => {
     expect(page2.jobs.map((j) => j.id)).toEqual([ids[2], ids[1]]);
     expect(q.list({ status: "queued", limit: 10 }).jobs).toHaveLength(5);
     expect(q.list({ status: "failed", limit: 10 }).jobs).toHaveLength(0);
+    await q.close();
+  });
+
+  it("keeps the partial result of a job that a handler ended on purpose", async () => {
+    const { q } = queue();
+    q.register("research", async () => {
+      throw new CitegeistError({
+        code: "RESEARCH_LOOP",
+        message: "the same call three times",
+        fix: "start again",
+        recovery: "ask-human",
+        context: { partial: { added: ["paper1"] } },
+      });
+    });
+    q.start();
+    const job = q.enqueue({ kind: "research", by: "human" });
+    const done = await q.waitFor(job.id);
+    expect(done.status).toBe("failed");
+    expect(done.error).toMatchObject({ code: "RESEARCH_LOOP" });
+    expect(done.result).toEqual({ added: ["paper1"] });
+    await q.close();
+  });
+
+  it("gives code below a handler the job, its actor and its abort signal", async () => {
+    const { q } = queue();
+    let seen: { job: string; actor: string; aborted: boolean } | undefined;
+    q.register("ingest", async (ctx) => {
+      await sleep(5);
+      const scope = currentJobScope();
+      if (scope) seen = { job: scope.job, actor: scope.actor, aborted: scope.signal.aborted };
+      await new Promise<void>((resolve) =>
+        scope?.signal.addEventListener("abort", () => resolve(), { once: true }),
+      );
+      return ctx.job.id;
+    });
+    q.start();
+    const job = q.enqueue({ kind: "ingest", by: "agent:grok" });
+    await until(() => seen !== undefined);
+    expect(seen).toEqual({ job: job.id, actor: "agent:grok", aborted: false });
+    q.cancel(job.id);
+    await q.idle();
+    expect(q.get(job.id)?.status).toBe("cancelled");
+    expect(currentJobScope()).toBeUndefined();
     await q.close();
   });
 });

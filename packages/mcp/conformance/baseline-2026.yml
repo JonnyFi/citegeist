@@ -1,0 +1,52 @@
+# Known deviations from the MCP conformance suite on the 2026-07-28 wire (stateless requests).
+# Same reason as in baseline-2025.yml: citegeist has no resources, prompts, completions or
+# fixture tools, and the suite's reference fixture is not part of it.
+server:
+  # citegeist declares no completions capability.
+  - completion-complete
+  # Need the tools test_simple_text, test_image_content, test_audio_content and so on.
+  - tools-call-simple-text
+  - tools-call-image
+  - tools-call-audio
+  - tools-call-embedded-resource
+  - tools-call-mixed-content
+  - tools-call-error
+  - tools-call-with-progress
+  # citegeist declares no resources capability.
+  - resources-list
+  - resources-read-text
+  - resources-read-binary
+  - resources-templates-read
+  # citegeist declares no prompts capability.
+  - prompts-list
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-embedded-resource
+  - prompts-get-with-image
+  # Only tools/list caches; the other cacheable methods do not exist on this server.
+  - caching:sep-2549-prompts-list-caching-hints
+  - caching:sep-2549-resources-list-caching-hints
+  - caching:sep-2549-resources-templates-list-caching-hints
+  # These four checks drive the suite's diagnostic tools (test_missing_capability, test_streaming_elicitation, test_logging_tool), which citegeist does not have.
+  - server-stateless:sep-2575-server-rejects-undeclared-capability
+  - server-stateless:sep-2575-missing-capability-http-400
+  - server-stateless:sep-2575-http-server-no-independent-requests-on-stream
+  - server-stateless:sep-2575-server-no-log-without-loglevel
+  # SHOULD check: it mutates the tool list through a fixture tool. citegeist's tool set is fixed for the life of the process, so it never has a change to announce.
+  - server-stateless:sep-2575-server-sends-tools-list-changed-on-subscription
+  # citegeist declares no resources capability, so resources/read answers -32601 instead of -32602.
+  - sep-2164-resource-not-found
+  # Need the suite's tools test_input_required_result_*, and citegeist never returns input_required.
+  - input-required-result-basic-elicitation
+  - input-required-result-basic-sampling
+  - input-required-result-basic-list-roots
+  - input-required-result-request-state
+  - input-required-result-multiple-input-requests
+  - input-required-result-multi-round
+  - input-required-result-missing-input-response
+  - input-required-result-result-type
+  - input-required-result-tampered-state
+  - input-required-result-capability-check
+  - input-required-result-ignore-extra-params
+  # Needs resources, prompts or completions, which citegeist does not declare.
+  - input-required-result-non-tool-request

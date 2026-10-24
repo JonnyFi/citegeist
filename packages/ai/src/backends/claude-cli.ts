@@ -6,6 +6,7 @@ import { CLAUDE_ENV_BLOCKLIST, cleanEnv, nodeRunner, type ProcessRunner } from "
 import { structured, toModelJsonSchema } from "../structured.js";
 import {
   type AgentSession,
+  type AiUsage,
   type CompleteRequest,
   type InferenceBackend,
   isModelClass,
@@ -43,6 +44,56 @@ interface ClaudeResult {
   is_error?: boolean;
   result?: string;
   structured_output?: unknown;
+  total_cost_usd?: number;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  };
+  modelUsage?: Record<
+    string,
+    {
+      inputTokens?: number;
+      outputTokens?: number;
+      cacheReadInputTokens?: number;
+      cacheCreationInputTokens?: number;
+      costUSD?: number;
+    }
+  >;
+}
+
+const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/**
+ * Usage of a `claude -p --output-format json` result. `modelUsage` adds up every API call of the
+ * run (the structured output costs a second turn), while `usage` only describes the last one, so
+ * `modelUsage` wins when it is there. `total_cost_usd` is the list price.
+ */
+export function claudeUsage(r: ClaudeResult | undefined): AiUsage | undefined {
+  if (!r) return undefined;
+  const models = Object.entries(r.modelUsage ?? {});
+  let usage: AiUsage | undefined;
+  if (models.length > 0) {
+    usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+    for (const [, m] of models) {
+      usage.inputTokens += num(m.inputTokens);
+      usage.outputTokens += num(m.outputTokens);
+      usage.cacheReadTokens += num(m.cacheReadInputTokens);
+      usage.cacheWriteTokens += num(m.cacheCreationInputTokens);
+    }
+    usage.model = models[0]?.[0];
+  } else if (r.usage) {
+    usage = {
+      inputTokens: num(r.usage.input_tokens),
+      outputTokens: num(r.usage.output_tokens),
+      cacheReadTokens: num(r.usage.cache_read_input_tokens),
+      cacheWriteTokens: num(r.usage.cache_creation_input_tokens),
+    };
+  }
+  if (!usage) return undefined;
+  if (typeof r.total_cost_usd === "number") usage.costUsd = r.total_cost_usd;
+  return usage;
 }
 
 const LOGGED_OUT = /not logged in|please run \/login|invalid api key|authentication/i;
@@ -164,7 +215,9 @@ export class ClaudeCodeCliBackend implements InferenceBackend {
           env: this.env,
           stdin: prompt,
           timeoutMs: this.timeoutMs,
+          ...(req.signal ? { signal: req.signal } : {}),
         });
+        if (r.aborted || req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
         if (r.timedOut) throw aiErrors.timeout(this.id, req.task, this.timeoutMs);
         if (r.spawnError === "ENOENT") throw aiErrors.cliMissing("claude", INSTALL_HINT);
         let parsed: ClaudeResult | undefined;
@@ -173,6 +226,8 @@ export class ClaudeCodeCliBackend implements InferenceBackend {
         } catch {
           // handled below
         }
+        const used = claudeUsage(parsed);
+        if (used) req.onUsage?.(used);
         const errText = `${parsed?.result ?? ""} ${r.stderr}`;
         if (LOGGED_OUT.test(errText) && (parsed?.is_error || r.exitCode !== 0)) {
           this.ready = undefined;

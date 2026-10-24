@@ -30,6 +30,7 @@ import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
 import { TEXTS_CONTRACTS } from "./texts.js";
+import { USAGE_CONTRACTS } from "./usage.js";
 import { DEFAULT_HOOKS_PORT, HooksPort, WEBHOOK_CONTRACTS } from "./webhooks.js";
 
 const Paged = z.object({
@@ -77,6 +78,7 @@ export * from "./matrix.js";
 export * from "./planning.js";
 export * from "./sync.js";
 export * from "./texts.js";
+export * from "./usage.js";
 export * from "./webhooks.js";
 
 // Library -----------------------------------------------------------------------------------------
@@ -627,6 +629,21 @@ export const EMBEDDING_MODEL_KEYS = ["embeddinggemma-300m", "qwen3-embedding-0.6
 export const EmbeddingModelKey = z.enum(EMBEDDING_MODEL_KEYS);
 export type EmbeddingModelKey = z.infer<typeof EmbeddingModelKey>;
 
+/** Limits of a research job (W5.2). Zero switches a limit off. */
+export const DEFAULT_RESEARCH_LIMITS = {
+  maxMinutes: 20,
+  maxTokens: 2_000_000,
+  maxToolCalls: 200,
+} as const;
+const ResearchLimits = z.object({
+  /** Wall-clock time of one job in minutes. */
+  maxMinutes: z.number().int().min(0).max(1440).default(DEFAULT_RESEARCH_LIMITS.maxMinutes),
+  /** Tokens an agent may add to its context during one job, where the agent reports them. */
+  maxTokens: z.number().int().min(0).default(DEFAULT_RESEARCH_LIMITS.maxTokens),
+  /** Tool calls of one job. */
+  maxToolCalls: z.number().int().min(0).default(DEFAULT_RESEARCH_LIMITS.maxToolCalls),
+});
+
 export const Settings = z.object({
   ai: z.object({
     routing: z.record(z.string(), z.string()),
@@ -674,6 +691,8 @@ export const Settings = z.object({
    * settings, only the citegeist tools.
    */
   chat: z.object({ isolated: z.boolean().default(false) }).default({ isolated: false }),
+  /** Limits of research jobs: time, tokens and tool calls. A loop of identical calls always ends a job. */
+  research: ResearchLimits.default({ ...DEFAULT_RESEARCH_LIMITS }),
 });
 /** Where the embedding model stands. `progress` (0 to 1) is set while the files download. */
 export const SemanticStatus = z.object({
@@ -743,6 +762,13 @@ export const settingsUpdate = defineContract({
         })
         .optional(),
       chat: z.object({ isolated: z.boolean().optional() }).optional(),
+      research: z
+        .object({
+          maxMinutes: z.number().int().min(0).max(1440).optional(),
+          maxTokens: z.number().int().min(0).optional(),
+          maxToolCalls: z.number().int().min(0).optional(),
+        })
+        .optional(),
     }),
     apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
   }),
@@ -820,6 +846,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   ...PLANNING_CONTRACTS,
   ...SYNC_CONTRACTS,
   ...TEXTS_CONTRACTS,
+  ...USAGE_CONTRACTS,
   ...GRAPH_CONTRACTS,
   ...WEBHOOK_CONTRACTS,
   ...ALERT_CONTRACTS,

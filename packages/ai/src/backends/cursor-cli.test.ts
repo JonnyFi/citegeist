@@ -89,7 +89,9 @@ describe("CursorCliBackend", () => {
         ? { stdout: "2026.05.16-abc" }
         : { stdout: JSON.stringify({ status: "unauthenticated", isAuthenticated: false }) },
     );
-    await expect(new CursorCliBackend({ runner: loggedOut }).complete(req)).rejects.toMatchObject({
+    await expect(
+      new CursorCliBackend({ runner: loggedOut, env: {} }).complete(req),
+    ).rejects.toMatchObject({
       detail: { code: "AI_CLI_LOGGED_OUT", fix: expect.stringContaining("agent login") },
     });
     const missing = fakeRunner(() => ({ exitCode: null, spawnError: "ENOENT" }));

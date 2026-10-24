@@ -1,6 +1,6 @@
 import type { Actor } from "@citegeist/schema";
 import { ulid } from "../ids.js";
-import type { JobQueue } from "../jobs/index.js";
+import { type JobQueue, runInJobScope } from "../jobs/index.js";
 
 /** What a running job gets: progress reporting and cancellation. */
 export interface MatrixJobContext {
@@ -90,7 +90,9 @@ export class DetachedMatrixJobs implements MatrixJobQueue {
       },
     };
     const p: Promise<void> = new Promise<void>((resolve) => setImmediate(resolve))
-      .then(() => spec.run(ctx))
+      .then(() =>
+        runInJobScope({ job: id, actor: spec.by, signal: ctx.signal }, () => spec.run(ctx)),
+      )
       .then((result) => {
         job.status = "succeeded";
         job.progress = 1;

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AiRouter, MockBackend } from "@citegeist/ai";
+import { AiRouter, MockBackend, unmark } from "@citegeist/ai";
 import type { Concept, ConceptProposal, ConceptSummary } from "@citegeist/ops";
 import { Registry } from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
@@ -64,10 +64,10 @@ function describeFirst(req: Req) {
 }
 
 function nameFor(req: Req) {
-  if (req.prompt.includes("autopoietic machine")) {
+  if (unmark(req.prompt).includes("autopoietic machine")) {
     return { term: "autopoietic machine", aliases: [] };
   }
-  if (req.prompt.includes("Autopoietische Systeme")) {
+  if (unmark(req.prompt).includes("Autopoietische Systeme")) {
     return { term: "Autopoietisches System", aliases: [] };
   }
   return { term: "", aliases: [] };
@@ -388,7 +388,7 @@ describe("concepts.describe", () => {
     expect(luh).toMatchObject({
       role: "uses",
       stale: false,
-      promptVersion: 1,
+      promptVersion: 2,
       stamp: { by: "mock:mock-smart", language: "de" },
     });
     expect(luh?.evidence).toEqual([
@@ -581,7 +581,7 @@ describe("concepts.propose", () => {
   it("drops a term the model made up and flags one a concept already has", async () => {
     const s = await setup();
     s.mock.set("concept.name", (req: Req) =>
-      req.prompt.includes("autopoietic machine")
+      unmark(req.prompt).includes("autopoietic machine")
         ? { term: "Quantenverschränkung", aliases: [] }
         : { term: "Autopoietisches System", aliases: ["Phantasiebegriff"] },
     );

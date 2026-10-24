@@ -148,7 +148,11 @@ export interface LitsearchDeps {
   openAlexDoi?: (openalex: string) => Promise<string | undefined>;
   /** Runs AI tasks with the routing the user set (litsearch.suggestQueries). */
   ai?: {
-    run(task: "litsearch.suggestQueries", input: unknown): Promise<{ output: unknown }>;
+    run(
+      task: "litsearch.suggestQueries",
+      input: unknown,
+      opts?: { actor?: string },
+    ): Promise<{ output: unknown }>;
   };
   /** The job queue of the runtime. Without it (a one-shot CLI) runs cannot start. */
   queue?: JobQueue;
@@ -576,9 +580,12 @@ export class LitsearchService {
     return id && id !== current && existsSync(this.lib.paths.litsearchRunDir(id)) ? id : undefined;
   }
 
-  async suggest(input: { topic: string; maxQueries: number }): Promise<{ queries: string[] }> {
+  async suggest(
+    input: { topic: string; maxQueries: number },
+    actor?: Actor,
+  ): Promise<{ queries: string[] }> {
     if (!this.deps.ai) throw unavailable("query suggestions need the AI router of the app");
-    const res = await this.deps.ai.run("litsearch.suggestQueries", input);
+    const res = await this.deps.ai.run("litsearch.suggestQueries", input, actor ? { actor } : {});
     const output = res.output as Parameters<typeof planSuggestedQueries>[0];
     return { queries: planSuggestedQueries(output, input.maxQueries).map((q) => q.query) };
   }

@@ -1,12 +1,6 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  AiRouter,
-  type AiRoutingSettings,
-  type InferenceBackend,
-  type RunTaskOptions,
-  type TaskName,
-} from "@citegeist/ai";
+import { AiRouter, type AiRoutingSettings, type InferenceBackend } from "@citegeist/ai";
 import {
   type AlertLookup,
   createResolver,
@@ -57,6 +51,7 @@ import {
 } from "./settings/index.js";
 import { type BindSyncOptions, bindSyncOperations, type SyncService } from "./sync/index.js";
 import { bindTextsOperations } from "./texts/index.js";
+import { bindUsageOperations, meteredAi, recordTask, UsageLedger } from "./usage/index.js";
 
 export interface RuntimeOptions {
   /**
@@ -102,6 +97,8 @@ export interface Runtime {
   registry: Registry;
   ingest: IngestService;
   settings: SettingsService;
+  /** Tokens, cache hits and list-price cost of AI calls and agent turns (machine-local). */
+  usage: UsageLedger;
   /** Versioning and sync of the library folder (D5, A9). */
   sync: SyncService;
   /** Citation graph, snowballing and retraction checks. */
@@ -275,11 +272,11 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     })();
     return router;
   };
-  const ai = {
-    async run<N extends TaskName>(task: N, input: unknown, runOpts?: RunTaskOptions) {
-      return (fixedRouter ?? (await currentRouter())).run(task, input, runOpts);
-    },
-  };
+  // Every AI call goes through here: it gets the abort signal of the job it runs under, and it
+  // lands in the usage ledger of state.sqlite.
+  const usage = new UsageLedger(lib.local.stateDb);
+  bindUsageOperations(registry, usage);
+  const ai = meteredAi(async () => fixedRouter ?? (await currentRouter()), usage);
 
   const resolver = opts.resolver
     ? undefined
@@ -320,6 +317,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const deps = createSettingsDeps({
     localBase,
     queue: ingest.queue,
+    recordUsage: (r) => recordTask(usage, r, "human"),
     worker,
     workerSource,
     ...(opts.settings?.runner ? { runner: opts.settings.runner } : {}),
@@ -382,7 +380,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
       resolve: (doi) => metadataLookup.resolve(doi),
     },
     ai: {
-      run: async (task, input) => ai.run(task, input),
+      run: async (task, input, runOpts) => ai.run(task, input, runOpts),
     },
     ...(opts.autoStart !== false
       ? {
@@ -458,6 +456,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     registry,
     ingest,
     settings: service,
+    usage,
     sync: syncService,
     graph,
     alerts,
@@ -469,6 +468,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
       semantic?.close();
       syncService.close();
       await ingest.close();
+      usage.close();
     },
   };
 }

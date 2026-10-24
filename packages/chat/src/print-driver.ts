@@ -4,7 +4,8 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { McpServer } from "@agentclientprotocol/sdk";
-import type { AgentDriver, DriverEvent, DriverRequest } from "./driver.js";
+import { SCHOLARLY_HOSTS } from "@citegeist/ops";
+import type { AgentDriver, DriverEvent, DriverRequest, DriverUsage } from "./driver.js";
 import { citegeistTool } from "./policy.js";
 import { chatError, oneLine } from "./util.js";
 
@@ -67,6 +68,9 @@ interface StreamLine {
   subtype?: string;
   is_error?: boolean;
   result?: string;
+  total_cost_usd?: number;
+  usage?: Record<string, unknown>;
+  modelUsage?: Record<string, Record<string, unknown>>;
   event?: { type?: string; delta?: { type?: string; text?: string } };
   message?: { content?: unknown };
 }
@@ -81,7 +85,43 @@ interface Block {
   is_error?: boolean;
 }
 
+const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/** Tokens and list price from the `result` line of a stream-json run. */
+export function printUsage(msg: StreamLine): DriverUsage | undefined {
+  const models = Object.entries(msg.modelUsage ?? {});
+  let usage: DriverUsage | undefined;
+  if (models.length > 0) {
+    usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+    for (const [, m] of models) {
+      usage.inputTokens += n(m.inputTokens);
+      usage.outputTokens += n(m.outputTokens);
+      usage.cacheReadTokens += n(m.cacheReadInputTokens);
+      usage.cacheWriteTokens += n(m.cacheCreationInputTokens);
+    }
+    usage.model = models[0]?.[0];
+  } else if (msg.usage) {
+    usage = {
+      inputTokens: n(msg.usage.input_tokens),
+      outputTokens: n(msg.usage.output_tokens),
+      cacheReadTokens: n(msg.usage.cache_read_input_tokens),
+      cacheWriteTokens: n(msg.usage.cache_creation_input_tokens),
+    };
+  }
+  if (usage && typeof msg.total_cost_usd === "number") usage.costUsd = msg.total_cost_usd;
+  return usage;
+}
+
 const LOGGED_OUT = /not logged in|please run \/login|invalid api key|authentication/i;
+
+function killGroup(child: ReturnType<typeof spawn>, signal: NodeJS.Signals): void {
+  try {
+    if (child.pid !== undefined) process.kill(-child.pid, signal);
+    else child.kill(signal);
+  } catch {
+    child.kill(signal);
+  }
+}
 
 export class ClaudePrintDriver implements AgentDriver {
   readonly transport = "claude-print";
@@ -130,6 +170,10 @@ export class ClaudePrintDriver implements AgentDriver {
       "--permission-mode",
       "acceptEdits",
     ];
+    // `claude -p` cannot ask for permission, so a research job gets the web search and the web
+    // fetch of the scholarly hosts only. The ACP route also allows the addresses that a web
+    // search returned, because the permission policy can check them (egress.ts, L9).
+    const webFetch = research ? SCHOLARLY_HOSTS.map((h) => `WebFetch(domain:${h})`) : ["WebFetch"];
     const args = req.isolated
       ? [
           ...common,
@@ -140,7 +184,7 @@ export class ClaudePrintDriver implements AgentDriver {
           "--allowedTools",
           "mcp__citegeist",
           "WebSearch",
-          "WebFetch",
+          ...webFetch,
           "--disallowedTools",
           "Bash",
           "BashOutput",
@@ -154,7 +198,7 @@ export class ClaudePrintDriver implements AgentDriver {
           "--allowedTools",
           "mcp__citegeist",
           "WebSearch",
-          "WebFetch",
+          ...webFetch,
           "Bash",
         ];
     if (req.directEdits && !research) args.push("--add-dir", req.libraryRoot);
@@ -166,7 +210,7 @@ export class ClaudePrintDriver implements AgentDriver {
     text: string,
     sink: (event: DriverEvent) => void,
     signal: AbortSignal,
-  ): Promise<{ stopReason: string }> {
+  ): Promise<{ stopReason: string; usage?: DriverUsage | undefined }> {
     const { command, env, req } = this.opts;
     if (!this.noted && this.opts.note) {
       this.noted = true;
@@ -176,6 +220,8 @@ export class ClaudePrintDriver implements AgentDriver {
       cwd: req.cwd,
       env,
       stdio: ["pipe", "pipe", "pipe"],
+      // Its own process group, so that a cancel ends the CLI and the MCP servers and shells it started.
+      detached: true,
     });
     this.started = true;
     child.stdin.on("error", () => {});
@@ -188,12 +234,17 @@ export class ClaudePrintDriver implements AgentDriver {
     let cancelled = false;
     const onAbort = () => {
       cancelled = true;
-      child.kill("SIGTERM");
+      killGroup(child, "SIGTERM");
+      // A CLI that ignores the polite signal does not get to run on.
+      const hard = setTimeout(() => killGroup(child, "SIGKILL"), 2000);
+      hard.unref();
+      child.once("close", () => clearTimeout(hard));
     };
     if (signal.aborted) onAbort();
     signal.addEventListener("abort", onAbort, { once: true });
 
     let failure: string | undefined;
+    let usage: DriverUsage | undefined;
     let buffer = "";
     const handle = (line: string) => {
       let msg: StreamLine;
@@ -203,6 +254,7 @@ export class ClaudePrintDriver implements AgentDriver {
         return;
       }
       failure = this.onLine(msg, sink) ?? failure;
+      if (msg.type === "result") usage = printUsage(msg) ?? usage;
     };
 
     const exit = new Promise<{ code: number | null; error?: string }>((resolve) => {
@@ -225,7 +277,7 @@ export class ClaudePrintDriver implements AgentDriver {
     const { code, error } = await exit;
     signal.removeEventListener("abort", onAbort);
     if (buffer.trim()) handle(buffer.trim());
-    if (cancelled) return { stopReason: "cancelled" };
+    if (cancelled) return { stopReason: "cancelled", ...(usage ? { usage } : {}) };
     if (error) {
       throw chatError(
         "CHAT_AGENT_START_FAILED",
@@ -251,7 +303,7 @@ export class ClaudePrintDriver implements AgentDriver {
         "retry",
       );
     }
-    return { stopReason: "end_turn" };
+    return { stopReason: "end_turn", ...(usage ? { usage } : {}) };
   }
 
   /** Handles one stream line. Returns an error text when the line reports a failure. */

@@ -1,4 +1,9 @@
-import { localizeError, type OperationContract, type Registry } from "@citegeist/ops";
+import {
+  localizeError,
+  type OperationContract,
+  RESEARCH_WRITE_TOOLS,
+  type Registry,
+} from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
 import { CLIENT_INFO_META_KEY, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -6,7 +11,12 @@ import { actorFromClientName } from "./actor.js";
 import { formatAgentError, toAgentError } from "./errors.js";
 import { buildInstructions } from "./instructions.js";
 
-export type McpScope = "read" | "write";
+/**
+ * What a connection sees: "read" has the read-only tools, "write" all tools, and "research" is
+ * "read" plus the tools of `RESEARCH_WRITE_TOOLS` (W5.1). A research connection never makes the
+ * core read local files and never lets it open an address outside the scholarly hosts.
+ */
+export type McpScope = "read" | "write" | "research";
 
 export interface CreateMcpServerOptions {
   /** Which tools the connection may see and call. Defaults to "write" (a local stdio client is trusted). */
@@ -26,11 +36,37 @@ export interface CreateMcpServerOptions {
 /** Characters of JSON echoed into the text block; the full result is always in structuredContent. */
 const TEXT_LIMIT = 2000;
 
-/** Contracts that become MCP tools for a scope. Admin operations are never exposed. */
+/**
+ * How long a client may reuse a `tools/list` result (2026-07-28 `ttlMs`). The tool set of a
+ * running process does not change, so a few minutes is safe. The scope is `private` because the
+ * list depends on the caller's token (read or write).
+ */
+export const TOOLS_LIST_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Contracts that become MCP tools for a scope, sorted by tool name. Admin operations are never
+ * exposed.
+ *
+ * The order is fixed on purpose: the tool list is part of the prompt that agent clients send to
+ * the model, and a prompt cache only hits when the prefix is byte-identical. Registration order
+ * would shift whenever a module registers its operations in a different order.
+ */
 export function mcpContracts(registry: Registry, scope: McpScope): OperationContract[] {
   return registry
     .list()
-    .filter((c) => c.mcp && c.access !== "admin" && (scope === "write" || c.mcp.readOnly));
+    .filter(
+      (c) =>
+        c.mcp &&
+        c.access !== "admin" &&
+        (scope === "write" ||
+          c.mcp.readOnly ||
+          (scope === "research" && RESEARCH_WRITE_TOOLS.includes(c.mcp.tool))),
+    )
+    .sort((a, b) => compareToolNames(a.mcp?.tool ?? "", b.mcp?.tool ?? ""));
+}
+
+function compareToolNames(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function isObjectSchema(schema: z.ZodType): boolean {
@@ -65,12 +101,16 @@ export function createMcpServer(
   options: CreateMcpServerOptions = {},
 ): McpServer {
   const scope = options.scope ?? "write";
-  const localFiles = options.localFiles ?? true;
+  const research = scope === "research";
+  const localFiles = research ? false : (options.localFiles ?? true);
   const contracts = mcpContracts(registry, scope);
   const everything = registry.list();
   const server = new McpServer(
     { name: options.name ?? "citegeist", version: options.version ?? "0.0.0" },
-    { instructions: buildInstructions(contracts) },
+    {
+      instructions: buildInstructions(contracts),
+      cacheHints: { "tools/list": { ttlMs: TOOLS_LIST_TTL_MS, cacheScope: "private" } },
+    },
   );
 
   for (const contract of contracts) {
@@ -100,6 +140,7 @@ export function createMcpServer(
               actor,
               signal: ctx.mcpReq.signal,
               ...(localFiles ? {} : { localFiles: false }),
+              ...(research ? { egress: "scholarly" as const } : {}),
             },
             args,
           );

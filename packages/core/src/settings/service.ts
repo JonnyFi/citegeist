@@ -1,5 +1,11 @@
 import { existsSync } from "node:fs";
-import { type AiRoutingSettings, type ProcessRunner, runTask, TASK_NAMES } from "@citegeist/ai";
+import {
+  type AiRoutingSettings,
+  type ProcessRunner,
+  runTask,
+  TASK_NAMES,
+  type UsageRecord,
+} from "@citegeist/ai";
 import {
   aiTestBackend,
   type ConnectorStatus as ConnectorStatusSchema,
@@ -35,6 +41,8 @@ export interface SettingsDeps {
   runner?: ProcessRunner;
   /** Called after every successful `settings.update`, so the runtime can retarget the AiRouter. */
   onChange?: (settings: MachineSettings) => void;
+  /** Receives the usage of the test call of `ai.testBackend`. */
+  recordUsage?: (record: UsageRecord) => void;
   /** Job kind for `worker.setup`. Default `worker-setup`. */
   jobKind?: JobKind;
   /** How long a worker health answer is reused, in ms. Default 15000. */
@@ -161,6 +169,7 @@ export class SettingsService {
       connector: { ...stored.connector },
       webhooks: { ...stored.webhooks },
       chat: { ...stored.chat },
+      research: { ...stored.research },
     };
   }
 
@@ -172,6 +181,11 @@ export class SettingsService {
   /** A11: true when chat agents run in the sandbox instead of the user's own environment. */
   chatIsolated(): boolean {
     return this.deps.store.load().chat.isolated;
+  }
+
+  /** Limits of research jobs, read when a job starts. */
+  researchBudget(): { maxMinutes: number; maxTokens: number; maxToolCalls: number } {
+    return { ...this.deps.store.load().research };
   }
 
   /** Routing in the shape the AiRouter takes. */
@@ -285,6 +299,13 @@ export class SettingsService {
     }
 
     if (patch.chat?.isolated !== undefined) stored.chat = { isolated: patch.chat.isolated };
+    if (patch.research) {
+      stored.research = {
+        maxMinutes: patch.research.maxMinutes ?? stored.research.maxMinutes,
+        maxTokens: patch.research.maxTokens ?? stored.research.maxTokens,
+        maxToolCalls: patch.research.maxToolCalls ?? stored.research.maxToolCalls,
+      };
+    }
 
     this.deps.store.save(stored);
     const settings = await this.settings();
@@ -356,7 +377,11 @@ export class SettingsService {
         backend,
         "card.paraphrase",
         { passage: SAMPLE_PASSAGE },
-        { language },
+        {
+          language,
+          actor: "human",
+          ...(this.deps.recordUsage ? { record: this.deps.recordUsage } : {}),
+        },
       );
       return { ok: true, latencyMs: result.ms };
     } catch (err) {

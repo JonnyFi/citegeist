@@ -3,16 +3,22 @@
 //
 //   @fake say <text>                    stream an answer in two chunks
 //   @fake mcp <tool> <json>             call a tool of the first MCP server of the session
+//   @fake search <query> => <urls>     web search; the hits are the (space separated) urls
+//   @fake fetch <url>                   ask for permission to fetch a web address
 //   @fake write <abs path> <text>       write a file directly (\n in the text becomes a line break)
 //   @fake shell <command>               ask for permission to run a command (never runs it)
 //   @fake report                        stream what session/new received, as JSON
 //   @fake wait                          block until the client cancels
+//   @fake sleep <ms>                    do nothing for a while, until the client cancels
+//   @fake call <title> <json>           a finished tool call without a permission request
+//   @fake usage <context tokens> [usd]  send a usage_update with the cumulative price
+//   @fake replyusage                   answer the prompt with token usage in the response
 //
 // Every tool call and file write asks the client for permission first and honours the answer.
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { Readable, Writable } from "node:stream";
-import * as acp from "@agentclientprotocol/sdk";
+import * as acp from "@agentclientprotocol/sdk/unstable";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 interface FakeSession {
@@ -128,6 +134,7 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
   const text = textOf(params.prompt);
   note(`prompt ${text.length} chars`);
   let call = 0;
+  let replyUsage = false;
   for (const line of text.split("\n")) {
     const m = /^@fake (\w+)\s*(.*)$/.exec(line);
     if (!m) continue;
@@ -153,7 +160,14 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
         }
         await update({ sessionUpdate: "tool_call_update", toolCallId: id, status: "in_progress" });
         const client2 = await mcpClient(session);
-        const result = await client2.callTool({ name: tool, arguments: args });
+        // A tool the token does not see (research scope) fails the call, not the agent.
+        const result = await client2
+          .callTool({ name: tool, arguments: args })
+          .catch((e: unknown) => ({
+            isError: true,
+            structuredContent: undefined,
+            content: [{ type: "text", text: String(e) }],
+          }));
         const out = result.structuredContent ?? result.content;
         await update({
           sessionUpdate: "tool_call_update",
@@ -163,6 +177,54 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
         });
         // A model needs a moment before its next step; a cancel sent meanwhile is seen in time.
         await new Promise((r) => setTimeout(r, 40));
+        break;
+      }
+      case "search": {
+        const [query = "", hits = ""] = rest.split(" => ");
+        const base = {
+          title: `Search "${query}"`,
+          kind: "fetch" as const,
+          rawInput: { query },
+          _meta: { claudeCode: { toolName: "WebSearch" } },
+        };
+        await update({ sessionUpdate: "tool_call", toolCallId: id, status: "pending", ...base });
+        const allowed = await ask(id, base);
+        await update({
+          sessionUpdate: "tool_call_update",
+          toolCallId: id,
+          status: allowed ? "completed" : "failed",
+          content: [
+            {
+              type: "content",
+              content: {
+                type: "text",
+                text: hits
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map((u) => `Some page (${u})`)
+                  .join("\n"),
+              },
+            },
+          ],
+        });
+        await say(allowed ? "Search allowed." : "Search rejected.");
+        break;
+      }
+      case "fetch": {
+        const base = {
+          title: `Fetch ${rest}`,
+          kind: "fetch" as const,
+          rawInput: { url: rest, prompt: "summarize" },
+          _meta: { claudeCode: { toolName: "WebFetch" } },
+        };
+        await update({ sessionUpdate: "tool_call", toolCallId: id, status: "pending", ...base });
+        const allowed = await ask(id, base);
+        await update({
+          sessionUpdate: "tool_call_update",
+          toolCallId: id,
+          status: allowed ? "completed" : "failed",
+        });
+        await say(allowed ? `Fetch allowed: ${rest}` : `Fetch rejected: ${rest}`);
         break;
       }
       case "write": {
@@ -213,6 +275,43 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
           }),
         );
         break;
+      case "sleep": {
+        const until = Date.now() + Number(rest || 0);
+        while (!session.cancelled && Date.now() < until) {
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        break;
+      }
+      case "call": {
+        const space = rest.indexOf(" ");
+        const title = space < 0 ? rest : rest.slice(0, space);
+        const args =
+          space < 0 ? {} : (JSON.parse(rest.slice(space + 1)) as Record<string, unknown>);
+        await update({
+          sessionUpdate: "tool_call",
+          toolCallId: id,
+          status: "pending",
+          title,
+          kind: "other",
+          rawInput: args,
+        });
+        await update({ sessionUpdate: "tool_call_update", toolCallId: id, status: "completed" });
+        await new Promise((r) => setTimeout(r, 5));
+        break;
+      }
+      case "usage": {
+        const [used = "0", usd] = rest.split(/\s+/);
+        await update({
+          sessionUpdate: "usage_update",
+          used: Number(used),
+          size: 1_000_000,
+          ...(usd ? { cost: { amount: Number(usd), currency: "USD" } } : {}),
+        });
+        break;
+      }
+      case "replyusage":
+        replyUsage = true;
+        break;
       case "wait":
         while (!session.cancelled) await new Promise((r) => setTimeout(r, 20));
         return { stopReason: "cancelled" };
@@ -220,7 +319,20 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
         await say(`unknown directive ${cmd}`);
     }
   }
-  return { stopReason: session.cancelled ? "cancelled" : "end_turn" };
+  return {
+    stopReason: session.cancelled ? "cancelled" : "end_turn",
+    ...(replyUsage
+      ? {
+          usage: {
+            totalTokens: 1800,
+            inputTokens: 1200,
+            outputTokens: 300,
+            cachedReadTokens: 250,
+            cachedWriteTokens: 50,
+          },
+        }
+      : {}),
+  };
 });
 
 const connection = app.connect(

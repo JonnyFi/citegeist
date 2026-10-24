@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AiRouter, MockBackend } from "@citegeist/ai";
+import { AiRouter, MockBackend, mark, unmark } from "@citegeist/ai";
 import { Registry } from "@citegeist/ops";
 import type { Actor, Matrix } from "@citegeist/schema";
 import { afterEach, describe, expect, it } from "vitest";
@@ -371,7 +371,7 @@ describe("matrix.fillCell", () => {
       by: "human",
       model: "mock:mock-smart",
       language: "de",
-      promptVersion: 1,
+      promptVersion: 2,
     });
     expect(c?.evidence).toEqual([
       {
@@ -399,7 +399,7 @@ describe("matrix.fillCell", () => {
     const call = s.mock.calls.at(-1);
     expect(call?.language).toBe("de");
     expect(call?.prompt).toContain("[b3k9x2a1] (page 114)");
-    expect(call?.prompt).toContain("Transcripts were coded in two rounds");
+    expect(call?.prompt).toContain(mark("Transcripts were coded in two rounds"));
     expect(call?.prompt).not.toContain("<!--");
     expect(call?.prompt).not.toContain("^b3k9x2a1");
   });
@@ -712,7 +712,7 @@ describe("matrix.export", () => {
   async function filled(s: Setup) {
     const { matrix } = await newMatrix(s);
     s.mock.set("matrix.fillCell", (req: Req) => {
-      if (req.prompt.includes("Feedback that refers")) {
+      if (unmark(req.prompt).includes("Feedback that refers")) {
         const ref = /\[(c_[0-9A-Z]+)\]/.exec(req.prompt)?.[1] ?? "";
         return {
           answer: "Lob wirkt schwächer als Rückmeldung zum nächsten Schritt.",

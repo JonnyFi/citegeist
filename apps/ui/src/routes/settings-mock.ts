@@ -4,6 +4,7 @@ import {
   Registry,
   settingsGet,
   settingsUpdate,
+  usageSummary,
   workerSetup,
 } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
@@ -37,6 +38,9 @@ export interface SettingsMockState {
   connector: { enabled: boolean; port: number; error?: string };
   webhooks: { port: number; publicUrl?: string };
   chat: { isolated: boolean };
+  research: { maxMinutes: number; maxTokens: number; maxToolCalls: number };
+  /** Answer of `usage.summary` per window in days. A missing window answers with no calls. */
+  usage: Record<number, z.input<typeof usageSummary.output>>;
   /** Result of `ai.testBackend` per backend id. Missing ids succeed after 1.2 s. */
   tests: Record<string, TestResult>;
   /** Polls of `jobs.get` before the setup job ends. */
@@ -107,6 +111,8 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
     connector: { enabled: false, port: 23119 },
     webhooks: { port: 47321 },
     chat: { isolated: false },
+    research: { maxMinutes: 20, maxTokens: 2_000_000, maxToolCalls: 200 },
+    usage: {},
     tests: {},
     setupPolls: 2,
     ...over,
@@ -142,6 +148,7 @@ export function bindSettingsMock(
       ...(state.webhooks.publicUrl ? { publicUrl: state.webhooks.publicUrl } : {}),
     },
     chat: { isolated: state.chat.isolated },
+    research: { ...state.research },
   });
   let semanticReads = 0;
   const semanticStatus = () => {
@@ -238,12 +245,20 @@ export function bindSettingsMock(
         }
       }
       if (patch.chat?.isolated !== undefined) state.chat.isolated = patch.chat.isolated;
+      if (patch.research) {
+        state.research = {
+          maxMinutes: patch.research.maxMinutes ?? state.research.maxMinutes,
+          maxTokens: patch.research.maxTokens ?? state.research.maxTokens,
+          maxToolCalls: patch.research.maxToolCalls ?? state.research.maxToolCalls,
+        };
+      }
       emit({ type: "change", path: "settings", external: false });
       return { settings: settings() };
     })
     .bind(aiTestBackend, async (_ctx, input) => {
       return state.tests[input.backend] ?? { ok: true, latencyMs: 1200 };
-    });
+    })
+    .bind(usageSummary, async (_ctx, input) => state.usage[input.days] ?? emptyUsage(input.days));
   if (!withJobs) return registry;
   return registry
     .bind(workerSetup, async () => {
@@ -276,6 +291,60 @@ export function bindSettingsMock(
       state.worker = { ready: true, engines: { docling: "2.0", ocrmypdf: "16.0" } };
       return { ...base, status: "succeeded" as const, progress: 1, message: "Worker ready" };
     });
+}
+
+const NO_USAGE = {
+  calls: 0,
+  failed: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  costUsd: 0,
+  pricedCalls: 0,
+  ms: 0,
+};
+
+/** `usage.summary` with no calls in the window. */
+export function emptyUsage(days: number): z.input<typeof usageSummary.output> {
+  return {
+    days,
+    since: new Date(Date.now() - days * 86_400_000).toISOString(),
+    totals: { ...NO_USAGE },
+    byDay: [],
+    byTask: [],
+    byBackend: [],
+  };
+}
+
+/** A believable week or month of usage, for the browser preview and tests. */
+export function sampleUsage(days: number): z.input<typeof usageSummary.output> {
+  const scale = days >= 30 ? 4 : 1;
+  const row = (calls: number, input: number, output: number, cache: number, cost: number) => ({
+    calls: calls * scale,
+    failed: 0,
+    inputTokens: input * scale,
+    outputTokens: output * scale,
+    cacheReadTokens: cache * scale,
+    cacheWriteTokens: 0,
+    costUsd: cost * scale,
+    pricedCalls: calls * scale,
+    ms: calls * scale * 2400,
+  });
+  const paraphrase = row(42, 21_000, 9_600, 180_000, 0.08);
+  const links = row(6, 18_000, 3_000, 40_000, 0.06);
+  const totals = row(48, 39_000, 12_600, 220_000, 0.14);
+  return {
+    days,
+    since: new Date(Date.now() - days * 86_400_000).toISOString(),
+    totals,
+    byDay: [{ day: new Date().toISOString().slice(0, 10), ...totals }],
+    byTask: [
+      { task: "card.paraphrase", ...paraphrase },
+      { task: "note.proposeLinks", ...links },
+    ],
+    byBackend: [{ backend: "claude-code-cli", ...totals }],
+  };
 }
 
 function checkMail(raw: string, subject: string): string {

@@ -56,6 +56,14 @@ export const aiErrors = {
       "Retry the task. If it keeps timing out, raise timeoutMs for this backend or route the task to a faster backend.",
       { backend, task, timeoutMs },
     ),
+  cancelled: (backend: string, task: string) =>
+    make(
+      "AI_CANCELLED",
+      "ask-human",
+      `Task ${task} on backend ${backend} was cancelled.`,
+      "Start the task again when it is needed.",
+      { backend, task },
+    ),
   backendFailed: (backend: string, task: string, detail: string, context = {}) =>
     make(
       "AI_BACKEND_FAILED",

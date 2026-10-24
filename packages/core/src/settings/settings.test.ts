@@ -87,6 +87,7 @@ describe("SettingsStore", () => {
       connector: { enabled: false, port: 23119 },
       webhooks: { port: 47321 },
       chat: { isolated: false },
+      research: { maxMinutes: 20, maxTokens: 2_000_000, maxToolCalls: 200 },
     });
     writeFileSync(join(dir, "settings.json"), "{ nope");
     expect(store.load().uiLanguage).toBe("de");
@@ -98,6 +99,7 @@ describe("SettingsStore", () => {
       connector: { enabled: true, port: 23120 },
       webhooks: { port: 47400, publicUrl: "https://mac.example.ts.net" },
       chat: { isolated: true },
+      research: { maxMinutes: 5, maxTokens: 0, maxToolCalls: 40 },
     });
     expect(store.load()).toEqual({
       ai: { routing: { "*": "codex-exec" } },
@@ -107,6 +109,7 @@ describe("SettingsStore", () => {
       connector: { enabled: true, port: 23120 },
       webhooks: { port: 47400, publicUrl: "https://mac.example.ts.net" },
       chat: { isolated: true },
+      research: { maxMinutes: 5, maxTokens: 0, maxToolCalls: 40 },
     });
     writeFileSync(
       join(dir, "settings.json"),
@@ -114,6 +117,15 @@ describe("SettingsStore", () => {
     );
     expect(store.load().connector).toEqual({ enabled: true, port: 23119 });
     expect(store.load().semantic).toEqual({ enabled: false });
+    writeFileSync(
+      join(dir, "settings.json"),
+      JSON.stringify({ research: { maxMinutes: -3, maxTokens: "lots", maxToolCalls: 12 } }),
+    );
+    expect(store.load().research).toEqual({
+      maxMinutes: 20,
+      maxTokens: 2_000_000,
+      maxToolCalls: 12,
+    });
   });
 });
 
@@ -161,6 +173,8 @@ describe("BackendRegistry status", () => {
       keychain: new InMemoryKeychain(),
       fetch,
       find: () => undefined,
+      // a CURSOR_API_KEY in the developer's shell would count as a Cursor login
+      env: { PATH: process.env.PATH },
     });
     const by = Object.fromEntries((await reg.status()).map((s) => [s.id, s]));
     expect(by["claude-code-cli"]?.detail).toBe("logged-out");

@@ -211,6 +211,48 @@ export const settingsDe = {
   "webhooks.agent.newMcp": "MCP-Token neu erzeugen",
   "webhooks.agent.newInbound": "Callback-Token neu erzeugen",
   "webhooks.agent.createInbound": "Callback-Token erzeugen",
+
+  "settings.usage.title": "Verbrauch",
+  "settings.usage.desc":
+    "Was die KI-Aufrufe und die Agenten dieser Bibliothek verbraucht haben. Die Zahlen bleiben auf diesem Mac.",
+  "settings.usage.period": "Zeitraum",
+  "settings.usage.days7": "7 Tage",
+  "settings.usage.days30": "30 Tage",
+  "settings.usage.loadError": "Der Verbrauch konnte nicht geladen werden.",
+  "settings.usage.empty": "In diesem Zeitraum gab es keine KI-Aufrufe.",
+  "settings.usage.byTask": "Nach Aufgabe",
+  "settings.usage.byBackend": "Nach Backend",
+  "settings.usage.col.calls": "Aufrufe",
+  "settings.usage.col.input": "Eingabe",
+  "settings.usage.col.output": "Ausgabe",
+  "settings.usage.col.cache": "Aus dem Cache",
+  "settings.usage.col.cost": "Listenpreis",
+  "settings.usage.total": "Gesamt",
+  "settings.usage.failed": "{n} Aufrufe schlugen fehl oder wurden abgebrochen.",
+  "settings.usage.subscription":
+    "Mit einem Abo kostet ein Aufruf nichts extra. Der Listenpreis ist eine Schätzung, was derselbe Aufruf über die API kosten würde.",
+  "settings.usage.partialCost":
+    "Nicht jedes Backend meldet einen Preis. Bei {missing} von {calls} Aufrufen fehlt er, die Summe liegt deshalb eher zu niedrig.",
+  "task.chat": "Chat",
+  "task.research": "Recherche-Aufträge",
+  "task.note.proposeLinks": "Link-Vorschläge",
+  "task.concept.describe": "Begriffsbeschreibungen",
+  "task.concept.name": "Begriffsnamen",
+  "task.matrix.fillCell": "Literaturmatrix",
+  "task.litsearch.suggestQueries": "Suchanfragen für die Literatursuche",
+
+  "settings.research.title": "Recherche-Aufträge",
+  "settings.research.desc":
+    "Grenzen für Recherche-Aufträge. Wird eine Grenze erreicht, endet der Auftrag mit einer Fehlermeldung, und die bis dahin gefundenen Texte bleiben im Eingang. Null schaltet eine Grenze ab.",
+  "settings.research.minutes": "Höchstdauer in Minuten",
+  "settings.research.tokens": "Höchstzahl der Tokens",
+  "settings.research.toolCalls": "Höchstzahl der Werkzeugaufrufe",
+  "settings.research.tokensHint":
+    "Geprüft wird nur, wenn der Agent den Verbrauch während der Arbeit meldet.",
+  "settings.research.loop":
+    "Ruft der Agent dreimal hintereinander dasselbe Werkzeug mit denselben Angaben auf, endet der Auftrag immer.",
+  "settings.research.save": "Grenzen speichern",
+  "settings.research.invalid": "Trage ganze Zahlen ab null ein.",
 };
 
 export const settingsEn: Record<keyof typeof settingsDe, string> = {
@@ -418,4 +460,45 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
   "webhooks.agent.newMcp": "Create new MCP token",
   "webhooks.agent.newInbound": "Create new callback token",
   "webhooks.agent.createInbound": "Create callback token",
+
+  "settings.usage.title": "Usage",
+  "settings.usage.desc":
+    "What the AI calls and agents of this library have used. The numbers stay on this Mac.",
+  "settings.usage.period": "Period",
+  "settings.usage.days7": "7 days",
+  "settings.usage.days30": "30 days",
+  "settings.usage.loadError": "Could not load the usage.",
+  "settings.usage.empty": "There were no AI calls in this period.",
+  "settings.usage.byTask": "By task",
+  "settings.usage.byBackend": "By backend",
+  "settings.usage.col.calls": "Calls",
+  "settings.usage.col.input": "Input",
+  "settings.usage.col.output": "Output",
+  "settings.usage.col.cache": "From cache",
+  "settings.usage.col.cost": "List price",
+  "settings.usage.total": "Total",
+  "settings.usage.failed": "{n} calls failed or were cancelled.",
+  "settings.usage.subscription":
+    "With a subscription a call costs nothing extra. The list price estimates what the same call would cost through the API.",
+  "settings.usage.partialCost":
+    "Not every backend reports a price. {missing} of {calls} calls have none, so the sum is probably too low.",
+  "task.chat": "Chat",
+  "task.research": "Research jobs",
+  "task.note.proposeLinks": "Link proposals",
+  "task.concept.describe": "Concept descriptions",
+  "task.concept.name": "Concept names",
+  "task.matrix.fillCell": "Literature matrix",
+  "task.litsearch.suggestQueries": "Search queries for the literature search",
+
+  "settings.research.title": "Research jobs",
+  "settings.research.desc":
+    "Limits for research jobs. When a limit is reached, the job ends with an error message, and the papers found so far stay in the inbox. Zero switches a limit off.",
+  "settings.research.minutes": "Maximum duration in minutes",
+  "settings.research.tokens": "Maximum number of tokens",
+  "settings.research.toolCalls": "Maximum number of tool calls",
+  "settings.research.tokensHint": "Only checked when the agent reports its usage while it works.",
+  "settings.research.loop":
+    "When the agent calls the same tool with the same arguments three times in a row, the job always ends.",
+  "settings.research.save": "Save limits",
+  "settings.research.invalid": "Enter whole numbers from zero.",
 };

