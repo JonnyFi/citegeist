@@ -12,6 +12,7 @@ export const JobKind = z.enum([
   "research",
   "import",
   "export",
+  "alerts",
   "worker-setup",
 ]);
 export const JobStatus = z.enum(["queued", "running", "succeeded", "failed", "cancelled"]);

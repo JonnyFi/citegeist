@@ -1,3 +1,4 @@
+import { alertsDe } from "../alerts/strings";
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { planningDe } from "../planning/strings";
@@ -439,6 +440,7 @@ export const de = {
   "graph.noWebgl":
     "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
   ...chatDe,
+  ...alertsDe,
   ...planningDe,
   ...settingsDe,
   ...importDe,
