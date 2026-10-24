@@ -383,6 +383,31 @@ export class PlanningService {
 
   // Documents ----------------------------------------------------------------------------------
 
+  /** Where the document of `doc` is or would be, relative to the library root. */
+  private docPath(project: string, plan: string, doc: string): { rel: string; exists: boolean } {
+    if (doc === "plan") {
+      const rel = `${this.planDir(project, plan)}/plan.md`;
+      return { rel, exists: this.readText(rel) !== undefined };
+    }
+    const node = resolveNode(this.loadOutline(project, plan), doc);
+    const existing = this.nodeDocs(project, plan).get(node.id);
+    if (existing) return { rel: existing, exists: true };
+    return { rel: `${this.planDir(project, plan)}/nodes/${slugify(node.title)}.md`, exists: false };
+  }
+
+  /** The text of the planning document or of a node document, with the hash for `baseHash`. */
+  getDoc(input: { project: string; plan?: string | undefined; doc: string }) {
+    const plan = this.resolvePlan(input.project, input.plan);
+    const { rel, exists } = this.docPath(input.project, plan, input.doc);
+    const raw = this.readText(rel) ?? "";
+    return {
+      path: rel,
+      body: exists ? MarkdownFile.parse(raw).body : "",
+      hash: sha256Hex(raw),
+      exists,
+    };
+  }
+
   updateDoc(input: {
     project: string;
     plan?: string | undefined;
@@ -391,18 +416,11 @@ export class PlanningService {
     baseHash?: string | undefined;
   }) {
     const plan = this.resolvePlan(input.project, input.plan);
-    let rel: string;
-    if (input.doc === "plan") {
-      rel = `${this.planDir(input.project, plan)}/plan.md`;
-    } else {
-      const outline = this.loadOutline(input.project, plan);
-      const node = resolveNode(outline, input.doc);
-      rel =
-        this.nodeDocs(input.project, plan).get(node.id) ??
-        this.createNodeDoc(input.project, plan, node.id, node.title);
-    }
-    const current = this.readText(rel) ?? "";
-    if (input.baseHash && input.baseHash !== sha256Hex(current)) {
+    const found = this.docPath(input.project, plan, input.doc);
+    let rel = found.rel;
+    // A document that does not exist yet has the hash of the empty text, as plan.docs.get reports.
+    const before = found.exists ? (this.readText(rel) ?? "") : "";
+    if (input.baseHash && input.baseHash !== sha256Hex(before)) {
       throw fail(
         "PLAN_DOC_CHANGED",
         `${rel} changed since you read it`,
@@ -410,6 +428,11 @@ export class PlanningService {
         { path: rel },
       );
     }
+    if (!found.exists && input.doc !== "plan") {
+      const node = resolveNode(this.loadOutline(input.project, plan), input.doc);
+      rel = this.createNodeDoc(input.project, plan, node.id, node.title);
+    }
+    const current = this.readText(rel) ?? "";
     const file = MarkdownFile.parse(current);
     file.setBody(input.body);
     const text = file.toString();
@@ -487,6 +510,28 @@ export class PlanningService {
     const file = MarkdownFile.parse(raw);
     file.setBody(appendParagraph(file.body, paragraph));
     this.lib.writeFile(rel, file.toString());
+  }
+
+  /**
+   * Every insight (a paragraph that carries a block id) of the plan, of the project's own
+   * insights file and, without a plan, of all plans, newest first.
+   */
+  listInsights(input: { project: string; plan?: string | undefined; limit: number }): {
+    hits: InsightHit[];
+  } {
+    this.lib.getProject(input.project);
+    const plan = input.plan ? this.resolvePlan(input.project, input.plan) : undefined;
+    const hits = this.projectParagraphs(input.project)
+      .filter((p) => p.block && (plan === undefined || p.plan === plan || p.plan === undefined))
+      .map((p) =>
+        toHit(p, "links", p.plan ? `insight of plan ${p.plan}` : "insight of the project", 0),
+      );
+    // Equal dates keep their order in the files: the sort is stable and the later one comes first.
+    const newestFirst = hits
+      .map((hit, i) => ({ hit, i }))
+      .sort((a, b) => (b.hit.date ?? "").localeCompare(a.hit.date ?? "") || b.i - a.i)
+      .map((x) => x.hit);
+    return { hits: newestFirst.slice(0, input.limit) };
   }
 
   async findInsights(input: {

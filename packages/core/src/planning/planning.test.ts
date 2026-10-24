@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Registry } from "@citegeist/ops";
 import type { Outline } from "@citegeist/schema";
 import { afterEach, describe, expect, it } from "vitest";
+import { sha256Hex } from "../hash.js";
 import { Library } from "../library.js";
 import { cleanTmpDirs, tmpDir } from "../test-helpers.js";
 import { bindPlanningOperations } from "./ops.js";
@@ -429,5 +430,161 @@ describe("plan.docs.update", () => {
         baseHash: made.hash,
       }),
     ).rejects.toThrow(/changed since/);
+  });
+});
+
+describe("plan.docs.get", () => {
+  it("returns the body without frontmatter and a hash that plan.docs.update accepts", async () => {
+    const { lib, call } = await setup("expose");
+    const { nodes } = await call<{ nodes: Node[] }>("outline.get", { project: "phd" });
+    const chapter = byTitle(nodes, "Theoretischer Rahmen");
+    const first = await call<{ path: string; body: string; hash: string; exists: boolean }>(
+      "plan.docs.get",
+      { project: "phd", doc: chapter.id },
+    );
+    expect(first.exists).toBe(true);
+    expect(first.path).toBe(chapter.doc);
+    expect(first.body).toContain("# Theoretischer Rahmen");
+    expect(first.body).not.toContain("node:");
+    expect(first.hash).toBe(sha256Hex(read(lib, first.path)));
+
+    await call("plan.docs.update", {
+      project: "phd",
+      doc: chapter.id,
+      body: "Neuer Text.",
+      baseHash: first.hash,
+    });
+    const second = await call<{ body: string; hash: string }>("plan.docs.get", {
+      project: "phd",
+      doc: chapter.id,
+    });
+    expect(second.body.trim()).toBe("Neuer Text.");
+    expect(second.hash).not.toBe(first.hash);
+    await expect(
+      call("plan.docs.update", {
+        project: "phd",
+        doc: chapter.id,
+        body: "Alt.",
+        baseHash: first.hash,
+      }),
+    ).rejects.toThrow(/changed since/);
+  });
+
+  it("reads the planning document and reports a node without a document as missing", async () => {
+    const { lib, call } = await setup("expose");
+    const { nodes } = await call<{ nodes: Node[] }>("outline.get", { project: "phd" });
+    const plan = await call<{ path: string; exists: boolean }>("plan.docs.get", {
+      project: "phd",
+      doc: "plan",
+    });
+    expect(plan).toMatchObject({ path: "projects/phd/plans/proposal/plan.md", exists: true });
+
+    const section = byTitle(nodes, "Relevanz");
+    expect(section.doc).toBeUndefined();
+    const missing = await call<{ path: string; body: string; hash: string; exists: boolean }>(
+      "plan.docs.get",
+      { project: "phd", doc: section.id },
+    );
+    expect(missing).toMatchObject({ body: "", exists: false, hash: sha256Hex("") });
+    // Reading creates nothing, and the hash of the missing file works as baseHash for the first write.
+    expect(existsSync(join(lib.root, missing.path))).toBe(false);
+    await call("plan.docs.update", {
+      project: "phd",
+      doc: section.id,
+      body: "Erster Text.",
+      baseHash: missing.hash,
+    });
+  });
+
+  it("asks for the plan when the project has several", async () => {
+    const { call } = await setup("expose");
+    await call("plans.create", {
+      project: "phd",
+      slug: "paper",
+      title: "Paper",
+      template: "imrad",
+    });
+    await expect(call("plan.docs.get", { project: "phd", doc: "plan" })).rejects.toThrow(
+      /several plans/,
+    );
+    const paper = await call<{ path: string }>("plan.docs.get", {
+      project: "phd",
+      plan: "paper",
+      doc: "plan",
+    });
+    expect(paper.path).toBe("projects/phd/plans/paper/plan.md");
+  });
+});
+
+describe("insights.list", () => {
+  it("lists every insight of the plan and the project, newest first, without plain paragraphs", async () => {
+    const day = (d: number) => new Date(2026, 10, d, 9);
+    let now = day(1);
+    const lib = await Library.init(tmpDir("cg-plan-"), {
+      name: "Test",
+      localBase: tmpDir("cg-local-"),
+      watch: false,
+    });
+    open.push(lib);
+    lib.createProject("human", { slug: "phd", title: "PhD", brief: "Brief" });
+    const registry = new Registry();
+    bindPlanningOperations(registry, lib, { now: () => now });
+    const call = <T>(name: string, input: unknown) =>
+      registry.call(name, { actor: "agent:test" }, input) as Promise<T>;
+    await call("plans.create", { project: "phd", slug: "a", title: "A", template: "expose" });
+    await call("plans.create", { project: "phd", slug: "b", title: "B", template: "imrad" });
+    const { nodes } = await call<{ nodes: Node[] }>("outline.get", { project: "phd", plan: "a" });
+    const chapter = byTitle(nodes, "Theoretischer Rahmen");
+
+    const note = async (d: number, target: string, text: string, plan?: string) => {
+      now = day(d);
+      await call("insights.note", { project: "phd", ...(plan ? { plan } : {}), target, text });
+    };
+    await note(2, chapter.id, "Einsicht im Kapitel.", "a");
+    await note(5, "plan", "Einsicht im Plan A.", "a");
+    await note(3, "project", "Lose Idee des Projekts.");
+    await note(4, "plan", "Einsicht im Plan B.", "b");
+    await note(6, "plan", "Spätere Einsicht im Plan A.", "a");
+    // a paragraph without a block id is text, not an insight
+    const doc = await call<{ body: string; hash: string }>("plan.docs.get", {
+      project: "phd",
+      plan: "a",
+      doc: "plan",
+    });
+    await call("plan.docs.update", {
+      project: "phd",
+      plan: "a",
+      doc: "plan",
+      body: `Nur Fliesstext ohne Block.\n\n${doc.body}`,
+      baseHash: doc.hash,
+    });
+
+    const forA = await call<{ hits: Array<{ text: string; date?: string; stage: string }> }>(
+      "insights.list",
+      { project: "phd", plan: "a" },
+    );
+    expect(forA.hits.map((h) => h.text)).toEqual([
+      "2026-11-06: Spätere Einsicht im Plan A.",
+      "2026-11-05: Einsicht im Plan A.",
+      "2026-11-03: Lose Idee des Projekts.",
+      "2026-11-02: Einsicht im Kapitel.",
+    ]);
+    expect(forA.hits.every((h) => h.stage === "links")).toBe(true);
+
+    const all = await call<{ hits: Array<{ text: string }> }>("insights.list", {
+      project: "phd",
+    });
+    expect(all.hits.map((h) => h.text)).toContain("2026-11-04: Einsicht im Plan B.");
+    expect(all.hits).toHaveLength(5);
+
+    const two = await call<{ hits: unknown[] }>("insights.list", {
+      project: "phd",
+      plan: "a",
+      limit: 2,
+    });
+    expect(two.hits).toHaveLength(2);
+    await expect(call("insights.list", { project: "phd", plan: "nope" })).rejects.toThrow(
+      /no plan/,
+    );
   });
 });

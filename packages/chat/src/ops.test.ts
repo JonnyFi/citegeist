@@ -114,6 +114,36 @@ describe("chat operations", () => {
     const view = await settled(call, session.id);
     expect(view.context).toEqual({ item: "gillespie2018custodians" });
   });
+
+  it("keep the open plan and outline node of the screen in the session context", async () => {
+    const h = await createHarness();
+    open.push(h);
+    bindChatOperations(h.registry, { service: h.service });
+    const call = <T>(name: string, input: unknown) =>
+      h.registry.call(name, { actor: "human" }, input) as Promise<T>;
+
+    const { session } = await call<{ session: { id: string } }>("chat.start", {
+      backend: "fake",
+      project: "phd",
+      plan: "proposal",
+      node: "k_01JC5Q2M8T",
+    });
+    await call("chat.send", { session: session.id, message: "Wo stehe ich?" });
+    const started = await settled(call, session.id);
+    expect(started.context).toEqual({ project: "phd", plan: "proposal", node: "k_01JC5Q2M8T" });
+
+    // A later message replaces the context, so moving to another node reaches the agent.
+    await call("chat.send", {
+      session: session.id,
+      message: "Und hier?",
+      context: { project: "phd", plan: "proposal", node: "k_01JC5Q2M9X" },
+    });
+    const moved = await settled(call, session.id);
+    expect(moved.context).toEqual({ project: "phd", plan: "proposal", node: "k_01JC5Q2M9X" });
+    expect(moved.entries.filter((e) => e.type === "user").at(-1)).toMatchObject({
+      context: { plan: "proposal", node: "k_01JC5Q2M9X" },
+    });
+  });
 });
 
 async function settled(

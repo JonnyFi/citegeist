@@ -1,4 +1,4 @@
-import { CardId, Citekey, JobId, ProjectSlug } from "@citegeist/schema";
+import { CardId, Citekey, JobId, OutlineNodeId, PlanSlug, ProjectSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
@@ -24,9 +24,14 @@ export const ChatSelection = z.object({
 });
 export type ChatSelection = z.infer<typeof ChatSelection>;
 
-/** What the agent is told about the screen: the project, the open source and a marked passage. */
+/**
+ * What the agent is told about the screen: the project, the open plan and outline node, the open
+ * source and a marked passage.
+ */
 export const ChatContext = z.object({
   project: ProjectSlug.optional(),
+  plan: PlanSlug.optional(),
+  node: OutlineNodeId.optional(),
   item: Citekey.optional(),
   selection: ChatSelection.optional(),
 });

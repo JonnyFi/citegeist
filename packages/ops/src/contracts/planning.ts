@@ -173,6 +173,22 @@ export const outlineApply = defineContract({
   mcp: { tool: "edit_outline", readOnly: false },
 });
 
+export const planDocsGet = defineContract({
+  name: "plan.docs.get",
+  summary:
+    "Read the planning document or the document of an outline node: library path, text (without the frontmatter) and sha256 of the file. Pass the hash as baseHash when you write the document back (edit_plan_doc). A node without a document returns an empty text and exists=false.",
+  access: "read",
+  input: PlanRef.extend({
+    doc: z.union([z.literal("plan"), OutlineNodeId]).describe("'plan' or a node id"),
+  }),
+  output: z.object({
+    path: z.string(),
+    body: z.string(),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    exists: z.boolean(),
+  }),
+});
+
 export const planDocsUpdate = defineContract({
   name: "plan.docs.update",
   summary:
@@ -246,13 +262,24 @@ export const insightsFind = defineContract({
   mcp: { tool: "find_insights", readOnly: true, idempotent: true },
 });
 
+export const insightsList = defineContract({
+  name: "insights.list",
+  summary:
+    "List every insight of a plan and of the project's own insights file, newest first. Without plan, the insights of all plans of the project. Each hit has stage 'links', score 0 and a why that names the place; the text starts with the date.",
+  access: "read",
+  input: PlanRef.extend({ limit: z.number().int().positive().max(500).default(50) }),
+  output: z.object({ hits: z.array(InsightHit) }),
+});
+
 export const PLANNING_CONTRACTS: readonly OperationContract[] = [
   plansCreate,
   plansList,
   outlineGet,
   projectsContext,
   outlineApply,
+  planDocsGet,
   planDocsUpdate,
   insightsNote,
   insightsFind,
+  insightsList,
 ];

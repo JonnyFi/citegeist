@@ -1,5 +1,5 @@
 import type { CitegeistBridge, CoreConnection } from "@citegeist/ui/bridge";
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 // The channel names of the quick-insert settings, written out here on purpose: a sandboxed preload
 // cannot load a shared chunk, so it must not import ../quick-insert/channels. A test pins them.
@@ -27,6 +27,8 @@ const bridge: CitegeistBridge = {
     get: () => ipcRenderer.invoke(QI_GET_SETTINGS),
     set: (patch) => ipcRenderer.invoke(QI_SET_SETTINGS, patch),
   },
+  // The path of a file dropped on the window: a File object carries no path in the renderer.
+  pathForFile: (file) => webUtils.getPathForFile(file),
   platform: process.platform,
 };
 
