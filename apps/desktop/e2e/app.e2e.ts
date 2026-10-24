@@ -2,7 +2,17 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SEED, seedLibrary } from "@citegeist/server/testing";
-import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
+import {
+  type ElectronApplication,
+  _electron as electron,
+  expect,
+  type Page,
+  test,
+} from "@playwright/test";
+
+interface BridgeWindow {
+  citegeist?: { connection?: unknown };
+}
 
 let tmp: string;
 let library: string;
@@ -108,4 +118,63 @@ test("routes citegeist:// links through the single instance", async () => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Theorie des kommunikativen Handelns" }),
   ).toBeVisible();
+});
+
+/** Resolves with the directive of the first Content-Security-Policy violation that `attempt` causes. */
+function firstViolation(page: Page, attempt: "inline-script" | "foreign-fetch"): Promise<string> {
+  return page.evaluate(
+    (what) =>
+      new Promise<string>((resolve) => {
+        document.addEventListener("securitypolicyviolation", (e) => resolve(e.violatedDirective), {
+          once: true,
+        });
+        if (what === "inline-script") {
+          const script = document.createElement("script");
+          script.textContent = "window.__pwned = true";
+          document.body.append(script);
+        } else {
+          fetch("https://example.org/leak").catch(() => {});
+        }
+        setTimeout(() => resolve("none"), 1500);
+      }),
+    attempt,
+  );
+}
+
+test("the Content-Security-Policy blocks inline scripts and foreign connections (M3)", async () => {
+  const app = await launch("a");
+  const page = await app.firstWindow();
+  await expect(page.getByTestId("item-row")).toHaveCount(3);
+
+  // An inline script that gets past the HTML filter does not run.
+  expect(await firstViolation(page, "inline-script")).toContain("script-src");
+  expect(await page.evaluate(() => (window as { __pwned?: boolean }).__pwned)).toBeUndefined();
+  // Data cannot leave for a foreign server.
+  expect(await firstViolation(page, "foreign-fetch")).toContain("connect-src");
+});
+
+test("a page that is not the renderer gets no core connection from the preload bridge (M8)", async () => {
+  const app = await launch("a");
+  const page = await app.firstWindow();
+  await expect(page.getByTestId("item-row")).toHaveCount(3);
+  expect(await page.evaluate(() => Boolean((window as BridgeWindow).citegeist?.connection))).toBe(
+    true,
+  );
+
+  const foreign = await app.evaluate(
+    async ({ BrowserWindow }, preload) => {
+      const win = new BrowserWindow({
+        show: false,
+        webPreferences: { preload, contextIsolation: true, sandbox: true },
+      });
+      await win.loadURL("data:text/html,<p>foreign</p>");
+      const value = await win.webContents.executeJavaScript(
+        "JSON.stringify(window.citegeist ? window.citegeist.connection : 'no bridge')",
+      );
+      win.destroy();
+      return value as string;
+    },
+    join(import.meta.dirname, "../out/preload/index.cjs"),
+  );
+  expect(foreign).toBe("null");
 });

@@ -62,6 +62,7 @@ import {
   trashItem,
   updateItem,
 } from "./items.js";
+import { lookupAddresses, MAX_REDIRECTS, refusePrivateUrl } from "./net-guard.js";
 import { extractPdfText, guessHeader, type PdfTextExtractor, pdfIdentifiers } from "./pdf-text.js";
 import type { ConvertParams, ConvertWorker } from "./worker.js";
 
@@ -97,6 +98,14 @@ export interface IngestDeps {
   ensureLocal?: (rel: string) => Promise<boolean>;
   /** Start running jobs immediately. Default true. */
   autoStart?: boolean;
+  /**
+   * Resolves a host name to its addresses, for the SSRF check of downloads that agents and jobs
+   * start (M5). Default: the system resolver. Without it and with an injected `fetch` (tests), names
+   * are not resolved.
+   */
+  resolveHost?: (host: string) => Promise<string[]>;
+  /** Largest download in bytes. Default 300 MiB. */
+  maxDownloadBytes?: number;
 }
 
 export interface AddInput {
@@ -175,6 +184,25 @@ const FILE_KINDS: Record<string, { kind: Source["kind"]; ext: string }> = {
 
 const MAX_DOWNLOAD = 300 * 1024 * 1024;
 
+/** The body of a response, read in chunks. Undefined when it is larger than `limit` bytes. */
+async function readLimited(res: Response, limit: number): Promise<Buffer | undefined> {
+  if (!res.body) return Buffer.alloc(0);
+  const reader = res.body.getReader();
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => {});
+      return undefined;
+    }
+    chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+  }
+  return Buffer.concat(chunks, size);
+}
+
 /** Servers that turn away unknown clients answer a browser. Redirects are followed by fetch. */
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -185,6 +213,8 @@ export class IngestService {
   readonly queue: JobQueue;
   private readonly fetchFn: FetchLike;
   private readonly pdfText: PdfTextExtractor;
+  private readonly resolveHost: ((host: string) => Promise<string[]>) | undefined;
+  private readonly maxDownload: number;
 
   constructor(
     readonly lib: Library,
@@ -198,6 +228,8 @@ export class IngestService {
       });
     this.fetchFn = deps.fetch ?? ((url, init) => fetch(url, init));
     this.pdfText = deps.pdfText ?? extractPdfText;
+    this.resolveHost = deps.resolveHost ?? (deps.fetch ? undefined : lookupAddresses);
+    this.maxDownload = deps.maxDownloadBytes ?? MAX_DOWNLOAD;
     this.queue.register("ingest", (ctx) => this.runIngest(ctx), { concurrency: 3 });
     this.queue.register("convert", (ctx) => this.runConvert(ctx), { concurrency: 1 });
     this.queue.on("job", (job: Job) => this.onJob(job));
@@ -385,6 +417,21 @@ export class IngestService {
     return this.fromResolved(res, id);
   }
 
+  /**
+   * True when `items.add` would read a local file for this input: a path, a file URL or a bare
+   * file name. A path that does not exist counts too, so that the refusal does not reveal what
+   * is on the disk.
+   */
+  namesLocalFile(identifier: string): boolean {
+    const raw = identifier.trim();
+    if (/^\s*@[A-Za-z]+\s*\{/.test(raw)) return false;
+    try {
+      return this.asLocalPath(raw) !== undefined;
+    } catch {
+      return true;
+    }
+  }
+
   /** The path of an existing file the input names, or undefined when it is not a path. */
   private asLocalPath(raw: string): string | undefined {
     if (raw.includes("\n")) return undefined;
@@ -489,7 +536,7 @@ export class IngestService {
    * a page (login, cookie or bot wall) is refused, because the page is not the file.
    */
   private async prepareUrl(actor: Actor, url: string): Promise<Prepared> {
-    const res = await this.get(url, undefined, ACCEPT_ANY);
+    const res = await this.get(url, undefined, ACCEPT_ANY, actor);
     if (!res) {
       throw problem(
         "URL_UNREACHABLE",
@@ -799,33 +846,55 @@ export class IngestService {
 
   // Remote files -------------------------------------------------------------------------------
 
-  /** GET with transient-error mapping. Undefined for 401, 403, 404 and 410 (not available). */
+  /**
+   * GET with transient-error mapping. Undefined for 401, 403, 404 and 410 (not available).
+   *
+   * The human may fetch any address, an intranet PDF included. Every other actor (an agent, a
+   * job of the system) only reaches public servers: each hop of the request, redirects included,
+   * is checked against loopback, private networks and link-local addresses, after the name was
+   * resolved (M5). A name that resolves differently for the fetch itself (DNS rebinding) is not
+   * covered. The body is read as a stream and stops at the size limit.
+   */
   private async get(
     url: string,
     signal: AbortSignal | undefined,
     accept: string,
+    actor: Actor,
   ): Promise<{ buf: Buffer; contentType: string; url: string } | undefined> {
-    let res: Response;
-    try {
-      res = await this.fetchFn(url, {
-        ...(signal ? { signal } : {}),
-        redirect: "follow",
-        headers: {
-          accept,
-          "user-agent": BROWSER_UA,
-          "accept-language": "en-US,en;q=0.9,de;q=0.8",
-        },
-      });
-    } catch (err) {
-      if (signal?.aborted) throw err;
-      throw new TransientError(`could not fetch ${url}: ${(err as Error).message}`, { cause: err });
+    const guarded = actor !== "human";
+    let current = url;
+    let res: Response | undefined;
+    for (let hop = 0; ; hop++) {
+      if (guarded) await refusePrivateUrl(current, this.resolveHost);
+      try {
+        res = await this.fetchFn(current, {
+          ...(signal ? { signal } : {}),
+          redirect: guarded ? "manual" : "follow",
+          headers: {
+            accept,
+            "user-agent": BROWSER_UA,
+            "accept-language": "en-US,en;q=0.9,de;q=0.8",
+          },
+        });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        throw new TransientError(`could not fetch ${current}: ${(err as Error).message}`, {
+          cause: err,
+        });
+      }
+      const location = res.headers.get("location");
+      if (!guarded || !location || res.status < 300 || res.status >= 400) break;
+      await res.body?.cancel().catch(() => {});
+      if (hop >= MAX_REDIRECTS) throw new TransientError(`too many redirects for ${url}`);
+      current = new URL(location, current).href;
     }
     if ([401, 403, 404, 410].includes(res.status)) return undefined;
-    if (!res.ok) throw new TransientError(`HTTP ${res.status} for ${url}`);
+    if (!res.ok) throw new TransientError(`HTTP ${res.status} for ${current}`);
     const length = Number(res.headers.get("content-length") ?? 0);
-    if (length > MAX_DOWNLOAD) return undefined;
-    const buf = Buffer.from(await res.arrayBuffer());
-    return { buf, contentType: res.headers.get("content-type") ?? "", url: res.url || url };
+    if (length > this.maxDownload) return undefined;
+    const buf = await readLimited(res, this.maxDownload);
+    if (!buf) return undefined;
+    return { buf, contentType: res.headers.get("content-type") ?? "", url: res.url || current };
   }
 
   private addSource(
@@ -953,7 +1022,7 @@ export class IngestService {
     if (remote.arxiv) {
       await this.fetchArxiv(ctx, citekey, remote.arxiv, notes);
     } else if (remote.pdfUrl && !have(remote.pdfUrl)) {
-      const pdf = await this.get(remote.pdfUrl, ctx.signal, "application/pdf");
+      const pdf = await this.get(remote.pdfUrl, ctx.signal, "application/pdf", actor);
       if (pdf && isPdf(pdf.buf)) {
         this.addSource(actor, citekey, {
           buf: pdf.buf,
@@ -981,7 +1050,7 @@ export class IngestService {
     const pdfUrl = `https://arxiv.org/pdf/${id}`;
     let got = false;
     if (!have(htmlUrl)) {
-      const html = await this.get(htmlUrl, ctx.signal, "text/html");
+      const html = await this.get(htmlUrl, ctx.signal, "text/html", actor);
       if (html && /html/i.test(html.contentType) && html.buf.length > 500) {
         this.addSource(actor, citekey, {
           buf: html.buf,
@@ -995,7 +1064,7 @@ export class IngestService {
     } else got = true;
     ctx.progress(0.1);
     if (!have(pdfUrl)) {
-      const pdf = await this.get(pdfUrl, ctx.signal, "application/pdf");
+      const pdf = await this.get(pdfUrl, ctx.signal, "application/pdf", actor);
       if (pdf && isPdf(pdf.buf)) {
         this.addSource(actor, citekey, {
           buf: pdf.buf,
@@ -1047,7 +1116,7 @@ export class IngestService {
       for (const url of fresh) {
         seen.add(url);
         try {
-          const pdf = await this.get(url, ctx.signal, "application/pdf");
+          const pdf = await this.get(url, ctx.signal, "application/pdf", actor);
           if (pdf && isPdf(pdf.buf)) {
             this.addSource(actor, citekey, {
               buf: pdf.buf,
@@ -1097,7 +1166,7 @@ export class IngestService {
     // 4. The publisher page: its citation_pdf_url meta tag.
     const landing = remote.landing ?? `https://doi.org/${doi}`;
     const page = await guard("publisher", async () => {
-      const res = await this.get(landing, ctx.signal, ACCEPT_ANY);
+      const res = await this.get(landing, ctx.signal, ACCEPT_ANY, actor);
       if (!res) return [] as string[];
       if (sniffContent(res.buf, res.contentType) === "pdf") return [res.url];
       return citationPdfUrls(res.buf.toString("utf8"), res.url);

@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from "electron";
 import { type QuickInsertHandle, registerQuickInsert } from "../quick-insert/electron.js";
 import { deepLinkToPath, findDeepLink, PROTOCOL } from "../shared/deeplink.js";
+import { isTrustedSender, ownRendererUrl } from "../shared/trusted-sender.js";
 import { ensureCore, type RunningCore, stopCore } from "./core-process.js";
 import { buildMenu } from "./menu.js";
 import { openDialogOptions, type PickPathsRequest } from "./pick-paths.js";
@@ -20,6 +21,8 @@ const CORE_ENTRY = join(import.meta.dirname, "core.js");
 const PRELOAD = join(import.meta.dirname, "../preload/index.cjs");
 const UI_INDEX = resolve(import.meta.dirname, "../../../ui/dist/index.html");
 const RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
+/** True for the pages of the app's own renderer. Everything else is foreign (M8). */
+const isOwnUrl = ownRendererUrl({ rendererUrl: RENDERER_URL, uiIndex: UI_INDEX });
 
 const QUICK_INSERT_PRELOAD = join(import.meta.dirname, "../preload/quick-insert.cjs");
 
@@ -176,8 +179,7 @@ function createWindow(): void {
     return { action: "deny" };
   });
   window.webContents.on("will-navigate", (event, url) => {
-    const own = RENDERER_URL ? url.startsWith(RENDERER_URL) : url.startsWith("file://");
-    if (!own) {
+    if (!isOwnUrl(url)) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     }
@@ -191,10 +193,16 @@ function createWindow(): void {
   else void window.loadFile(UI_INDEX);
 }
 
+// The handlers give out the token of the core and open file dialogs, so they answer the app's own
+// renderer only (M8). A message from any other page or frame is dropped.
+const fromRenderer = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean =>
+  isTrustedSender(event.senderFrame, isOwnUrl);
+
 ipcMain.on("citegeist:connection", (event) => {
-  event.returnValue = core?.connection ?? null;
+  event.returnValue = fromRenderer(event) ? (core?.connection ?? null) : null;
 });
-ipcMain.on("citegeist:navigate-ready", () => {
+ipcMain.on("citegeist:navigate-ready", (event) => {
+  if (!fromRenderer(event)) return;
   rendererReady = true;
   if (pendingPath) {
     const path = pendingPath;
@@ -202,9 +210,15 @@ ipcMain.on("citegeist:navigate-ready", () => {
     navigate(path);
   }
 });
-ipcMain.handle("citegeist:open-library", () => chooseLibrary(false));
-ipcMain.handle("citegeist:create-library", () => chooseLibrary(true));
-ipcMain.handle("citegeist:pick-paths", (_event, request: PickPathsRequest) => pickPaths(request));
+ipcMain.handle("citegeist:open-library", (event) =>
+  fromRenderer(event) ? chooseLibrary(false) : false,
+);
+ipcMain.handle("citegeist:create-library", (event) =>
+  fromRenderer(event) ? chooseLibrary(true) : false,
+);
+ipcMain.handle("citegeist:pick-paths", (event, request: PickPathsRequest) =>
+  fromRenderer(event) ? pickPaths(request) : [],
+);
 
 // Lifecycle ------------------------------------------------------------------------------------------------
 
@@ -266,7 +280,7 @@ async function start(): Promise<void> {
       RENDERER_URL
         ? w.loadURL(`${RENDERER_URL}#/quick-insert`)
         : w.loadFile(UI_INDEX, { hash: "/quick-insert" }),
-    isOwnUrl: (url) => (RENDERER_URL ? url.startsWith(RENDERER_URL) : url.startsWith("file://")),
+    isOwnUrl,
     onHotkeyError: (message) => dialog.showErrorBox("Quick-insert hotkey", message),
   });
   const link = findDeepLink(process.argv);

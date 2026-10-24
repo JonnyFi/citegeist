@@ -36,7 +36,21 @@ export function serveMcpStdio(
 export interface McpTokenGrant {
   token: string;
   scope: McpScope;
+  /**
+   * Whether this token may make the core read local files (`items.add` with a path,
+   * `items.attach`). Default true. Tokens of research sessions set false.
+   */
+  localFiles?: boolean;
 }
+
+/** What a token allows. */
+interface Access {
+  scope: McpScope;
+  localFiles: boolean;
+}
+
+/** Entry in AuthInfo.scopes for a token that may not read local files. */
+const NO_LOCAL_FILES = "no-local-files";
 
 export interface McpHttpOptions {
   tokens: readonly McpTokenGrant[];
@@ -65,15 +79,17 @@ function digest(value: string): Buffer {
   return createHash("sha256").update(value).digest();
 }
 
-function scopeForRequest(req: IncomingMessage, tokens: readonly McpTokenGrant[]): McpScope | null {
+function accessForRequest(req: IncomingMessage, tokens: readonly McpTokenGrant[]): Access | null {
   const header = req.headers.authorization;
   const match = typeof header === "string" ? /^Bearer\s+(\S+)$/i.exec(header) : null;
   if (!match?.[1]) return null;
   const presented = digest(match[1]);
-  let found: McpScope | null = null;
+  let found: Access | null = null;
   for (const grant of tokens) {
     // Compare against every grant so the timing does not reveal which one matched.
-    if (timingSafeEqual(presented, digest(grant.token)) && found === null) found = grant.scope;
+    if (timingSafeEqual(presented, digest(grant.token)) && found === null) {
+      found = { scope: grant.scope, localFiles: grant.localFiles ?? true };
+    }
   }
   return found;
 }
@@ -122,7 +138,7 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 interface LegacySession {
   transport: NodeStreamableHTTPServerTransport;
   server: McpServer;
-  scope: McpScope;
+  access: Access;
 }
 
 /**
@@ -153,7 +169,8 @@ export async function startMcpHttpServer(
   const modernFactory: McpServerFactory = (ctx) => {
     // Fail closed: a request without a scope sees the read-only tools.
     const scope: McpScope = ctx.authInfo?.scopes.includes("write") ? "write" : "read";
-    return createMcpServer(registry, { scope });
+    const localFiles = ctx.authInfo !== undefined && !ctx.authInfo.scopes.includes(NO_LOCAL_FILES);
+    return createMcpServer(registry, { scope, localFiles });
   };
   const mcp = createMcpHandler(modernFactory, {
     legacy: "reject",
@@ -166,7 +183,7 @@ export async function startMcpHttpServer(
     req: IncomingMessage & { auth?: AuthInfo },
     res: ServerResponse,
     body: unknown,
-    scope: McpScope,
+    access: Access,
   ): Promise<void> {
     const header = req.headers["mcp-session-id"];
     const sessionId = Array.isArray(header) ? header[0] : header;
@@ -176,7 +193,10 @@ export async function startMcpHttpServer(
         reply(res, 404, "SESSION_NOT_FOUND", "Unknown MCP session. Initialize a new one.");
         return;
       }
-      if (session.scope !== scope) {
+      if (
+        session.access.scope !== access.scope ||
+        session.access.localFiles !== access.localFiles
+      ) {
         reply(res, 403, "FORBIDDEN", "This session belongs to a token with another scope.");
         return;
       }
@@ -187,11 +207,14 @@ export async function startMcpHttpServer(
       reply(res, 400, "SESSION_REQUIRED", "Send an initialize request first.");
       return;
     }
-    const server = createMcpServer(registry, { scope });
+    const server = createMcpServer(registry, {
+      scope: access.scope,
+      localFiles: access.localFiles,
+    });
     const transport: NodeStreamableHTTPServerTransport = new NodeStreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (id) => {
-        sessions.set(id, { transport, server, scope });
+        sessions.set(id, { transport, server, access });
       },
     });
     transport.onclose = () => {
@@ -205,8 +228,8 @@ export async function startMcpHttpServer(
     void (async () => {
       if (!validateHost(req, res)) return;
       if (!validateOrigin(req, res)) return;
-      const scope = scopeForRequest(req, options.tokens);
-      if (!scope) {
+      const access = accessForRequest(req, options.tokens);
+      if (!access) {
         reply(res, 401, "UNAUTHORIZED", "Missing or wrong bearer token.");
         return;
       }
@@ -219,7 +242,10 @@ export async function startMcpHttpServer(
       authed.auth = {
         token: "redacted",
         clientId: "citegeist-mcp",
-        scopes: scope === "write" ? ["read", "write"] : ["read"],
+        scopes: [
+          ...(access.scope === "write" ? ["read", "write"] : ["read"]),
+          ...(access.localFiles ? [] : [NO_LOCAL_FILES]),
+        ],
       };
       let body: unknown;
       try {
@@ -233,7 +259,7 @@ export async function startMcpHttpServer(
       }
       const probe = await toWebRequest(req as unknown as Parameters<typeof toWebRequest>[0], body);
       if (await isLegacyRequest(probe)) {
-        await serveLegacy(authed, res, body, scope);
+        await serveLegacy(authed, res, body, access);
       } else {
         await modern(req as unknown as Parameters<typeof modern>[0], res, body);
       }

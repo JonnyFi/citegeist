@@ -1,6 +1,15 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CLAUDE_CODE } from "./backends.js";
 import { createDrivers } from "./drivers.js";
@@ -120,6 +129,9 @@ describe("claude -p fallback", () => {
       args.slice(args.indexOf("--disallowedTools") + 1, args.indexOf("--disallowedTools") + 4),
     ).toEqual(["Bash", "BashOutput", "KillShell"]);
     expect(args).toContain("--session-id");
+    // The MCP config travels as a file path, never with the token in the arguments (M6).
+    expect(args[args.indexOf("--mcp-config") + 1]).toMatch(/mcp\.json$/);
+    expect(args.join(" ")).not.toContain("Bearer x");
 
     // The second turn continues the same Claude session.
     service.send(s.id, "Und weiter?");
@@ -186,7 +198,7 @@ describe("ClaudePrintDriver", () => {
         isolated: true,
       },
     });
-    const args = driver.buildArgs();
+    const args = driver.buildArgs("/tmp/mcp.json");
     expect(args).toEqual(expect.arrayContaining(["Edit", "Write", "MultiEdit", "NotebookEdit"]));
     expect(args).not.toContain("--add-dir");
   });
@@ -206,7 +218,7 @@ describe("ClaudePrintDriver", () => {
       command: "claude",
       env: {},
       req: chatReq(true),
-    }).buildArgs();
+    }).buildArgs("/tmp/mcp.json");
     expect(args).toContain("--strict-mcp-config");
     expect(args).toContain("--disable-slash-commands");
     expect(args[args.indexOf("--setting-sources") + 1]).toBe("");
@@ -218,12 +230,44 @@ describe("ClaudePrintDriver", () => {
       command: "claude",
       env: {},
       req: chatReq(false),
-    }).buildArgs();
+    }).buildArgs("/tmp/mcp.json");
     expect(args).not.toContain("--strict-mcp-config");
     expect(args).not.toContain("--disable-slash-commands");
     expect(args).not.toContain("--disallowedTools");
     expect(args[args.indexOf("--setting-sources") + 1]).toBe("user,project");
     expect(args).toEqual(expect.arrayContaining(["--allowedTools", "mcp__citegeist", "Bash"]));
     expect(args).toContain("--mcp-config");
+  });
+
+  it("keeps the session token off the command line and in a private file (M6)", async () => {
+    const token = "secret-session-token";
+    const driver = new ClaudePrintDriver({
+      command: "claude",
+      env: {},
+      req: {
+        ...chatReq(false),
+        mcpServers: [
+          {
+            type: "http",
+            name: "citegeist",
+            url: "http://127.0.0.1:9/mcp",
+            headers: [{ name: "Authorization", value: `Bearer ${token}` }],
+          },
+        ],
+      },
+    });
+    const file = driver.configFile();
+    try {
+      const args = driver.buildArgs(file);
+      expect(args[args.indexOf("--mcp-config") + 1]).toBe(file);
+      expect(args.join(" ")).not.toContain(token);
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+      expect(statSync(dirname(file)).mode & 0o777).toBe(0o700);
+      const config = JSON.parse(readFileSync(file, "utf8"));
+      expect(config.mcpServers.citegeist.headers.Authorization).toBe(`Bearer ${token}`);
+    } finally {
+      await driver.close();
+    }
+    expect(existsSync(file)).toBe(false);
   });
 });
