@@ -1,11 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
+  type HooksListenerStatus,
   type Registry,
   webhooksCreate,
   webhooksDelete,
   webhooksList,
   webhooksRotateSecret,
   webhooksSend,
+  webhooksSetAuth,
+  webhooksSetInboundToken,
+  webhooksSetMcpAccess,
   webhooksTest,
 } from "@citegeist/ops";
 import { createHooksHandler } from "./http.js";
@@ -29,6 +33,17 @@ export interface AttachWebhooksOptions {
    * connectors where to call.
    */
   publicBaseUrl?: string | (() => string | undefined);
+  /** Where the public address comes from (the variable or the setting), for the settings screen. */
+  publicBaseUrlSource?: () => "env" | "settings" | undefined;
+  /** State of the dedicated hooks listener, reported by webhooks.list. */
+  listenerStatus?: () => HooksListenerStatus;
+  /** Called after a connector was created, deleted or got or lost MCP access. */
+  onConnectorsChanged?: () => void;
+  /** Port of the dedicated hooks listener. Preferred over the core's port for the local address. */
+  hooksPort?: () => number | undefined;
+  /** Waits between delivery attempts of a task. */
+  retryDelaysMs?: readonly number[];
+  sleep?: (ms: number) => Promise<void>;
   /** Port of the core's HTTP server, for the local address. Pass a function if it is not known yet. */
   port?: number | (() => number | undefined);
   /** Where tasks become jobs. Default: in memory, invisible to jobs.get. Use `queueTaskTracker`. */
@@ -79,9 +94,14 @@ export function attachWebhooks(host: WebhooksHost, opts: AttachWebhooksOptions):
     tasks: opts.tasks ?? memoryTaskTracker(),
     publicBaseUrl: () => validBase(publicBase()),
     localBaseUrl: () => {
-      const p = port();
+      const p = opts.hooksPort?.() || port();
       return p ? `http://127.0.0.1:${p}` : undefined;
     },
+    ...(opts.publicBaseUrlSource ? { publicBaseUrlSource: opts.publicBaseUrlSource } : {}),
+    ...(opts.listenerStatus ? { listenerStatus: opts.listenerStatus } : {}),
+    ...(opts.onConnectorsChanged ? { onConnectorsChanged: opts.onConnectorsChanged } : {}),
+    ...(opts.retryDelaysMs ? { retryDelaysMs: opts.retryDelaysMs } : {}),
+    ...(opts.sleep ? { sleep: opts.sleep } : {}),
     ...(opts.fetch ? { fetch: opts.fetch } : {}),
     ...(opts.log ? { log: opts.log } : {}),
   });
@@ -90,6 +110,9 @@ export function attachWebhooks(host: WebhooksHost, opts: AttachWebhooksOptions):
     .bind(webhooksList, async () => service.list())
     .bind(webhooksCreate, async (_ctx, input) => service.create(input))
     .bind(webhooksRotateSecret, async (_ctx, input) => service.rotateSecret(input))
+    .bind(webhooksSetAuth, async (_ctx, input) => service.setAuth(input))
+    .bind(webhooksSetInboundToken, async (_ctx, input) => service.setInboundToken(input))
+    .bind(webhooksSetMcpAccess, async (_ctx, input) => service.setMcpAccess(input))
     .bind(webhooksDelete, async (_ctx, input) => service.delete(input.name))
     .bind(webhooksTest, async (_ctx, input) => service.test(input.name))
     .bind(webhooksSend, async (ctx, input) => service.send(ctx.actor, input));

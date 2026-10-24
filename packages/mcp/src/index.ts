@@ -9,10 +9,14 @@ export {
   mcpContracts,
 } from "./server.js";
 export {
+  createMcpRequestHandler,
   generateToken,
+  type McpAccess,
   type McpHttpHandle,
   type McpHttpOptions,
+  type McpRequestHandler,
   type McpTokenGrant,
+  replyMcpError,
   serveMcpStdio,
   startMcpHttpServer,
 } from "./transports.js";

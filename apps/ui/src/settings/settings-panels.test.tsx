@@ -299,7 +299,7 @@ describe("webhooks", () => {
     });
 
     const card = await screen.findByTestId("connector");
-    expect(within(card).getByText("http://127.0.0.1:51234/hooks/grok")).toBeVisible();
+    expect(within(card).getByText("http://127.0.0.1:47321/hooks/grok")).toBeVisible();
     expect(within(card).getByText("agent:grok")).toBeVisible();
     expect(within(card).getByText("In der Keychain")).toBeVisible();
 
@@ -413,5 +413,190 @@ describe("webhooks", () => {
     await user.click(card.getByRole("button", { name: "Endgültig löschen" }));
     await waitFor(() => expect(webhooks.hooks).toHaveLength(0));
     expect(await screen.findByText("Es ist noch kein Connector angelegt.")).toBeVisible();
+  });
+});
+
+describe("webhooks reachability", () => {
+  it("shows the fixed hooks port and saves a new one", async () => {
+    const user = userEvent.setup();
+    const { settings, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK] },
+    });
+    expect(
+      await screen.findByText("Lauscht auf 127.0.0.1:47321 (nur /hooks und /mcp)"),
+    ).toBeVisible();
+    const port = screen.getByLabelText("Hooks-Port", { selector: "input" });
+    expect(port).toHaveValue("47321");
+    await user.clear(port);
+    await user.type(port, "80");
+    await user.click(screen.getByRole("button", { name: "Port speichern" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("von 1024 bis 65535");
+    await user.clear(port);
+    await user.type(port, "47400");
+    await user.click(screen.getByRole("button", { name: "Port speichern" }));
+    await waitFor(() => expect(settings.webhooks.port).toBe(47400));
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { webhooks: { port: 47400 } },
+    });
+    expect(
+      await screen.findByText("Lauscht auf 127.0.0.1:47400 (nur /hooks und /mcp)"),
+    ).toBeVisible();
+  });
+
+  it("says the listener is off without a connector", async () => {
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />);
+    expect(await screen.findByText(/Aus, solange kein Connector existiert/)).toBeVisible();
+  });
+
+  it("reports a taken port with what to do", async () => {
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK], portTaken: true },
+    });
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Port 47321 ist schon belegt");
+    expect(alert).toHaveTextContent("Wähle unten einen anderen Port");
+  });
+
+  it("stores the public address and uses it for the inbound address", async () => {
+    const user = userEvent.setup();
+    const { settings, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK] },
+    });
+    const field = await screen.findByLabelText("Öffentliche Adresse", { selector: "input" });
+    await user.type(field, "https://mac.beispiel.ts.net/");
+    await user.click(screen.getByRole("button", { name: "Adresse speichern" }));
+    await waitFor(() => expect(settings.webhooks.publicUrl).toBe("https://mac.beispiel.ts.net"));
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { webhooks: { publicUrl: "https://mac.beispiel.ts.net/" } },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    expect(await card.findByText("https://mac.beispiel.ts.net/hooks/grok")).toBeVisible();
+    expect(screen.queryByText(/Ohne sie kann der Agent/)).toBeNull();
+  });
+
+  it("warns when an outbound connector exists and no public address is set", async () => {
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: {
+        hooks: [HOOK, { ...HOOK, name: "nur-rein", kind: "inbound", url: undefined as never }],
+      },
+    });
+    expect(await screen.findByText(/Ohne sie kann der Agent sein Ergebnis nicht/)).toBeVisible();
+  });
+
+  it("does not warn for an inbound connector alone, and notes that the variable wins", async () => {
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: {
+        hooks: [{ ...HOOK, kind: "inbound", url: undefined as never }],
+        publicBaseUrl: "https://env.beispiel.de",
+      },
+    });
+    expect(await screen.findByText(/CITEGEIST_PUBLIC_URL überschreibt/)).toBeVisible();
+    expect(screen.queryByText(/Ohne sie kann der Agent/)).toBeNull();
+  });
+});
+
+describe("webhooks access", () => {
+  it("creates an outbound connector with an auth header whose value stays masked", async () => {
+    const user = userEvent.setup();
+    const { webhooks, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />);
+    await user.type(await screen.findByLabelText("Name"), "grok");
+    await user.click(screen.getByRole("button", { name: "Beides" }));
+    await user.type(
+      screen.getByLabelText("Adresse des Agents"),
+      "https://api2.cursor.sh/automations/webhook/r1",
+    );
+    await user.type(screen.getByLabelText("Header-Name"), "Authorization");
+    const value = screen.getByLabelText("Wert");
+    expect(value).toHaveAttribute("type", "password");
+    await user.type(value, "Bearer crsr_abc");
+    await user.click(screen.getByRole("button", { name: "Anlegen" }));
+
+    expect(await screen.findByTestId("secret-notice")).toBeVisible();
+    expect(calls.find((c) => c.name === "webhooks.create")?.input).toEqual({
+      name: "grok",
+      kind: "both",
+      url: "https://api2.cursor.sh/automations/webhook/r1",
+      authHeader: "Authorization",
+      authValue: "Bearer crsr_abc",
+    });
+    expect(webhooks.authValues.grok).toBe("Bearer crsr_abc");
+    const card = within(await screen.findByTestId("connector"));
+    expect(card.getByText("Authorization (Wert in der Keychain)")).toBeVisible();
+    expect(screen.queryByText(/crsr_abc/)).toBeNull();
+  });
+
+  it("asks for both header fields or neither", async () => {
+    const user = userEvent.setup();
+    renderWithPanelsCore(<SettingsScreen section="webhooks" />);
+    await user.type(await screen.findByLabelText("Name"), "grok");
+    await user.click(screen.getByRole("button", { name: "Ausgehend" }));
+    await user.type(screen.getByLabelText("Adresse des Agents"), "https://a.example.com/x");
+    await user.type(screen.getByLabelText("Header-Name"), "x-api-key");
+    await user.click(screen.getByRole("button", { name: "Anlegen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("gehören zusammen");
+  });
+
+  it("sets and removes the auth header of an existing connector", async () => {
+    const user = userEvent.setup();
+    const { webhooks } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK] },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    expect(card.getByText("Keiner")).toBeVisible();
+    await user.click(card.getByRole("button", { name: "Auth-Header" }));
+    await user.clear(card.getByLabelText("Header-Name"));
+    await user.type(card.getByLabelText("Header-Name"), "x-api-key");
+    await user.type(card.getByLabelText("Wert"), "k-1");
+    await user.click(card.getByRole("button", { name: "Speichern" }));
+    expect(await card.findByText("x-api-key (Wert in der Keychain)")).toBeVisible();
+    expect(webhooks.authValues.grok).toBe("k-1");
+
+    await user.click(card.getByRole("button", { name: "Auth-Header" }));
+    await user.click(card.getByRole("button", { name: "Header entfernen" }));
+    await waitFor(() => expect(webhooks.authValues.grok).toBeUndefined());
+    expect(await card.findByText("Keiner")).toBeVisible();
+  });
+
+  it("turns the inbound bearer token on and off and shows the token once", async () => {
+    const user = userEvent.setup();
+    const { webhooks } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK] },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    await user.click(card.getByRole("button", { name: "Bearer-Token" }));
+    await user.click(card.getByRole("button", { name: "Token erzeugen" }));
+    const notice = await screen.findByTestId("secret-notice");
+    expect(within(notice).getByText("Bearer-Token für grok")).toBeVisible();
+    expect(within(notice).getByTestId("secret-value").textContent).toMatch(/^whtok_/);
+    expect(webhooks.tokens["in:grok"]).toBeDefined();
+    expect(await card.findByText("Aktiv")).toBeVisible();
+
+    await user.click(card.getByRole("button", { name: "Bearer-Token" }));
+    await user.click(card.getByRole("button", { name: "Token ausschalten" }));
+    await waitFor(() => expect(webhooks.tokens["in:grok"]).toBeUndefined());
+  });
+
+  it("grants MCP access with a scope, shows the token and the address once", async () => {
+    const user = userEvent.setup();
+    const { webhooks, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
+      webhooks: { hooks: [HOOK], publicBaseUrl: "https://mac.beispiel.ts.net" },
+    });
+    const card = within(await screen.findByTestId("connector"));
+    await user.click(card.getByRole("button", { name: "MCP-Zugang" }));
+    await user.click(card.getByRole("button", { name: "Lesen" }));
+    await user.click(card.getByRole("button", { name: "Zugang erzeugen" }));
+    const notice = await screen.findByTestId("secret-notice");
+    expect(within(notice).getByText("MCP-Token für grok")).toBeVisible();
+    expect(within(notice).getByTestId("secret-value").textContent).toMatch(/^whmcp_/);
+    expect(calls.find((c) => c.name === "webhooks.setMcpAccess")?.input).toEqual({
+      name: "grok",
+      enabled: true,
+      scope: "read",
+    });
+    expect(await card.findByText("https://mac.beispiel.ts.net/mcp")).toBeVisible();
+
+    await user.click(card.getByRole("button", { name: "MCP-Zugang" }));
+    await user.click(card.getByRole("button", { name: "Zugang entziehen" }));
+    await waitFor(() => expect(webhooks.tokens["mcp:grok"]).toBeUndefined());
   });
 });

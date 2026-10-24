@@ -185,3 +185,13 @@ Pandoc gehört nicht zum App-Paket. citegeist sucht es im `PATH` und in den Home
 LaTeX ist ein Exportziel und keine Bearbeitungsfläche. Ein visueller Editor und Add-ins für Word oder Google Docs entstehen später und nur bei nachgewiesenem Bedarf.
 
 Die MCP-Obergrenze von 20 Werkzeugen ist ausgeschöpft. Agents erreichen Texte deshalb über die Befehle `cg texts …`, die aus denselben Verträgen entstehen, und über die Dateien selbst (A11).
+
+## D21: Agents in der Cloud erreichen citegeist über entferntes MCP durch einen Tunnel
+
+Datum: 2026-10-24. Status: entschieden.
+
+Ein Agent wie Grok Bot läuft in der Cloud und erreicht keinen lokalen MCP-Server. Er unterstützt aber entfernte MCP-Server über HTTP. citegeist bedient deshalb `/mcp` mit Streamable HTTP auf dem festen Hooks-Port, den auch `/hooks/<name>` nutzt, und ein Tunnel (Tailscale Funnel oder Cloudflare Tunnel) reicht beide Pfade nach außen. Der Werkzeugsatz und die Implementierung sind dieselben wie bei `cg mcp`. Der Port des Kerns bleibt privat, der Hooks-Listener bedient nichts anderes als diese zwei Pfade.
+
+Den Zugang schaltet der Nutzer pro Webhook-Connector ein. Er bekommt einen eigenen Token (einmal angezeigt, im Schlüsselbund), vergleicht in konstanter Zeit und lässt wiederholte Fehlversuche mit `429` auflaufen. Der Akteur ist `agent:<connector>`, Neues geht wie immer in die Inbox (D7), `admin`-Operationen bleiben gesperrt, und ein Agent im Internet liest keine Dateien dieses Macs. Hat kein Connector MCP-Zugang, antwortet `/mcp` mit `404`.
+
+Webhooks (D8) bleiben bestehen. Sie lösen Agents aus (ausgehender Auftrag mit dem Auth-Header der Plattform) und bedienen Agents ohne MCP (eingehende Anfrage mit Signatur oder, wenn eingeschaltet, mit Bearer-Token). Die öffentliche Adresse des Tunnels steht in den Einstellungen und überlebt damit den Start aus dem Dock; die Umgebungsvariable überschreibt sie.

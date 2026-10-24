@@ -85,6 +85,7 @@ describe("SettingsStore", () => {
       uiLanguage: "de",
       semantic: { enabled: false },
       connector: { enabled: false, port: 23119 },
+      webhooks: { port: 47321 },
       chat: { isolated: false },
     });
     writeFileSync(join(dir, "settings.json"), "{ nope");
@@ -95,6 +96,7 @@ describe("SettingsStore", () => {
       uiLanguage: "en",
       semantic: { enabled: true },
       connector: { enabled: true, port: 23120 },
+      webhooks: { port: 47400, publicUrl: "https://mac.example.ts.net" },
       chat: { isolated: true },
     });
     expect(store.load()).toEqual({
@@ -103,6 +105,7 @@ describe("SettingsStore", () => {
       uiLanguage: "en",
       semantic: { enabled: true },
       connector: { enabled: true, port: 23120 },
+      webhooks: { port: 47400, publicUrl: "https://mac.example.ts.net" },
       chat: { isolated: true },
     });
     writeFileSync(
@@ -330,6 +333,29 @@ describe("settings operations", () => {
     expect(await read()).toBe(true);
     await t.registry.call("settings.update", human, { patch: { chat: { isolated: false } } });
     expect(await read()).toBe(false);
+    await t.queue.close();
+  });
+
+  it("stores the hooks port and the public address, normalised, and rejects bad values", async () => {
+    const t = setup();
+    const call = (input: unknown) => t.registry.call("settings.update", human, input);
+    const got = (await t.registry.call("settings.get", human, {})) as {
+      settings: { webhooks: { port: number; publicUrl?: string } };
+    };
+    expect(got.settings.webhooks).toEqual({ port: 47321 });
+    await call({
+      patch: { webhooks: { port: 47400, publicUrl: " https://mac.example.ts.net/ " } },
+    });
+    expect(t.svc.webhooks()).toEqual({ port: 47400, publicUrl: "https://mac.example.ts.net" });
+    await expect(
+      call({ patch: { webhooks: { publicUrl: "mac.example.ts.net" } } }),
+    ).rejects.toMatchObject({
+      detail: { code: "SETTINGS_INVALID" },
+    });
+    await expect(call({ patch: { webhooks: { port: 80 } } })).rejects.toThrow();
+    // An empty string removes the address, the port stays.
+    await call({ patch: { webhooks: { publicUrl: "" } } });
+    expect(t.svc.webhooks()).toEqual({ port: 47400 });
     await t.queue.close();
   });
 

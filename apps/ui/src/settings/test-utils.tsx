@@ -36,7 +36,7 @@ export function renderWithPanelsCore(
   const registry = new Registry();
   bindSettingsMock(registry, settings, emit, false);
   bindSyncMock(registry, sync, emit);
-  bindWebhooksMock(registry, webhooks, emit);
+  bindWebhooksMock(registry, webhooks, emit, () => settings.webhooks);
   const calls: Array<{ name: string; input: unknown }> = [];
   const core: Core = coreFromLink(
     {

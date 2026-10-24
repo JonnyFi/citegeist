@@ -785,6 +785,7 @@ export function createMockRegistry(
       ],
     }),
     emit,
+    () => settings.webhooks,
   );
   bindAlertsMock(
     registry,

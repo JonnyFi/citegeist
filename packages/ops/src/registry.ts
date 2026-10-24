@@ -35,6 +35,11 @@ export interface OperationContract<
   mcp?: McpExposure;
   /** CLI command path, e.g. ["items", "add"]. Defaults to the name split at dots. */
   cli?: string[];
+  /**
+   * Input fields that hold a secret. The CLI adds `--<field>-stdin` for each, so the value does
+   * not appear in the process list or the shell history.
+   */
+  secretInputs?: string[];
 }
 
 export function defineContract<I extends z.ZodType, O extends z.ZodType>(
