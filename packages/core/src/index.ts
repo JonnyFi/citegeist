@@ -32,6 +32,7 @@ export {
 export { bindCoreOperations, createCoreRegistry } from "./ops.js";
 export { type Issue, type Parsed, parseLibraryFile } from "./parse.js";
 export { defaultLocalBase, LibraryPaths, LocalPaths } from "./paths.js";
+export * from "./planning/index.js";
 export { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.js";
 export { type HitKind, type SearchHit, type SearchInput, search } from "./search.js";
 export * from "./semantic/index.js";

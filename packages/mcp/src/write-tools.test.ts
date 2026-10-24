@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Library } from "@citegeist/core";
-import { CONTRACTS } from "@citegeist/ops";
+import { CONTRACTS, PLANNING_CONTRACTS } from "@citegeist/ops";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -15,7 +15,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const CLIENT = "grok-bot";
 const DOI = "10.1086/225469";
-const writeTools = CONTRACTS.filter((c) => c.mcp && !c.mcp.readOnly).map((c) => c.mcp?.tool ?? "");
+// The planning tools are not bound by createRuntime yet; planning.test.ts covers them.
+const writeTools = CONTRACTS.filter(
+  (c) => c.mcp && !c.mcp.readOnly && !PLANNING_CONTRACTS.includes(c),
+).map((c) => c.mcp?.tool ?? "");
 
 const script = fileURLToPath(new URL("./testing/runtime-stdio.ts", import.meta.url));
 const packageDir = fileURLToPath(new URL("..", import.meta.url));
