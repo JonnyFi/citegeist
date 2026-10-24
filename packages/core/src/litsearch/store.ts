@@ -16,6 +16,9 @@ import { csvRecords } from "./csv.js";
 /** A paper of papers.csv before the library marks it. */
 export type RunPaper = Omit<LitsearchPaper, "status" | "citekey">;
 
+/** Folder names of runs (a sync conflict copy such as "x (conflicted copy)" is none). */
+export const RUN_ID = /^[a-z0-9][a-z0-9-]{0,119}$/;
+
 const STATUSES = new Set<LitsearchRunStatus>([
   "running",
   "done",
@@ -68,19 +71,31 @@ export function readRunMeta(dir: string, id: string): LitsearchRunMeta | undefin
   };
 }
 
-/** What a run needs to start again: its pid while running and the sources it switched off. */
-export function readRunState(dir: string): { pid?: number; disableSources: string[] } {
+/**
+ * What a run needs to start again: its pid and the host that pid belongs to while running, and the
+ * sources it switched off. run.json is synced between Macs, so a pid only counts on its own host.
+ */
+export function readRunState(dir: string): {
+  pid?: number;
+  host?: string;
+  disableSources: string[];
+} {
   const raw = readJson(join(dir, "run.json")) ?? {};
   const pid = int(raw.pid);
-  return { ...(pid && pid > 0 ? { pid } : {}), disableSources: strings(raw.disabled_sources) };
+  const host = str(raw.host);
+  return {
+    ...(pid && pid > 0 ? { pid } : {}),
+    ...(host ? { host } : {}),
+    disableSources: strings(raw.disabled_sources),
+  };
 }
 
-/** All runs under `runsDir`, newest first. */
+/** All runs under `runsDir`, newest first. Folders that are not runs or have no readable run.json are skipped. */
 export function listRunSummaries(runsDir: string): LitsearchRunSummary[] {
   if (!existsSync(runsDir)) return [];
   const runs: LitsearchRunSummary[] = [];
   for (const entry of readdirSync(runsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory() || !RUN_ID.test(entry.name)) continue;
     const meta = readRunMeta(join(runsDir, entry.name), entry.name);
     if (!meta) continue;
     const { droppedQueries: _d, attempts: _a, error: _e, ...summary } = meta;

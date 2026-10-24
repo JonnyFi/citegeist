@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { planSuggestedQueries } from "@citegeist/ai";
 import type {
@@ -14,10 +15,17 @@ import { writeFileAtomic } from "../fsutil.js";
 import { markWorks } from "../graph/marking.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { Library } from "../library.js";
-import { type LitsearchCommand, type RunRequest, runPipeline, runScript } from "./runner.js";
+import {
+  type LitsearchCommand,
+  type RunRequest,
+  runPipeline,
+  runScript,
+  writeQueuedMeta,
+} from "./runner.js";
 import {
   listRunSummaries,
   progressOf,
+  RUN_ID,
   type RunPaper,
   readProgressEvents,
   readRunMeta,
@@ -73,7 +81,6 @@ export function matchKeys(p: Pick<RunPaper, "doi" | "openalex" | "title">): stri
   ];
 }
 
-const RUN_ID = /^[a-z0-9][a-z0-9-]{0,119}$/;
 const EXPORT_FILES = {
   md: "papers.md",
   csv: "papers.csv",
@@ -99,8 +106,12 @@ export function runIdFor(topic: string, date: Date, taken: (id: string) => boole
   return id;
 }
 
-function pidAlive(pid: number | undefined): boolean {
-  if (!pid) return false;
+/**
+ * True when `pid` runs on this machine. run.json and watchlists.json are synced between Macs, so
+ * a pid counts only together with the host that wrote it; without a host it is not trusted.
+ */
+function pidAlive(pid: number | undefined, host: string | undefined): boolean {
+  if (!pid || host !== hostname()) return false;
   try {
     process.kill(pid, 0);
     return true;
@@ -162,6 +173,22 @@ export class LitsearchService {
   ) {
     deps.queue?.register(JOB_KIND, (ctx) => this.runJob(ctx), { maxAttempts: 1 });
     deps.queue?.register("litsearch.preprints", () => this.checkPreprints(), { maxAttempts: 1 });
+    if (deps.queue) this.endRecoveredJobs(deps.queue);
+  }
+
+  /**
+   * The queue starts before this service registers its kinds, so a litsearch job that a crash left
+   * behind (queued again by JobQueue.start) would wait forever and block every new run. They end
+   * as cancelled here; the run itself reads as interrupted and the user resumes it on purpose.
+   */
+  private endRecoveredJobs(queue: JobQueue): void {
+    for (const job of queue.open()) {
+      if (job.kind === JOB_KIND) {
+        queue.cancel(job.id, "interrupted by a restart of the app; resume the run to continue");
+      } else if (job.kind === "litsearch.preprints") {
+        queue.cancel(job.id, "interrupted by a restart of the app; check the preprints again");
+      }
+    }
   }
 
   runDir(runId: string): string {
@@ -190,7 +217,8 @@ export class LitsearchService {
   private live<T extends { id: string; status: LitsearchRunSummary["status"] }>(meta: T): T {
     if (meta.status !== "running") return meta;
     if (this.openJob(meta.id)) return meta;
-    if (pidAlive(readRunState(this.lib.paths.litsearchRunDir(meta.id)).pid)) return meta;
+    const state = readRunState(this.lib.paths.litsearchRunDir(meta.id));
+    if (pidAlive(state.pid, state.host)) return meta;
     return { ...meta, status: "interrupted" };
   }
 
@@ -395,6 +423,18 @@ export class LitsearchService {
   ): { runId: string; job: string } {
     const queue = this.requireQueue();
     this.refuseSecondRun();
+    const queries = input.queries
+      .map((q) => q.split(/\s+/).filter(Boolean).join(" "))
+      .filter(Boolean);
+    if (queries.length === 0) {
+      throw new CitegeistError({
+        code: "LITSEARCH_QUERIES_EMPTY",
+        message: "The literature search has no query to run.",
+        fix: "Pass at least one non-empty query, for example from litsearch.suggest.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
     const now = (this.deps.now ?? (() => new Date()))();
     const runsDir = this.lib.paths.litsearchRunsDir;
     mkdirSync(runsDir, { recursive: true });
@@ -402,12 +442,14 @@ export class LitsearchService {
     mkdirSync(join(runsDir, runId));
     const request: RunRequest = {
       topic: input.topic.trim(),
-      queries: input.queries.map((q) => q.split(/\s+/).filter(Boolean).join(" ")).filter(Boolean),
+      queries,
       ...(input.since !== undefined ? { since: input.since } : {}),
       ...(input.top !== undefined ? { top: input.top } : {}),
       ...(input.disableSources.length ? { disableSources: input.disableSources } : {}),
       ...(watch ? { watch } : {}),
     };
+    // The app opens the run as soon as start returns; run.json has to exist by then.
+    writeQueuedMeta(join(runsDir, runId), runId, request, () => now);
     const job = queue.enqueue({ kind: JOB_KIND, input: { runId, request }, by: actor });
     return { runId, job: job.id };
   }
@@ -434,6 +476,7 @@ export class LitsearchService {
       ...(disableSources.length ? { disableSources } : {}),
       ...(meta.watch ? { watch: meta.watch } : {}),
     };
+    writeQueuedMeta(this.runDir(runId), runId, request, this.deps.now);
     const job = queue.enqueue({ kind: JOB_KIND, input: { runId, request }, by: actor });
     return { runId, job: job.id };
   }
@@ -547,13 +590,23 @@ export class LitsearchService {
       });
     }
     const line = res.stdout.trim().split("\n").pop() ?? "null";
-    return JSON.parse(line) as unknown;
+    try {
+      return JSON.parse(line) as unknown;
+    } catch {
+      throw new CitegeistError({
+        code: "LITSEARCH_SCRIPT_OUTPUT_INVALID",
+        message: `${name} did not answer with JSON: ${line.slice(0, 200) || "no output"}`,
+        fix: "Look at the script's stderr in the app log; a Python or uv problem often prints there.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
   }
 
   private toWatch(raw: RawWatch): LitsearchWatch {
     const pid = typeof raw.running_pid === "number" ? raw.running_pid : undefined;
     const running =
-      pidAlive(pid) ||
+      pidAlive(pid, typeof raw.running_host === "string" ? raw.running_host : undefined) ||
       Boolean(
         this.deps.queue
           ?.open()
@@ -617,17 +670,15 @@ export class LitsearchService {
     if (input.fromRun) this.meta(input.fromRun);
     const args = [
       "save",
-      ...(input.id ? ["--id", input.id] : []),
-      ...(input.fromRun ? ["--from-run", input.fromRun] : []),
-      "--topic",
-      input.topic,
-      ...input.queries.flatMap((q) => ["--query", q]),
-      ...(input.since !== undefined ? ["--since", String(input.since)] : []),
-      ...(input.top !== undefined ? ["--top", String(input.top)] : []),
-      "--weekday",
-      String(input.weekday),
-      "--time",
-      input.time,
+      // --flag=value: a value that starts with "-" must not read as an option
+      ...(input.id ? [`--id=${input.id}`] : []),
+      ...(input.fromRun ? [`--from-run=${input.fromRun}`] : []),
+      `--topic=${input.topic}`,
+      ...input.queries.map((q) => `--query=${q}`),
+      ...(input.since !== undefined ? [`--since=${input.since}`] : []),
+      ...(input.top !== undefined ? [`--top=${input.top}`] : []),
+      `--weekday=${input.weekday}`,
+      `--time=${input.time}`,
     ];
     const raw = (await this.watchScript(args)) as RawWatch;
     return { watch: await this.watch(raw.id) };
@@ -836,6 +887,7 @@ interface RawWatch {
   paused?: boolean;
   agent?: boolean;
   running_pid?: number | null;
+  running_host?: string | null;
   runs?: string[];
   last_run?: string | null;
   last_status?: string | null;

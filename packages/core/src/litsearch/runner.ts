@@ -1,8 +1,10 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createWriteStream, mkdirSync, readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { finished } from "node:stream/promises";
 import type { LitsearchRunStatus } from "@citegeist/ops";
+import { CitegeistError } from "@citegeist/schema";
 import { writeFileAtomic } from "../fsutil.js";
 import { extendedPath, findExecutable } from "../settings/executables.js";
 
@@ -54,8 +56,36 @@ export interface LitsearchEnv {
   keychainService?: string | undefined;
 }
 
+/** The command could not be started because `uv` is not installed (or not where it was looked for). */
+export function uvMissing(command: string): CitegeistError {
+  return new CitegeistError({
+    code: "LITSEARCH_UV_MISSING",
+    message: `The literature search could not start: "${command}" was not found.`,
+    fix: "Install uv with `brew install uv` (or from https://docs.astral.sh/uv/), then try again.",
+    recovery: "do-first",
+    sideEffects: "none",
+  });
+}
+
+/** Sends a signal to the child and everything it started (uv runs python as a grandchild). */
+function killTree(child: ChildProcess, signal: NodeJS.Signals): void {
+  try {
+    if (child.pid) process.kill(-child.pid, signal);
+    else child.kill(signal);
+  } catch {
+    // the group is gone already, or never existed (no setsid): fall back to the child alone
+    try {
+      child.kill(signal);
+    } catch {
+      // already exited
+    }
+  }
+}
+
 export function scriptEnv(e: LitsearchEnv): Record<string, string> {
   return {
+    // the scripts live in the signed app bundle, where Python must not write __pycache__
+    PYTHONDONTWRITEBYTECODE: "1",
     CITEGEIST_LITSEARCH_DIR: e.dataDir,
     CITEGEIST_LITSEARCH_CACHE: e.cacheDir,
     ...(e.openalexKey ? { OPENALEX_API_KEY: e.openalexKey } : {}),
@@ -114,6 +144,36 @@ function writeMeta(dir: string, meta: Record<string, unknown>): void {
 }
 
 /**
+ * Writes run.json for a run that is queued, before its job has started: `running` with the
+ * settings, so the run can be listed and opened at once. A resumed run keeps its folder's history
+ * (creation time, attempts); runPipeline takes over when the job starts.
+ */
+export function writeQueuedMeta(
+  dir: string,
+  runId: string,
+  request: RunRequest,
+  now: () => Date = () => new Date(),
+): void {
+  mkdirSync(dir, { recursive: true });
+  const { error: _e, finished: _f, pid: _p, host: _h, ...previous } = readMeta(dir);
+  writeMeta(dir, {
+    dropped_queries: [],
+    counts: {},
+    attempts: 0,
+    ...previous,
+    id: runId,
+    topic: request.topic,
+    queries: request.queries,
+    since: request.since ?? null,
+    top: request.top ?? null,
+    created: typeof previous.created === "string" ? previous.created : iso(now()),
+    status: "running",
+    ...(request.disableSources?.length ? { disabled_sources: request.disableSources } : {}),
+    ...(request.watch ? { watchlist: request.watch } : {}),
+  });
+}
+
+/**
  * Runs pipeline.py for one run folder and keeps run.json current: `running` with the settings at
  * the start, then `done` with the section counts, `failed` with the last error message or
  * `cancelled`. A resumed run reuses the folder: finished queries come from its query-cache.
@@ -143,12 +203,12 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
   const args = [
     ...run.command.args,
     run.script,
-    "--topic",
-    request.topic,
-    ...request.queries.flatMap((q) => ["--query", q]),
+    // --flag=value: a topic or query that starts with "-" would otherwise read as an option
+    `--topic=${request.topic}`,
+    ...request.queries.map((q) => `--query=${q}`),
     ...(request.since !== undefined ? ["--since", String(request.since)] : []),
     ...(request.top !== undefined ? ["--top", String(request.top)] : []),
-    ...(request.disableSources ?? []).flatMap((s) => ["--disable-source", s]),
+    ...(request.disableSources ?? []).map((s) => `--disable-source=${s}`),
     "--out",
     dir,
     "--progress-jsonl",
@@ -164,9 +224,11 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, ...run.command.env, ...scriptEnv(run.env) },
       cwd: dir,
+      detached: true, // own process group, so cancel reaches python behind uv
     });
-    // The pid tells a reader whether a "running" run is still alive (watch.py writes it too).
-    if (child.pid) writeMeta(dir, { ...meta, pid: child.pid });
+    // The pid tells a reader whether a "running" run is still alive (watch.py writes it too). It
+    // is synced with the library, so the host says on which Mac the pid means anything.
+    if (child.pid) writeMeta(dir, { ...meta, pid: child.pid, host: hostname() });
     let buffer = "";
     let counts: Record<string, number> = {};
     let lastError: string | undefined;
@@ -208,8 +270,8 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
 
     const onAbort = (): void => {
       cancelled = true;
-      child.kill("SIGTERM");
-      killTimer = setTimeout(() => child.kill("SIGKILL"), run.killAfterMs ?? 5000);
+      killTree(child, "SIGTERM");
+      killTimer = setTimeout(() => killTree(child, "SIGKILL"), run.killAfterMs ?? 5000);
     };
     if (run.signal?.aborted) onAbort();
     else run.signal?.addEventListener("abort", onAbort, { once: true });
@@ -246,9 +308,13 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
           resolve({ status, counts, ...(error ? { error } : {}) });
         });
     };
-    child.on("error", (err) =>
-      finish(null, `could not start the literature search: ${err.message}`),
-    );
+    child.on("error", (err) => {
+      const missing = (err as NodeJS.ErrnoException).code === "ENOENT";
+      const why = missing
+        ? `"${run.command.command}" was not found. Install uv with \`brew install uv\`.`
+        : err.message;
+      finish(null, `could not start the literature search: ${why}`);
+    });
     child.on("close", (code) => finish(code));
   });
 }
@@ -259,9 +325,13 @@ export interface ScriptResult {
   stderr: string;
 }
 
+/** Longest a short script may run. The first run also downloads Python through uv. */
+export const SCRIPT_TIMEOUT_MS = 10 * 60_000;
+
 /**
- * Runs a short script of workers/research to the end (report.py, later the opendraft and LaTeX
- * helpers) and collects its output. A start failure resolves with code null and the reason.
+ * Runs a short script of workers/research to the end (report.py, watch.py, preprints.py) and
+ * collects its output. A start failure resolves with code null and the reason; a missing `uv`
+ * rejects with LITSEARCH_UV_MISSING. The timeout kills the whole process group.
  */
 export function runScript(opts: {
   command: LitsearchCommand;
@@ -271,11 +341,12 @@ export function runScript(opts: {
   cwd?: string;
   timeoutMs?: number;
 }): Promise<ScriptResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(opts.command.command, [...opts.command.args, opts.script, ...opts.args], {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, ...opts.command.env, ...scriptEnv(opts.env) },
       ...(opts.cwd ? { cwd: opts.cwd } : {}),
+      detached: true,
     });
     let stdout = "";
     let stderr = "";
@@ -285,15 +356,31 @@ export function runScript(opts: {
     child.stderr.setEncoding("utf8").on("data", (c: string) => {
       stderr = (stderr + c).slice(-4000);
     });
-    const timer = setTimeout(() => child.kill("SIGKILL"), opts.timeoutMs ?? 120_000);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killTree(child, "SIGKILL");
+    }, opts.timeoutMs ?? SCRIPT_TIMEOUT_MS);
     let settled = false;
     const done = (r: ScriptResult): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve(r);
+      resolve(
+        timedOut
+          ? { ...r, code: null, stderr: `${r.stderr}\nstopped after the timeout`.trim() }
+          : r,
+      );
     };
-    child.on("error", (err) => done({ code: null, stdout, stderr: err.message }));
+    child.on("error", (err) => {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT" && !settled) {
+        settled = true;
+        clearTimeout(timer);
+        reject(uvMissing(opts.command.command));
+        return;
+      }
+      done({ code: null, stdout, stderr: err.message });
+    });
     child.on("close", (code) => done({ code, stdout, stderr }));
   });
 }

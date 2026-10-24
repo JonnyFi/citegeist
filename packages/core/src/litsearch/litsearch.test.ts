@@ -1,4 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Registry } from "@citegeist/ops";
@@ -9,7 +10,7 @@ import { IGNORE_LINES } from "../sync/versioning.js";
 import { cleanTmpDirs, itemData, tmpDir, until } from "../test-helpers.js";
 import { parseCsv } from "./csv.js";
 import { bindLitsearchOperations } from "./ops.js";
-import { runPipeline } from "./runner.js";
+import { runPipeline, runScript } from "./runner.js";
 import { runIdFor } from "./service.js";
 import { progressOf, readProgressEvents, readRunPapers, stagesFromEvents } from "./store.js";
 
@@ -191,12 +192,16 @@ describe("runPipeline", () => {
   });
 
   it("hands pipeline.py the flags of research-pipeline's server", async () => {
-    // protects: topic, every query, since, top, disabled sources, out folder, progress and query cache reach the CLI
-    // fails_when: a flag is missing or renamed (pipeline.py would reject or ignore it)
+    // protects: topic, every query, since, top, disabled sources, out folder, progress and query cache reach the CLI,
+    //   in the --flag=value form so a value that starts with "-" is no option, and Python writes no bytecode
+    // fails_when: a flag is missing or renamed, a value is a separate argument, or PYTHONDONTWRITEBYTECODE is not 1
     // no_claim: a node stub echoes argv; pipeline.py's own argument parsing is not run
     const lib = await library();
     const echo = join(tmpDir(), "echo.mjs");
-    writeFileSync(echo, "console.log(JSON.stringify({ argv: process.argv.slice(2) }));\n");
+    writeFileSync(
+      echo,
+      "console.log(JSON.stringify({ argv: process.argv.slice(2), bytecode: process.env.PYTHONDONTWRITEBYTECODE }));\n",
+    );
     const dir = lib.paths.litsearchRunDir("run-flags");
     const seen: unknown[] = [];
     await runPipeline({
@@ -205,23 +210,26 @@ describe("runPipeline", () => {
       env: { dataDir: lib.paths.researchDir, cacheDir: tmpDir() },
       dir,
       runId: "run-flags",
-      request: { ...request, queries: ["a", "b c"], since: 2022, disableSources: ["dblp"] },
+      request: {
+        ...request,
+        topic: "-agents",
+        queries: ["a", "-b c"],
+        since: 2022,
+        disableSources: ["dblp"],
+      },
       onEvent: (e) => seen.push(e),
     });
     expect(seen[0]).toEqual({
+      bytecode: "1",
       argv: [
-        "--topic",
-        "agent protocols",
-        "--query",
-        "a",
-        "--query",
-        "b c",
+        "--topic=-agents",
+        "--query=a",
+        "--query=-b c",
         "--since",
         "2022",
         "--top",
         "5",
-        "--disable-source",
-        "dblp",
+        "--disable-source=dblp",
         "--out",
         dir,
         "--progress-jsonl",
@@ -313,6 +321,58 @@ describe("runPipeline", () => {
   });
 });
 
+describe("runScript", () => {
+  const env = () => ({ dataDir: tmpDir(), cacheDir: tmpDir() });
+
+  it("names uv and how to install it when the command does not exist", async () => {
+    // protects: a machine without uv gets a fix instead of "spawn uv ENOENT"
+    // fails_when: the promise resolves, or the error has no install hint
+    // no_claim: none beyond protects
+    await expect(
+      runScript({
+        command: { command: join(tmpDir(), "no-such-uv"), args: [] },
+        script: "report.py",
+        args: [],
+        env: env(),
+      }),
+    ).rejects.toMatchObject({
+      detail: { code: "LITSEARCH_UV_MISSING", fix: expect.stringContaining("brew install uv") },
+    });
+  });
+
+  it("stops the whole process group on timeout, not only the first process", async () => {
+    // protects: a timeout leaves no orphaned python behind uv
+    // fails_when: the grandchild of the script is still alive after the timeout
+    // no_claim: node stands in for uv and python; the process group is what is exercised
+    const script = join(tmpDir(), "tree.cjs");
+    writeFileSync(
+      script,
+      `const { spawn } = require("node:child_process");
+       const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+       console.log(child.pid);
+       setInterval(() => {}, 1000);`,
+    );
+    const res = await runScript({
+      command: { command: process.execPath, args: [] },
+      script,
+      args: [],
+      env: env(),
+      timeoutMs: 500,
+    });
+    expect(res.code).toBeNull();
+    const grandchild = Number.parseInt(res.stdout.trim(), 10);
+    expect(grandchild).toBeGreaterThan(0);
+    await until(() => {
+      try {
+        process.kill(grandchild, 0);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+  });
+});
+
 describe("litsearch.runs and litsearch.get", () => {
   it("lists runs newest first, pages them and marks papers against the library", async () => {
     // protects: the run list and the paper badges ("in library", "in inbox") come from the library folder
@@ -378,16 +438,40 @@ describe("litsearch.runs and litsearch.get", () => {
   });
 });
 
+describe("litsearch.runs with damaged folders", () => {
+  it("skips folders that are no runs and run.json files that do not parse", async () => {
+    // protects: one sync conflict copy or half-written run.json does not break the whole run list
+    // fails_when: litsearch.runs throws, or lists "<id> (conflicted copy)" or the folder with a broken run.json
+    // no_claim: the broken folders stay on disk; the list only ignores them
+    const lib = await library();
+    const good = copyRun(lib, "2026-10-01-good");
+    writeFileSync(join(good, "run.json"), JSON.stringify({ topic: "good", status: "done" }));
+    const conflict = copyRun(lib, "2026-10-01-good (conflicted copy 2)");
+    writeFileSync(join(conflict, "run.json"), JSON.stringify({ topic: "copy", status: "done" }));
+    const broken = lib.paths.litsearchRunDir("2026-10-02-broken");
+    mkdirSync(broken, { recursive: true });
+    writeFileSync(join(broken, "run.json"), '{"topic": "cut off');
+    const registry = bindLitsearchOperations(new Registry(), lib);
+    const out = (await registry.call("litsearch.runs", { actor: "human" }, { limit: 10 })) as {
+      runs: Array<{ id: string }>;
+    };
+    expect(out.runs.map((r) => r.id)).toEqual(["2026-10-01-good"]);
+  });
+});
+
 describe("library folder", () => {
   it("keeps the refetchable parts of a run out of git", () => {
-    // protects: synced libraries carry results, not query caches, OpenAlex records or logs
-    // fails_when: one of the three paths is missing from the ignore block
+    // protects: synced libraries carry results, not query caches, OpenAlex records, logs, locks or half-written files
+    // fails_when: one of the paths is missing from the ignore block
     // no_claim: git's matching of the patterns is exercised by the sync tests, not here
     expect(IGNORE_LINES).toEqual(
       expect.arrayContaining([
         "research/runs/*/query-cache/",
         "research/runs/*/stderr.log",
         "research/runs/*/works/",
+        "research/watches/logs/",
+        "research/watches/.lock",
+        "research/**/*.tmp",
       ]),
     );
   });
@@ -442,6 +526,86 @@ describe("litsearch.start, cancel and resume", () => {
     expect(runs.runs).toMatchObject([
       { id: started.runId, status: "done", queries: ['"agent protocol"'] },
     ]);
+    queue.close();
+  });
+
+  it("writes run.json before start returns, so the run opens at once", async () => {
+    // protects: the app opens /litsearch/<runId> right after start; the run is there, queued as running
+    // fails_when: litsearch.get throws LITSEARCH_RUN_NOT_FOUND or the run is missing from litsearch.runs
+    // no_claim: a node stub that never ends keeps the job from writing run.json itself
+    const { queue, call } = await wired("hang");
+    const started = await call<{ runId: string; job: string }>("litsearch.start", {
+      topic: "Fresh Topic",
+      queries: ["  a   b "],
+      since: 2020,
+    });
+    const got = await call<{ run: { status: string; topic: string; queries: string[] } }>(
+      "litsearch.get",
+      { runId: started.runId },
+    );
+    expect(got.run).toMatchObject({ status: "running", topic: "Fresh Topic", queries: ["a b"] });
+    const runs = await call<{ runs: Array<{ id: string }> }>("litsearch.runs", { limit: 10 });
+    expect(runs.runs.map((r) => r.id)).toEqual([started.runId]);
+    queue.cancel(started.job);
+    await queue.idle();
+    queue.close();
+  });
+
+  it("rejects a search without a usable query", async () => {
+    // protects: blank queries do not start a run that has nothing to search
+    // fails_when: a run folder is made, or the error is not LITSEARCH_QUERIES_EMPTY
+    // no_claim: none beyond protects
+    const { lib, queue, call } = await wired("done");
+    await expect(
+      call("litsearch.start", { topic: "empty", queries: ["  ", "\t "] }),
+    ).rejects.toMatchObject({ detail: { code: "LITSEARCH_QUERIES_EMPTY" } });
+    expect(existsSync(lib.paths.litsearchRunsDir)).toBe(false);
+    queue.close();
+  });
+
+  it("ends a litsearch job that a crash left queued, so the run can be resumed", async () => {
+    // protects: after a restart the old job does not block new runs; the run reads as interrupted
+    // fails_when: the recovered job stays open, litsearch.start answers LITSEARCH_RUN_ACTIVE, or the run does not resume
+    // no_claim: the queue is restarted by hand; a real crash is simulated by a job in the database
+    const lib = await library();
+    const queue = new JobQueue({ dbPath: join(tmpDir(), "state.sqlite") });
+    const dir = copyRun(lib, "2026-10-03-crashed");
+    writeFileSync(
+      join(dir, "run.json"),
+      JSON.stringify({
+        topic: "crashed",
+        queries: ["x"],
+        status: "running",
+        created: "2026-10-03T09:00:00",
+      }),
+    );
+    const old = queue.enqueue({
+      kind: "litsearch.run",
+      input: { runId: "2026-10-03-crashed", request: { topic: "crashed", queries: ["x"] } },
+      by: "human",
+    });
+    queue.start();
+    expect(queue.get(old.id)?.status).toBe("queued");
+    const scriptsDir = tmpDir();
+    writeFileSync(join(scriptsDir, "pipeline.py"), readFileSync(stubPipeline(tmpDir(), "done")));
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      queue,
+      command: { command: process.execPath, args: [] },
+      scriptsDir,
+      cacheDir: tmpDir(),
+    });
+    const call = <T>(name: string, input: unknown) =>
+      registry.call(name, { actor: "human" }, input) as Promise<T>;
+    expect(queue.get(old.id)).toMatchObject({ status: "cancelled" });
+    expect(queue.open()).toEqual([]);
+    const got = await call<{ run: { status: string } }>("litsearch.get", {
+      runId: "2026-10-03-crashed",
+    });
+    expect(got.run.status).toBe("interrupted");
+    const resumed = await call<{ job: string }>("litsearch.resume", {
+      runId: "2026-10-03-crashed",
+    });
+    expect((await queue.waitFor(resumed.job)).status).toBe("succeeded");
     queue.close();
   });
 
@@ -519,12 +683,58 @@ describe("litsearch.start, cancel and resume", () => {
         status: "running",
         created: "2026-10-02T09:00:00",
         pid: 999999,
+        host: hostname(),
       }),
     );
     const got = await call<{ run: { status: string } }>("litsearch.get", {
       runId: "2026-10-02-dead",
     });
     expect(got.run.status).toBe("interrupted");
+  });
+
+  it("trusts a pid in run.json only on the host that wrote it", async () => {
+    // protects: run.json synced from another Mac does not read as running because the pid exists here
+    // fails_when: a live pid with a foreign or missing host reads as running, or the own host does not
+    // no_claim: the own pid stands for a live run process; nothing is spawned
+    const { lib, call } = await wired("done");
+    const status = async (id: string, extra: Record<string, unknown>) => {
+      const dir = copyRun(lib, id);
+      writeFileSync(
+        join(dir, "run.json"),
+        JSON.stringify({
+          topic: id,
+          status: "running",
+          created: "2026-10-02T09:00:00",
+          pid: process.pid,
+          ...extra,
+        }),
+      );
+      return (await call<{ run: { status: string } }>("litsearch.get", { runId: id })).run.status;
+    };
+    expect(await status("2026-10-02-own", { host: hostname() })).toBe("running");
+    expect(await status("2026-10-02-other", { host: "another-mac.local" })).toBe("interrupted");
+    expect(await status("2026-10-02-nohost", {})).toBe("interrupted");
+  });
+
+  it("answers with an error, not a SyntaxError, when a script prints no JSON", async () => {
+    // protects: a Python or uv problem that prints text on stdout reaches the user as a CitegeistError
+    // fails_when: the call rejects with a bare SyntaxError
+    // no_claim: a node stub stands in for watch.py
+    const { lib, queue } = await wired("done");
+    const scriptsDir = tmpDir();
+    writeFileSync(join(scriptsDir, "watch.py"), 'console.log("Downloading Python 3.12...");\n');
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      queue,
+      command: { command: process.execPath, args: [] },
+      scriptsDir,
+      cacheDir: tmpDir(),
+    });
+    mkdirSync(lib.paths.litsearchWatchesDir, { recursive: true });
+    writeFileSync(join(lib.paths.litsearchWatchesDir, "watchlists.json"), '{"watchlists": []}');
+    await expect(registry.call("litsearch.watches", { actor: "human" }, {})).rejects.toMatchObject({
+      detail: { code: "LITSEARCH_SCRIPT_OUTPUT_INVALID" },
+    });
+    queue.close();
   });
 
   it("suggests queries through the AI router, core queries first and without plural duplicates", async () => {
