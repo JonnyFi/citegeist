@@ -2,6 +2,7 @@ import {
   aiErrors,
   ClaudeCodeCliBackend,
   CodexExecBackend,
+  CursorCliBackend,
   type InferenceBackend,
   OPENAI_COMPAT_PRESETS,
   OpenAiCompatBackend,
@@ -48,6 +49,7 @@ interface CatalogEntry {
 export const BACKEND_CATALOG: readonly CatalogEntry[] = [
   { id: "claude-code-cli", kind: "subscription-cli", label: "Claude Code CLI" },
   { id: "codex-exec", kind: "subscription-cli", label: "Codex CLI" },
+  { id: "cursor-cli", kind: "subscription-cli", label: "Cursor CLI" },
   { id: "ollama", kind: "local", label: "Ollama" },
   { id: "openai", kind: "api-key", label: "OpenAI API", keyProvider: "openai" },
   { id: "anthropic", kind: "api-key", label: "Anthropic API", keyProvider: "anthropic" },
@@ -81,7 +83,7 @@ export interface BackendRegistryOptions {
   runner: ProcessRunner;
   keychain: Keychain;
   fetch?: FetchFn;
-  /** Locates `claude` and `codex`. Default: PATH plus the usual install directories. */
+  /** Locates `claude`, `codex` and `agent`. Default: PATH plus the usual install directories. */
   find?: (name: string) => string | undefined;
   env?: Record<string, string | undefined>;
   ollamaUrl?: string;
@@ -118,6 +120,14 @@ export class BackendRegistry implements BackendProvider {
     });
   }
 
+  private cursor(): CursorCliBackend {
+    return new CursorCliBackend({
+      runner: this.opts.runner,
+      command: this.find("agent") ?? this.find("cursor-agent") ?? "agent",
+      env: this.env,
+    });
+  }
+
   private compat(provider: string, apiKey?: string): OpenAiCompatBackend {
     const preset = OPENAI_COMPAT_PRESETS[provider as keyof typeof OPENAI_COMPAT_PRESETS];
     return new OpenAiCompatBackend({
@@ -140,6 +150,8 @@ export class BackendRegistry implements BackendProvider {
         return this.claude();
       case "codex-exec":
         return this.codex();
+      case "cursor-cli":
+        return this.cursor();
       case "ollama":
         return this.compat("ollama");
       default: {
@@ -158,7 +170,12 @@ export class BackendRegistry implements BackendProvider {
   }
 
   async build(): Promise<InferenceBackend[]> {
-    const out: InferenceBackend[] = [this.claude(), this.codex(), this.compat("ollama")];
+    const out: InferenceBackend[] = [
+      this.claude(),
+      this.codex(),
+      this.cursor(),
+      this.compat("ollama"),
+    ];
     for (const entry of BACKEND_CATALOG) {
       if (!entry.keyProvider) continue;
       const key = await this.opts.keychain.get(entry.keyProvider);
@@ -190,8 +207,17 @@ export class BackendRegistry implements BackendProvider {
         : {}),
     });
     try {
-      if (entry.id === "claude-code-cli" || entry.id === "codex-exec") {
-        const backend = entry.id === "claude-code-cli" ? this.claude() : this.codex();
+      if (
+        entry.id === "claude-code-cli" ||
+        entry.id === "codex-exec" ||
+        entry.id === "cursor-cli"
+      ) {
+        const backend =
+          entry.id === "claude-code-cli"
+            ? this.claude()
+            : entry.id === "codex-exec"
+              ? this.codex()
+              : this.cursor();
         try {
           await backend.preflight();
           return result(true, BACKEND_DETAIL.ready);

@@ -137,6 +137,7 @@ describe("BackendRegistry status", () => {
     const by = Object.fromEntries(status.map((s) => [s.id, s]));
     expect(by["claude-code-cli"]).toMatchObject({ available: true, detail: "ready" });
     expect(by["codex-exec"]).toMatchObject({ available: false, detail: "not-installed" });
+    expect(by["cursor-cli"]).toMatchObject({ available: false, detail: "not-installed" });
     expect(by.ollama).toMatchObject({ available: true, detail: "ready: 2 models" });
     expect(by.openai).toMatchObject({ kind: "api-key", available: true });
     expect(by.anthropic).toMatchObject({ available: false, detail: "no-key" });
@@ -144,9 +145,12 @@ describe("BackendRegistry status", () => {
 
   it("tells logged out from missing and marks an unreachable Ollama", async () => {
     const runner = fakeRunner((spec) => {
-      if (spec.args[0] === "--version") return { stdout: "2.1.307" };
+      if (spec.args[0] === "--version") {
+        return { stdout: spec.command === "agent" ? "2026.05.16-abc" : "2.1.307" };
+      }
       if (spec.args[0] === "auth") return { stdout: JSON.stringify({ loggedIn: false }) };
       if (spec.args[0] === "login") return { exitCode: 1, stdout: "Not logged in" };
+      if (spec.args[0] === "status") return { stdout: JSON.stringify({ isAuthenticated: false }) };
       return {};
     });
     const fetch = async () => {
@@ -161,6 +165,10 @@ describe("BackendRegistry status", () => {
     const by = Object.fromEntries((await reg.status()).map((s) => [s.id, s]));
     expect(by["claude-code-cli"]?.detail).toBe("logged-out");
     expect(by["codex-exec"]?.detail).toBe("logged-out");
+    expect(by["cursor-cli"]).toMatchObject({
+      detail: "logged-out",
+      error: { fix: expect.stringContaining("agent login") },
+    });
     expect(by.ollama?.available).toBe(false);
     expect(by.ollama?.detail).toMatch(/^unreachable/);
   });
@@ -181,6 +189,7 @@ describe("BackendRegistry status", () => {
     expect((await reg.build()).map((b) => b.id)).toEqual([
       "claude-code-cli",
       "codex-exec",
+      "cursor-cli",
       "ollama",
       "openai",
     ]);
