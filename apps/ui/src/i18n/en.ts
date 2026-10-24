@@ -456,6 +456,10 @@ export const en: Record<MessageKey, string> = {
   "theme.mode.light": "Light mode",
   "theme.mode.dark": "Dark mode",
   "theme.mode.system": "System mode",
+  "update.available": "Update available",
+  "update.hint":
+    "Version {version} is out. Terminal opens, downloads the update and restarts citegeist.",
+  "update.started": "Update running in Terminal",
   "job.idle": "No background work",
   "job.list": "Background work",
   "job.count.one": "{n} job",

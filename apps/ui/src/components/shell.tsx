@@ -34,6 +34,7 @@ import { type ThemeChoice, useTheme } from "../lib/theme";
 import { cn } from "../lib/utils";
 import { JobStatus } from "./job-status";
 import { LayoutProvider, RightColumn, useHeaderRef, useLayout } from "./layout";
+import { UpdateNotice } from "./update-notice";
 
 const RAIL_KEY = "citegeist.rail";
 
@@ -278,12 +279,12 @@ function ShellFrame() {
         >
           {open ? (
             <>
-              <span
+              <img
+                src={`${import.meta.env.BASE_URL}icon.svg`}
+                alt=""
                 aria-hidden="true"
-                className={cn("font-serif text-[22px] font-medium", darwin && "hidden")}
-              >
-                c
-              </span>
+                className={cn("size-8", darwin && "hidden")}
+              />
               <span className="text-[13px] font-semibold">citegeist</span>
               <span className="flex-1" />
               <button
@@ -312,6 +313,7 @@ function ShellFrame() {
         <div ref={headerRef} className="flex min-w-0 flex-1 items-center gap-4 px-8 text-[13px]">
           {fallback ? <div className="font-medium">{t(fallback[1])}</div> : null}
         </div>
+        <UpdateNotice />
         <JobStatus />
       </header>
 

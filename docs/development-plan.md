@@ -45,7 +45,7 @@ Offen sind:
 
 - **iPad.** Die App ist nur für macOS gebaut.
 - **Schreiben.** Ein eigener Schreibeditor oder Add-ins für Word und Google Docs. Eine Entscheidung zwischen diesen Wegen steht aus.
-- **Signierung und Auto-Update.** Die App ist ad hoc signiert und nicht notarisiert. Dafür braucht es die Developer ID und einen Update-Kanal.
+- **Signierung.** Die App ist ad hoc signiert und nicht notarisiert. Ohne Developer ID verteilt `install.sh` sie über `curl`, `pnpm release` baut und veröffentlicht lokal, und die App weist selbst auf neue Versionen hin (siehe `docs/run.md`). Eine notarisierte App mit Auto-Update braucht die Developer ID.
 - **Prüfung für den Open-Source-Release (D1).** Die AGPL-Isolation der Abhängigkeiten (der Python-Worker läuft als eigener Prozess), die Nutzungsbedingungen von Gemma für EmbeddingGemma und die CPAL-Namensnennung. Dazu läuft vor dem Release `/cso`.
 - **Erledigt nach Plan:** Alerts (PR #57), Begriffsregister (PR #59), Lizenz- und Sicherheitsprüfung (PR #58).
 
@@ -249,7 +249,7 @@ Jonnys Design liegt in `docs/design/design-system.md`, `docs/design/boards/*.htm
 
 ## Später
 
-Nach v0.3 sind noch ein eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice und das iPad offen. Für einen Open-Source-Release fehlen Signierung (Developer ID, 99 US-Dollar pro Jahr), Auto-Update und eine Lösung für das proprietäre Claude Agent SDK im App-Paket (siehe `docs/licenses.md`).
+Nach v0.3 sind noch ein eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice und das iPad offen. Für einen Open-Source-Release fehlt eine notarisierte App mit Auto-Update (Developer ID, 99 US-Dollar pro Jahr). Das proprietäre Claude Agent SDK ist kein Blocker (siehe `docs/licenses.md`).
 
 ## Steckbrief-Vorlage
 
