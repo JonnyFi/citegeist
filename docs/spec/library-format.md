@@ -19,7 +19,8 @@ Die Schemas in `packages/schema/src` sind verbindlich. Diese Seite beschreibt, w
 | `notes/<slug>.md` | Frontmatter `NoteFrontmatter`, Text frei | Kern, Agents, Menschen |
 | `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, Text Projektbrief | Kern, Agents, Menschen |
 | `projects/<slug>/alerts.yaml` | `alerts:` mit einer Liste von `AlertDef` (Name, Quelle, Intervall, Limit, Ranking). Letzter Lauf und Merkliste liegen nicht hier, sondern maschinenlokal in `alerts-state.json` | Kern, Agents, Menschen |
-| `projects/<slug>/exports/*` | abgeleitet | Kern |
+| `projects/<slug>/texts/<text>.md` | Frontmatter `TextFrontmatter` (Titel, Zitierstil, Sprache), Text Markdown mit Pandoc-Zitaten | Kern, Agents, Menschen |
+| `projects/<slug>/exports/*` | abgeleitet; auch die Word-, LaTeX-, PDF- und Markdown-Dateien von `texts.export` | Kern |
 | `chats/<datum>-<slug>.md` | frei | Kern |
 
 ## Regeln
@@ -34,3 +35,26 @@ Die Schemas in `packages/schema/src` sind verbindlich. Diese Seite beschreibt, w
 - `header.json` enthält die Kopfdaten, die der Worker in der Quelle fand: bei einem PDF das Ergebnis von GROBID, bei einer Webseite die Metadaten, die trafilatura findet, bei arXiv-HTML den Titel. Die Datei fehlt, wenn nichts gefunden wurde, und der Worker löscht sie bei einer erneuten Konvertierung ohne Fund.
 - Rechnerlokale Daten (`index.sqlite`, `state.sqlite`, Logs, Modelle) liegen unter `~/Library/Application Support/citegeist/<library-id>/`, nie im Bibliotheksordner.
 - iCloud-Konfliktkopien (`<name> 2.md`) meldet der Kern als Problem und übernimmt sie nicht still.
+
+## Texte
+
+Ein Text (D20) ist eine Markdown-Datei, zum Beispiel `projects/phd-proposal/texts/kapitel-2.md`. Der Dateiname ohne `.md` ist der Slug des Texts: Kleinbuchstaben, Ziffern und Bindestriche, so wie bei Projekten. Die Datei liegt im Bibliotheksordner und wird nicht indexiert, wie die Dokumente eines Plans.
+
+```markdown
+---
+title: Kapitel 2
+style: apa
+lang: de-DE
+created: { at: 2026-10-24T09:00:00.000Z, by: human }
+---
+
+# Soziale Systeme
+
+Luhmann setzt Kommunikation als Grundelement [@luhmann1984soziale, S. 31]. Bei @gillespie2018custodians steht
+die Plattform im Mittelpunkt [vgl. @luhmann1984soziale; -@habermas1981theorie].
+```
+
+- `title` ist Pflicht. `style` ist eine CSL-Stil-ID (`apa`, `chicago-author-date`, `deutsche-gesellschaft-fur-psychologie`) und `lang` ein BCP-47-Tag. Fehlt `style`, gilt der Stil des Projekts. Fehlt `lang`, gilt die Sprache des Projekts (D9), sonst dessen `locale`. `created` setzt der Kern beim Anlegen, andere Schlüssel bleiben erhalten.
+- Zitate folgen der Pandoc-Syntax: `[@citekey]`, `[@citekey, S. 12]`, `[vgl. @a2020x; @b2021y]`, `[-@citekey]` und `@citekey` im Fließtext. Ein Citekey muss ein Item der Bibliothek benennen. Ein unbekannter bleibt im Export unaufgelöst, und der Editor markiert ihn. Als Zitat zählt nichts in Code, Kommentaren, Links, Wiki-Links und im Frontmatter, ebenso wenig eine E-Mail-Adresse.
+- Bilder und andere Dateien, auf die der Text relativ verweist, liegen neben ihm. `texts.export` übergibt Pandoc diesen Ordner als Ressourcenpfad.
+- Der Export steht in `projects/<slug>/exports/<text>.docx`, `<text>.zip` (LaTeX: `main.tex` mit biblatex und `references.bib` mit den zitierten Quellen), `<text>.pdf` oder `<text>.md`. Pandoc läuft dafür als eigener Prozess (D20).

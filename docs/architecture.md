@@ -36,6 +36,7 @@ Die Architektur folgt drei Regeln. Der Kern ist ein eigener Prozess und gehört 
 | `cg` (CLI) | Spricht mit dem laufenden Kern, startet ihn bei Bedarf headless | Pro Aufruf |
 | `cg mcp` | stdio-Shim für MCP-Clients, leitet an den Kern weiter | Pro MCP-Client |
 | Python-Worker | Konvertierung, OCR, GROBID-Aufrufe; per `uv` in Application Support installiert, Modelle in festen Versionen beim ersten Gebrauch | Vom Kern gestartet, beendet sich bei Leerlauf |
+| Pandoc | Export von Texten nach Word, LaTeX, PDF und Markdown (D20); GPL-2.0, daher nur als eigener Prozess; aus `PATH` und Homebrew oder als festes Release auf Wunsch geladen | Pro Export |
 | translation-server | Zoteros Web-Übersetzer für URL-Import ohne Browser, AGPL, nur als eigener Prozess | Optional, bei Bedarf |
 | Agent-CLIs | Inferenz über das Abo des Nutzers | Vorgewärmter Pool plus Sitzungen |
 
@@ -93,6 +94,8 @@ Fehler folgen dem Vertrag für agent-taugliche Fehlermeldungen aus gstack: Sie n
       project.md                          Projektbrief, Forschungsfragen, Leseliste
       exports/phd-proposal.bib            automatisch aktualisiert
       exports/phd-proposal.json           CSL-JSON, automatisch aktualisiert
+      texts/kapitel-2.md                  Text mit Pandoc-Zitaten (D20)
+      exports/kapitel-2.docx              Export des Texts über Pandoc
   chats/                                  gespeicherte Agent-Gespräche
 ```
 
@@ -224,6 +227,10 @@ Der Graph ist die Vereinigung aus den Verbindungen in Notizen, den Wiki-Links un
 ### Projekt
 
 `project.md` trägt im Frontmatter Titel, Status, Forschungsfragen mit IDs und den Zitierstil, im Text den Projektbrief. Die Zugehörigkeit einer Quelle steht im Item (`projects:`), damit ein Agent sie mit einem einzigen Lesezugriff sieht. Agents bekommen den Brief bei jeder Projektaufgabe als Kontext.
+
+### Texte
+
+Ein Text (D20) ist eine Markdown-Datei unter `projects/<slug>/texts/`, das Format steht in `docs/spec/library-format.md`. Der Kern liest Zitate mit dem Scanner in `packages/schema` (`scanCitations`), den auch der Editor für seine Markierungen nutzt. `texts.export` schreibt in einen Arbeitsordner den Text, die CSL-Datei des Stils, die zitierten Quellen als CSL-JSON und als `.bib`, ruft Pandoc auf und legt das Ergebnis in `exports/` ab. Word, PDF und Markdown setzt `--citeproc`. LaTeX behält die Zitate als biblatex-Befehle und kommt als ZIP mit `references.bib`. Für PDF sucht der Kern xelatex, lualatex, tectonic, pdflatex oder Typst. Pandoc findet er im `PATH`, in Homebrew oder in `<lokaler Ordner>/pandoc/<Version>/`, wohin `pandoc.setup` das festgelegte Release lädt.
 
 ## Ingest
 

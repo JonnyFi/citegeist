@@ -39,12 +39,13 @@ Stand: 2026-10-24. Die Wellen 0 bis 4 sind gebaut und gemergt, die App läuft al
 | | Matrix, verwandte Werke, Rückruf-Hinweise, Planung auf echten Verträgen (UI-2a) | #49 |
 | Nachbesserung | Fehler aus der ersten echten Chat-Sitzung, Karten-Logik und Prompt | #43, #44, #45, #46 |
 | Werkzeuge | `pnpm app:update`, Linux-CI mit lokalem Pre-push-Gate, Beitragsablauf | #42, #23, #53 |
+| Schreiben | Texte als Markdown mit Pandoc-Zitaten, Tab „Texte“, Export über Pandoc nach Word, LaTeX und PDF, Pandoc-Download mit fester Prüfsumme (D20) | dieser PR |
 | Abschluss | Dateiauswahl, Rückruf-Marker in `items.list`, schlankere App, Hinzufügen-Menü, Löschen mit Rückgängig, PDF anhängen | dieser PR |
 
 Offen sind:
 
 - **iPad.** Die App ist nur für macOS gebaut.
-- **Schreiben.** Ein eigener Schreibeditor oder Add-ins für Word und Google Docs. Eine Entscheidung zwischen diesen Wegen steht aus.
+- **Visueller Editor und Add-ins.** Ein Schreibeditor ohne Markdown oder Add-ins für Word und Google Docs entstehen nur, wenn sich Bedarf zeigt (D20). Geschrieben wird bis dahin als Markdown in citegeist.
 - **Signierung und Auto-Update.** Die App ist ad hoc signiert und nicht notarisiert. Dafür braucht es die Developer ID und einen Update-Kanal.
 - **Prüfung für den Open-Source-Release (D1).** Die AGPL-Isolation der Abhängigkeiten (der Python-Worker läuft als eigener Prozess), die Nutzungsbedingungen von Gemma für EmbeddingGemma und die CPAL-Namensnennung. Dazu läuft vor dem Release `/cso`.
 - **Erledigt nach Plan:** Alerts (PR #57), Begriffsregister (PR #59), Lizenz- und Sicherheitsprüfung (PR #58).
@@ -171,6 +172,7 @@ Abnahme der Welle: Die E2E-Tests laufen, und Jonny kann ab hier echte Literatur 
 | W3.7 Einsichten und Pläne | Einsichten als datierte Absätze, Absatzindex, Suche über Links und dann semantisch, Gliederung mit festen Feldern, Verlauf mit Rückgängig pro Zug, Vorschläge für ungefragte Änderungen | L |
 | W3.8 Planansicht | Tab pro Plan mit Gliederung, Knotenformular, Dokumenten und Verlauf | M |
 | W3.9 Planungs-Chat | Festhalten von Einsichten im Chat, Zurückholen mit Zitat, direkte Änderungen mit Rückgängig | M |
+| W3.11 Texte | Markdown-Texte pro Projekt (`texts.*`), Pandoc-Zitate im Editor mit Vervollständigung und Markierung, Karten fügen Zitat und Beleg ein, `texts.export` und `pandoc.*` über Pandoc als eigenen Prozess (D20) | L |
 
 Die Forschungsplanung folgt `docs/spec/research-planning.md`. Vor W3.7 liefert die Lead-Session `plan.ts` und die Verträge aus Abschnitt 6 der Spec. Der erste Schnitt ist W3.7 zusammen mit dem Festhalten aus W3.9, das bis zum Ende von W3.3 über Claude Code und MCP läuft.
 

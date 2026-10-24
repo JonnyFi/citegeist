@@ -17,7 +17,8 @@ items/<citekey>/cards/<id>.md         one quote card per file
 notes/<slug>.md                       notes with frontmatter and [[wiki links]]
 notes/concepts/<slug>.md              concepts (type: concept) with aliases, member cards and one entry per source
 projects/<slug>/project.md            project brief, research questions, reading list
-projects/<slug>/exports/              .bib and CSL-JSON, regenerated automatically
+projects/<slug>/texts/<text>.md       texts (chapters, papers): Markdown with Pandoc citations
+projects/<slug>/exports/              .bib and CSL-JSON, regenerated automatically; also the Word, LaTeX and PDF files of texts
 chats/                                saved agent conversations
 \`\`\`
 
@@ -25,7 +26,7 @@ The folder is a valid Obsidian vault. Files are UTF-8 with LF line endings and Y
 
 ## What you may edit
 
-- Body text of literature notes (\`items/<citekey>/<citekey>.md\`), notes (\`notes/*.md\`) and project briefs (\`projects/<slug>/project.md\`).
+- Body text of literature notes (\`items/<citekey>/<citekey>.md\`), notes (\`notes/*.md\`), project briefs (\`projects/<slug>/project.md\`) and texts (\`projects/<slug>/texts/*.md\`).
 - The section "Note" of a card.
 - Keep the YAML frontmatter valid. Files that fail validation appear in the problem list and are not indexed.
 
@@ -35,6 +36,11 @@ The folder is a valid Obsidian vault. Files are UTF-8 with LF line endings and Y
 - The quote of a card (the blockquote at the top of \`items/<citekey>/cards/*.md\`). Its hash is stored in the frontmatter, so a changed quote invalidates the card.
 - \`citegeist.json\`, \`projects/*/exports/\` and the frontmatter of cards.
 - The block between \`<!-- concept:entries\` and \`<!-- /concept:entries -->\` in a concept, and the \`usages\` and \`cards\` of its frontmatter. Change concepts with \`cg concepts\` (\`list\`, \`get\`, \`create\`, \`update\`, \`merge\`, \`describe\`, \`propose\`); entries are rewritten from the member cards and verified against the card quotes.
+
+## Writing texts
+
+- A text is a Markdown file with a little frontmatter (\`title\`, optional \`style\` as CSL id and \`lang\`). Cite in Pandoc syntax: \`[@luhmann1984soziale, S. 12]\`, \`[vgl. @a2020x; @b2021y]\`, or \`@luhmann1984soziale\` in running text. Every key must be a citekey of the library; look them up, never invent one.
+- \`cg texts list\`, \`get\`, \`create\`, \`update\` work on texts. Editing the file directly is fine too. \`cg texts export --format docx|latex|pdf|md\` runs Pandoc: the bibliography holds the cited sources only, in the style of the text or project.
 
 ## Citekeys and links
 
