@@ -461,6 +461,10 @@ export const de = {
   "theme.mode.light": "Hellmodus",
   "theme.mode.dark": "Dunkelmodus",
   "theme.mode.system": "Systemmodus",
+  "update.available": "Update verfügbar",
+  "update.hint":
+    "Version {version} ist erschienen. Das Terminal öffnet sich, lädt das Update und startet citegeist neu.",
+  "update.started": "Update läuft im Terminal",
   "job.idle": "Keine Hintergrundarbeit",
   "job.list": "Hintergrundarbeit",
   "job.count.one": "{n} Job",

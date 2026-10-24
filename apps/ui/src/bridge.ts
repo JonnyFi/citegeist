@@ -36,6 +36,23 @@ export interface PickPathsOptions {
   extensions?: readonly string[];
 }
 
+/** A newer release than the running app. */
+export interface UpdateInfo {
+  /** Version without a leading `v`. */
+  version: string;
+  /** Page with the release notes. */
+  url: string;
+}
+
+export interface UpdateBridge {
+  /** The newer release the main process found, or null. */
+  get(): Promise<UpdateInfo | null>;
+  /** Opens Terminal on the install script. The script quits the app and replaces it. */
+  install(): Promise<void>;
+  /** Called when a check finds a release, or finds the app current. */
+  onChange(listener: (info: UpdateInfo | null) => void): () => void;
+}
+
 export interface CitegeistBridge {
   /** Null until a library is open. */
   connection: CoreConnection | null;
@@ -52,6 +69,8 @@ export interface CitegeistBridge {
   onNavigate(listener: (path: string) => void): () => void;
   /** Settings of the quick-insert palette. Absent where there is no palette. */
   quickInsert?: QuickInsertSettingsBridge;
+  /** Update notice. Absent where the app updates itself some other way, such as the browser. */
+  update?: UpdateBridge;
   /**
    * Absolute path of a file dropped onto the window (Electron's `webUtils.getPathForFile`). The
    * renderer cannot read it from the `File`; items.add takes the path.

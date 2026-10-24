@@ -28,6 +28,18 @@ const bridge: CitegeistBridge = {
     get: () => ipcRenderer.invoke(QI_GET_SETTINGS),
     set: (patch) => ipcRenderer.invoke(QI_SET_SETTINGS, patch),
   },
+  update: {
+    get: () => ipcRenderer.invoke("citegeist:update-get"),
+    install: () => ipcRenderer.invoke("citegeist:update-install"),
+    onChange(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, info: Parameters<typeof listener>[0]) =>
+        listener(info);
+      ipcRenderer.on("citegeist:update-changed", handler);
+      return () => {
+        ipcRenderer.removeListener("citegeist:update-changed", handler);
+      };
+    },
+  },
   // The path of a file dropped on the window: a File object carries no path in the renderer.
   pathForFile: (file) => webUtils.getPathForFile(file),
   platform: process.platform,

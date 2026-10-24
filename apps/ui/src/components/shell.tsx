@@ -33,6 +33,7 @@ import { type ThemeChoice, useTheme } from "../lib/theme";
 import { cn } from "../lib/utils";
 import { JobStatus } from "./job-status";
 import { LayoutProvider, RightColumn, useHeaderRef, useLayout } from "./layout";
+import { UpdateNotice } from "./update-notice";
 
 const RAIL_KEY = "citegeist.rail";
 
@@ -312,6 +313,7 @@ function ShellFrame() {
         >
           {fallback ? <div className="font-medium">{t(fallback[1])}</div> : null}
         </div>
+        <UpdateNotice />
         <JobStatus />
       </header>
 
