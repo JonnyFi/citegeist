@@ -59,7 +59,7 @@ export function bindChatMock(
   registry: Registry,
   data: MockData,
   emit: (event: CoreEvent) => void,
-  options: { stepMs?: number } = {},
+  options: { stepMs?: number; extraJobs?: () => Job[] } = {},
 ): Registry {
   const step = options.stepMs ?? 300;
   let store = STORES.get(data);
@@ -298,7 +298,9 @@ export function bindChatMock(
       changed(chatChangePath(s.summary.id));
       return { path: s.summary.saved };
     })
-    .bind(jobsList, async () => ({ jobs: [...chat.jobs].reverse() }))
+    .bind(jobsList, async () => ({
+      jobs: [...(options.extraJobs?.() ?? []), ...[...chat.jobs].reverse()],
+    }))
     .bind(researchStart, async (_ctx, input) => {
       const at = now();
       const job: Job = {

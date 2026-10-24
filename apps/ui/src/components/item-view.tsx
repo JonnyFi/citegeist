@@ -1,42 +1,48 @@
-import { cardsList, itemsGet } from "@citegeist/ops";
+import { cardsList, itemsGet, projectsList } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, FileText, Quote } from "lucide-react";
+import { ExternalLink, Quote } from "lucide-react";
+import type { ReactNode } from "react";
 import { ConnectionsPanel } from "../connections";
 import { useI18n } from "../i18n";
 import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp } from "../lib/hooks";
 import { CardList } from "./card-list";
-import { actorLabel } from "./inbox-screen";
+import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
-import { Badge } from "./ui/badge";
+import { Badge, StatusSquare } from "./ui/badge";
+import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
 export type ItemTab = "overview" | "read";
 
-function Section({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count?: number;
-  children: React.ReactNode;
-}) {
+/** One block of the overview: a 140px label column and the content, separated by an ink rule. */
+function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
-    <section className="mt-10">
-      <h2 className="mb-3 flex items-baseline gap-2 border-b border-line pb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-        {title}
-        {count !== undefined ? <span className="tabular-nums">{count}</span> : null}
-      </h2>
-      {children}
+    <section className="grid grid-cols-[140px_minmax(0,1fr)] gap-6 border-t border-line py-5">
+      <div className="flex flex-col gap-1 pt-1">
+        <h2>
+          <Label>{title}</Label>
+        </h2>
+        {note ? <span className="font-mono text-[11px] text-muted">{note}</span> : null}
+      </div>
+      <div className="min-w-0">{children}</div>
     </section>
   );
 }
 
-/** One item: an overview (metadata, literature note, cards) and a reading tab with the reader. */
+function familyName(c: { family: string } | { literal: string }): string {
+  return "family" in c ? c.family : c.literal;
+}
+
+/** "Soziale Systeme. Grundriß ..." becomes "Soziale Systeme"; for the crumb in the top bar. */
+function shortTitle(title: string): string {
+  return title.split(/[.:?]/)[0]?.trim() || title;
+}
+
+/** One item: an overview (metadata, literature note) and a reading tab, with the cards in the right column. */
 export function ItemView({
   citekey,
   tab = "overview",
@@ -53,13 +59,31 @@ export function ItemView({
   const { t } = i18n;
   const item = useOp(itemsGet, { citekey });
   const cards = useOp(cardsList, itemCardsInput(citekey));
+  const projects = useOp(projectsList, {});
 
   if (item.isPending) return <Loading label={t("item.loading")} />;
   if (item.isError) return <ErrorState error={item.error} />;
 
   const { frontmatter: fm, note } = item.data;
   const authors = (fm.author ?? []).map(creatorName);
+  const projectTitle = (slug: string) =>
+    projects.data?.projects.find((p) => p.slug === slug)?.title ?? slug;
+  const firstProject = fm.projects[0];
+  const first = fm.author?.[0];
+  const year = fm.issued !== undefined ? String(fm.issued).slice(0, 4) : undefined;
+  const crumb = [first ? familyName(first) : undefined, year].filter(Boolean).join(" ");
+
+  const pageCount = fm.sources.find((s) => s.pages)?.pages;
+  const metaLine = [
+    typeLabel(i18n, fm.type),
+    [fm.publisher, year].filter(Boolean).join(" "),
+    pageCount ? t("item.pageCount", { n: pageCount }) : undefined,
+    fm.language,
+  ].filter(Boolean);
+
+  const mono = new Set([t("meta.citekey"), "DOI", "ISBN"]);
   const meta: Array<[string, string | undefined]> = [
+    [t("meta.citekey"), fm.citekey],
     [t("meta.type"), typeLabel(i18n, fm.type)],
     [t("meta.publishedIn"), fm["container-title"]],
     [t("meta.publisher"), fm.publisher],
@@ -69,160 +93,227 @@ export function ItemView({
     ["DOI", fm.DOI],
     ["ISBN", fm.ISBN],
     [t("meta.language"), fm.language],
-    [t("meta.citekey"), fm.citekey],
   ];
 
+  const header = (
+    <HeaderSlot>
+      <nav
+        aria-label={t("item.breadcrumb")}
+        className="flex min-w-0 items-center gap-2 whitespace-nowrap text-muted"
+      >
+        <Link to="/" search={{}} className="hover:text-ink">
+          {t("nav.library")}
+        </Link>
+        {firstProject ? (
+          <>
+            <span aria-hidden="true">/</span>
+            <Link to="/" search={{ project: firstProject }} className="hover:text-ink">
+              {projectTitle(firstProject)}
+            </Link>
+          </>
+        ) : null}
+        <span aria-hidden="true">/</span>
+        <span className="min-w-0 truncate font-medium text-ink">
+          {[crumb, shortTitle(fm.title)].filter(Boolean).join(", ")}
+        </span>
+      </nav>
+      <span className="flex-1" />
+      <span className="font-mono text-[12px] text-muted">{fm.citekey}</span>
+    </HeaderSlot>
+  );
+
   const tabs = (
-    <div className="flex h-11 shrink-0 items-center gap-4 border-b border-line px-6">
-      <Segmented
-        label={t("item.tabs")}
-        value={tab}
-        onChange={(next) => onChange?.({ tab: next, card: cardId })}
-        options={[
-          { value: "overview", label: t("item.tabOverview") },
-          { value: "read", label: t("item.tabRead") },
-        ]}
-      />
-      <span className="min-w-0 truncate font-serif text-[15px] font-medium">{fm.title}</span>
-    </div>
+    <Segmented
+      variant="tabs"
+      label={t("item.tabs")}
+      value={tab}
+      onChange={(next) => onChange?.({ tab: next, card: cardId })}
+      options={[
+        { value: "overview", label: t("item.tabOverview") },
+        { value: "read", label: t("item.tabRead") },
+      ]}
+    />
+  );
+
+  const renderColumn = (cardsContent: ReactNode, count: number) => (
+    <RightColumn
+      label={t("panel.title")}
+      tabs={[
+        { id: "cards", label: t("item.cards"), count, sunken: true, content: cardsContent },
+        {
+          id: "connections",
+          label: t("connections.title"),
+          content: (
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 [&>section]:mt-0">
+              <ConnectionsPanel kind="item" id={citekey} />
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 
   if (tab === "read") {
     return (
-      <div className="flex h-full min-h-0 flex-col">
-        {tabs}
-        <div className="min-h-0 flex-1">
-          {cards.isPending ? (
-            <Loading label={t("item.loadingCards")} />
-          ) : cards.isError ? (
-            <ErrorState error={cards.error} />
-          ) : (
-            <ReaderTab
-              fm={fm}
-              cards={cards.data.cards}
-              selectedId={cardId}
-              onSelect={(id) => onChange?.({ tab: "read", card: id })}
-            />
-          )}
-        </div>
-      </div>
+      <>
+        {header}
+        {cards.isPending ? (
+          <div className="flex h-full min-h-0">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <SubBar>{tabs}</SubBar>
+              <Loading label={t("item.loadingCards")} />
+            </div>
+            {renderColumn(null, item.data.cards)}
+          </div>
+        ) : cards.isError ? (
+          <div className="flex h-full min-h-0">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <SubBar>{tabs}</SubBar>
+              <ErrorState error={cards.error} />
+            </div>
+            {renderColumn(null, item.data.cards)}
+          </div>
+        ) : (
+          <ReaderTab
+            fm={fm}
+            cards={cards.data.cards}
+            selectedId={cardId}
+            onSelect={(id) => onChange?.({ tab: "read", card: id })}
+            tabs={tabs}
+            renderColumn={renderColumn}
+          />
+        )}
+      </>
     );
   }
 
+  const cardsContent = (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      {cards.isPending ? (
+        <Loading label={t("item.loadingCards")} />
+      ) : cards.isError ? (
+        <ErrorState error={cards.error} />
+      ) : cards.data.cards.length === 0 ? (
+        <EmptyState
+          icon={<Quote />}
+          title={t("item.noCardsTitle")}
+          description={t("item.noCardsDescription")}
+        />
+      ) : (
+        <CardList cards={cards.data.cards} onOpen={(id) => onChange?.({ tab: "read", card: id })} />
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex min-h-full flex-col">
-      {tabs}
-      <article className="mx-auto w-full max-w-3xl px-8 py-10">
-        <header>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Badge tone={fm.status === "reading" ? "accent" : "neutral"}>
-              {statusLabel(i18n, fm.status)}
-            </Badge>
-            {fm.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
-            {fm.projects.map((slug) => (
-              <Link key={slug} to="/projects/$slug" params={{ slug }}>
-                <Badge tone="outline" className="hover:text-ink">
-                  {slug}
+    <div className="flex h-full min-h-0">
+      {header}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <SubBar>{tabs}</SubBar>
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
+          <article className="mx-auto flex w-full max-w-[720px] flex-col">
+            <header className="flex flex-col gap-2.5 pb-7">
+              {fm.inbox?.why ? (
+                <Provenance
+                  who={fm.inbox.by === "human" ? t("actor.human") : fm.inbox.by}
+                  tail={`: ${fm.inbox.why}`}
+                >
+                  {t("item.suggestedBy")}
+                </Provenance>
+              ) : null}
+              <h1 className="font-serif text-[34px] font-medium leading-[1.15] tracking-[-0.01em]">
+                {fm.title}
+              </h1>
+              {fm.subtitle ? (
+                <p className="font-serif text-[18px] leading-[1.4] text-muted">{fm.subtitle}</p>
+              ) : null}
+              <p className="font-serif text-[18px] leading-[1.4]">
+                {authors.length > 0 ? authors.join("; ") : t("item.unknownAuthor")}
+                {fm.issued !== undefined ? (
+                  <span className="text-muted"> ({String(fm.issued)})</span>
+                ) : null}
+              </p>
+              <p className="text-muted">{metaLine.join(" · ")}</p>
+              <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                <Badge tone={fm.status === "unread" ? "outline" : "accent"}>
+                  <StatusSquare
+                    filled={fm.status !== "unread"}
+                    className={fm.status === "unread" ? "" : "border-bg bg-bg"}
+                  />
+                  {statusLabel(i18n, fm.status)}
                 </Badge>
-              </Link>
-            ))}
-          </div>
-          <h1 className="font-serif text-3xl font-semibold leading-tight">{fm.title}</h1>
-          {fm.subtitle ? <p className="mt-1 font-serif text-lg text-muted">{fm.subtitle}</p> : null}
-          <p className="mt-3 text-base">
-            {authors.length > 0 ? authors.join("; ") : t("item.unknownAuthor")}
-            {fm.issued !== undefined ? (
-              <span className="text-muted"> ({String(fm.issued)})</span>
-            ) : null}
-          </p>
-          {fm.inbox?.why ? (
-            <p className="mt-3 rounded-md bg-accent-soft px-3 py-2 text-accent">
-              {t("item.suggestedBy", { who: actorLabel(i18n, fm.inbox.by), why: fm.inbox.why })}
-            </p>
-          ) : null}
-        </header>
-
-        {fm.abstract ? (
-          <Section title={t("item.abstract")}>
-            <p className="prose-read">{fm.abstract}</p>
-          </Section>
-        ) : null}
-
-        <Section title={t("item.metadata")}>
-          <dl className="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-1.5">
-            {meta
-              .filter((row): row is [string, string] => Boolean(row[1]))
-              .map(([label, value]) => (
-                <div key={label} className="contents">
-                  <dt className="text-muted">{label}</dt>
-                  <dd className="min-w-0 break-words">{value}</dd>
-                </div>
-              ))}
-            {fm.URL ? (
-              <div className="contents">
-                <dt className="text-muted">URL</dt>
-                <dd className="min-w-0 break-all">
-                  <a
-                    href={fm.URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-accent"
-                  >
-                    {fm.URL}
-                    <ExternalLink className="size-3" />
-                  </a>
-                </dd>
+                {fm.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
+                {fm.projects.map((slug) => (
+                  <Link key={slug} to="/projects/$slug" params={{ slug }}>
+                    <Badge tone="outline">{projectTitle(slug)}</Badge>
+                  </Link>
+                ))}
+                {fm.tags.map((tag) => (
+                  <Badge key={tag}>{tag}</Badge>
+                ))}
               </div>
+            </header>
+
+            {fm.abstract ? (
+              <Section title={t("item.abstract")}>
+                <p className="font-serif text-[16px] leading-[1.55]">{fm.abstract}</p>
+              </Section>
             ) : null}
-            {fm.tags.length > 0 ? (
-              <div className="contents">
-                <dt className="text-muted">{t("meta.tags")}</dt>
-                <dd className="flex flex-wrap gap-1.5">
-                  {fm.tags.map((tag) => (
-                    <Badge key={tag}>{tag}</Badge>
+
+            <Section title={t("item.note")} note="Markdown">
+              {note.trim() ? (
+                <Prose text={note} size="sm" />
+              ) : (
+                <p className="text-muted">{t("item.noNote")}</p>
+              )}
+            </Section>
+
+            <Section title={t("item.metadata")}>
+              <dl className="grid grid-cols-[110px_minmax(0,1fr)_110px_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+                {meta
+                  .filter((row): row is [string, string] => Boolean(row[1]))
+                  .map(([label, value]) => (
+                    <div key={label} className="contents">
+                      <dt className="text-muted">{label}</dt>
+                      <dd
+                        className={
+                          mono.has(label)
+                            ? "min-w-0 break-words font-mono text-[12px]"
+                            : "min-w-0 break-words"
+                        }
+                      >
+                        {value}
+                      </dd>
+                    </div>
                   ))}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-          {fm.sources.length > 0 ? (
-            <ul className="mt-3 flex flex-col gap-1">
-              {fm.sources.map((s) => (
-                <li key={s.hash} className="flex items-center gap-2 text-muted">
-                  <FileText className="size-3.5" />
-                  {s.filename}
-                  {s.pages ? <span>({t("item.pageCount", { n: s.pages })})</span> : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Section>
-
-        <Section title={t("item.note")}>
-          {note.trim() ? <Prose text={note} /> : <p className="text-muted">{t("item.noNote")}</p>}
-        </Section>
-
-        <Section title={t("item.cards")} count={cards.data?.cards.length ?? item.data.cards}>
-          {cards.isPending ? (
-            <Loading label={t("item.loadingCards")} />
-          ) : cards.isError ? (
-            <ErrorState error={cards.error} />
-          ) : cards.data.cards.length === 0 ? (
-            <EmptyState
-              icon={<Quote className="size-5" />}
-              title={t("item.noCardsTitle")}
-              description={t("item.noCardsDescription")}
-            />
-          ) : (
-            <CardList
-              cards={cards.data.cards}
-              onOpen={(id) => onChange?.({ tab: "read", card: id })}
-            />
-          )}
-        </Section>
-
-        <ConnectionsPanel kind="item" id={citekey} />
-      </article>
+                {fm.URL ? (
+                  <div className="contents">
+                    <dt className="text-muted">URL</dt>
+                    <dd className="min-w-0 break-all">
+                      <a
+                        href={fm.URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 underline"
+                      >
+                        {fm.URL}
+                        <ExternalLink className="size-3" />
+                      </a>
+                    </dd>
+                  </div>
+                ) : null}
+                {fm.sources.map((s) => (
+                  <div key={s.hash} className="contents">
+                    <dt className="text-muted">{t("item.file")}</dt>
+                    <dd className="min-w-0 break-all font-mono text-[12px]">{s.filename}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Section>
+          </article>
+        </div>
+      </div>
+      {renderColumn(cardsContent, cards.data?.cards.length ?? item.data.cards)}
     </div>
   );
 }

@@ -129,7 +129,9 @@ describe("connections panel on an item", () => {
     });
     await pre.call(linksDecide, { note: AUTOPOIESIS, accept: [0], reject: [] });
 
+    const user = userEvent.setup();
     renderApp(`/items/${LUHMANN}`, data);
+    await user.click(await screen.findByRole("tab", { name: "Verbindungen" }));
     const panel = await screen.findByTestId("connections");
     const incoming = await within(panel).findByTestId("incoming");
     expect(within(incoming).getByText("stützt")).toBeVisible();
@@ -142,6 +144,7 @@ describe("connections panel on an item", () => {
   it("opens a connected note from the item", async () => {
     const user = userEvent.setup();
     renderApp(`/items/${LUHMANN}`);
+    await user.click(await screen.findByRole("tab", { name: "Verbindungen" }));
     const incoming = await screen.findByTestId("incoming");
     await user.click(
       within(incoming).getAllByRole("button", {

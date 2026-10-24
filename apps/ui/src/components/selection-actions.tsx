@@ -52,7 +52,7 @@ export function SelectionActions({
   }, [range]);
 
   const base =
-    "h-7 rounded px-2.5 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-45";
+    "h-7 px-2.5 text-[12px] font-medium text-bg disabled:cursor-not-allowed disabled:opacity-45";
   return (
     <div
       ref={ref}
@@ -65,7 +65,7 @@ export function SelectionActions({
         transform: pos.below ? "translateX(-50%)" : "translate(-50%, -100%)",
         zIndex: 1000,
       }}
-      className="flex gap-1 rounded-md bg-[#1f1f1f] p-1 shadow-lg"
+      className="flex gap-1 border border-line bg-ink p-1"
       // keep the text selection alive while a button is pressed
       onMouseDown={(e) => e.preventDefault()}
     >
@@ -74,7 +74,7 @@ export function SelectionActions({
         data-testid="selection-quote"
         disabled={busy}
         onClick={onQuote}
-        className={`${base} hover:bg-white/20`}
+        className={`${base} hover:bg-bg/20`}
       >
         {t("selection.quote")}
       </button>

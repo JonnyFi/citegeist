@@ -13,7 +13,7 @@ describe("inbox", () => {
     expect(list).toHaveLength(3);
     const zuboff = list.find((r) => r.textContent?.includes("zuboff2019age")) as HTMLElement;
     expect(within(zuboff).getByText("The Age of Surveillance Capitalism")).toBeVisible();
-    expect(within(zuboff).getByText("Hinzugefügt von claude-code")).toBeVisible();
+    expect(within(zuboff).getByText("agent:claude-code")).toBeVisible();
     expect(
       within(zuboff).getByText("Matches your search for platform critique since 2015."),
     ).toBeVisible();

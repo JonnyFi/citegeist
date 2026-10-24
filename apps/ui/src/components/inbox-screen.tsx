@@ -1,19 +1,14 @@
 import { inboxAccept, inboxReject, itemsList } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
-import { Bot, Check, Inbox, User, X } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { useState } from "react";
-import { type Translator, useI18n } from "../i18n";
+import { useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { cn } from "../lib/utils";
+import { HeaderSlot, SubBar } from "./layout";
+import { Button, ButtonGroup } from "./ui/button";
+import { Provenance } from "./ui/provenance";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
-
-/** Who added an item: "human", "system" or "agent:<name>". */
-export function actorLabel({ t }: Translator, by: string): string {
-  if (by === "human") return t("actor.human");
-  if (by === "system") return t("actor.system");
-  return by.replace(/^agent:/, "");
-}
 
 /** Items that agents added, with who added them and why. Single and bulk accept or reject. */
 export function InboxScreen() {
@@ -45,13 +40,15 @@ export function InboxScreen() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-8 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-serif text-2xl font-semibold">{t("nav.inbox")}</h1>
+    <div className="flex h-full min-h-0 flex-col">
+      <HeaderSlot>
+        <h1 className="text-[13px] font-medium">{t("nav.inbox")}</h1>
         {items.length > 0 ? (
-          <span className="text-muted">{tn("inbox.count", items.length)}</span>
+          <span className="font-mono text-[12px] text-muted">
+            {tn("inbox.count", items.length)}
+          </span>
         ) : null}
-      </header>
+      </HeaderSlot>
 
       {list.isPending ? (
         <Loading label={t("items.loading")} />
@@ -59,120 +56,123 @@ export function InboxScreen() {
         <ErrorState error={list.error} />
       ) : items.length === 0 ? (
         <EmptyState
-          icon={<Inbox className="size-6" />}
+          icon={<Inbox />}
           title={t("inbox.emptyTitle")}
           description={t("inbox.emptyDescription")}
         />
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-line pb-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={allChosen}
-                onChange={() =>
-                  setSelected(allChosen ? new Set() : new Set(items.map((i) => i.citekey)))
+          <SubBar className="items-center">
+            <div className="flex items-center gap-4 text-[12px]">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-3.5"
+                  checked={allChosen}
+                  onChange={() =>
+                    setSelected(allChosen ? new Set() : new Set(items.map((i) => i.citekey)))
+                  }
+                />
+                {t("inbox.selectAll")}
+              </label>
+              {chosen.length > 0 ? (
+                <span className="text-muted">{tn("inbox.selectedCount", chosen.length)}</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() =>
+                  run(
+                    "accept",
+                    items.map((i) => i.citekey),
+                  )
                 }
-              />
-              {t("inbox.selectAll")}
-            </label>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={busy || chosen.length === 0}
-              onClick={() => run("accept", chosen)}
-            >
-              {t("inbox.acceptSelected", { n: chosen.length })}
-            </Button>
-            <Button
-              size="sm"
-              disabled={busy || chosen.length === 0}
-              onClick={() => run("reject", chosen)}
-            >
-              {t("inbox.rejectSelected", { n: chosen.length })}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              className="ml-auto"
-              onClick={() =>
-                run(
-                  "accept",
-                  items.map((i) => i.citekey),
-                )
-              }
-            >
-              {t("inbox.acceptAll")}
-            </Button>
-          </div>
+              >
+                {t("inbox.acceptAll")}
+              </Button>
+              <ButtonGroup>
+                <Button
+                  variant="primary"
+                  disabled={busy || chosen.length === 0}
+                  onClick={() => run("accept", chosen)}
+                >
+                  {t("inbox.acceptSelected", { n: chosen.length })}
+                </Button>
+                <Button
+                  disabled={busy || chosen.length === 0}
+                  onClick={() => run("reject", chosen)}
+                >
+                  {t("inbox.rejectSelected", { n: chosen.length })}
+                </Button>
+              </ButtonGroup>
+            </div>
+          </SubBar>
           {failure ? (
-            <p role="alert" className="mb-3 text-danger">
+            <p role="alert" className="border-b border-line px-8 py-2 text-danger">
               {failure.message}
             </p>
           ) : null}
-          <ul className="flex flex-col divide-y divide-line/70">
+          <ul className="min-h-0 flex-1 overflow-y-auto">
             {items.map((item) => {
               const inbox = item.inboxBy ? { by: item.inboxBy, why: item.inboxWhy } : undefined;
+              const on = selected.has(item.citekey);
               return (
-                <li key={item.citekey} data-testid="inbox-row" className="flex gap-3 py-4">
+                <li
+                  key={item.citekey}
+                  data-testid="inbox-row"
+                  className={cn(
+                    "grid grid-cols-[24px_minmax(0,1fr)_auto] gap-4 border-b border-line px-8 py-5",
+                    on && "bg-sunken",
+                  )}
+                >
                   <input
                     type="checkbox"
-                    className="mt-1.5 self-start"
+                    className="mt-1 size-3.5 self-start"
                     aria-label={t("inbox.select", { title: item.title })}
-                    checked={selected.has(item.citekey)}
+                    checked={on}
                     onChange={() => toggle(item.citekey)}
                   />
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-col gap-1.5">
                     <Link
                       to="/items/$citekey"
                       params={{ citekey: item.citekey }}
-                      className="font-serif text-[15px] font-medium hover:text-accent"
+                      className="font-serif text-[20px] font-medium leading-tight hover:underline"
                     >
                       {item.title}
                     </Link>
-                    <div className="mt-0.5 text-muted">
+                    <div className="text-muted">
                       {[item.authors, item.year].filter(Boolean).join(", ")}
-                      <span className="ml-2 font-mono text-xs">{item.citekey}</span>
+                      <span className="ml-2 font-mono text-[12px]">{item.citekey}</span>
                     </div>
                     {inbox ? (
-                      <div className="mt-2 flex flex-wrap items-start gap-2">
-                        <Badge tone="outline" className="gap-1">
-                          {inbox.by === "human" ? (
-                            <User className="size-3" />
-                          ) : (
-                            <Bot className="size-3" />
-                          )}
-                          {t("inbox.addedBy", { who: actorLabel(i18n, inbox.by) })}
-                        </Badge>
-                        {inbox.why ? (
-                          <p className="rounded-md bg-accent-soft px-2.5 py-1 text-accent">
-                            {inbox.why}
-                          </p>
-                        ) : null}
-                      </div>
+                      <Provenance who={inbox.by === "human" ? t("actor.human") : inbox.by}>
+                        {t("inbox.addedByLead")}
+                      </Provenance>
+                    ) : null}
+                    {inbox?.why ? (
+                      <p className="mt-1 max-w-[640px] leading-[1.5]">{inbox.why}</p>
                     ) : null}
                   </div>
-                  <div className="flex shrink-0 items-start gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      disabled={busy}
-                      aria-label={t("inbox.acceptOne", { title: item.title })}
-                      onClick={() => run("accept", [item.citekey])}
-                    >
-                      <Check className="size-3.5" />
-                      {t("inbox.accept")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      aria-label={t("inbox.rejectOne", { title: item.title })}
-                      onClick={() => run("reject", [item.citekey])}
-                    >
-                      <X className="size-3.5" />
-                      {t("inbox.reject")}
-                    </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <ButtonGroup>
+                      <Button
+                        disabled={busy}
+                        aria-label={t("inbox.acceptOne", { title: item.title })}
+                        onClick={() => run("accept", [item.citekey])}
+                      >
+                        {t("inbox.accept")}
+                      </Button>
+                      <Button
+                        disabled={busy}
+                        aria-label={t("inbox.rejectOne", { title: item.title })}
+                        onClick={() => run("reject", [item.citekey])}
+                      >
+                        {t("inbox.reject")}
+                      </Button>
+                    </ButtonGroup>
                   </div>
                 </li>
               );

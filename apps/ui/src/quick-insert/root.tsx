@@ -68,7 +68,7 @@ function NoLibrary({ bridge }: { bridge: QuickInsertBridge }) {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape closes the palette also without a library
     <div
-      className="flex h-full items-center justify-center rounded-xl border border-line bg-surface p-6 text-center text-muted shadow-2xl"
+      className="flex h-full items-center justify-center border border-line bg-surface p-6 text-center text-muted"
       tabIndex={-1}
       onKeyDown={(e) => {
         if (e.key === "Escape") bridge.close();

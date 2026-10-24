@@ -20,7 +20,12 @@ import {
   Registry,
   searchQuery,
 } from "@citegeist/ops";
-import { CardFrontmatter, type ItemFrontmatter, ProjectFrontmatter } from "@citegeist/schema";
+import {
+  CardFrontmatter,
+  type ItemFrontmatter,
+  type Job,
+  ProjectFrontmatter,
+} from "@citegeist/schema";
 import { bindChatMock } from "../chat/mock";
 import { bindConnectionsMock } from "../connections/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
@@ -31,6 +36,8 @@ import { createFixtures, type MockData } from "./fixtures";
 export interface MockOptions {
   /** How long the mock AI needs for paraphrase and core statement. The real one takes a few seconds. */
   aiDelayMs?: number;
+  /** Seeds the job list with finished and running conversions, so the top bar has something to show. */
+  demoJobs?: boolean;
 }
 
 function authorsOf(fm: ItemFrontmatter): string | undefined {
@@ -164,6 +171,36 @@ export function createMockRegistry(
       job.updatedAt = at;
     }, aiDelayMs);
     return job.id;
+  };
+
+  /** Jobs of the card AI and, for the browser preview, a few conversions to fill the job slot. */
+  const listJobs = (): Job[] => {
+    const now = new Date().toISOString();
+    const demo: Job[] = options.demoJobs
+      ? (["succeeded", "succeeded", "running"] as const).map((status, i) => ({
+          id: `j_0DEM00000000000${i}`,
+          kind: "convert",
+          status,
+          progress: status === "running" ? 0.5 : 1,
+          input: {},
+          attempts: 1,
+          by: "system",
+          createdAt: now,
+          updatedAt: now,
+        }))
+      : [];
+    const own: Job[] = [...jobs.values()].map((job) => ({
+      id: job.id,
+      kind: "ai-task",
+      status: job.status,
+      progress: job.status === "running" ? 0.5 : 1,
+      input: {},
+      attempts: 1,
+      by: "human",
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    }));
+    return [...demo, ...own];
   };
 
   const findCard = (id: string) => {
@@ -524,7 +561,10 @@ export function createMockRegistry(
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
   bindNotesMock(registry, data, emit);
   bindConnectionsMock(registry, data, emit, jobs, aiDelayMs);
-  bindChatMock(registry, data, emit, { stepMs: Math.max(5, Math.round(aiDelayMs / 5)) });
+  bindChatMock(registry, data, emit, {
+    stepMs: Math.max(5, Math.round(aiDelayMs / 5)),
+    extraJobs: () => listJobs(),
+  });
   return bindSettingsMock(registry, settings, emit, false);
 }
 

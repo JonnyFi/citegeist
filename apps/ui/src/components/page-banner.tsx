@@ -5,6 +5,7 @@ import { useI18n } from "../i18n";
 import { useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 /**
  * One-time confirmation of the printed page numbers of a PDF. Page numbers in citations come from
@@ -28,12 +29,14 @@ export function PageBanner({ citekey, pages }: { citekey: string; pages: Pages }
   return (
     <section
       aria-label={t("pages.title")}
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-accent-soft px-4 py-2 text-accent"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-sunken px-8 py-2"
     >
-      <span className="font-medium">{t("pages.title")}</span>
-      <span className="flex flex-wrap items-center gap-1.5 text-ink">
+      <span className="text-label font-semibold uppercase tracking-[0.1em]">
+        {t("pages.title")}
+      </span>
+      <span className="flex flex-wrap items-center gap-1.5">
         <label htmlFor={pdfId}>{t("pages.pdfPage")}</label>
-        <input
+        <Input
           id={pdfId}
           type="number"
           min={1}
@@ -43,14 +46,14 @@ export function PageBanner({ citekey, pages }: { citekey: string; pages: Pages }
             setPdfPage(Math.min(Math.max(Number(e.target.value) || 1, 1), pages.pages.length));
             setPrinted(null);
           }}
-          className="h-7 w-16 rounded-md border border-line bg-surface px-2"
+          className="h-[26px] w-16 px-2"
         />
         <label htmlFor={printedId}>{t("pages.printedPage")}</label>
-        <input
+        <Input
           id={printedId}
           value={shown}
           onChange={(e) => setPrinted(e.target.value)}
-          className="h-7 w-20 rounded-md border border-line bg-surface px-2"
+          className="h-[26px] w-20 px-2"
         />
       </span>
       <Button
