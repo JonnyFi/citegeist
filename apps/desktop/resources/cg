@@ -1,0 +1,17 @@
+#!/bin/sh
+# `cg`, the citegeist command line, inside the app. The app binary runs the bundled CLI
+# (app.asar/out/main/cg.js) as plain Node. install.sh links ~/.local/bin/cg to this file, so the
+# script follows symlinks to find the app it belongs to.
+self="$0"
+while [ -h "$self" ]; do
+  dir="$(cd "$(dirname "$self")" && pwd -P)"
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *) self="$dir/$link" ;;
+  esac
+done
+bin="$(cd "$(dirname "$self")" && pwd -P)"
+resources="$(dirname "$bin")"
+contents="$(dirname "$resources")"
+ELECTRON_RUN_AS_NODE=1 exec "$contents/MacOS/citegeist" "$resources/app.asar/out/main/cg.js" "$@"

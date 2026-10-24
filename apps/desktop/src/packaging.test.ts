@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { accessSync, constants, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // M8: the packaged binary carries Electron fuses. The test reads the build config, because a
@@ -29,5 +29,24 @@ describe("electron fuses", () => {
   it("keep runAsNode on because the chat adapters run as the app binary", () => {
     expect(backends).toContain("ELECTRON_RUN_AS_NODE");
     expect(fuse("runAsNode")).toBe("true");
+  });
+});
+
+describe("cg in the app", () => {
+  const viteConfig = readFileSync(new URL("../electron.vite.config.ts", import.meta.url), "utf8");
+  const launcher = new URL("../resources/cg", import.meta.url);
+
+  it("bundles the CLI next to the core and ships the launcher in Resources/bin", () => {
+    expect(viteConfig).toContain('cg: "../cli/src/bin.ts"');
+    expect(config).toMatch(/from: resources\/cg\n\s+to: bin\/cg/);
+  });
+
+  it("runs the bundled CLI with the app binary as Node, which needs the runAsNode fuse", () => {
+    const text = readFileSync(launcher, "utf8");
+    expect(text).toContain("ELECTRON_RUN_AS_NODE=1");
+    expect(text).toContain("MacOS/citegeist");
+    expect(text).toContain("app.asar/out/main/cg.js");
+    expect(fuse("runAsNode")).toBe("true");
+    expect(() => accessSync(launcher, constants.X_OK)).not.toThrow();
   });
 });

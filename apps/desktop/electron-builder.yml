@@ -39,6 +39,10 @@ files:
   - "!**/node_modules/**/{README,CHANGELOG,HISTORY,CONTRIBUTING}{,.md,.markdown,.txt}"
   - "!**/node_modules/**/{test,tests,__tests__,docs,example,examples,.github}/**"
 extraResources:
+  # the `cg` launcher: runs out/main/cg.js with the app binary as Node. install.sh links
+  # ~/.local/bin/cg to it and the chat puts its folder on the PATH of the agent.
+  - from: resources/cg
+    to: bin/cg
   # the built renderer of apps/ui, loaded from file://; main/index.ts looks in Resources/ui/dist
   - from: ../ui/dist
     to: ui/dist
