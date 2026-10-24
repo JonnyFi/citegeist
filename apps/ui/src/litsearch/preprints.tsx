@@ -49,11 +49,6 @@ function Row({ item }: { item: LitsearchPreprint }) {
           {t("litsearch.preprints.acceptedAt", { venue: item.acceptedAt })}
         </span>
       ) : null}
-      {item.hints.map((h) => (
-        <span key={h} className="text-[12px] text-muted">
-          {h}
-        </span>
-      ))}
       <span className="text-[12px] text-muted">
         {t("litsearch.preprints.from")}{" "}
         {item.from.map((o, i) => (
@@ -238,7 +233,6 @@ export function LitsearchPreprintsScreen() {
           <>
             <Group label={t("litsearch.preprints.published")} items={by("published")} />
             <Group label={t("litsearch.preprints.accepted")} items={by("accepted")} />
-            <Group label={t("litsearch.preprints.hint")} items={by("hint")} />
             <Group label={t("litsearch.preprints.tracked")} items={by("preprint")} />
           </>
         )}

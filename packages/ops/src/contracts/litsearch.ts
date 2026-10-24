@@ -137,10 +137,11 @@ export const LitsearchPreprint = z.object({
   doi: z.string().optional(),
   arxiv: z.string().optional(),
   /**
-   * preprint: nothing found yet; hint: a venue without a verified DOI; accepted: accepted at
-   * OpenReview, no DOI yet; published: a peer-reviewed version with a DOI that resolves.
+   * preprint: nothing found yet; accepted: accepted at OpenReview, no DOI yet; published: a
+   * peer-reviewed version with a DOI that resolves. The published version is the one the library
+   * graph links (graph/versions.ts) or, for a paper outside the library, the core's check cache.
    */
-  status: z.enum(["preprint", "hint", "accepted", "published"]),
+  status: z.enum(["preprint", "accepted", "published"]),
   /** The runs and reference lists it came from ("run:<id>", "import:<file>"). */
   from: z.array(z.string()),
   checked: z.string().optional(),
@@ -149,7 +150,6 @@ export const LitsearchPreprint = z.object({
     .optional(),
   /** Accepted at OpenReview: the venue. */
   acceptedAt: z.string().optional(),
-  hints: z.array(z.string()).default([]),
 });
 export type LitsearchPreprint = z.infer<typeof LitsearchPreprint>;
 

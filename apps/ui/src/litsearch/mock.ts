@@ -244,7 +244,6 @@ export function createLitsearchMockState(): LitsearchMockState {
         arxiv: "2601.01234",
         status: "preprint",
         from: ["run:2026-10-20-agent-communication-protocols"],
-        hints: [],
       },
     ],
     [
@@ -258,7 +257,6 @@ export function createLitsearchMockState(): LitsearchMockState {
         from: ["import:references.bib"],
         checked: "2026-10-23T08:00:00",
         published: { doi: "10.1145/3711111", venue: "ACM Computing Surveys", year: 2026 },
-        hints: [],
       },
     ],
   ]);
@@ -633,7 +631,6 @@ export function bindLitsearchMock(
         arxiv: "2602.00001",
         status: "preprint",
         from: [`import:${input.path.split("/").pop()}`],
-        hints: [],
       });
       return { added };
     })

@@ -5,7 +5,6 @@ import { planSuggestedQueries } from "@citegeist/ai";
 import type {
   GraphWork,
   LitsearchPaper,
-  LitsearchPreprint,
   LitsearchRunMeta,
   LitsearchRunSummary,
   LitsearchWatch,
@@ -15,6 +14,12 @@ import { writeFileAtomic } from "../fsutil.js";
 import { markWorks } from "../graph/marking.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { Library } from "../library.js";
+import {
+  checkPreprints,
+  describePreprints,
+  type PreprintVersionTools,
+  type RawPreprint,
+} from "./preprints.js";
 import {
   type LitsearchCommand,
   type RunRequest,
@@ -153,11 +158,20 @@ export interface LitsearchDeps {
   scriptsDir?: string;
   /** Machine-local lookup cache. */
   cacheDir?: string;
+  /** The version detection of the library graph, which also decides when a tracked preprint is published. */
+  versions?: PreprintVersionTools;
   /** Keychain service of the app; watchlist agents read the OpenAlex key from it. */
   keychainService?: string;
   /** OpenAlex key from the Keychain and the contact address from the settings, read per run. */
   credentials?: () => Promise<{ openalexKey?: string | undefined; mailto?: string | undefined }>;
   now?: () => Date;
+}
+
+const PREPRINTS_JOB = "litsearch.preprints";
+
+interface PreprintsJobInput {
+  /** True for the button of the app: check every tracked preprint, not only the due ones. */
+  force: boolean;
 }
 
 interface RunJobInput {
@@ -172,7 +186,7 @@ export class LitsearchService {
     private readonly deps: LitsearchDeps = {},
   ) {
     deps.queue?.register(JOB_KIND, (ctx) => this.runJob(ctx), { maxAttempts: 1 });
-    deps.queue?.register("litsearch.preprints", () => this.checkPreprints(), { maxAttempts: 1 });
+    deps.queue?.register(PREPRINTS_JOB, (ctx) => this.checkPreprints(ctx), { maxAttempts: 1 });
     if (deps.queue) this.endRecoveredJobs(deps.queue);
   }
 
@@ -185,7 +199,7 @@ export class LitsearchService {
     for (const job of queue.open()) {
       if (job.kind === JOB_KIND) {
         queue.cancel(job.id, "interrupted by a restart of the app; resume the run to continue");
-      } else if (job.kind === "litsearch.preprints") {
+      } else if (job.kind === PREPRINTS_JOB) {
         queue.cancel(job.id, "interrupted by a restart of the app; check the preprints again");
       }
     }
@@ -723,16 +737,20 @@ export class LitsearchService {
 
   /** Tracked preprints of the library, after collecting those of all runs. */
   async preprints() {
-    const out = (await this.script("preprints.py", ["list", "--json"])) as {
-      items: RawPreprint[];
-      last_check: string | null;
-    };
-    const all = out.items.map(toPreprint);
+    const { preprints, lastCheck } = describePreprints(this.lib, await this.trackedPreprints());
     return {
-      tracked: all.filter((p) => p.status !== "published"),
-      published: all.filter((p) => p.status === "published"),
-      ...(out.last_check ? { lastCheck: out.last_check } : {}),
+      tracked: preprints.filter((p) => p.status !== "published"),
+      published: preprints.filter((p) => p.status === "published"),
+      ...(lastCheck ? { lastCheck } : {}),
     };
+  }
+
+  /** The list preprints.py keeps: every preprint of a run or an imported reference list. */
+  private async trackedPreprints(): Promise<RawPreprint[]> {
+    const out = (await this.script("preprints.py", ["list", "--json"])) as {
+      items?: RawPreprint[];
+    };
+    return out.items ?? [];
   }
 
   /** Tracks the preprints cited in a references.bib or a Markdown reference list. */
@@ -746,7 +764,7 @@ export class LitsearchService {
         sideEffects: "none",
       });
     }
-    const before = (await this.preprints()).tracked.length;
+    const before = (await this.trackedPreprints()).length;
     const { command, scriptsDir } = this.deps;
     if (!command || !scriptsDir) throw unavailable("preprints are tracked by the citegeist app");
     const res = await runScript({
@@ -764,25 +782,87 @@ export class LitsearchService {
         sideEffects: "none",
       });
     }
-    const after = (await this.preprints()).tracked.length;
+    const after = (await this.trackedPreprints()).length;
     return { added: Math.max(0, after - before) };
   }
 
   /** Starts the check of every tracked preprint as a job (network, minutes for long lists). */
   preprintsCheck(actor: Actor): { job: string } {
     const queue = this.requireQueue();
-    const open = queue.open().find((j) => j.kind === "litsearch.preprints");
+    const open = queue.open().find((j) => j.kind === PREPRINTS_JOB);
     if (open) return { job: open.id };
-    return { job: queue.enqueue({ kind: "litsearch.preprints", input: {}, by: actor }).id };
+    const input: PreprintsJobInput = { force: true };
+    return { job: queue.enqueue({ kind: PREPRINTS_JOB, input, by: actor }).id };
   }
 
-  private async checkPreprints(): Promise<unknown> {
-    const { command, scriptsDir } = this.deps;
-    if (!command || !scriptsDir) throw unavailable("preprints are checked by the citegeist app");
+  /**
+   * Queues a check of the tracked preprints once a week while the app runs: a preprint that was
+   * looked at less than six days ago is skipped. The timer does not keep the process alive.
+   */
+  schedulePreprintChecks(
+    options: { intervalMs?: number; firstDelayMs?: number; pollMs?: number } = {},
+  ): { tick(): string | undefined; stop(): void } {
+    const queue = this.deps.queue;
+    if (!queue || !this.deps.versions) return { tick: () => undefined, stop: () => undefined };
+    const interval = options.intervalMs ?? 7 * 24 * 60 * 60 * 1000;
+    const now = this.deps.now ?? (() => new Date());
+    const tick = (): string | undefined => {
+      if (queue.open().some((j) => j.kind === PREPRINTS_JOB)) return undefined;
+      const last = queue
+        .list({ status: "succeeded", limit: 100 })
+        .jobs.find((j) => j.kind === PREPRINTS_JOB);
+      if (last && now().getTime() - Date.parse(last.updatedAt) < interval) return undefined;
+      const input: PreprintsJobInput = { force: false };
+      return queue.enqueue({ kind: PREPRINTS_JOB, input, by: "system", maxAttempts: 1 }).id;
+    };
+    let timer: NodeJS.Timeout | undefined;
+    let first: NodeJS.Timeout | undefined = setTimeout(
+      () => {
+        first = undefined;
+        tick();
+        timer = setInterval(tick, options.pollMs ?? 60 * 60 * 1000);
+        timer.unref();
+      },
+      options.firstDelayMs ?? 10 * 60 * 1000,
+    );
+    first.unref();
+    return {
+      tick,
+      stop() {
+        if (first) clearTimeout(first);
+        if (timer) clearInterval(timer);
+        first = undefined;
+        timer = undefined;
+      },
+    };
+  }
+
+  /**
+   * The preprint check job. Whether a preprint is published is decided by the version detection
+   * of the library graph (see preprints.ts); OpenReview is the only lookup left to preprints.py.
+   */
+  private async checkPreprints(ctx: JobContext): Promise<unknown> {
+    const { command, scriptsDir, versions } = this.deps;
+    if (!command || !scriptsDir || !versions) {
+      throw unavailable("preprints are checked by the citegeist app");
+    }
+    const force = (ctx.job.input as PreprintsJobInput | null)?.force ?? true;
+    const result = await checkPreprints(
+      this.lib,
+      versions,
+      ctx.job.by,
+      await this.trackedPreprints(),
+      {
+        force,
+        now: this.deps.now?.() ?? new Date(),
+        signal: ctx.signal,
+        progress: (fraction, message) => ctx.progress(fraction * 0.9, message),
+      },
+    );
     const res = await runScript({
       command,
       script: join(scriptsDir, "preprints.py"),
-      args: ["check", "--all"],
+      args: ["openreview", ...(force ? ["--all"] : [])],
       env: { ...(await this.env()), ...(await this.credentials()) },
       timeoutMs: 30 * 60_000,
     });
@@ -795,7 +875,7 @@ export class LitsearchService {
         sideEffects: "partial",
       });
     }
-    return { published: res.stdout.trim().split("\n").filter(Boolean) };
+    return { ...result, accepted: res.stdout.trim().split("\n").filter(Boolean) };
   }
 
   private async credentials() {
@@ -893,49 +973,6 @@ interface RawWatch {
   last_status?: string | null;
   last_new?: number | null;
   unseen?: number;
-}
-
-/** One preprint as preprints.py's `list --json` prints it. */
-interface RawPreprint {
-  id: string;
-  title?: string;
-  doi?: string;
-  arxiv_id?: string;
-  status?: string;
-  origins?: string[];
-  last_checked?: string | null;
-  published?: { doi?: string; venue?: string; year?: number } | null;
-  openreview?: { status?: string; venue?: string } | null;
-  hints?: string[];
-}
-
-const PREPRINT_STATUSES = new Set(["preprint", "hint", "accepted", "published"]);
-
-function toPreprint(raw: RawPreprint): LitsearchPreprint {
-  const status = (
-    PREPRINT_STATUSES.has(raw.status ?? "") ? raw.status : "preprint"
-  ) as LitsearchPreprint["status"];
-  const pub = raw.published;
-  return {
-    id: raw.id,
-    title: raw.title ?? "",
-    ...(raw.doi ? { doi: raw.doi } : {}),
-    ...(raw.arxiv_id ? { arxiv: raw.arxiv_id } : {}),
-    status,
-    from: raw.origins ?? [],
-    ...(raw.last_checked ? { checked: raw.last_checked } : {}),
-    ...(pub?.doi
-      ? {
-          published: {
-            doi: pub.doi,
-            venue: pub.venue ?? "",
-            ...(Number.isInteger(pub.year) ? { year: pub.year } : {}),
-          },
-        }
-      : {}),
-    ...(status === "accepted" && raw.openreview?.venue ? { acceptedAt: raw.openreview.venue } : {}),
-    hints: (raw.hints ?? []).filter((h): h is string => typeof h === "string"),
-  };
 }
 
 /** Marks the papers <run>/watch.json lists as new against the watchlist's previous run. */

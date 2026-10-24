@@ -370,7 +370,13 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   bindProjectContext(registry);
   // A literature search run is a job; a one-shot process (the CLI) only reads runs.
   const litsearchSource = opts.litsearch?.sourceDir ?? join(repoRoot(), "workers", "research");
-  bindLitsearchOperations(registry, lib, {
+  const metadataLookup = opts.resolver ?? (resolver as NonNullable<typeof resolver>).lookup;
+  const litsearch = bindLitsearchOperations(registry, lib, {
+    versions: {
+      lookup: graphLookup,
+      link: (actor, citekeys) => graph.linkVersions(actor, citekeys),
+      resolve: (doi) => metadataLookup.resolve(doi),
+    },
     ai: {
       run: async (task, input) => ai.run(task, input),
     },
@@ -412,8 +418,10 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   }
 
   let alertSchedule: AlertSchedule | undefined;
+  let preprintSchedule: { stop(): void } | undefined;
   if (opts.autoStart !== false) {
     graph.schedule();
+    preprintSchedule = litsearch.litsearch.schedulePreprintChecks();
     alertSchedule = scheduleAlerts(alerts);
   }
 
@@ -438,6 +446,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     ...(semantic ? { semantic } : {}),
     close: async () => {
       graph.stop();
+      preprintSchedule?.stop();
       alertSchedule?.stop();
       semantic?.close();
       syncService.close();

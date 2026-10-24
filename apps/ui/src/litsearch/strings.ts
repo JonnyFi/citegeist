@@ -228,7 +228,6 @@ export const litsearchDe = {
   "litsearch.preprints.imported.other": "{n} Preprints neu verfolgt",
   "litsearch.preprints.published": "Inzwischen erschienen",
   "litsearch.preprints.accepted": "Angenommen, noch ohne DOI",
-  "litsearch.preprints.hint": "Hinweis ohne geprüfte DOI",
   "litsearch.preprints.tracked": "Verfolgt",
   "litsearch.preprints.emptyTitle": "Keine Preprints",
   "litsearch.preprints.emptyDescription":
@@ -462,7 +461,6 @@ export const litsearchEn: Record<keyof typeof litsearchDe, string> = {
   "litsearch.preprints.imported.other": "{n} preprints newly tracked",
   "litsearch.preprints.published": "Published since",
   "litsearch.preprints.accepted": "Accepted, no DOI yet",
-  "litsearch.preprints.hint": "Hint without a verified DOI",
   "litsearch.preprints.tracked": "Tracked",
   "litsearch.preprints.emptyTitle": "No preprints",
   "litsearch.preprints.emptyDescription":
