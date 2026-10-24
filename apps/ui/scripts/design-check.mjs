@@ -200,7 +200,70 @@ const screens = [
       await page.getByTestId("import-result").waitFor({ timeout: 10000 });
     },
   },
+
+  // UI-2a: literature matrix, related works, retraction warnings
+  {
+    name: "projekt-matrix-anlegen",
+    hash: "#/projects/phd-proposal?tab=matrix",
+    board: false,
+    async setup(page) {
+      await newMatrix(page);
+      await page.getByRole("button", { name: "Methode", exact: true }).click();
+      await page.getByRole("button", { name: "Ergebnis", exact: true }).click();
+    },
+  },
+  {
+    name: "projekt-matrix",
+    hash: "#/projects/phd-proposal?tab=matrix",
+    board: false,
+    async setup(page) {
+      await newMatrix(page);
+      for (const preset of ["Fragestellung", "Methode", "Ergebnis"]) {
+        await page.getByRole("button", { name: preset, exact: true }).click();
+      }
+      await page.getByRole("button", { name: "Matrix anlegen" }).click();
+      await page.getByRole("table", { name: "Literaturmatrix" }).waitFor();
+      await page.getByRole("button", { name: "Offene Zellen füllen" }).click();
+      const fill = page.getByRole("progressbar", { name: "Zellen werden gefüllt" });
+      await fill.waitFor();
+      await fill.waitFor({ state: "detached", timeout: 20000 });
+    },
+  },
+  {
+    name: "quelle-verwandte-werke",
+    hash: "#/items/luhmann1984soziale",
+    board: false,
+    async setup(page) {
+      const heading = page.getByRole("heading", { name: "Verwandte Werke" });
+      await heading.scrollIntoViewIfNeeded();
+      await page.getByTestId("related-work").first().waitFor();
+      await page.getByRole("button", { name: "Zitiert von", exact: true }).click();
+      await page.getByText("Reassembling the Social").waitFor();
+      await heading.evaluate((el) => el.closest("section")?.scrollIntoView({ block: "start" }));
+    },
+  },
+  {
+    name: "quelle-rueckzug",
+    hash: "#/items/es2023ragas",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("retraction-note").waitFor();
+    },
+  },
+  {
+    name: "bibliothek-rueckzug",
+    hash: "#/?project=rag-evaluation",
+    board: false,
+    async setup(page) {
+      await page.getByText("Zurückgezogen").first().waitFor();
+    },
+  },
 ];
+
+async function newMatrix(page) {
+  await page.getByRole("button", { name: "Neue Matrix" }).click();
+  await page.getByRole("form", { name: "Matrix anlegen" }).waitFor();
+}
 
 async function showText(page) {
   const text = page.getByRole("button", { name: "Text", exact: true });

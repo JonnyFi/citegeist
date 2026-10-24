@@ -275,7 +275,11 @@ export function ItemView({
         <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
           <article className="mx-auto flex w-full max-w-[720px] flex-col">
             <header className="flex flex-col gap-2.5 pb-7">
-              {retraction ? <RetractionNote marker={retraction} /> : null}
+              {retraction ? (
+                <div className="mb-3">
+                  <RetractionNote marker={retraction} />
+                </div>
+              ) : null}
               {fm.inbox?.why ? (
                 <Provenance
                   who={fm.inbox.by === "human" ? t("actor.human") : fm.inbox.by}

@@ -128,7 +128,7 @@ function generate(
     status: "failed",
     answer: "",
     evidence: [],
-    error: `NO_SOURCE_TEXT: '${citekey}' has no converted text to answer '${column.name}' from`,
+    error: `NO_SOURCE_TEXT: '${citekey}' has no converted text to answer '${column.name}'`,
   };
 }
 
