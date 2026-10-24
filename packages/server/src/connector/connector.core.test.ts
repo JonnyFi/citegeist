@@ -28,7 +28,7 @@ async function post(name: string) {
     headers: fx.headers,
     body: JSON.stringify(fx.body),
   });
-  return { status: res.status, body: await res.json().catch(() => null) };
+  return { status: res.status, body: (await res.json().catch(() => null)) as any };
 }
 
 async function call(name: string, input: unknown) {

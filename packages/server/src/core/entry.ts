@@ -19,7 +19,13 @@ type Outgoing =
   | { type: "locked"; pid: number; port: number }
   | { type: "error"; message: string };
 
-const parentPort = (process as NodeJS.Process & { parentPort?: Electron.ParentPort }).parentPort;
+/** The part of Electron's `process.parentPort` that the core uses. Absent under plain Node. */
+interface ParentPort {
+  postMessage(message: unknown): void;
+  on(event: "message", listener: (e: { data?: unknown }) => void): void;
+}
+
+const parentPort = (process as NodeJS.Process & { parentPort?: ParentPort }).parentPort;
 
 function send(message: Outgoing): void {
   if (parentPort) parentPort.postMessage(message);

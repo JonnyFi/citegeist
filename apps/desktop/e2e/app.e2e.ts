@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
-import { SEED, seedLibrary } from "../src/testing/seed.js";
+import { SEED, seedLibrary } from "@citegeist/server/testing";
 
 let tmp: string;
 let library: string;

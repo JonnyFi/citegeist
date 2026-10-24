@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@citegeist/core": "workspace:*",
-    "@citegeist/desktop": "workspace:*",
     "@citegeist/mcp": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
+    "@citegeist/server": "workspace:*",
     "@orpc/client": "^1.16.1",
     "commander": "^14.0.0",
     "zod": "^4.2.0"

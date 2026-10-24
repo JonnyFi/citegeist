@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createRuntime, defaultLocalBase, Library, LocalPaths } from "@citegeist/core";
-import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/desktop/core-server";
+import { type CoreServer, LockHeldError, startCoreServer } from "@citegeist/server";
 import { CONTRACTS, defineContract, Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { z } from "zod";
