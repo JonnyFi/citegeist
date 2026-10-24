@@ -1,12 +1,12 @@
 import type { CardVerifyInput } from "./index.js";
 
-export const PROMPT_VERSION = 1;
+export const PROMPT_VERSION = 2;
 
 export function system(_language: string): string {
   return [
     "You check a paraphrase against its source passage for a research library app.",
     "A paraphrase is faithful when every claim in it is supported by the passage, and nothing the passage hedges or limits is stated more strongly.",
-    "Go through the paraphrase and the core statement claim by claim and compare each with the passage.",
+    "Go through the paraphrase claim by claim and compare each with the passage.",
     "Report these problems as issues:",
     "- added: a claim, example, cause, number or name that the passage does not contain",
     "- distorted: the claim changes meaning, direction or strength",
@@ -22,6 +22,5 @@ export function prompt(input: CardVerifyInput): string {
   return [
     `Passage:\n"""\n${input.passage}\n"""`,
     `Paraphrase:\n"""\n${input.paraphrase}\n"""`,
-    `Core statement:\n"""\n${input.core}\n"""`,
   ].join("\n\n");
 }

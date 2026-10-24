@@ -107,8 +107,8 @@ link {"from": "n_01JB8Z3QK7ABCDEFGH", "link": {"to": "[[granovetter1973strength]
 2. MCP `create_card {citekey, quote, anchor: {text: {exact: "<same wording>", prefix: "<text before>", suffix: "<text after>", block: "<blockid>"}}, tags?, projects?}`.
    CLI: `cg cards create <citekey> --quote "<wording>" --anchor '{"text":{"exact":"<wording>","prefix":"...","suffix":"...","block":"<blockid>"}}' --json`.
 3. `prefix` and `suffix` are 20 to 40 characters on each side. They keep the anchor stable if the text is converted again.
-4. The card gets an AI paraphrase and a core statement afterwards (job id in the result). Do not write those yourself.
-5. The user's own words belong in the section "In my words" of the card file. Offer a draft in chat and let the user decide.
+4. The card gets an AI paraphrase and an AI-chosen kind (thesis, finding, method, definition, example or critique) afterwards (job id in the result). Do not write those yourself. Pass `kind` only when the user names one.
+5. The user's own text belongs in the section "Note" of the card file (`update_card` patch field `note`). Offer a draft in chat and let the user decide.
 
 ## Workflow: cite with a page locator
 

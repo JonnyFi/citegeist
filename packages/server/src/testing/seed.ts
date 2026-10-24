@@ -112,14 +112,14 @@ export function seedLibrary(root: string): void {
       {
         id: cardId,
         item: SEED.items.luhmann,
-        kind: "quote",
+        kind: "thesis",
         locator: { label: "page", start: "31", confirmed: true },
         anchor: { text: { exact: SEED.quote } },
         quote_sha256: sha(SEED.quote),
         projects: ["phd-proposal"],
         created: STAMP,
       },
-      `> ${SEED.quote}\n\n## In my words\n\nCommunication, not people, is the element.`,
+      `> ${SEED.quote}\n\n## Note\n\nCommunication, not people, is the element.`,
     ),
   );
 

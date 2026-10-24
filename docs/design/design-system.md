@@ -32,15 +32,16 @@ Bauhaus statt SaaS: weißer Grund, schwarze 1px-Linien als einziges Ordnungsmitt
 | `line-soft` | `#e4e4e4` | `#3a3a3e` | Tabellenzeilen, Trenner in Karten |
 | `line-faint` | `#c4c4c4` | `#4a4a50` | Eingabefeld-Unterstrich, Chips zweiter Ordnung |
 | `danger` | `#8a2130` | `#ff8a98` | Fehler, "ungeprüft" |
-| `card-quote` | `#2f5fa8` | `#86b4ff` | Zitat |
+| `card-none` | `#2f5fa8` | `#86b4ff` | Karte ohne Art |
+| `card-thesis` | `#5b3a9e` | `#b7a0ff` | These |
 | `card-finding` | `#8a2130` | `#ff8a98` | Befund |
 | `card-definition` | `#5a6b12` | `#c9c25a` | Definition |
 | `card-method` | `#1f6f8b` | `#6fc3dc` | Methode |
+| `card-example` | `#7a5c00` | `#e0b84a` | Beispiel |
 | `card-critique` | `#141414` | `#ececea` | Kritik |
-| `card-comment` | `#7a5c00` | `#e0b84a` | Kommentar |
 | `agent` | `#2f5fa8` | `#86b4ff` | Recherche-Fortschritt, Agent-Punkt |
 
-Regeln: Aktiv ist immer `ink` auf `bg` invertiert (schwarzer Block mit weißem Text, im Dunkeln umgekehrt). Es gibt keinen Akzent neben den Kartenfarben. Die Kartenfarben unterscheiden sich in Helligkeit, nicht nur im Farbton, und tragen zusätzlich immer das Wort (Zitat, Befund, Definition), damit sie ohne Farbe lesbar bleiben.
+Regeln: Aktiv ist immer `ink` auf `bg` invertiert (schwarzer Block mit weißem Text, im Dunkeln umgekehrt). Es gibt keinen Akzent neben den Kartenfarben. Die Kartenfarben unterscheiden sich in Helligkeit, nicht nur im Farbton, und tragen zusätzlich immer das Wort (These, Befund, Definition), damit sie ohne Farbe lesbar bleiben.
 
 ## Schrift
 
@@ -65,7 +66,7 @@ Die drei Schriften werden per `@fontsource` eingebunden (Electron läuft offline
 
 Switcher der rechten Spalte: zwei gleich breite Reiter, 44px hoch, Label in Versalien 11px, aktiver Reiter als invertierter Block, inaktiver mit linker Trennlinie. Links steht immer das Screen-eigene (Karten, Einstellungen), rechts immer Agent mit dem Namen des aktiven Agents in Monospace.
 
-Zitatkarte: weiße Fläche mit 1px Rahmen auf `sunken`. Kopfzeile 32px mit 6px breitem Farbreiter links, Kartenart in Versalien in der Kartenfarbe, Belegstelle rechts in Monospace. Darunter drei getrennte Ebenen: Originalzitat in Serif, KI-Paraphrase auf `sunken` mit Stern, Modell und Zeit, "In meinen Worten" als Eingabefeld mit Unterstrich. Aktionen als geteilte Leiste am unteren Kartenrand. Zustände: "KI schreibt" als kursive Zeile mit Farbquadrat, "ungeprüft" als umrandeter Versalien-Stempel in `danger`, "nicht gefunden" als Stempel in `ink` mit gestrichelt-freier Karte und Link in den Reader.
+Zitatkarte: weiße Fläche mit 1px Rahmen auf `sunken`. Kopfzeile 32px mit 6px breitem Farbreiter links, Kartenart in Versalien in der Kartenfarbe (eine Karte ohne Art zeigt nur den Reiter in `card-none`), Belegstelle rechts in Monospace. Darunter drei getrennte Ebenen: Originalzitat in Serif, Paraphrase auf `sunken` mit Stern und der kleinen Aktion „Neu schreiben“ samt Sprachwahl in der Blockzeile, Notiz als Eingabefeld mit Unterstrich. Modell, Zeit und Sprache der Paraphrase stehen in einem Tooltip auf Stern und Titel. Aktionen als geteilte Leiste am unteren Kartenrand: „Wörtlich zitieren“ und „Sinngemäß zitieren“. Zustände: "KI schreibt" als kursive Zeile mit Farbquadrat, "ungeprüft" als umrandeter Versalien-Stempel in `danger`, "nicht gefunden" als Stempel in `ink` mit gestrichelt-freier Karte und Link in den Reader.
 
 Buttons: 26px (Unterleiste) oder 28px (Inhalt), 1px Rahmen, kein Radius, primär invertiert. Gruppen teilen sich die Rahmenlinie (zweiter Button ohne linken Rand).
 

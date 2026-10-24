@@ -96,6 +96,27 @@ export function pageOfSource(
   return null;
 }
 
+/**
+ * Text item and offset in it for a source-space offset. For a range end (`isEnd`) the offset is the
+ * one just after the last character, so it can be the length of the item. Null when the offset
+ * lies on a line break, which belongs to no item.
+ */
+export function itemOfSource(
+  pages: readonly PdfPageText[],
+  src: number,
+  isEnd: boolean,
+): { page: number; item: number; offset: number } | null {
+  const hit = pageOfSource(pages, isEnd ? src - 1 : src);
+  if (!hit) return null;
+  for (let i = hit.page.items.length - 1; i >= 0; i--) {
+    const it = hit.page.items[i];
+    if (!it || it.start > hit.offset) continue;
+    if (hit.offset >= it.start + it.str.length) return null;
+    return { page: hit.page.index, item: i, offset: hit.offset - it.start + (isEnd ? 1 : 0) };
+  }
+  return null;
+}
+
 /** One rect per visual line covering the page-text range [a, b), in PDF user space. */
 export function textRangeToRects(page: PdfPageText, a: number, b: number): Rect[] {
   const rects: Rect[] = [];

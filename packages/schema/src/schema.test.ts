@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   Actor,
   CardFrontmatter,
+  CardKind,
   CitegeistError,
   ItemFrontmatter,
   NoteFrontmatter,
@@ -57,8 +58,58 @@ describe("schemas", () => {
       quote_sha256: "a".repeat(64),
       created: stamp,
     });
-    expect(card.kind).toBe("quote");
+    expect(card.kind).toBeUndefined();
     expect(card.locator?.label).toBe("page");
+  });
+
+  describe("card kind migration (D16)", () => {
+    const base = {
+      id: "c_01JB8Z3QK7ABCDEFGH",
+      item: "luhmann1984soziale",
+      anchor: { text: { exact: "Kommunikation" } },
+      quote_sha256: "a".repeat(64),
+      created: stamp,
+    };
+    const kindOf = (kind: unknown) => CardFrontmatter.parse({ ...base, kind }).kind;
+
+    it("reads the old kinds quote and comment as no kind", () => {
+      expect(kindOf("quote")).toBeUndefined();
+      expect(kindOf("comment")).toBeUndefined();
+      expect(kindOf(undefined)).toBeUndefined();
+    });
+
+    it("keeps the unchanged kinds and knows the new ones", () => {
+      for (const kind of ["finding", "method", "definition", "critique", "thesis", "example"]) {
+        expect(kindOf(kind)).toBe(kind);
+      }
+      expect(CardKind.options).toEqual([
+        "thesis",
+        "finding",
+        "method",
+        "definition",
+        "example",
+        "critique",
+      ]);
+    });
+
+    it("reads a value that is no kind as unset instead of failing the card", () => {
+      expect(kindOf("opinion")).toBeUndefined();
+      expect(kindOf(42)).toBeUndefined();
+    });
+
+    it("stays representable as JSON Schema, with the new kinds as the only options", () => {
+      const json = JSON.stringify(toJsonSchemas().card);
+      expect(json).toContain('"thesis"');
+      expect(json).not.toContain('"comment"');
+    });
+
+    it("still parses a stored core stamp", () => {
+      const fm = CardFrontmatter.parse({
+        ...base,
+        core: { by: "claude-code/haiku", at: "2026-10-23T11:02:00Z" },
+      });
+      expect(fm.core?.by).toBe("claude-code/haiku");
+    });
   });
 
   it("parses notes with typed links and projects with export policy defaults", () => {

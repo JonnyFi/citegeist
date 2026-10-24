@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useCore } from "./hooks";
 
-/** A background AI job of one card: the paraphrase and core statement being written. */
+/** A background AI job of one card: the paraphrase being written. */
 export interface CardJob {
   jobId: string;
   state: "running" | "failed";

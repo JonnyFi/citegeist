@@ -1,8 +1,8 @@
-import { CARD_SECTIONS, type CardBody } from "@citegeist/schema";
+import { CARD_SECTIONS, type CardBody, LEGACY_NOTE_SECTIONS } from "@citegeist/schema";
 import { normalizeNewlines } from "./hash.js";
 
-type KnownKey = "paraphrase" | "core" | "ownWords" | "comment";
-const KNOWN_ORDER: KnownKey[] = ["paraphrase", "core", "ownWords", "comment"];
+type KnownKey = keyof typeof CARD_SECTIONS;
+const KNOWN_ORDER: KnownKey[] = ["paraphrase", "core", "note"];
 
 export class CardBodyError extends Error {}
 
@@ -21,6 +21,10 @@ function trimBlankLines(lines: string[]): string {
  * Parses the text of a card file below the frontmatter: a blockquote with the verbatim quote,
  * then level-2 sections. Known sections map to fields, unknown ones land in `extra` in order.
  * Text between the quote and the first heading becomes an extra section with an empty heading.
+ *
+ * D17: the retired sections "In my words" and "Comment" are read into `note`. With both present
+ * the note is the own words, a blank line, the comment (a "Note" section of the same file comes
+ * last). The file is only changed when the card is written again.
  */
 export function parseCardBody(text: string): CardBody {
   const lines = normalizeNewlines(text).split("\n");
@@ -48,10 +52,18 @@ export function parseCardBody(text: string): CardBody {
 
   const body: CardBody = { quote, extra: [] };
   const seen = new Set<string>();
+  const legacyNote: string[] = [];
+  const legacySeen = new Set<string>();
   for (const [idx, s] of sections.entries()) {
     const content = trimBlankLines(s.lines);
     if (idx === 0) {
       if (content !== "") body.extra.push({ heading: "", text: content });
+      continue;
+    }
+    const legacy = LEGACY_NOTE_SECTIONS.find((h) => h.toLowerCase() === s.heading.toLowerCase());
+    if (legacy && !legacySeen.has(legacy)) {
+      legacySeen.add(legacy);
+      if (content !== "") legacyNote.push(content);
       continue;
     }
     const key = KNOWN_ORDER.find((k) => CARD_SECTIONS[k].toLowerCase() === s.heading.toLowerCase());
@@ -61,6 +73,9 @@ export function parseCardBody(text: string): CardBody {
     } else {
       body.extra.push({ heading: s.heading, text: content });
     }
+  }
+  if (legacyNote.length > 0) {
+    body.note = [...legacyNote, ...(body.note ? [body.note] : [])].join("\n\n");
   }
   return body;
 }

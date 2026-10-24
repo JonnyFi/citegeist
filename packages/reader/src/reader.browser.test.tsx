@@ -138,6 +138,43 @@ describe("PdfView", () => {
     expect(a.location.blocks[0]?.id).toBe("bpara0001");
   });
 
+  it("snaps a selection that ends or starts in the middle of a word", async () => {
+    const onCreate = vi.fn();
+    await render(
+      <Frame>
+        <PdfView data={pdfData} source={FIXTURE_SOURCE} stream={stream} onCreateAnchor={onCreate} />
+      </Frame>,
+    );
+    await textLayerReady();
+    selectInPdf(0, "losure does not mean isola", "losure does not mean isola");
+    // the live selection grows to the whole words, so the reader sees what the card will quote
+    await expect
+      .poll(() => window.getSelection()?.toString(), POLL)
+      .toBe("Closure does not mean isolation");
+    await pressPopover();
+    const a = created(onCreate);
+    expect(a.quote).toBe("Closure does not mean isolation");
+    expect(a.textAnchor.exact).toBe("Closure does not mean isolation");
+    expect(a.textAnchor.prefix).toContain("operative closure.");
+    expect(a.textAnchor.suffix.startsWith(", since the system")).toBe(true);
+    expect(a.pdfAnchor?.quads).toHaveLength(1);
+  });
+
+  it("snaps a selection whose end cuts the first word of the next line", async () => {
+    const onCreate = vi.fn();
+    await render(
+      <Frame>
+        <PdfView data={pdfData} source={FIXTURE_SOURCE} stream={stream} onCreateAnchor={onCreate} />
+      </Frame>,
+    );
+    await textLayerReady();
+    selectInPdf(0, "presupposes a distinc", "has a marked si");
+    await pressPopover();
+    const a = created(onCreate);
+    expect(a.quote).toBe("presupposes a distinction, and every distinction has a marked side");
+    expect(a.pdfAnchor?.quads).toHaveLength(2);
+  });
+
   it("makes the text anchor from the PDF text when no document stream is given", async () => {
     const onCreate = vi.fn();
     await render(
@@ -314,6 +351,38 @@ describe("ReflowView", () => {
     expect(a.textAnchor.start).toBe(stream.text.indexOf(a.quote));
     expect(a.pdfAnchor).toBeUndefined();
     expect(a.location.first).toEqual({ page: 1, label: "10" });
+  });
+
+  it("snaps a selection that ends or starts in the middle of a word", async () => {
+    const onCreate = vi.fn();
+    await render(
+      <Frame>
+        <ReflowView html={html} stream={stream} onCreateAnchor={onCreate} />
+      </Frame>,
+    );
+    await expect.poll(() => document.getElementById("bpara0003"), POLL).not.toBeNull();
+    selectInReflow("bpara0003", "very actualisation of meaning", "further possibil");
+    await expect
+      .poll(() => window.getSelection()?.toString(), POLL)
+      .toBe("Every actualisation of meaning points to further possibilities");
+    await pressPopover();
+    const a = created(onCreate);
+    expect(a.quote).toBe("Every actualisation of meaning points to further possibilities");
+    expect(a.textAnchor.exact).toBe(a.quote);
+    expect(a.textAnchor.start).toBe(stream.text.indexOf(a.quote));
+  });
+
+  it("leaves a selection on word boundaries as it is", async () => {
+    const onCreate = vi.fn();
+    await render(
+      <Frame>
+        <ReflowView html={html} stream={stream} onCreateAnchor={onCreate} />
+      </Frame>,
+    );
+    await expect.poll(() => document.getElementById("bpara0003"), POLL).not.toBeNull();
+    selectInReflow("bpara0003", "actualisation of meaning", "of meaning");
+    await pressPopover();
+    expect(created(onCreate).quote).toBe("actualisation of meaning");
   });
 
   it("renders a stored highlight over the right block", async () => {

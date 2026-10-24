@@ -19,7 +19,9 @@ export function CardColumnBar({
   project?: string | undefined;
 }) {
   const { t } = useI18n();
-  const kinds = [...new Set(cards.map((c) => c.frontmatter.kind))];
+  const kinds = [...new Set(cards.map((c) => c.frontmatter.kind))].filter(
+    (k): k is NonNullable<typeof k> => k !== undefined,
+  );
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-3 border-b border-line-soft bg-bg px-4">
       <div

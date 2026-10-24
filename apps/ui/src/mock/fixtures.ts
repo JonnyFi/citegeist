@@ -254,9 +254,7 @@ const CARDS: Array<{
   page: string;
   kind?: CardFrontmatter["kind"];
   paraphrase?: string;
-  core?: string;
-  ownWords?: string;
-  comment?: string;
+  note?: string;
   projects?: string[];
 }> = [
   {
@@ -266,7 +264,7 @@ const CARDS: Array<{
     page: "31",
     paraphrase:
       "Social systems consist of communications only; people belong to their environment rather than to the system.",
-    core: "Communication, not people, is the element of social systems.",
+    kind: "thesis",
     projects: ["phd-proposal"],
   },
   {
@@ -276,15 +274,14 @@ const CARDS: Array<{
     page: "58",
     kind: "definition",
     paraphrase: "Self-referential systems relate to themselves through their own elements.",
-    core: "Definition of self-reference.",
-    ownWords: "Compare with Maturana's autopoiesis before using this in chapter 2.",
+    note: "Compare with Maturana's autopoiesis before using this in chapter 2.",
     projects: ["phd-proposal"],
   },
   {
     item: "luhmann1984soziale",
     quote: "Doppelte Kontingenz ist der Ausgangspunkt der Bildung sozialer Systeme.",
     page: "148",
-    comment: "Possible counter-position to Habermas, see note on double contingency.",
+    note: "Possible counter-position to Habermas, see note on double contingency.",
     projects: ["phd-proposal"],
   },
   {
@@ -294,7 +291,6 @@ const CARDS: Array<{
     page: "2",
     kind: "method",
     paraphrase: "The generator is a seq2seq transformer, the memory a dense index of Wikipedia.",
-    core: "Architecture of the original RAG model.",
     projects: ["rag-evaluation"],
   },
   {
@@ -304,14 +300,12 @@ const CARDS: Array<{
     page: "8",
     kind: "finding",
     paraphrase: "RAG output is more specific and factual than a parametric-only baseline.",
-    core: "Main empirical result.",
     projects: ["rag-evaluation"],
   },
   {
     item: "vaswani2017attention",
     quote: "The Transformer is the first transduction model relying entirely on self-attention.",
     page: "2",
-    core: "No recurrence, no convolution.",
     projects: ["rag-evaluation"],
   },
 ];
@@ -391,15 +385,12 @@ export function createFixtures(): MockData {
     frontmatter: CardFrontmatter.parse({
       id: `c_${ulid()}`,
       item: c.item,
-      kind: c.kind ?? "quote",
+      ...(c.kind ? { kind: c.kind } : {}),
       locator: { label: "page", start: c.page, confirmed: true },
       anchor: { text: { exact: c.quote } },
       quote_sha256: "0".repeat(64),
       ...(c.paraphrase
         ? { paraphrase: { by: "claude-code", at: "2026-10-02T10:00:00.000Z", language: "en" } }
-        : {}),
-      ...(c.core
-        ? { core: { by: "claude-code", at: "2026-10-02T10:00:00.000Z", language: "en" } }
         : {}),
       projects: c.projects ?? [],
       created: STAMP,
@@ -407,9 +398,7 @@ export function createFixtures(): MockData {
     body: {
       quote: c.quote,
       ...(c.paraphrase ? { paraphrase: c.paraphrase } : {}),
-      ...(c.core ? { core: c.core } : {}),
-      ...(c.ownWords ? { ownWords: c.ownWords } : {}),
-      ...(c.comment ? { comment: c.comment } : {}),
+      ...(c.note ? { note: c.note } : {}),
       extra: [],
     },
   }));

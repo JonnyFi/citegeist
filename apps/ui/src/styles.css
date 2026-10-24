@@ -24,12 +24,13 @@
   --accent-ink: #ffffff;
   --accent-soft: #f3f3f1;
   --danger: #8a2130;
-  --card-quote: #2f5fa8;
+  --card-none: #2f5fa8;
+  --card-thesis: #5b3a9e;
   --card-finding: #8a2130;
   --card-definition: #5a6b12;
   --card-method: #1f6f8b;
+  --card-example: #7a5c00;
   --card-critique: #141414;
-  --card-comment: #7a5c00;
   --agent: #2f5fa8;
   color-scheme: light;
 }
@@ -47,12 +48,13 @@
   --accent-ink: #151517;
   --accent-soft: #242428;
   --danger: #ff8a98;
-  --card-quote: #86b4ff;
+  --card-none: #86b4ff;
+  --card-thesis: #b7a0ff;
   --card-finding: #ff8a98;
   --card-definition: #c9c25a;
   --card-method: #6fc3dc;
+  --card-example: #e0b84a;
   --card-critique: #ececea;
-  --card-comment: #e0b84a;
   --agent: #86b4ff;
   color-scheme: dark;
 }
@@ -70,12 +72,13 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
-  --color-card-quote: var(--card-quote);
+  --color-card-none: var(--card-none);
+  --color-card-thesis: var(--card-thesis);
   --color-card-finding: var(--card-finding);
   --color-card-definition: var(--card-definition);
   --color-card-method: var(--card-method);
+  --color-card-example: var(--card-example);
   --color-card-critique: var(--card-critique);
-  --color-card-comment: var(--card-comment);
   --color-agent: var(--agent);
 
   --font-sans:
@@ -186,7 +189,7 @@ body {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
-  text-decoration-color: var(--hl-color, var(--card-quote));
+  text-decoration-color: var(--hl-color, var(--card-none));
 }
 .hl-selection {
   background: var(--line-soft);
@@ -297,7 +300,7 @@ body .cg-hl {
   mix-blend-mode: normal;
   border-radius: 0;
   background:
-    linear-gradient(var(--cg-hl-color, var(--card-quote)), var(--cg-hl-color, var(--card-quote)))
+    linear-gradient(var(--cg-hl-color, var(--card-none)), var(--cg-hl-color, var(--card-none)))
     no-repeat 0 100% / 100% 2px;
   transform: translateY(3px);
 }

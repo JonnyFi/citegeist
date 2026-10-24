@@ -69,13 +69,13 @@ Zwei Tabs: „Übersicht“ und „Lesen“.
 Die Zitatkarte ist das wichtigste Objekt der App und braucht das sorgfältigste Design.
 - Wortlaut der Passage (unveränderlich, klar als Originalzitat erkennbar)
 - Seitenangabe, z. B. „S. 31“ oder „S. 31 f.“
-- Art: Zitat, Befund, Methode, Definition, Kritik, Kommentar
-- Paraphrase und Kernaussage, von der KI geschrieben, sichtbar als KI-Text markiert (mit Modell und Zeitpunkt)
-- „In meinen Worten“ und Kommentar, frei editierbar
+- Art, optional und von der KI vorgeschlagen: These, Befund, Methode, Definition, Beispiel, Kritik
+- Paraphrase, von der KI geschrieben, als KI-Text mit Stern markiert (Modell und Zeitpunkt im Tooltip), mit der kleinen Aktion „Neu schreiben“ und der Sprachwahl im Block
+- Notiz, frei editierbar
 - Tags, Projekte
-- Aktionen: „Als direktes Zitat kopieren“, „Als indirektes Zitat kopieren“ (Ergebnis z. B. „Luhmann (1984, S. 31)“ beziehungsweise „vgl. Luhmann 1984, S. 31“), „Neu schreiben“ mit Sprachwahl, „Im Reader zeigen“
+- Aktionen: „Wörtlich zitieren“, „Sinngemäß zitieren“ (Ergebnis z. B. „Luhmann (1984, S. 31)“ beziehungsweise „vgl. Luhmann 1984, S. 31“), „Im Reader zeigen“
 - Zustände:
-  - **KI schreibt:** die Karte steht sofort, Paraphrase und Kernaussage erscheinen etwa 4 bis 6 Sekunden später
+  - **KI schreibt:** die Karte steht sofort, Paraphrase und Art erscheinen etwa 4 bis 6 Sekunden später
   - **KI fehlgeschlagen:** mit Erneut-Knopf
   - **Seite ungeprüft:** die gedruckte Seitenzahl ist noch nicht bestätigt
   - **Markierung nicht gefunden:** nach einer Neukonvertierung ließ sich die Stelle nicht wiederfinden

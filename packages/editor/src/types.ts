@@ -27,8 +27,8 @@ export interface CardEmbed {
   citation?: string;
   /** Card kind label, e.g. "Definition" */
   kind?: string;
-  /** The user's own words, shown below the quote. */
-  ownWords?: string;
+  /** The note of the card, shown below the quote. */
+  note?: string;
 }
 
 export interface OpenLinkEvent {

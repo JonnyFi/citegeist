@@ -1,7 +1,7 @@
 import { cardsExport, cardsRegenerate, cardsUpdate } from "@citegeist/ops";
 import type { ModelStamp } from "@citegeist/schema";
 import { CardKind } from "@citegeist/schema";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { type I18n, useI18n } from "../i18n";
 import { AI_LANGUAGES } from "../lib/ai-language";
 import { type CardJob, isPending } from "../lib/card-jobs";
@@ -16,6 +16,9 @@ import { Button } from "./ui/button";
 import { Input, Textarea } from "./ui/input";
 import { Star } from "./ui/provenance";
 import { Select } from "./ui/select";
+
+/** Value of the kind select for a card without a kind. */
+const NO_KIND = "none";
 
 /** "claude-code/haiku, 2. Okt. 2026, de": who wrote an AI text, when and in which language. */
 export function stampText({ lang }: I18n, stamp: ModelStamp): string {
@@ -72,32 +75,37 @@ function SavedField({
   );
 }
 
-/** One AI text with its origin: star, label, model and time, then the text. */
-function AiText({
-  title,
+/**
+ * The one AI text of a card. Star and title mark it as machine text, model, date and language
+ * sit in a tooltip. `tools` holds the rewrite action, which only the open card shows.
+ */
+function ParaphraseBlock({
   text,
   stamp,
   dim,
+  tools,
 }: {
-  title: string;
-  text: string;
+  text: string | undefined;
   stamp: ModelStamp | undefined;
   dim: boolean;
+  tools?: ReactNode;
 }) {
   const i18n = useI18n();
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted">
-        <Star />
-        <span>{title}</span>
-        {stamp ? (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="font-mono">{stampText(i18n, stamp)}</span>
-          </>
-        ) : null}
+      <div className="flex items-center justify-between gap-2 text-[11px] text-muted">
+        <span
+          className="flex items-center gap-1.5"
+          title={stamp ? stampText(i18n, stamp) : undefined}
+        >
+          <Star />
+          <span>{i18n.t("card.paraphrase")}</span>
+        </span>
+        {tools}
       </div>
-      <p className={cn("text-[13px] leading-[1.5] text-ink/85", dim && "opacity-50")}>{text}</p>
+      {text ? (
+        <p className={cn("text-[13px] leading-[1.5] text-ink/85", dim && "opacity-50")}>{text}</p>
+      ) : null}
     </div>
   );
 }
@@ -105,8 +113,9 @@ function AiText({
 /**
  * The quote card, the main object of the app. White sheet with a 1px border on the sunken column:
  * a 32px head with a 6px colour tab, kind and page, then separate layers for the verbatim quote,
- * the AI text (sunken, with star, model and time) and the reader's own words. Actions sit in a
- * split bar at the bottom.
+ * the paraphrase (sunken, with a star; model and time in a tooltip) and the reader's note. The
+ * paraphrase block holds the rewrite action and its language. Two quote actions sit in a split bar
+ * at the bottom.
  *
  * `list` shows the card read-only (overview). `panel` is the reader column: collapsed it is a
  * head and the quote, open it holds every field and action.
@@ -198,7 +207,7 @@ export function QuoteCard({
       <span aria-hidden="true" className="w-1.5 shrink-0" style={{ background: color }} />
       <span className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3">
         <span className="text-label font-semibold uppercase tracking-[0.1em]" style={{ color }}>
-          {t(`kind.${fm.kind}`)}
+          {fm.kind ? t(`kind.${fm.kind}`) : null}
         </span>
         <span className="flex min-w-0 items-center gap-2">
           {locator ? <span className="font-mono text-[12px]">{locator}</span> : null}
@@ -213,20 +222,37 @@ export function QuoteCard({
     </>
   );
 
-  const hasAi = Boolean(body.core || body.paraphrase);
+  const rewriteTools = editing ? (
+    <span className="flex items-center gap-2">
+      <Select
+        label={t("card.regenerateLanguage")}
+        value={regenLanguage}
+        onChange={setRegenLanguage}
+        options={AI_LANGUAGES.map((l) => ({ value: l, label: t(`aiLang.${l}`) }))}
+        className="h-5 min-w-0 gap-1 px-1.5 text-[11px]"
+      />
+      <button
+        type="button"
+        disabled={pending || regenerate.isPending}
+        onClick={() => rewrite(regenLanguage)}
+        className="h-5 border border-line px-1.5 text-[11px] hover:bg-bg disabled:opacity-50"
+      >
+        {t("card.regenerate")}
+      </button>
+    </span>
+  ) : null;
+
   const aiLayer =
-    hasAi || pending || failed ? (
+    body.paraphrase || pending || failed || editing ? (
       <div className="flex flex-col gap-2.5 border-t border-line-faint bg-sunken px-3 py-2.5">
-        {body.core ? (
-          <AiText title={t("card.core")} text={body.core} stamp={fm.core} dim={pending} />
-        ) : null}
-        {body.paraphrase ? (
-          <AiText
-            title={t("card.paraphrase")}
-            text={body.paraphrase}
-            stamp={fm.paraphrase}
-            dim={pending}
-          />
+        <ParaphraseBlock
+          text={body.paraphrase}
+          stamp={fm.paraphrase}
+          dim={pending}
+          tools={rewriteTools}
+        />
+        {!body.paraphrase && !pending && !failed ? (
+          <p className="text-[12px] text-muted">{t("card.noAiText")}</p>
         ) : null}
         {pending ? (
           <div role="status" className="flex items-center gap-2 text-[11px] italic text-muted">
@@ -252,14 +278,9 @@ export function QuoteCard({
           </div>
         ) : null}
       </div>
-    ) : editing ? (
-      <p className="border-t border-line-faint bg-sunken px-3 py-2.5 text-[12px] text-muted">
-        {t("card.noAiText")}
-      </p>
     ) : null;
 
-  const own = body.ownWords ?? "";
-  const comment = body.comment ?? "";
+  const note = body.note ?? "";
 
   return (
     <article
@@ -308,39 +329,26 @@ export function QuoteCard({
         <>
           {aiLayer}
           {editing ? (
-            <>
-              <div className="border-t border-line-faint px-3 py-2.5">
-                <SavedField
-                  label={t("card.ownWords")}
-                  value={own}
-                  variant="line"
-                  onSave={(ownWords) => patch({ ownWords })}
+            <div className="flex flex-col gap-3 border-t border-line-faint px-3 py-2.5">
+              <SavedField
+                label={t("card.note")}
+                value={note}
+                variant="line"
+                rows={3}
+                onSave={(next) => patch({ note: next })}
+              />
+              <div className="flex flex-wrap items-end gap-3">
+                <Select
+                  label={t("card.kind")}
+                  value={fm.kind ?? NO_KIND}
+                  onChange={(v) => patch({ kind: v === NO_KIND ? null : CardKind.parse(v) })}
+                  options={[
+                    { value: NO_KIND, label: t("kind.none") },
+                    ...CardKind.options.map((k) => ({ value: k, label: t(`kind.${k}`) })),
+                  ]}
+                  className="min-w-32"
                 />
-              </div>
-              <div className="flex flex-col gap-3 border-t border-line-faint px-3 py-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    label={t("card.kind")}
-                    value={fm.kind}
-                    onChange={(v) => patch({ kind: CardKind.parse(v) })}
-                    options={CardKind.options.map((k) => ({ value: k, label: t(`kind.${k}`) }))}
-                    className="min-w-32"
-                  />
-                  <Select
-                    label={t("card.regenerateLanguage")}
-                    value={regenLanguage}
-                    onChange={setRegenLanguage}
-                    options={AI_LANGUAGES.map((l) => ({ value: l, label: t(`aiLang.${l}`) }))}
-                    className="min-w-32"
-                  />
-                </div>
-                <SavedField
-                  label={t("card.comment")}
-                  value={comment}
-                  variant="box"
-                  onSave={(next) => patch({ comment: next })}
-                />
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-40 flex-1 flex-col gap-1">
                   <label htmlFor={`${fm.id}-tags`} className="text-[11px] text-muted">
                     {t("card.tags")}
                   </label>
@@ -356,23 +364,13 @@ export function QuoteCard({
                   />
                 </div>
               </div>
-            </>
-          ) : (
-            <>
-              {own ? (
-                <div className="flex flex-col gap-1 border-t border-line-faint px-3 py-2.5">
-                  <span className="text-[11px] text-muted">{t("card.ownWords")}</span>
-                  <p className="text-[13px] leading-[1.5]">{own}</p>
-                </div>
-              ) : null}
-              {comment ? (
-                <div className="flex flex-col gap-1 border-t border-line-faint px-3 py-2.5">
-                  <span className="text-[11px] text-muted">{t("card.comment")}</span>
-                  <p className="text-[13px] leading-[1.5] text-muted">{comment}</p>
-                </div>
-              ) : null}
-            </>
-          )}
+            </div>
+          ) : note ? (
+            <div className="flex flex-col gap-1 border-t border-line-faint px-3 py-2.5">
+              <span className="text-[11px] text-muted">{t("card.note")}</span>
+              <p className="whitespace-pre-line text-[13px] leading-[1.5]">{note}</p>
+            </div>
+          ) : null}
 
           {copy ? (
             <p
@@ -395,30 +393,22 @@ export function QuoteCard({
           ) : null}
 
           {editing ? (
-            <div className="grid grid-cols-3 border-t border-line">
+            <div className="grid grid-cols-2 border-t border-line">
               <button
                 type="button"
-                aria-label={t("card.copyDirect")}
+                title={t("card.quoteDirectHint")}
                 onClick={() => void copyAs("direct")}
                 className="h-8 border-r border-line text-[12px] hover:bg-sunken"
               >
-                {t("card.copyDirectShort")}
+                {t("card.quoteDirect")}
               </button>
               <button
                 type="button"
-                aria-label={t("card.copyIndirect")}
+                title={t("card.quoteIndirectHint")}
                 onClick={() => void copyAs("indirect")}
-                className="h-8 border-r border-line text-[12px] hover:bg-sunken"
+                className="h-8 text-[12px] hover:bg-sunken"
               >
-                {t("card.copyIndirectShort")}
-              </button>
-              <button
-                type="button"
-                disabled={pending || regenerate.isPending}
-                onClick={() => rewrite(regenLanguage)}
-                className="h-8 text-[12px] hover:bg-sunken disabled:opacity-50"
-              >
-                {t("card.regenerate")}
+                {t("card.quoteIndirect")}
               </button>
             </div>
           ) : onOpenInReader ? (

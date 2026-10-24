@@ -66,7 +66,6 @@ export function cardData(
   const fm = CardFrontmatter.parse({
     id: newCardId(),
     item: citekey,
-    kind: "quote",
     anchor: { text: { exact: quote } },
     quote_sha256: quoteSha256(quote),
     created: STAMP,
