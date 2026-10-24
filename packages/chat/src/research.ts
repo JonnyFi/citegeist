@@ -70,37 +70,40 @@ export async function runResearch(
   const seen = new Set<string>();
 
   ctx.progress(0.02, "Starting the agent");
-  const turn = await service.run(
-    session.id,
-    researchPrompt({ topic: input.prompt, project: input.project, maxItems: input.maxItems }),
-    {
-      signal: ctx.signal,
-      onEvent(event) {
-        if (event.type !== "tool" || event.tool !== "add_item") return;
-        if (event.status !== "done" || seen.has(event.callId)) return;
-        seen.add(event.callId);
-        const args = (event.input ?? {}) as {
-          target?: unknown;
-          why?: unknown;
-          identifier?: unknown;
-        };
-        const citekey = extractCitekey(event.output) ?? String(args.identifier ?? event.callId);
-        // The core answers a duplicate with the existing citekey in `duplicateOf`.
-        if (/"duplicateOf"\s*:\s*"/.test(JSON.stringify(event.output ?? ""))) return;
-        if (args.target === "library")
-          violations.push(`${citekey} was added to the library, not the inbox`);
-        const why = typeof args.why === "string" && args.why.trim() ? args.why.trim() : undefined;
-        if (!why) violations.push(`${citekey} was added without a reason`);
-        added.set(citekey, { citekey, ...(why ? { why } : {}) });
-        ctx.progress(
-          0.05 + 0.9 * Math.min(1, added.size / input.maxItems),
-          `Found ${added.size} of ${input.maxItems}`,
-        );
-        // Enough papers: stop the agent instead of letting it run on.
-        if (added.size >= input.maxItems) service.cancel(session.id);
+  const turn = await service
+    .run(
+      session.id,
+      researchPrompt({ topic: input.prompt, project: input.project, maxItems: input.maxItems }),
+      {
+        signal: ctx.signal,
+        onEvent(event) {
+          if (event.type !== "tool" || event.tool !== "add_item") return;
+          if (event.status !== "done" || seen.has(event.callId)) return;
+          seen.add(event.callId);
+          const args = (event.input ?? {}) as {
+            target?: unknown;
+            why?: unknown;
+            identifier?: unknown;
+          };
+          const citekey = extractCitekey(event.output) ?? String(args.identifier ?? event.callId);
+          // The core answers a duplicate with the existing citekey in `duplicateOf`.
+          if (/"duplicateOf"\s*:\s*"/.test(JSON.stringify(event.output ?? ""))) return;
+          if (args.target === "library")
+            violations.push(`${citekey} was added to the library, not the inbox`);
+          const why = typeof args.why === "string" && args.why.trim() ? args.why.trim() : undefined;
+          if (!why) violations.push(`${citekey} was added without a reason`);
+          added.set(citekey, { citekey, ...(why ? { why } : {}) });
+          ctx.progress(
+            0.05 + 0.9 * Math.min(1, added.size / input.maxItems),
+            `Found ${added.size} of ${input.maxItems}`,
+          );
+          // Enough papers: stop the agent instead of letting it run on.
+          if (added.size >= input.maxItems) service.cancel(session.id);
+        },
       },
-    },
-  );
+      // The job is the only turn of this session: end the agent and revoke its token.
+    )
+    .finally(() => service.end(session.id));
 
   if (turn.status === "failed") {
     const failure = service

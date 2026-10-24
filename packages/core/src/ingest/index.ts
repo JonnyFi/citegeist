@@ -12,6 +12,7 @@ import {
   itemsUpdate,
   type Registry,
 } from "@citegeist/ops";
+import { CitegeistError } from "@citegeist/schema";
 import { bindJobOperations } from "../jobs/index.js";
 import type { Library } from "../library.js";
 import { resolveItem } from "./resolve.js";
@@ -45,6 +46,16 @@ export {
   WorkerTransientError,
 } from "./worker.js";
 
+/** Refuses a call that would read a local file when the caller's token does not allow it. */
+function refuseLocalFiles(what: string): never {
+  throw new CitegeistError({
+    code: "LOCAL_FILES_FORBIDDEN",
+    message: `${what} reads a file on this Mac, which this session may not do`,
+    fix: "Add the work by DOI, arXiv id, ISBN or the URL of a public page instead.",
+    recovery: "fix-and-retry",
+  });
+}
+
 /**
  * Binds items.add, items.attach, items.update, items.resolve, items.rename, items.trash, inbox.accept, inbox.reject,
  * documents.read, documents.convert, jobs.get and jobs.list. Returns the service, which owns the
@@ -58,8 +69,16 @@ export function bindIngestOperations(
   const svc = new IngestService(lib, deps);
   bindJobOperations(registry, svc.queue);
   registry
-    .bind(itemsAdd, async (ctx, input) => svc.addItem(ctx.actor, input))
-    .bind(itemsAttach, async (ctx, input) => svc.attachFile(ctx.actor, input))
+    .bind(itemsAdd, async (ctx, input) => {
+      if (ctx.localFiles === false && svc.namesLocalFile(input.identifier)) {
+        refuseLocalFiles("items.add with this identifier");
+      }
+      return svc.addItem(ctx.actor, input);
+    })
+    .bind(itemsAttach, async (ctx, input) => {
+      if (ctx.localFiles === false) refuseLocalFiles("items.attach");
+      return svc.attachFile(ctx.actor, input);
+    })
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
     .bind(itemsResolve, async (ctx, input) =>
       resolveItem({ lib, resolver: svc.deps.resolver }, ctx.actor, input.citekey),

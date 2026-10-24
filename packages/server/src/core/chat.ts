@@ -5,6 +5,7 @@ import {
   createDrivers,
   DEFAULT_BACKENDS,
   type DriverFactoryOptions,
+  type SessionMode,
 } from "@citegeist/chat";
 import type { ChangeEvent, KindPort, Library, Runtime } from "@citegeist/core";
 import {
@@ -40,7 +41,9 @@ export function chatBackendFromRouting(
 /**
  * One ChatService per library. The agents reach the library through the citegeist MCP server on
  * loopback. Every chat session gets an own write token, so the token of one session is useless
- * for another and nothing outside a session knows it. The tokens live as long as the core.
+ * for another and nothing outside a session knows it. A token lives as long as the agent it was
+ * handed to: the chat service revokes it when that agent is closed, replaced or has crashed, and a
+ * research job ends its session when it is done. Research tokens never allow local files (M4).
  *
  * Research jobs run on `research`, a port of the shared job kind "research" (webhook tasks use the
  * same kind). Without one, the chat registers the kind on the runtime's queue itself.
@@ -56,14 +59,22 @@ export async function startChat(
   const bySession = new Map<string, string>();
   const mcp = await startMcpHttpServer(runtime.registry, { tokens });
 
-  const tokenFor = (session: string): string => {
+  const tokenFor = (session: string, mode: SessionMode): string => {
     let token = bySession.get(session);
     if (!token) {
       token = generateToken();
       bySession.set(session, token);
-      tokens.push({ token, scope: "write" });
+      tokens.push({ token, scope: "write", localFiles: mode === "chat" });
     }
     return token;
+  };
+  // The server reads `tokens` on every request, so removing an entry revokes it at once.
+  const release = (session: string): void => {
+    const token = bySession.get(session);
+    if (token === undefined) return;
+    bySession.delete(session);
+    const at = tokens.findIndex((g) => g.token === token);
+    if (at >= 0) tokens.splice(at, 1);
   };
 
   const backends = opts.backends ?? DEFAULT_BACKENDS;
@@ -71,14 +82,15 @@ export async function startChat(
     {
       libraryRoot: library.root,
       localDir: library.local.dir,
-      mcpServers: ({ session }) => [
+      mcpServers: ({ session, mode }) => [
         {
           type: "http",
           name: "citegeist",
           url: mcp.url,
-          headers: [{ name: "Authorization", value: `Bearer ${tokenFor(session)}` }],
+          headers: [{ name: "Authorization", value: `Bearer ${tokenFor(session, mode)}` }],
         },
       ],
+      release,
       // Streaming text and restored files reach the UI as the core's change events. The status
       // keeps the semantic index from scheduling work for a virtual chat path.
       notify: (rel) =>

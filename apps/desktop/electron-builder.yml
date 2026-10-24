@@ -74,6 +74,16 @@ electronLanguages:
   - en
   - de
 afterPack: ./scripts/after-pack.cjs
+# Electron fuses (M8), flipped in the binary before it is signed. They close ways to run other
+# code inside the signed app: NODE_OPTIONS and the inspector flags are ignored, and the app code
+# loads from app.asar only.
+# runAsNode stays on on purpose: the chat adapters (Claude Code, Codex) run as the app binary
+# with ELECTRON_RUN_AS_NODE (packages/chat/src/backends.ts). A test pins both sides.
+electronFuses:
+  runAsNode: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
 mac:
   category: public.app-category.productivity
   target:

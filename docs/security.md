@@ -1,6 +1,6 @@
 # Sicherheitsprüfung
 
-Stand: 2026-10-24, vor dem geplanten Open-Source-Release (D1). Geprüft wurde der Stand von `main` nach Pull Request 56. Die hohen Befunde sind im selben Branch behoben und mit Tests abgesichert. Die mittleren und niedrigen Befunde stehen unten mit einer Empfehlung.
+Stand: 2026-10-24, vor dem geplanten Open-Source-Release (D1). Geprüft wurde der Stand von `main` nach Pull Request 56. Die hohen Befunde sind im selben Branch behoben und mit Tests abgesichert. Von den mittleren Befunden sind M3 bis M7 und M9 behoben und mit Tests abgesichert, M8 ist zur Hälfte behoben. M1, M2 und der Rest von M8 bleiben offen, jeweils mit Begründung. Die niedrigen Befunde stehen unten mit einer Empfehlung.
 
 ## Vorgehen
 
@@ -49,7 +49,7 @@ Geprüft wurden:
 - Angreifer: ein Konto bei einem verbundenen Dienst, dessen Agent durch fremde Inhalte gesteuert wird (Prompt Injection), oder jeder, der ein Webhook-Secret besitzt. Der Endpunkt ist über einen Tunnel aus dem Internet erreichbar.
 - Befund: `items.add` nimmt neben DOI und URL auch lokale Pfade (`/Users/...`, `~/...`, `file://`, relative Dateinamen) und beliebige `http(s)`-Adressen. Ein Absender konnte so jede PDF-, HTML- oder EPUB-Datei des Macs in die Bibliothek ziehen lassen und den Kern zu Aufrufen auf `127.0.0.1`, das lokale Netz oder `169.254.169.254` bringen.
 - Behebung: Neu ist `packages/webhooks/src/remote-input.ts`. Vor dem Aufruf von `items.add` weist `assertRemoteSafe` lokale Dateipfade, Nicht-HTTP-Schemata und Adressen auf diesem Mac oder in privaten Netzen mit `WEBHOOK_INPUT_REFUSED` ab. Zu den Adressen zählen Loopback, die Bereiche 10/8, 172.16/12, 192.168/16, 169.254/16 und 100.64/10, IPv6-Loopback und -lokal, `*.local`, `*.localhost`, `*.internal` und Namen ohne Punkt. Dezimale und hexadezimale IP-Schreibweisen normalisiert der URL-Parser vorher. Das gilt auch für die Quellen einer `note.add`-Anfrage.
-- Grenze der Behebung: Ein öffentlicher Name, der auf eine private Adresse zeigt, und Weiterleitungen sind nicht abgedeckt, siehe M5.
+- Grenze der Behebung: Ein öffentlicher Name, der auf eine private Adresse zeigt, und Weiterleitungen deckt diese Prüfung nicht ab. Das übernimmt seit M5 der Kern für jeden Akteur außer dem Menschen.
 - Test: `packages/webhooks/src/webhooks.test.ts` (drei neue Fälle: Ablehnung von 14 Eingaben ohne Aufruf von `items.add`, Zulassung von DOI, arXiv-Id, öffentlicher URL und BibTeX, Quellen einer Notiz). Die Doku steht in `docs/webhooks.md`.
 
 ### H3: Der isolierte Agent und Recherche-Aufträge lasen die ganze Platte und hatten einen offenen Ausgang
@@ -59,22 +59,67 @@ Geprüft wurden:
 - Befund: Die Regel erlaubte `read` und `search` für jeden Pfad und `fetch` für jede Adresse. Dazu kam, dass `add_item` und `attach_file` lokale Dateien in die Bibliothek ziehen, die der Agent danach mit `read_document` lesen kann. Daraus ergibt sich eine Kette: fremder Text, dann `~/.ssh/id_ed25519`, `core.token` oder eine Datei aus Dokumente lesen, dann ein Abruf mit den Daten in der Adresse. Der Zweck der Isolierung (A11: „keine Nutzereinstellungen, nur die citegeist-Werkzeuge“) wurde dadurch nicht erreicht.
 - Behebung: Im isolierten Chat und in jedem Recherche-Auftrag sind `read` und `search` auf den Bibliotheksordner und den Arbeitsordner der Sitzung beschränkt (Pfadargumente und der feste Teil von `pattern` und `glob`). `add_item` mit lokalem Pfad und `attach_file` sind in Recherche-Aufträgen gesperrt und im isolierten Chat auf Dateien innerhalb von Bibliothek und Arbeitsordner beschränkt. Im nicht isolierten Chat (A11, Standard) bleibt alles wie bisher.
 - Rest: `fetch` bleibt offen, denn Recherche braucht das Netz. Ein Agent kann Daten, die er legitim lesen darf (die Bibliothek), in Adressen kodieren. Das ist ein Restrisiko des Auftrags und steht als L9 unten.
-- Grenze der Behebung: Die Regel greift dort, wo der Adapter eine Berechtigungsanfrage stellt. Der Rückfall `claude -p` gibt `mcp__citegeist` pauschal frei, siehe M4.
+- Grenze der Behebung: Die Regel greift dort, wo der Adapter eine Berechtigungsanfrage stellt. Der Rückfall `claude -p` gibt `mcp__citegeist` pauschal frei. Dass ein Recherche-Auftrag dort keine lokalen Dateien einlesen lässt, setzt seit M4 der Kern durch.
 - Test: `packages/chat/src/policy.test.ts` (Blöcke „reading outside the library“ und „local files in citegeist tool calls“).
 
-## Mittel
+## Behoben (mittel)
 
-| Nr. | Befund | Empfehlung |
+### M3: Eine Content-Security-Policy schützt den Renderer
+
+- Ort: `apps/ui/index.html`, neu `apps/ui/csp.ts` (Vite-Plugin), eingebunden in `apps/ui/vite.config.ts`
+- Befund: Der Renderer setzte keine Policy. Ein Fehler im Filter für Webinhalte (H1) hätte zur Ausführung von Skripten im Renderer geführt, der Port und Token des Kerns hält.
+- Behebung: Der Produktions-Build trägt ein `<meta http-equiv="Content-Security-Policy">` als erstes Element im Kopf (der Renderer lädt aus `file://`, dort gibt es keinen Antwort-Header). `script-src 'self' 'wasm-unsafe-eval'` samt Hash des einen Inline-Skripts zur Themenwahl, ohne `unsafe-inline` und ohne `unsafe-eval`. `default-src 'none'`, `object-src 'none'`, `frame-src 'none'`, `base-uri 'none'`, `form-action 'none'`, `connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*`, `img-src 'self' data: blob: http://127.0.0.1:*`. Der Dev-Server bekommt keine Policy, weil Vite für das Neuladen Inline-Skripte einfügt.
+- Folge: Bilder von fremden Servern lädt der Reader nicht mehr nach. Konvertierte Dokumente verweisen auf ihre lokalen Dateien über die Dateiroute des Kerns, die weiter erlaubt ist.
+- Test: `apps/ui/csp.test.ts` (Hash passt zum Inline-Skript, keine unsichere Quelle, `connect-src` nur auf den Kern) und der Playwright-Test „the Content-Security-Policy blocks inline scripts and foreign connections“ in `apps/desktop/e2e/app.e2e.ts`, der in der gebauten App einen Inline-Skript-Versuch und einen Abruf von `example.org` auslöst. Die Lese-Ansicht mit pdf.js läuft unter der Policy im Test „adds a PDF, reads it“ in `v01.e2e.ts`.
+
+### M4: Der Kern erzwingt, dass Recherche-Sitzungen keine lokalen Dateien einlesen
+
+- Ort: `packages/ops/src/registry.ts` (`OpContext.localFiles`), `packages/mcp/src/transports.ts`, `packages/core/src/ingest/index.ts`, `packages/server/src/core/chat.ts`
+- Befund: Die MCP-Token kannten nur `read` und `write`. `items.add` mit Pfad und `items.attach` lasen lokale Pfade für jeden schreibenden Akteur, und die Regel aus H3 greift im Rückfall `claude -p` nicht.
+- Behebung: Ein Token trägt die Fähigkeit `localFiles` (Standard: erlaubt). Der MCP-Server reicht sie als `localFiles: false` im Kontext jeder Operation weiter, für Sitzungen nach dem Protokoll von 2025 ebenso wie für die einzelnen Anfragen nach dem von 2026-07-28. Fehlt die Authentifizierungsangabe, gilt die Fähigkeit als entzogen. `items.add` lehnt Pfade, `file://`-Adressen und lose Dateinamen ab, `items.attach` lehnt jeden Aufruf ab, jeweils mit `LOCAL_FILES_FORBIDDEN`. DOI, arXiv-Id, URL und BibTeX bleiben möglich. Das Token jeder Recherche-Sitzung trägt `localFiles: false`, das Token einer Chat-Sitzung erlaubt sie (im isolierten Chat beschränkt die Regel aus H3 sie auf Bibliothek und Arbeitsordner).
+- Test: `packages/core/src/ingest/local-files.test.ts`, `packages/mcp/src/local-files.test.ts` (beide Protokollvarianten) und „revokes the token when a research session ends and refuses local files to it“ in `packages/server/src/core/chat.test.ts` (Recherche-Sitzung scheitert an der Datei, eine Chat-Sitzung legt sie an).
+
+### M5: Der Abruf von URLs prüft Adressen, Weiterleitungen und Größe
+
+- Ort: `packages/core/src/ingest/service.ts` (`get`), neu `packages/core/src/ingest/net-guard.ts`
+- Befund: Der Abruf folgte Weiterleitungen und prüfte weder Loopback noch private Bereiche. Ohne `Content-Length` las er unbegrenzt in den Speicher.
+- Behebung: Für jeden Akteur außer `human` (Agents, der Zotero-Connector, Aufträge des Systems, Webhook-Absender) wird jede Station des Abrufs geprüft. Weiterleitungen folgt der Kern selbst, höchstens fünf, und prüft jede Zieladresse neu. Ein Name wird aufgelöst, und jede Adresse muss öffentlich sein. Abgelehnt werden Loopback, 10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10, 0/8, Multicast und reservierte Bereiche, bei IPv6 `::1`, `::`, fc00::/7, fe80::/10, fec0::/10, ff00::/8 sowie eingebettete IPv4-Adressen (`::ffff:`, `64:ff9b::`, `2002::`), dazu `localhost`, `*.localhost`, `*.local`, `*.internal`, `*.lan` und Namen ohne Punkt, mit `URL_NOT_PUBLIC`. Der Mensch darf weiter jede Adresse abrufen, etwa eine PDF im Firmennetz. Den Körper liest der Kern als Datenstrom und bricht bei der Obergrenze (300 MiB) ab, auch ohne `Content-Length`.
+- Grenze der Behebung: Zwischen der Auflösung und dem Abruf löst `fetch` den Namen ein zweites Mal auf. Ein Server, der dabei die Adresse wechselt (DNS-Rebinding), kommt durch. Das schließt nur ein Abruf, der sich an die geprüfte Adresse bindet. Der Zotero-Connector wird als Akteur `agent:zotero-connector` ebenfalls geprüft, eine Adresse im Firmennetz speichert er also nicht mehr.
+- Test: `packages/core/src/ingest/net-guard.test.ts` (Adressbereiche, Schreibweisen, Auflösung) und `packages/core/src/ingest/ssrf.test.ts` (Abruf von 127.0.0.1 und 169.254.169.254 ohne Anfrage, Weiterleitung auf eine private Adresse, Name mit privater Auflösung, Abbruch bei Überschreitung der Größe ohne `Content-Length`, freier Zugriff für den Menschen).
+
+### M6: Das Token einer MCP-Sitzung steht nicht mehr auf der Kommandozeile
+
+- Ort: `packages/chat/src/print-driver.ts`
+- Befund: Der Rückfall `claude -p` übergab `--mcp-config` mit dem Bearer-Token als Argument, das jeder Prozess mit `ps` las.
+- Behebung: Die Konfiguration steht in `mcp.json` mit Rechten 0600 in einem privaten Ordner (0700, `mkdtemp` unter dem temporären Verzeichnis), der Pfad geht an `--mcp-config`. `close()` entfernt den Ordner.
+- Test: `packages/chat/src/fallback.test.ts` („keeps the session token off the command line and in a private file“, dazu die Prüfung der Argumente im Ablauf mit dem Ersatz für `claude`).
+
+### M7: Sitzungs-Token werden entzogen
+
+- Ort: `packages/chat/src/service.ts` (`ChatHost.release`, `ChatService.end`), `packages/chat/src/research.ts`, `packages/server/src/core/chat.ts`
+- Befund: Das Schreib-Token einer Sitzung blieb bis zum Ende des Kerns gültig, das Feld `tokens` wuchs.
+- Behebung: Sobald der Agent einer Sitzung verschwindet (Schließen, Wechsel der Umgebung wegen A11, Absturz, Ende des Kerns), ruft der Dienst `release` auf, und der Kern entfernt das Token aus der Liste. Der MCP-Server liest die Liste bei jeder Anfrage, der Entzug wirkt also sofort. Ein Recherche-Auftrag beendet seine Sitzung am Ende (`end`). Ein neuer Agent derselben Sitzung bekommt ein neues Token.
+- Test: `packages/chat/src/chat.test.ts` („tells the host when the agent of a session is gone“) und in `packages/server/src/core/chat.test.ts` „revokes the token of a session when its agent ends“ (401 nach dem Entzug, andere Sitzungen unberührt).
+
+### M8 (Teil): Fuses und Prüfung des IPC-Absenders
+
+- Ort: `apps/desktop/electron-builder.yml`, `apps/desktop/src/main/index.ts`, `apps/desktop/src/quick-insert/electron.ts`, `apps/desktop/src/shared/trusted-sender.ts`
+- Behoben: Die Fuses `enableNodeOptionsEnvironmentVariable` und `enableNodeCliInspectArguments` sind abgeschaltet, `onlyLoadAppFromAsar` ist an. `RunAsNode` bleibt an, denn die Chat-Adapter laufen als Programm der App mit `ELECTRON_RUN_AS_NODE` (`packages/chat/src/backends.ts`). Jeder IPC-Handler (`citegeist:connection`, `open-library`, `create-library`, `pick-paths`, `navigate-ready` und die Handler des Schnellzugriffs) prüft `event.senderFrame`: Es muss der oberste Frame der eigenen Oberfläche sein, also die gebaute `index.html` (mit beliebigem Hash) oder der Ursprung des Dev-Servers. Jede andere Seite bekommt `null` statt der Verbindung. Der Test auf Navigation in `will-navigate` und die Prüfung des Schnellzugriffs benutzen dieselbe Funktion statt `startsWith("file://")`.
+- Test: `apps/desktop/src/shared/trusted-sender.test.ts`, `apps/desktop/src/packaging.test.ts` (Fuses und die Kopplung an `ELECTRON_RUN_AS_NODE`) und der Playwright-Test „a page that is not the renderer gets no core connection from the preload bridge“, der ein Fenster mit demselben Preload auf eine `data:`-Seite lädt.
+
+### M9: Das Token im Query-Parameter gilt nur für zwei Pfade
+
+- Ort: `packages/server/src/core/server.ts` (`queryTokenPath`)
+- Behebung: `?token=` nehmen nur `/events` (WebSocket) und `/files/` (Bild, Frame) an. Auf allen anderen Pfaden zählt allein der Header `Authorization`.
+- Test: „takes the token as a query parameter on the event and file routes only“ in `packages/server/src/core/server.test.ts`.
+
+## Mittel, offen
+
+| Nr. | Befund | Begründung |
 |---|---|---|
-| M1 | **Agents mit Shell lesen das Token des Kerns.** Im nicht isolierten Chat (A11) kann der Agent `core.token` und `core.lock` lesen und den Kern ohne `x-citegeist-actor` als `human` ansprechen, also auch `settings.update`, `ai.testBackend` und `worker.setup`. Verhindern lässt sich das nicht, solange Agent und App unter demselben Benutzer laufen. Die Folge ist durch A11 bewusst in Kauf genommen. Die Nachvollziehbarkeit (D12) bleibt, `by:` zeigt dann aber `human` | Zwei Zugänge trennen: ein Token nur für den Renderer, das nie in eine Datei geschrieben wird (Weitergabe über IPC, bereits vorhanden), und ein Datei-Token für `cg`, dessen Akteur serverseitig auf `agent:cg` festliegt und `admin` nie erreicht. Zusätzlich vor `admin`-Operationen im Hauptprozess bestätigen lassen |
-| M2 | **Keychain-Einträge sind für jeden Prozess des Benutzers lesbar.** Einträge, die das Werkzeug `security` anlegt, vertrauen nach üblicher Erfahrung dem Werkzeug selbst. Ein Agent mit Shell liest dann `security find-generic-password -s citegeist -a openai -w` ohne Rückfrage (auf einem Mac nachzuprüfen) | Einträge mit Zugriffsliste auf die App anlegen (`-T`) oder `safeStorage` von Electron verwenden. Für Webhook-Secrets und API-Schlüssel gleichermaßen |
-| M3 | **Keine Content-Security-Policy im Renderer.** `apps/ui/index.html` setzt keine. Gegen einen Fehler im Filter (H1) hilft sie als zweite Schicht | `script-src 'self'` samt Hash für das Inline-Skript zur Themenwahl, `object-src 'none'`, `frame-src 'none'`, `connect-src` auf `http://127.0.0.1:*` und `ws://127.0.0.1:*`. Mit dem Playwright-Test der Desktop-App absichern |
-| M4 | **Einschränkungen für Agents hängen am Adapter.** Dass ein Recherche-Agent keine lokalen Dateien einlesen lässt, prüft die Berechtigungsregel (H3). Die MCP-Token kennen nur `read` und `write`. Der Rückfall `claude -p` erlaubt `mcp__citegeist` pauschal, die Regel wird dort nicht gefragt. `items.add` und `items.attach` lesen lokale Pfade für jeden schreibenden Akteur | Eine Fähigkeit „lokale Dateien“ am MCP-Token führen und im Kern bei `items.add` und `items.attach` durchsetzen. Recherche-Sitzungen bekommen sie nie. `packages/ops/src/registry.ts` müsste dafür den Kontext erweitern, deshalb Sache des Leads |
-| M5 | **SSRF in `items.add` für Agents und Connector.** Der Abruf einer URL (`packages/core/src/ingest/service.ts`, `get`) folgt Weiterleitungen und prüft weder Loopback noch private Bereiche. Die Größe wird nur über `Content-Length` begrenzt, ohne diese Angabe liest er unbegrenzt in den Speicher. Über Webhooks ist der direkte Fall behoben (H2) | Die Prüfung aus `remote-input.ts` für alle Akteure außer `human` auf Kern-Ebene anwenden, nach der Namensauflösung und bei jeder Weiterleitung. Den Datenstrom mit Obergrenze lesen |
-| M6 | **Das Token einer MCP-Sitzung steht im Rückfall auf der Kommandozeile.** `print-driver.ts` übergibt `--mcp-config` mit dem Bearer-Token als Argument. Jeder Prozess des Systems sieht es mit `ps`. Es gilt nur für den MCP-Server auf Loopback und für diese Sitzung | Die Konfiguration in eine Datei mit Rechten 0600 im Arbeitsordner schreiben und den Pfad übergeben |
-| M7 | **Sitzungs-Token werden nie entzogen.** `startChat` legt je Sitzung ein Schreib-Token an. Es bleibt bis zum Ende des Kerns gültig, das Feld `tokens` wächst | Das Token beim Schließen oder Löschen der Sitzung entfernen |
-| M8 | **Electron-Härtung fehlt.** `hardenedRuntime: false`, ad-hoc-Signatur, keine Notarisierung, die Fuses `RunAsNode` und `NODE_OPTIONS` sind nicht abgeschaltet. IPC-Handler prüfen den Absender nicht (`event.senderFrame.url`) | Für den Release signieren und notarisieren, Fuses per `@electron/fuses` setzen, die Absender der Handler `citegeist:*` prüfen |
-| M9 | **Das Token wird auch als Query-Parameter angenommen.** Das braucht nur der WebSocket und die Dateiroute (Bild und Frame können keine Header setzen), gilt aber für jeden Pfad. Es landet leicht in Protokollen | Query-Token nur für `/events` und `/files/` zulassen |
+| M1 | **Agents mit Shell lesen das Token des Kerns.** Im nicht isolierten Chat (A11) kann der Agent `core.token` und `core.lock` lesen und den Kern ohne `x-citegeist-actor` als `human` ansprechen, also auch `settings.update`, `ai.testBackend` und `worker.setup`. `by:` zeigt dann `human` | Die Entscheidung A11 gibt dem Agent die Umgebung des Nutzers, dazu gehört die Shell. Eine Trennung in ein Renderer-Token und ein Datei-Token mit festem Akteur `agent:cg` würde den Befehl `cg` für den Nutzer selbst einschränken, denn ein Mensch im Terminal und ein Agent mit Shell benutzen dieselbe Datei und sind nicht zu unterscheiden. Dann liefen `cg settings` und die anderen `admin`-Operationen nicht mehr aus dem Terminal. Eine Rückfrage im Hauptprozess vor `admin`-Operationen ändert den Ablauf für den Nutzer ebenso. Wer das nicht in Kauf nimmt, schaltet in den Einstellungen „Isolierter Agent“ ein: Dort gibt es keine Shell, und Recherche-Aufträge laufen immer so. Die Frage bleibt bei Jonny, falls A11 neu bewertet wird |
+| M2 | **Keychain-Einträge sind für jeden Prozess des Benutzers lesbar.** Ein Agent mit Shell liest `security find-generic-password -s citegeist -a openai -w` ohne Rückfrage (auf einem Mac nachzuprüfen) | Der Kern liest und schreibt die Einträge selbst mit dem Werkzeug `security`. Eine Zugriffsliste nur für die App (`-T`) würde auch den Kern aussperren, solange er `security` aufruft. Die Lösung ist ein Zugriff aus der signierten App (`safeStorage` im Hauptprozess, Weitergabe über IPC an den Kern), und sie setzt eine feste Code-Signatur voraus (Rest von M8), weil die Zugriffsliste an der Signatur hängt. Mit der Ad-hoc-Signatur änderte sie sich bei jedem Build, und macOS fragte nach jedem Update neu. Zudem liest ein Agent mit der Shell des Nutzers unter A11 ohnehin Dateien wie `~/.ssh` und die Konfiguration anderer Werkzeuge. Im isolierten Chat und in Recherche-Aufträgen gibt es keine Shell, dort ist der Eintrag nicht erreichbar |
+| M8 (Rest) | **Signatur und Notarisierung fehlen.** `hardenedRuntime: false`, ad-hoc-Signatur, keine Notarisierung | Dafür braucht es ein Developer-ID-Zertifikat und ein Apple-Konto, das es nicht gibt. Die gehärtete Laufzeit lässt sich mit der Ad-hoc-Signatur nicht sinnvoll einschalten, denn sie verlangt Rechte für die nativen Module und lässt sich erst mit einer echten Signatur prüfen. Vor dem Release setzt der Lead `hardenedRuntime: true`, die Entitlements und `notarize: true`, `RunAsNode` bleibt wegen der Chat-Adapter an |
 
 ## Niedrig
 
@@ -97,9 +142,9 @@ Der statische Lauf (`--code --offline`, 600 Sekunden) endete mit dem Status **pa
 
 | Hypothese | Stand |
 |---|---|
-| Webhook-SSRF über Namen, die auf private Adressen zeigen, und über Weiterleitungen | bestätigt als Grenze von H2, geführt unter M5 |
+| Webhook-SSRF über Namen, die auf private Adressen zeigen, und über Weiterleitungen | bestätigt als Grenze von H2, behoben unter M5 |
 | `read` und `search` mit einem absoluten Pfad nur in `pattern` oder `glob` umgehen die Lesebeschränkung | bestätigt und behoben: `policy.ts` prüft nun den festen Teil von `pattern` und `glob` und löst relative Pfade gegen den Arbeitsordner auf. Test in `policy.test.ts` |
-| Token im Query-Parameter | geführt unter M9 |
+| Token im Query-Parameter | behoben unter M9 |
 | Connector ohne Token für lokale Prozesse ohne Origin | gewollt, weil das Protokoll des Zotero Connector kein Token kennt. Ein lokaler Prozess mit Zugriff auf `core.token` hätte ohnehin vollen Zugriff (M1). Der Connector ist standardmäßig aus |
 
 Die Abdeckung des Laufs ist begrenzt. Die Befunde H1 bis H3 stammen aus der manuellen Durchsicht.

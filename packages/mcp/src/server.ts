@@ -10,6 +10,12 @@ export type McpScope = "read" | "write";
 export interface CreateMcpServerOptions {
   /** Which tools the connection may see and call. Defaults to "write" (a local stdio client is trusted). */
   scope?: McpScope;
+  /**
+   * Whether the connection may make the core read local files (`items.add` with a path,
+   * `items.attach`). Defaults to true: a local stdio client is the user's own. The HTTP server
+   * passes what the token grants.
+   */
+  localFiles?: boolean;
   name?: string;
   version?: string;
 }
@@ -56,6 +62,7 @@ export function createMcpServer(
   options: CreateMcpServerOptions = {},
 ): McpServer {
   const scope = options.scope ?? "write";
+  const localFiles = options.localFiles ?? true;
   const contracts = mcpContracts(registry, scope);
   const everything = registry.list();
   const server = new McpServer(
@@ -86,7 +93,11 @@ export function createMcpServer(
         try {
           const output = await registry.call(
             contract.name,
-            { actor, signal: ctx.mcpReq.signal },
+            {
+              actor,
+              signal: ctx.mcpReq.signal,
+              ...(localFiles ? {} : { localFiles: false }),
+            },
             args,
           );
           return {

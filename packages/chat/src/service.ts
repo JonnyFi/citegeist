@@ -27,6 +27,12 @@ export interface ChatHost {
   /** MCP servers every session gets, normally the citegeist server with a write token. */
   mcpServers(req: { session: string; mode: SessionMode }): McpServer[] | Promise<McpServer[]>;
   /**
+   * Called when the agent of a session is gone (closed, replaced or crashed). The host revokes
+   * what it handed out in `mcpServers`, such as the session's write token. The next agent of the
+   * session gets fresh credentials from `mcpServers`.
+   */
+  release?(session: string): void;
+  /**
    * Announces a change as the core's change event: `chat/<session>` while a session streams, and
    * the library-relative path of every file that an undo wrote. The host emits it on the library
    * so that the WebSocket delivers it to the UI.
@@ -342,9 +348,7 @@ export class ChatService {
       const isolated = this.isolated(s.kind);
       if (live.driver && live.driverIsolated !== isolated) {
         // The setting changed since this agent started: the next turn gets the other environment.
-        const old = live.driver;
-        live.driver = undefined;
-        await old.close().catch(() => {});
+        await this.dropDriver(live);
       }
       if (!live.driver) {
         const mode: SessionMode = s.kind;
@@ -387,9 +391,7 @@ export class ChatService {
       record.status = abort.signal.aborted ? "cancelled" : "failed";
       if (record.status === "failed") this.addNotice(live, turn, err);
       // The agent process may be gone; the next turn starts a new session.
-      const dead = live.driver;
-      live.driver = undefined;
-      void dead?.close().catch(() => {});
+      void this.dropDriver(live);
     } finally {
       opts.signal?.removeEventListener("abort", relay);
       live.abort = undefined;
@@ -409,6 +411,25 @@ export class ChatService {
       s.updatedAt = record.endedAt;
       this.persist(live);
     }
+  }
+
+  /** Closes the agent of a session and revokes its credentials. */
+  private async dropDriver(live: Live): Promise<void> {
+    const driver = live.driver;
+    live.driver = undefined;
+    this.host.release?.(live.state.id);
+    await driver?.close().catch(() => {});
+  }
+
+  /**
+   * Ends the agent of a session that will not take another turn (a finished research job) and
+   * revokes its token. The record of the session stays.
+   */
+  async end(id: string): Promise<void> {
+    const live = this.sessions.get(id);
+    if (!live) return;
+    await live.running?.catch(() => {});
+    await this.dropDriver(live);
   }
 
   private apply(live: Live, turn: number, event: DriverEvent, opts: TurnOptions): void {
@@ -603,7 +624,7 @@ export class ChatService {
     for (const live of this.sessions.values()) {
       if (live.timer) clearTimeout(live.timer);
       if (live.dirty) this.persist(live);
-      await live.driver?.close().catch(() => {});
+      await this.dropDriver(live);
     }
     await this.drivers.close();
   }
