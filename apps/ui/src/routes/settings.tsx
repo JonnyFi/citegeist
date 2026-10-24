@@ -9,36 +9,16 @@ import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { BackendRow, pollConfig, useBackendTests, WorkerPanel } from "../onboarding/parts";
+import { Section } from "../settings/parts";
+import { SourcesPanel } from "../settings/sources-panel";
+import { SyncPanel } from "../settings/sync-panel";
+import { WebhooksPanel } from "../settings/webhooks-panel";
 import { ChatPanel, ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
 
 /** Tasks the routing can name besides the default. Mirrors TASKS of @citegeist/ai. */
 export const ROUTED_TASKS = ["card.paraphrase", "card.verify", "metadata.fromFirstPage"] as const;
 
 const INHERIT = "__inherit__";
-
-function Section({
-  id,
-  title,
-  description,
-  children,
-}: {
-  id: string;
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-labelledby={id} className="flex flex-col gap-3 border-t border-line pt-6">
-      <div>
-        <h2 id={id} className="font-serif text-lg font-semibold">
-          {title}
-        </h2>
-        {description ? <p className="text-muted">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function ContactForm({ current }: { current: string }) {
   const { t } = useI18n();
@@ -94,9 +74,56 @@ function ContactForm({ current }: { current: string }) {
   );
 }
 
-/** The settings screen: language, backends with test, routing, contact address and worker. */
-export function SettingsScreen() {
+function SettingsFrame({
+  section,
+  onSection,
+  children,
+}: {
+  section: SettingsSection;
+  onSection: (section: SettingsSection) => void;
+  children: ReactNode;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8">
+      <h1 className="font-serif text-2xl font-semibold">{t("settings.title")}</h1>
+      <Segmented<SettingsSection>
+        label={t("settings.tab.label")}
+        variant="tabs"
+        value={section}
+        options={SETTINGS_SECTIONS.map((value) => ({
+          value,
+          label: t(`settings.tab.${value}` as MessageKey),
+        }))}
+        onChange={onSection}
+        className="h-9 border-b border-line-soft"
+      />
+      {children}
+    </div>
+  );
+}
+
+export const SETTINGS_SECTIONS = ["general", "sync", "webhooks"] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+/**
+ * The settings screen. "General" holds language, backends with test, routing, contact addresses,
+ * chat agent, semantic search, connector and worker; sync and webhooks have their own section.
+ */
+export function SettingsScreen({
+  section: shown,
+  onSection,
+}: {
+  section?: SettingsSection;
+  onSection?: (section: SettingsSection) => void;
+} = {}) {
   const { t, setLang } = useI18n();
+  const [local, setLocal] = useState<SettingsSection>("general");
+  const section = shown ?? local;
+  const pick = (next: SettingsSection) => {
+    setLocal(next);
+    onSection?.(next);
+  };
   // While the model downloads, the progress is read again.
   const query = useOp(
     settingsGet,
@@ -109,6 +136,13 @@ export function SettingsScreen() {
   const update = useOpMutation(settingsUpdate);
   const { tests, run } = useBackendTests();
 
+  if (section !== "general") {
+    return (
+      <SettingsFrame section={section} onSection={pick}>
+        {section === "sync" ? <SyncPanel /> : <WebhooksPanel />}
+      </SettingsFrame>
+    );
+  }
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorState error={query.error} />;
   const { settings, backends, worker } = query.data;
@@ -122,9 +156,7 @@ export function SettingsScreen() {
   const taskOptions = [{ value: INHERIT, label: t("settings.routing.inherit") }, ...backendOptions];
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8">
-      <h1 className="font-serif text-2xl font-semibold">{t("settings.title")}</h1>
-
+    <SettingsFrame section={section} onSection={pick}>
       <Section
         id="settings-language"
         title={t("settings.language.title")}
@@ -223,6 +255,14 @@ export function SettingsScreen() {
       </Section>
 
       <Section
+        id="settings-sources"
+        title={t("settings.sources.title")}
+        description={t("settings.sources.desc")}
+      >
+        <SourcesPanel data={query.data} />
+      </Section>
+
+      <Section
         id="settings-chat"
         title={t("settings.chat.title")}
         description={t("settings.chat.desc")}
@@ -263,6 +303,6 @@ export function SettingsScreen() {
       >
         <WorkerPanel worker={worker} />
       </Section>
-    </div>
+    </SettingsFrame>
   );
 }

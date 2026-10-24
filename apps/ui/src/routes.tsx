@@ -13,8 +13,9 @@ import { ProjectsScreen, ProjectView, parseProjectSearch } from "./components/pr
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
 import { type GraphDepth, GraphScreen } from "./graph";
+import { ImportScreen } from "./import";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
-import { SettingsScreen } from "./routes/settings";
+import { SETTINGS_SECTIONS, SettingsScreen, type SettingsSection } from "./routes/settings";
 
 const STATUSES = ["unread", "reading", "read"] as const;
 
@@ -180,7 +181,32 @@ const searchRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: SettingsScreen,
+  validateSearch: (search: Record<string, unknown>): { section?: SettingsSection } => {
+    const section = SETTINGS_SECTIONS.find((s) => s === search.section);
+    return section && section !== "general" ? { section } : {};
+  },
+  component: function SettingsRoute() {
+    const { section } = settingsRoute.useSearch();
+    const navigate = useNavigate();
+    return (
+      <SettingsScreen
+        section={section ?? "general"}
+        onSection={(next) =>
+          void navigate({
+            to: "/settings",
+            search: next === "general" ? {} : { section: next },
+            replace: true,
+          })
+        }
+      />
+    );
+  },
+});
+
+const importRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/import",
+  component: ImportScreen,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -193,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   graphRoute,
   searchRoute,
   settingsRoute,
+  importRoute,
 ]);
 
 /**

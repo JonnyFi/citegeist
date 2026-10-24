@@ -17,11 +17,15 @@ export interface SettingsMockState {
   routing: Record<string, string>;
   apiKeys: Record<string, boolean>;
   mailto?: string;
+  unpaywallEmail?: string;
+  ncbiTool?: string;
   uiLanguage: "de" | "en";
   backends: Backend[];
   worker: { ready: boolean; engines: Record<string, string>; detail?: string };
   semantic: {
     enabled: boolean;
+    /** The embedding model the user picked. */
+    model?: "embeddinggemma-300m" | "qwen3-embedding-0.6b";
     /** What the model reports once enabled. "downloading" ends after `semanticPolls` reads. */
     state: "downloading" | "ready" | "error";
     progress: number;
@@ -41,7 +45,7 @@ export interface SettingsMockState {
 export function createSettingsMockState(over: Partial<SettingsMockState> = {}): SettingsMockState {
   return {
     routing: { "*": "claude-code-cli" },
-    apiKeys: { openai: false, anthropic: false, openrouter: false, xai: false },
+    apiKeys: { openai: false, anthropic: false, openrouter: false, xai: false, ncbi: false },
     uiLanguage: "de",
     backends: [
       {
@@ -69,7 +73,7 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
       },
     ],
     worker: { ready: false, engines: {}, detail: "not-installed" },
-    semantic: { enabled: false, state: "downloading", progress: 0 },
+    semantic: { enabled: false, model: "embeddinggemma-300m", state: "downloading", progress: 0 },
     semanticPolls: 3,
     connector: { enabled: false, port: 23119 },
     chat: { isolated: false },
@@ -94,15 +98,20 @@ export function bindSettingsMock(
   const settings = () => ({
     ai: { routing: { ...state.routing }, apiKeys: { ...state.apiKeys } },
     ...(state.mailto ? { mailto: state.mailto } : {}),
+    ...(state.unpaywallEmail ? { unpaywallEmail: state.unpaywallEmail } : {}),
+    ...(state.ncbiTool ? { ncbiTool: state.ncbiTool } : {}),
     uiLanguage: state.uiLanguage,
-    semantic: { enabled: state.semantic.enabled },
+    semantic: {
+      enabled: state.semantic.enabled,
+      model: state.semantic.model ?? "embeddinggemma-300m",
+    },
     connector: { enabled: state.connector.enabled, port: state.connector.port },
     chat: { isolated: state.chat.isolated },
   });
   let semanticReads = 0;
   const semanticStatus = () => {
     const { enabled, state: shown, progress, detail } = state.semantic;
-    const model = "embeddinggemma-300m";
+    const model = state.semantic.model ?? "embeddinggemma-300m";
     if (!enabled) return { state: "off" as const, model };
     if (shown === "downloading") {
       semanticReads++;
@@ -144,22 +153,30 @@ export function bindSettingsMock(
       }
       if (apiKey) setKey(state, apiKey.provider, true);
       if (patch.mailto !== undefined) {
-        const mail = patch.mailto.trim();
-        if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
-          throw new CitegeistError({
-            code: "SETTINGS_INVALID",
-            message: "The contact address is not an email address.",
-            fix: "Enter an address like name@example.org.",
-            recovery: "fix-and-retry",
-          });
-        }
+        const mail = checkMail(patch.mailto, "The contact address");
         if (mail) state.mailto = mail;
         else delete state.mailto;
       }
+      if (patch.unpaywallEmail !== undefined) {
+        const mail = checkMail(patch.unpaywallEmail, "The Unpaywall address");
+        if (mail) state.unpaywallEmail = mail;
+        else delete state.unpaywallEmail;
+      }
+      if (patch.ncbiTool !== undefined) {
+        const tool = patch.ncbiTool.trim();
+        if (tool) state.ncbiTool = tool;
+        else delete state.ncbiTool;
+      }
       if (patch.uiLanguage) state.uiLanguage = patch.uiLanguage;
       if (patch.semantic) {
-        if (patch.semantic.enabled && !state.semantic.enabled) semanticReads = 0;
+        const turnsOn = patch.semantic.enabled && !state.semantic.enabled;
+        const switches =
+          patch.semantic.model &&
+          patch.semantic.model !== (state.semantic.model ?? "embeddinggemma-300m");
+        // A new model has to be downloaded again.
+        if (turnsOn || switches) semanticReads = 0;
         state.semantic.enabled = patch.semantic.enabled ?? state.semantic.enabled;
+        if (patch.semantic.model) state.semantic.model = patch.semantic.model;
       }
       if (patch.connector) {
         state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;
@@ -204,6 +221,19 @@ export function bindSettingsMock(
       state.worker = { ready: true, engines: { docling: "2.0", ocrmypdf: "16.0" } };
       return { ...base, status: "succeeded" as const, progress: 1, message: "Worker ready" };
     });
+}
+
+function checkMail(raw: string, subject: string): string {
+  const mail = raw.trim();
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+    throw new CitegeistError({
+      code: "SETTINGS_INVALID",
+      message: `${subject} is not an email address.`,
+      fix: "Enter an address like name@example.org.",
+      recovery: "fix-and-retry",
+    });
+  }
+  return mail;
 }
 
 function setKey(state: SettingsMockState, provider: string, stored: boolean): void {

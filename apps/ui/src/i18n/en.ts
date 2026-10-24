@@ -1,5 +1,7 @@
 import { chatEn } from "../chat/strings";
+import { importEn } from "../import/strings";
 import { planningEn } from "../planning/strings";
+import { settingsEn } from "../settings/strings";
 import type { MessageKey } from "./de";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -237,7 +239,7 @@ export const en: Record<MessageKey, string> = {
   "settings.worker.desc": "Python environment for PDF conversion, OCR and web pages.",
   "settings.semantic.title": "Search by meaning",
   "settings.semantic.desc":
-    "Also finds texts that use other words for the same thing. A language model (about 325 MB) runs locally on this Mac and is downloaded when you turn it on.",
+    "Also finds texts that use other words for the same thing. A language model runs locally on this Mac and is downloaded when you turn it on.",
   "settings.semantic.switch": "Turn on semantic search",
   "settings.semantic.progress": "Download progress",
   "settings.semantic.downloading": "Downloading the model, {percent}%.",
@@ -425,6 +427,8 @@ export const en: Record<MessageKey, string> = {
     "The graph needs WebGL and is not available here. The node list next to it still works.",
   ...chatEn,
   ...planningEn,
+  ...settingsEn,
+  ...importEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",
