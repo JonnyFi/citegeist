@@ -51,7 +51,6 @@ import {
   bindSettingsOperations,
   createSettingsDeps,
   type DefaultSettingsOptions,
-  KEYCHAIN_SERVICE,
   NCBI_KEY_PROVIDER,
   OPENALEX_KEY_PROVIDER,
   type SettingsService,
@@ -359,14 +358,6 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     addItem: (actor, input) => ingest.addItem(actor, input),
     queue: ingest.queue,
   });
-  const alerts = bindAlertOperations(registry, lib, {
-    lookup:
-      resolver?.alerts ??
-      (opts.resolver && isAlertLookup(opts.resolver) ? opts.resolver : noAlertLookup()),
-    addItem: (actor, input) => ingest.addItem(actor, input),
-    queue: ingest.queue,
-    rank: async (query, texts) => semantic?.rank(query, texts),
-  });
   bindProjectContext(registry);
   // A literature search run is a job; a one-shot process (the CLI) only reads runs.
   const litsearchSource = opts.litsearch?.sourceDir ?? join(repoRoot(), "workers", "research");
@@ -393,7 +384,6 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
         }
       : {}),
     addItem: (actor, input) => ingest.addItem(actor, input),
-    keychainService: KEYCHAIN_SERVICE,
     openAlexDoi: async (openalex) => graphLookup.openAlexDoi(openalex),
     credentials: async () => ({
       openalexKey: await deps.keychain.get(OPENALEX_KEY_PROVIDER).catch(() => undefined),
@@ -401,6 +391,15 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     }),
   });
 
+  const alerts = bindAlertOperations(registry, lib, {
+    lookup:
+      resolver?.alerts ??
+      (opts.resolver && isAlertLookup(opts.resolver) ? opts.resolver : noAlertLookup()),
+    addItem: (actor, input) => ingest.addItem(actor, input),
+    queue: ingest.queue,
+    rank: async (query, texts) => semantic?.rank(query, texts),
+    pipeline: litsearch.litsearch,
+  });
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {
     const { createEmbedder, ...tuning } = opts.semantic ?? {};
@@ -421,6 +420,11 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   let preprintSchedule: { stop(): void } | undefined;
   if (opts.autoStart !== false) {
     graph.schedule();
+    try {
+      alerts.adoptWatchlists();
+    } catch (err) {
+      opts.onError?.(err);
+    }
     preprintSchedule = litsearch.litsearch.schedulePreprintChecks();
     alertSchedule = scheduleAlerts(alerts);
   }

@@ -11,9 +11,9 @@ from conftest import FIXTURES, ROOT, SCRIPT_MODULES, SCRIPTS
 
 
 def test_settings_put_every_folder_under_the_library(library_dir):
-    # protects: runs, watchlists and opendraft output land in <library>/research
+    # protects: runs, preprint lists and opendraft output land in <library>/research
     # fails_when: a folder falls back to ~/research or the program folder
-    # no_claim: the folders are not created here; pipeline.py and watch.py create them on use
+    # no_claim: the folders are not created here; pipeline.py and preprints.py create them on use
     settings = importlib.import_module("settings")
     for name in ("RUNS_DIR", "WATCH_DIR", "PROJECTS_DIR", "LATEX_DIR"):
         assert getattr(settings, name).startswith(str(library_dir)), name
@@ -81,7 +81,7 @@ def test_dropped_features_are_gone():
 
 
 def test_papers_keys_and_topic_from_a_run(tmp_path):
-    # protects: watchlist diffs and the opendraft handover find papers by the same key as before
+    # protects: the alert diffs and the opendraft handover find papers by the same key as before
     # fails_when: a key changes (OpenAlex id, else sha1 of DOI/title) or a row is lost
     # no_claim: the fixture is written by render.write_csv from hand-made rows, not by a live run
     papers = importlib.import_module("papers")

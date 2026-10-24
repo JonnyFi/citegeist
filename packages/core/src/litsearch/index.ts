@@ -15,6 +15,8 @@ export {
   scriptEnv,
 } from "./runner.js";
 export {
+  type AlertSearchInput,
+  type AlertSearchResult,
   type LitsearchDeps,
   LitsearchService,
   matchKeys,

@@ -1,7 +1,7 @@
 """Papers of a run: keys, papers.csv, run.json and cached OpenAlex records.
 
 Taken from research-pipeline's matrix.py, without the matrix itself: citegeist has its own
-literature matrix, so the run folder only keeps what watchlists and the opendraft handover need.
+literature matrix, so the run folder only keeps what the alerts and the opendraft handover need.
 """
 
 import csv

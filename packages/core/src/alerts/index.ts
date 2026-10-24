@@ -17,6 +17,9 @@ export {
   AlertService,
   alertWhy,
   bindAlertOperations,
+  PIPELINE_INTERVAL_HOURS,
+  PIPELINE_LIMIT,
+  type PipelineSearch,
   registerAlertsJob,
   scheduleAlerts,
 } from "./service.js";

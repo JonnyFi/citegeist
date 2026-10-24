@@ -7,7 +7,6 @@ import type {
   LitsearchPaper,
   LitsearchRunMeta,
   LitsearchRunSummary,
-  LitsearchWatch,
 } from "@citegeist/ops";
 import { type Actor, CitegeistError, type Job } from "@citegeist/schema";
 import { writeFileAtomic } from "../fsutil.js";
@@ -71,7 +70,7 @@ export function workOf(p: RunPaper): GraphWork {
 
 /**
  * Keys a paper is recognised by in another run: DOI, OpenAlex id and the normalised title (only
- * when it is longer than 15 characters). Same rule as watch.py's match_keys.
+ * when it is longer than 15 characters).
  */
 export function matchKeys(p: Pick<RunPaper, "doi" | "openalex" | "title">): string[] {
   const doi = (p.doi ?? "").toLowerCase();
@@ -94,7 +93,7 @@ const EXPORT_FILES = {
 } as const;
 const JOB_KIND = "litsearch.run";
 
-/** Folder name of a new run: date and topic, like research-pipeline's watch.py. */
+/** Folder name of a new run: date and topic, like research-pipeline's. */
 export function runIdFor(topic: string, date: Date, taken: (id: string) => boolean): string {
   const slug =
     topic
@@ -112,7 +111,7 @@ export function runIdFor(topic: string, date: Date, taken: (id: string) => boole
 }
 
 /**
- * True when `pid` runs on this machine. run.json and watchlists.json are synced between Macs, so
+ * True when `pid` runs on this machine. run.json is synced between Macs, so
  * a pid counts only together with the host that wrote it; without a host it is not trusted.
  */
 function pidAlive(pid: number | undefined, host: string | undefined): boolean {
@@ -160,11 +159,40 @@ export interface LitsearchDeps {
   cacheDir?: string;
   /** The version detection of the library graph, which also decides when a tracked preprint is published. */
   versions?: PreprintVersionTools;
-  /** Keychain service of the app; watchlist agents read the OpenAlex key from it. */
-  keychainService?: string;
   /** OpenAlex key from the Keychain and the contact address from the settings, read per run. */
   credentials?: () => Promise<{ openalexKey?: string | undefined; mailto?: string | undefined }>;
   now?: () => Date;
+}
+
+/** What a pipeline alert hands to `alertSearch`. */
+export interface AlertSearchInput {
+  /** Id of the alert. The run is tagged with it, and the next check compares with the run before. */
+  alert: string;
+  topic: string;
+  queries: string[];
+  since?: number | undefined;
+  top?: number | undefined;
+  /** The run to compare with while the alert has no run of its own. */
+  baseRun?: string | undefined;
+  /** Keys (`matchKeys`) of the papers the alert offered before. */
+  seen: ReadonlySet<string>;
+  /** How many items to add to the inbox at most. */
+  limit: number;
+  projects: string[];
+  /** The reason of an inbox item. */
+  why(paper: { score: number; why: string; title: string }, runId: string): string;
+}
+
+export interface AlertSearchResult {
+  runId: string;
+  /** Papers of the run without the rejected ones. */
+  fetched: number;
+  /** New papers that were candidates for the inbox. */
+  found: number;
+  /** The items added to the inbox. */
+  citekeys: string[];
+  /** `matchKeys` of the papers that were offered, so that the alert does not offer them again. */
+  proposed: string[];
 }
 
 const PREPRINTS_JOB = "litsearch.preprints";
@@ -269,7 +297,7 @@ export class LitsearchService {
     return {
       run: { ...meta, ...(meta.error || !error ? {} : { error }) },
       stages,
-      papers: withNewInWatch(this.mark(readRunPapers(dir), dir), dir),
+      papers: withNewInAlert(this.mark(readRunPapers(dir), dir), dir),
     };
   }
 
@@ -302,7 +330,7 @@ export class LitsearchService {
 
   /**
    * What changed from run `a` to run `b`: papers only in `b`, papers `b` no longer has and papers
-   * whose rank moved within the same section. Rejected papers do not count, as in watch.py.
+   * whose rank moved within the same section. Rejected papers do not count.
    */
   compare(a: string, b: string) {
     this.meta(a);
@@ -348,7 +376,22 @@ export class LitsearchService {
    */
   async toInbox(input: { runId: string; keys: string[]; projects: string[] }) {
     const meta = this.meta(input.runId);
-    const dir = this.runDir(input.runId);
+    return this.sendToInbox(
+      input.runId,
+      input.keys,
+      input.projects,
+      (p) =>
+        `Literatursuche „${meta.topic}“: Score ${p.score.toFixed(1)}${p.why ? `, ${p.why}` : ""}`,
+    );
+  }
+
+  private async sendToInbox(
+    runId: string,
+    keys: string[],
+    projects: string[],
+    whyOf: (paper: RunPaper) => string,
+  ) {
+    const dir = this.runDir(runId);
     const addItem = this.deps.addItem;
     if (!addItem) throw unavailable("adding papers needs the ingest service of the app");
     const papers = new Map(readRunPapers(dir).map((p) => [p.key, p]));
@@ -361,7 +404,7 @@ export class LitsearchService {
       job?: string;
       reason?: string;
     }> = [];
-    for (const key of [...new Set(input.keys)]) {
+    for (const key of [...new Set(keys)]) {
       const p = papers.get(key);
       if (!p) {
         results.push({ key, identifier: key, status: "failed", reason: "not a paper of this run" });
@@ -380,14 +423,13 @@ export class LitsearchService {
         });
         continue;
       }
-      const why = `Literatursuche „${meta.topic}“: Score ${p.score.toFixed(1)}${p.why ? `, ${p.why}` : ""}`;
       try {
         const added = await addItem("system", {
           identifier,
-          projects: input.projects,
+          projects,
           tags: [],
           target: "inbox",
-          why,
+          why: whyOf(p),
         });
         const citekey = added.duplicateOf ?? added.citekey;
         sent[key] = { citekey, at: (this.deps.now ?? (() => new Date()))().toISOString() };
@@ -417,6 +459,123 @@ export class LitsearchService {
     };
   }
 
+  /** True while a literature search run is queued or running (one at a time per library). */
+  busy(): boolean {
+    return this.openJob() !== undefined;
+  }
+
+  /**
+   * One check of a pipeline alert: starts a run for it as a `litsearch.run` job, waits for the run,
+   * compares it with the alert's previous run and puts the best new papers into the inbox. The new
+   * papers are those the previous run lacked, that are neither in the library nor in the inbox and
+   * that the alert did not offer before. They go in by score, highest first, until `limit` items
+   * were added. <run>/alert.json lists them, so the run view can flag them.
+   */
+  async alertSearch(
+    input: AlertSearchInput,
+    ctx: {
+      actor: Actor;
+      signal?: AbortSignal;
+      progress?: (fraction: number, message?: string) => void;
+    },
+  ): Promise<AlertSearchResult> {
+    const queue = this.requireQueue();
+    const { runId, job } = this.start(
+      ctx.actor,
+      {
+        topic: input.topic,
+        queries: input.queries,
+        since: input.since,
+        top: input.top,
+        disableSources: [],
+      },
+      input.alert,
+    );
+    const onJob = (j: Job): void => {
+      if (j.id === job) ctx.progress?.(0.02 + 0.88 * j.progress, j.message);
+    };
+    const onAbort = (): void => {
+      queue.cancel(job, "the alert check was cancelled");
+    };
+    queue.on("job", onJob);
+    if (ctx.signal?.aborted) onAbort();
+    else ctx.signal?.addEventListener("abort", onAbort, { once: true });
+    let final: Job;
+    try {
+      final = await queue.waitFor(job);
+    } finally {
+      queue.off("job", onJob);
+      ctx.signal?.removeEventListener("abort", onAbort);
+    }
+    if (final.status !== "succeeded") {
+      throw new CitegeistError({
+        code: "LITSEARCH_RUN_FAILED",
+        message:
+          final.error?.message ?? `The literature search run ${runId} ended as ${final.status}.`,
+        fix: "Open the run to see the stage that failed; the alert tries again at its next check.",
+        recovery: "retry",
+        sideEffects: "partial",
+      });
+    }
+
+    const dir = this.runDir(runId);
+    const previous = this.previousRun(input.alert, runId, input.baseRun);
+    const marked = this.mark(
+      readRunPapers(dir).filter((p) => p.section !== "rejected"),
+      dir,
+    );
+    const lacking = previous ? this.compare(previous, runId).added : marked;
+    writeFileAtomic(
+      join(dir, "alert.json"),
+      `${JSON.stringify(
+        {
+          alert: input.alert,
+          ...(previous ? { previous } : {}),
+          created: (this.deps.now ?? (() => new Date()))().toISOString(),
+          new: lacking.map((p) => ({ key: p.key, title: p.title })),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    const candidates = lacking
+      .filter((p) => p.status === "new" && !matchKeys(p).some((k) => input.seen.has(k)))
+      .sort((a, b) => b.score - a.score);
+    ctx.progress?.(0.92, `${candidates.length} new papers`);
+
+    const citekeys: string[] = [];
+    const proposed: string[] = [];
+    for (let at = 0; citekeys.length < input.limit && at < candidates.length; ) {
+      ctx.signal?.throwIfAborted();
+      const chunk = candidates.slice(at, at + input.limit - citekeys.length);
+      at += chunk.length;
+      const sent = await this.sendToInbox(
+        runId,
+        chunk.map((p) => p.key),
+        input.projects,
+        (p) => input.why(p, runId),
+      );
+      for (const p of chunk) proposed.push(...matchKeys(p));
+      for (const r of sent.results) {
+        if (r.status === "added" && r.citekey) citekeys.push(r.citekey);
+      }
+    }
+    return { runId, fetched: marked.length, found: candidates.length, citekeys, proposed };
+  }
+
+  /** The run an alert's new run is compared with: its last finished run, else the run it was saved from. */
+  private previousRun(
+    alert: string,
+    current: string,
+    base: string | undefined,
+  ): string | undefined {
+    const own = listRunSummaries(this.lib.paths.litsearchRunsDir).find(
+      (r) => r.alert === alert && r.id !== current && r.status === "done",
+    );
+    const id = own?.id ?? base;
+    return id && id !== current && existsSync(this.lib.paths.litsearchRunDir(id)) ? id : undefined;
+  }
+
   async suggest(input: { topic: string; maxQueries: number }): Promise<{ queries: string[] }> {
     if (!this.deps.ai) throw unavailable("query suggestions need the AI router of the app");
     const res = await this.deps.ai.run("litsearch.suggestQueries", input);
@@ -433,7 +592,7 @@ export class LitsearchService {
       top?: number | undefined;
       disableSources: string[];
     },
-    watch?: string,
+    alert?: string,
   ): { runId: string; job: string } {
     const queue = this.requireQueue();
     this.refuseSecondRun();
@@ -460,7 +619,7 @@ export class LitsearchService {
       ...(input.since !== undefined ? { since: input.since } : {}),
       ...(input.top !== undefined ? { top: input.top } : {}),
       ...(input.disableSources.length ? { disableSources: input.disableSources } : {}),
-      ...(watch ? { watch } : {}),
+      ...(alert ? { alert } : {}),
     };
     // The app opens the run as soon as start returns; run.json has to exist by then.
     writeQueuedMeta(join(runsDir, runId), runId, request, () => now);
@@ -488,7 +647,7 @@ export class LitsearchService {
       ...(meta.since !== undefined ? { since: meta.since } : {}),
       ...(meta.top !== undefined ? { top: meta.top } : {}),
       ...(disableSources.length ? { disableSources } : {}),
-      ...(meta.watch ? { watch: meta.watch } : {}),
+      ...(meta.alert ? { alert: meta.alert } : {}),
     };
     writeQueuedMeta(this.runDir(runId), runId, request, this.deps.now);
     const job = queue.enqueue({ kind: JOB_KIND, input: { runId, request }, by: actor });
@@ -502,7 +661,7 @@ export class LitsearchService {
       throw new CitegeistError({
         code: "LITSEARCH_RUN_NOT_RUNNING",
         message: `Run "${runId}" is not running in this app.`,
-        fix: "A run started by a background watchlist stops on its own; wait for it or end it in Activity Monitor.",
+        fix: "Only runs of this app can be stopped here; a run that another Mac started ends on its own.",
         recovery: "fix-and-retry",
         sideEffects: "none",
       });
@@ -572,21 +731,14 @@ export class LitsearchService {
     return {
       dataDir: this.lib.paths.researchDir,
       cacheDir: this.deps.cacheDir ?? join(this.lib.local.cacheDir, "litsearch"),
-      libraryId: this.lib.manifest.id,
-      keychainService: this.deps.keychainService,
       mailto: creds.mailto,
     };
-  }
-
-  /** Runs watch.py with arguments and parses its JSON answer. Exit 2 carries a user message. */
-  private async watchScript(args: string[]): Promise<unknown> {
-    return this.script("watch.py", args);
   }
 
   /** Runs a script of workers/research and parses the JSON on its last output line. */
   private async script(name: string, args: string[], timeoutMs?: number): Promise<unknown> {
     const { command, scriptsDir } = this.deps;
-    if (!command || !scriptsDir) throw unavailable("watchlists are kept by the citegeist app");
+    if (!command || !scriptsDir) throw unavailable("the scripts are started by the citegeist app");
     const res = await runScript({
       command,
       script: join(scriptsDir, name),
@@ -596,9 +748,9 @@ export class LitsearchService {
     });
     if (res.code !== 0) {
       throw new CitegeistError({
-        code: res.code === 2 ? "LITSEARCH_WATCH_INVALID" : "LITSEARCH_WATCH_FAILED",
+        code: "LITSEARCH_SCRIPT_FAILED",
         message: res.stderr.trim().split("\n").pop() || `${name} exited with ${res.code}`,
-        fix: "Check the watchlist's topic, queries, weekday (0 to 6) and time (HH:MM).",
+        fix: "Look at the script's stderr in the app log; a Python or uv problem often prints there.",
         recovery: "fix-and-retry",
         sideEffects: "none",
       });
@@ -615,124 +767,6 @@ export class LitsearchService {
         sideEffects: "none",
       });
     }
-  }
-
-  private toWatch(raw: RawWatch): LitsearchWatch {
-    const pid = typeof raw.running_pid === "number" ? raw.running_pid : undefined;
-    const running =
-      pidAlive(pid, typeof raw.running_host === "string" ? raw.running_host : undefined) ||
-      Boolean(
-        this.deps.queue
-          ?.open()
-          .some(
-            (j) => j.kind === JOB_KIND && (j.input as RunJobInput | null)?.request.watch === raw.id,
-          ),
-      );
-    const int = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? v : undefined);
-    const lastStatus = raw.last_status as LitsearchWatch["lastStatus"] | null | undefined;
-    return {
-      id: raw.id,
-      topic: raw.topic,
-      queries: raw.queries,
-      ...(int(raw.since) !== undefined ? { since: int(raw.since) } : {}),
-      ...(int(raw.top) !== undefined ? { top: int(raw.top) } : {}),
-      weekday: raw.weekday,
-      time: raw.time,
-      background: raw.paused === false,
-      agentLoaded: raw.agent === true,
-      running,
-      runs: raw.runs ?? [],
-      ...(raw.last_run ? { lastRun: raw.last_run } : {}),
-      ...(lastStatus ? { lastStatus } : {}),
-      ...(int(raw.last_new) !== undefined ? { lastNew: int(raw.last_new) } : {}),
-      unseen: int(raw.unseen) ?? 0,
-    };
-  }
-
-  async watches(): Promise<{ watches: LitsearchWatch[] }> {
-    if (!existsSync(join(this.lib.paths.litsearchWatchesDir, "watchlists.json"))) {
-      return { watches: [] };
-    }
-    const out = (await this.watchScript(["list", "--json"])) as { watchlists: RawWatch[] };
-    return { watches: out.watchlists.map((w) => this.toWatch(w)) };
-  }
-
-  private async watch(id: string): Promise<LitsearchWatch> {
-    const found = (await this.watches()).watches.find((w) => w.id === id);
-    if (!found) {
-      throw new CitegeistError({
-        code: "LITSEARCH_WATCH_NOT_FOUND",
-        message: `There is no watchlist "${id}".`,
-        fix: "Take the id from litsearch.watches.",
-        recovery: "fix-and-retry",
-        sideEffects: "none",
-      });
-    }
-    return found;
-  }
-
-  async watchSave(input: {
-    id?: string | undefined;
-    fromRun?: string | undefined;
-    topic: string;
-    queries: string[];
-    since?: number | undefined;
-    top?: number | undefined;
-    weekday: number;
-    time: string;
-  }): Promise<{ watch: LitsearchWatch }> {
-    if (input.fromRun) this.meta(input.fromRun);
-    const args = [
-      "save",
-      // --flag=value: a value that starts with "-" must not read as an option
-      ...(input.id ? [`--id=${input.id}`] : []),
-      ...(input.fromRun ? [`--from-run=${input.fromRun}`] : []),
-      `--topic=${input.topic}`,
-      ...input.queries.map((q) => `--query=${q}`),
-      ...(input.since !== undefined ? [`--since=${input.since}`] : []),
-      ...(input.top !== undefined ? [`--top=${input.top}`] : []),
-      `--weekday=${input.weekday}`,
-      `--time=${input.time}`,
-    ];
-    const raw = (await this.watchScript(args)) as RawWatch;
-    return { watch: await this.watch(raw.id) };
-  }
-
-  async watchDelete(id: string): Promise<{ ok: true }> {
-    await this.watch(id);
-    await this.watchScript(["delete", id]);
-    return { ok: true };
-  }
-
-  async watchBackground(id: string, enabled: boolean): Promise<{ watch: LitsearchWatch }> {
-    await this.watch(id);
-    await this.watchScript(["background", id, enabled ? "on" : "off"]);
-    return { watch: await this.watch(id) };
-  }
-
-  async watchSeen(id: string): Promise<{ watch: LitsearchWatch }> {
-    await this.watch(id);
-    await this.watchScript(["seen", id]);
-    return { watch: await this.watch(id) };
-  }
-
-  /** Runs a watchlist now as a normal run job; the job books the run on the watchlist when it ends. */
-  async watchRun(actor: Actor, id: string): Promise<{ runId: string; job: string }> {
-    const w = await this.watch(id);
-    if (w.running) {
-      throw new CitegeistError({
-        code: "LITSEARCH_RUN_ACTIVE",
-        message: `Watchlist "${id}" is running already.`,
-        fix: "Wait for its run to finish.",
-        recovery: "fix-and-retry",
-        sideEffects: "none",
-      });
-    }
-    return this.start(
-      actor,
-      { topic: w.topic, queries: w.queries, since: w.since, top: w.top, disableSources: [] },
-      id,
-    );
   }
 
   /** Tracked preprints of the library, after collecting those of all runs. */
@@ -922,8 +956,6 @@ export class LitsearchService {
         cacheDir: this.deps.cacheDir ?? join(this.lib.local.cacheDir, "litsearch"),
         openalexKey: creds.openalexKey,
         mailto: creds.mailto,
-        libraryId: this.lib.manifest.id,
-        keychainService: this.deps.keychainService,
       },
       dir,
       runId,
@@ -938,10 +970,6 @@ export class LitsearchService {
         ctx.progress(progressOf(stages), current?.label);
       },
     });
-    if (request.watch) {
-      // the watchlist learns about its run either way; a failure here must not hide the run's own result
-      await this.watchScript(["record", request.watch, runId]).catch(() => undefined);
-    }
     if (outcome.status === "failed") {
       throw new CitegeistError({
         code: "LITSEARCH_RUN_FAILED",
@@ -955,38 +983,24 @@ export class LitsearchService {
   }
 }
 
-/** One watchlist as watch.py's `list --json` prints it. */
-interface RawWatch {
-  id: string;
-  topic: string;
-  queries: string[];
-  since?: number | null;
-  top?: number | null;
-  weekday: number;
-  time: string;
-  paused?: boolean;
-  agent?: boolean;
-  running_pid?: number | null;
-  running_host?: string | null;
-  runs?: string[];
-  last_run?: string | null;
-  last_status?: string | null;
-  last_new?: number | null;
-  unseen?: number;
-}
-
-/** Marks the papers <run>/watch.json lists as new against the watchlist's previous run. */
-function withNewInWatch(papers: LitsearchPaper[], dir: string): LitsearchPaper[] {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(join(dir, "watch.json"), "utf8"));
-  } catch {
-    return papers;
+/**
+ * Marks the papers that <run>/alert.json lists as new against the previous run of the alert. Runs of
+ * the former watchlists carry the same list in watch.json.
+ */
+function withNewInAlert(papers: LitsearchPaper[], dir: string): LitsearchPaper[] {
+  for (const file of ["alert.json", "watch.json"]) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(readFileSync(join(dir, file), "utf8"));
+    } catch {
+      continue;
+    }
+    const list = (raw as { new?: Array<{ key?: unknown }> } | null)?.new;
+    if (!Array.isArray(list)) continue;
+    const keys = new Set(list.map((p) => p.key).filter((k): k is string => typeof k === "string"));
+    return papers.map((p) => (keys.has(p.key) ? { ...p, newInAlert: true } : p));
   }
-  const list = (raw as { new?: Array<{ key?: unknown }> } | null)?.new;
-  if (!Array.isArray(list)) return papers;
-  const keys = new Set(list.map((p) => p.key).filter((k): k is string => typeof k === "string"));
-  return papers.map((p) => (keys.has(p.key) ? { ...p, newInWatch: true } : p));
+  return papers;
 }
 
 /** <run>/inbox.json: which paper key became which library item. */

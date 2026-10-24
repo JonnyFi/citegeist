@@ -50,10 +50,6 @@ export interface LitsearchEnv {
   cacheDir: string;
   openalexKey?: string | undefined;
   mailto?: string | undefined;
-  /** Part of the launchd labels of the library's watchlists. */
-  libraryId?: string | undefined;
-  /** Keychain service a launchd agent reads the OpenAlex key from. */
-  keychainService?: string | undefined;
 }
 
 /** The command could not be started because `uv` is not installed (or not where it was looked for). */
@@ -90,8 +86,6 @@ export function scriptEnv(e: LitsearchEnv): Record<string, string> {
     CITEGEIST_LITSEARCH_CACHE: e.cacheDir,
     ...(e.openalexKey ? { OPENALEX_API_KEY: e.openalexKey } : {}),
     ...(e.mailto ? { OPENDRAFT_CONTACT_EMAIL: e.mailto } : {}),
-    ...(e.libraryId ? { CITEGEIST_LIBRARY_ID: e.libraryId } : {}),
-    ...(e.keychainService ? { CITEGEIST_KEYCHAIN_SERVICE: e.keychainService } : {}),
   };
 }
 
@@ -102,8 +96,8 @@ export interface RunRequest {
   since?: number | undefined;
   top?: number | undefined;
   disableSources?: string[] | undefined;
-  /** The watchlist that started the run. */
-  watch?: string | undefined;
+  /** The pipeline alert that started the run. */
+  alert?: string | undefined;
 }
 
 export interface PipelineRun {
@@ -169,7 +163,7 @@ export function writeQueuedMeta(
     created: typeof previous.created === "string" ? previous.created : iso(now()),
     status: "running",
     ...(request.disableSources?.length ? { disabled_sources: request.disableSources } : {}),
-    ...(request.watch ? { watchlist: request.watch } : {}),
+    ...(request.alert ? { alert: request.alert } : {}),
   });
 }
 
@@ -196,7 +190,7 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
     counts: {},
     attempts,
     ...(request.disableSources?.length ? { disabled_sources: request.disableSources } : {}),
-    ...(request.watch ? { watchlist: request.watch } : {}),
+    ...(request.alert ? { alert: request.alert } : {}),
   };
   writeMeta(dir, meta);
 
@@ -226,7 +220,7 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
       cwd: dir,
       detached: true, // own process group, so cancel reaches python behind uv
     });
-    // The pid tells a reader whether a "running" run is still alive (watch.py writes it too). It
+    // The pid tells a reader whether a "running" run is still alive. It
     // is synced with the library, so the host says on which Mac the pid means anything.
     if (child.pid) writeMeta(dir, { ...meta, pid: child.pid, host: hostname() });
     let buffer = "";
@@ -329,7 +323,7 @@ export interface ScriptResult {
 export const SCRIPT_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * Runs a short script of workers/research to the end (report.py, watch.py, preprints.py) and
+ * Runs a short script of workers/research to the end (report.py, preprints.py) and
  * collects its output. A start failure resolves with code null and the reason; a missing `uv`
  * rejects with LITSEARCH_UV_MISSING. The timeout kills the whole process group.
  */

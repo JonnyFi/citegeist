@@ -6,7 +6,8 @@ import { CandidateResult, WorkStatus } from "./graph.js";
 // Literature search (issue #50, from research-pipeline). A run searches OpenAlex, arXiv and
 // Semantic Scholar, ranks every paper with a 0 to 100 score and verifies each DOI. Runs live in
 // <library>/research/runs/<id>/; selected papers go to the inbox (D7), never straight into the
-// library. None of these is an MCP tool: the tool budget is full and a search is run in the app.
+// library. A search that repeats is an alert of the kind `pipeline` (alerts.*, D19). None of
+// these is an MCP tool: the tool budget is full and a search is run in the app.
 
 const Ok = z.object({ ok: z.literal(true) });
 
@@ -14,7 +15,6 @@ const Ok = z.object({ ok: z.literal(true) });
 export const LitsearchRunId = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]{0,119}$/, "a run id is lowercase letters, digits and hyphens");
-export const LitsearchWatchId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,119}$/);
 
 /** The optional sources a run can switch off. */
 export const LitsearchSource = z.enum(["dblp", "openreview", "unpaywall", "orcid"]);
@@ -39,8 +39,8 @@ export const LitsearchRunSummary = z.object({
   finished: z.string().optional(),
   /** Papers per section, from run.json. Empty while running. */
   counts: z.record(z.string(), z.number().int().nonnegative()),
-  /** The watchlist that started the run. */
-  watch: LitsearchWatchId.optional(),
+  /** The pipeline alert that started the run (alerts.list). */
+  alert: z.string().optional(),
 });
 export type LitsearchRunSummary = z.infer<typeof LitsearchRunSummary>;
 
@@ -102,34 +102,10 @@ export const LitsearchPaper = z.object({
   /** Whether the library knows the paper; `new` when it is in neither inbox nor library. */
   status: WorkStatus,
   citekey: Citekey.optional(),
-  /** In a watchlist's run: the run before it did not have this paper. */
-  newInWatch: z.boolean().optional(),
+  /** In the run of a pipeline alert: the alert's run before it did not have this paper. */
+  newInAlert: z.boolean().optional(),
 });
 export type LitsearchPaper = z.infer<typeof LitsearchPaper>;
-
-export const LitsearchWatch = z.object({
-  id: LitsearchWatchId,
-  topic: z.string(),
-  queries: z.array(z.string()),
-  since: z.number().int().optional(),
-  top: z.number().int().optional(),
-  weekday: z.number().int().min(0).max(6).describe("0 = Sunday ... 6 = Saturday"),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
-  /** A launchd agent re-runs the search weekly, also while the app is closed. Off until the user turns it on. */
-  background: z.boolean(),
-  /** launchctl knows the agent. False with background on means the agent went missing. */
-  agentLoaded: z.boolean(),
-  /** A run of this watchlist is going on right now. */
-  running: z.boolean(),
-  runs: z.array(LitsearchRunId),
-  lastRun: z.string().optional(),
-  lastStatus: LitsearchRunStatus.optional(),
-  /** Papers in the last run that the run before did not have. */
-  lastNew: z.number().int().nonnegative().optional(),
-  /** New papers since the user last opened the watch. */
-  unseen: z.number().int().nonnegative(),
-});
-export type LitsearchWatch = z.infer<typeof LitsearchWatch>;
 
 export const LitsearchPreprint = z.object({
   id: z.string(),
@@ -280,66 +256,6 @@ export const litsearchToInbox = defineContract({
   }),
 });
 
-export const litsearchWatches = defineContract({
-  name: "litsearch.watches",
-  summary: "List the saved searches (watchlists) of the library",
-  access: "read",
-  input: z.object({}),
-  output: z.object({ watches: z.array(LitsearchWatch) }),
-});
-
-export const litsearchWatchSave = defineContract({
-  name: "litsearch.watchSave",
-  summary:
-    "Create or change a watchlist. A new one runs only on request until background is turned on",
-  access: "write",
-  input: z.object({
-    id: LitsearchWatchId.optional(),
-    /** The run whose topic and queries a new watchlist takes over. */
-    fromRun: LitsearchRunId.optional(),
-    topic: z.string().min(1).max(500),
-    queries: z.array(z.string().min(1)).min(1).max(20),
-    since: z.number().int().min(1900).max(2100).optional(),
-    top: z.number().int().min(1).max(500).optional(),
-    weekday: z.number().int().min(0).max(6),
-    time: z.string().regex(/^\d{2}:\d{2}$/),
-  }),
-  output: z.object({ watch: LitsearchWatch }),
-});
-
-export const litsearchWatchDelete = defineContract({
-  name: "litsearch.watchDelete",
-  summary: "Delete a watchlist and its launchd agent; its runs stay",
-  access: "write",
-  input: z.object({ id: LitsearchWatchId }),
-  output: Ok,
-});
-
-export const litsearchWatchRun = defineContract({
-  name: "litsearch.watchRun",
-  summary: "Run a watchlist now",
-  access: "write",
-  input: z.object({ id: LitsearchWatchId }),
-  output: RunHandle,
-});
-
-export const litsearchWatchBackground = defineContract({
-  name: "litsearch.watchBackground",
-  summary:
-    "Turn the weekly background run of a watchlist on (installs a launchd agent) or off (removes it)",
-  access: "admin",
-  input: z.object({ id: LitsearchWatchId, enabled: z.boolean() }),
-  output: z.object({ watch: LitsearchWatch }),
-});
-
-export const litsearchWatchSeen = defineContract({
-  name: "litsearch.watchSeen",
-  summary: "Mark the new papers of a watchlist as seen",
-  access: "write",
-  input: z.object({ id: LitsearchWatchId }),
-  output: z.object({ watch: LitsearchWatch }),
-});
-
 export const litsearchPreprints = defineContract({
   name: "litsearch.preprints",
   summary: "Tracked preprints and the ones that have since appeared in a peer-reviewed venue",
@@ -379,12 +295,6 @@ export const LITSEARCH_CONTRACTS: readonly OperationContract[] = [
   litsearchReport,
   litsearchExport,
   litsearchToInbox,
-  litsearchWatches,
-  litsearchWatchSave,
-  litsearchWatchDelete,
-  litsearchWatchRun,
-  litsearchWatchBackground,
-  litsearchWatchSeen,
   litsearchPreprints,
   litsearchPreprintsImport,
   litsearchPreprintsCheck,

@@ -4,7 +4,7 @@
 Usage:
   python3 preprints.py sync                    # collect the preprints of all runs
   python3 preprints.py import FILE [FILE ...]  # a references.bib or a Markdown reference list
-  python3 preprints.py openreview [--all]      # OpenReview status of due preprints (weekly with every watchlist run)
+  python3 preprints.py openreview [--all]      # OpenReview status of due preprints (weekly, from the app)
   python3 preprints.py list [--json]           # --json: syncs the runs first, for the app
 
 This script keeps only what the core cannot know: which preprints the runs and the imported
@@ -64,7 +64,7 @@ def write_json(path, data):
 
 @contextlib.contextmanager
 def locked():
-    """Exclusive lock for read-modify-write of the store (the lock file is watch.py's, never held in a nest)."""
+    """Exclusive lock for read-modify-write of the store (never held in a nest)."""
     os.makedirs(WATCH_DIR, exist_ok=True)
     with open(os.path.join(WATCH_DIR, ".lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

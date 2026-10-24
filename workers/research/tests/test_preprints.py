@@ -62,9 +62,9 @@ def test_sync_rewrites_the_store_only_when_something_new_arrived(library_dir):
 
 
 def test_concurrent_imports_keep_every_preprint(library_dir, tmp_path):
-    # protects: two scripts writing the store at once (an import and a sync, two Macs' agents) lose nothing
+    # protects: two scripts writing the store at once (an import and a sync) lose nothing
     # fails_when: a process overwrites the store with a copy it loaded before another one wrote
-    # no_claim: the watch.py lock on watchlists.json is not exercised here
+    # no_claim: none beyond protects
     files = []
     for i in range(6):
         f = tmp_path / f"refs{i}.bib"

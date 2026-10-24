@@ -114,7 +114,7 @@ export class LibraryPaths {
     return join(this.chatsDir, `${name}.md`);
   }
 
-  /** Literature search (workers/research): runs, watchlists, preprints, opendraft and LaTeX output. */
+  /** Literature search (workers/research): runs, preprint lists, opendraft and LaTeX output. */
   get researchDir(): string {
     return join(this.root, "research");
   }

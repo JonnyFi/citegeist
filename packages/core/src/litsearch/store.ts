@@ -10,8 +10,7 @@ import type {
 } from "@citegeist/ops";
 import { csvRecords } from "./csv.js";
 
-// Reads the run folders that workers/research writes: run.json (written by the runner here and by
-// watch.py), papers.csv (render.write_csv) and progress.jsonl (pipeline.py --progress-jsonl).
+// Reads the run folders that workers/research writes: run.json (written by the runner here), papers.csv (render.write_csv) and progress.jsonl (pipeline.py --progress-jsonl).
 
 /** A paper of papers.csv before the library marks it. */
 export type RunPaper = Omit<LitsearchPaper, "status" | "citekey">;
@@ -64,7 +63,8 @@ export function readRunMeta(dir: string, id: string): LitsearchRunMeta | undefin
     created: str(raw.created) ?? "",
     ...(str(raw.finished) ? { finished: str(raw.finished) } : {}),
     counts: counts(raw.counts),
-    ...(str(raw.watchlist) ? { watch: str(raw.watchlist) } : {}),
+    // `watchlist` is what runs of the former watchlists carry
+    ...(str(raw.alert ?? raw.watchlist) ? { alert: str(raw.alert ?? raw.watchlist) } : {}),
     droppedQueries: strings(raw.dropped_queries),
     attempts: int(raw.attempts) ?? 0,
     ...(str(raw.error) ? { error: str(raw.error) } : {}),

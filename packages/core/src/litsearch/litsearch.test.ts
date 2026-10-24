@@ -719,19 +719,19 @@ describe("litsearch.start, cancel and resume", () => {
   it("answers with an error, not a SyntaxError, when a script prints no JSON", async () => {
     // protects: a Python or uv problem that prints text on stdout reaches the user as a CitegeistError
     // fails_when: the call rejects with a bare SyntaxError
-    // no_claim: a node stub stands in for watch.py
+    // no_claim: a node stub stands in for preprints.py
     const { lib, queue } = await wired("done");
     const scriptsDir = tmpDir();
-    writeFileSync(join(scriptsDir, "watch.py"), 'console.log("Downloading Python 3.12...");\n');
+    writeFileSync(join(scriptsDir, "preprints.py"), 'console.log("Downloading Python 3.12...");\n');
     const registry = bindLitsearchOperations(new Registry(), lib, {
       queue,
       command: { command: process.execPath, args: [] },
       scriptsDir,
       cacheDir: tmpDir(),
     });
-    mkdirSync(lib.paths.litsearchWatchesDir, { recursive: true });
-    writeFileSync(join(lib.paths.litsearchWatchesDir, "watchlists.json"), '{"watchlists": []}');
-    await expect(registry.call("litsearch.watches", { actor: "human" }, {})).rejects.toMatchObject({
+    await expect(
+      registry.call("litsearch.preprints", { actor: "human" }, {}),
+    ).rejects.toMatchObject({
       detail: { code: "LITSEARCH_SCRIPT_OUTPUT_INVALID" },
     });
     queue.close();
@@ -935,81 +935,64 @@ describe("litsearch.compare", () => {
   });
 });
 
-describe.skipIf(!python3())("litsearch watchlists", () => {
-  it("saves a watchlist from a run with background off, turns background on and off, and deletes it", async () => {
-    // protects: the app keeps watchlists through watch.py in <library>/research/watches; background is opt-in
-    // fails_when: a new watchlist starts with background on, the toggle does not stick, or delete leaves it behind
-    // no_claim: launchd is switched off (CITEGEIST_LITSEARCH_NO_LAUNCHD); installing the agent is tested in workers/research
+describe("runs of an alert", () => {
+  it("flags the papers that alert.json lists as new, and still reads the watch.json of former watchlists", async () => {
+    // protects: the "new" badge in the run of a pipeline alert comes from its alert.json; runs of former watchlists keep theirs
+    // fails_when: a paper listed in the file is not marked, others are, or watch.json is no longer read
+    // no_claim: both files are written by hand here; alert.json is made by the alert check (alerts/pipeline.test.ts)
     const lib = await library();
-    copyRun(lib, "run-sample");
-    const registry = bindLitsearchOperations(new Registry(), lib, {
-      command: {
-        command: python3() as string,
-        args: [],
-        env: { CITEGEIST_LITSEARCH_NO_LAUNCHD: "1" },
-      },
-      scriptsDir: join(FIXTURES, "..", "..", "scripts"),
-    });
-    const call = <T>(name: string, input: unknown) =>
-      registry.call(name, { actor: "human" }, input) as Promise<T>;
-    expect(await call("litsearch.watches", {})).toEqual({ watches: [] });
-    const saved = await call<{
-      watch: { id: string; background: boolean; queries: string[]; time: string };
-    }>("litsearch.watchSave", {
-      fromRun: "run-sample",
-      topic: "agent communication protocols",
-      queries: ['"agent communication protocol"'],
-      weekday: 1,
-      time: "08:00",
-    });
-    expect(saved.watch).toMatchObject({
-      id: "agent-communication-protocols",
-      background: false,
-      queries: ['"agent communication protocol"'],
-      time: "08:00",
-    });
-    expect(existsSync(join(lib.paths.litsearchWatchesDir, "watchlists.json"))).toBe(true);
-    const on = await call<{ watch: { background: boolean } }>("litsearch.watchBackground", {
-      id: saved.watch.id,
-      enabled: true,
-    });
-    expect(on.watch.background).toBe(true);
-    const off = await call<{ watch: { background: boolean } }>("litsearch.watchBackground", {
-      id: saved.watch.id,
-      enabled: false,
-    });
-    expect(off.watch.background).toBe(false);
-    await expect(
-      call("litsearch.watchSave", { topic: "x", queries: ["y"], weekday: 1, time: "25:00" }),
-    ).rejects.toThrow();
-    await call("litsearch.watchDelete", { id: saved.watch.id });
-    expect((await call<{ watches: unknown[] }>("litsearch.watches", {})).watches).toEqual([]);
-  });
-
-  it("marks the papers a watchlist run found new against its previous run", async () => {
-    // protects: the "new" badge in a watchlist's run comes from its watch.json
-    // fails_when: a paper listed in watch.json is not marked, or others are
-    // no_claim: watch.json is written by hand here; its creation is tested in workers/research
-    const lib = await library();
+    const registry = bindLitsearchOperations(new Registry(), lib);
+    const flagged = async (runId: string) =>
+      (
+        (await registry.call("litsearch.get", { actor: "human" }, { runId })) as {
+          papers: Array<{ key: string; newInAlert?: boolean }>;
+        }
+      ).papers
+        .filter((p) => p.newInAlert)
+        .map((p) => p.key);
     const dir = copyRun(lib, "run-sample");
     writeFileSync(
-      join(dir, "watch.json"),
+      join(dir, "alert.json"),
+      JSON.stringify({ alert: "a", new: [{ key: "W4600000003" }] }),
+    );
+    expect(await flagged("run-sample")).toEqual(["W4600000003"]);
+    const old = copyRun(lib, "run-old");
+    writeFileSync(
+      join(old, "watch.json"),
       JSON.stringify({
         watchlist: "w",
         status: "done",
-        new: [{ key: "W4600000003" }],
+        new: [{ key: "W4400000001" }],
         dropped: [],
       }),
     );
+    expect(await flagged("run-old")).toEqual(["W4400000001"]);
+  });
+
+  it("reads the alert of a run from run.json, also under the former key watchlist", async () => {
+    // protects: runs started by former watchlists still say which saved search they belong to
+    // fails_when: the alert of a run is lost
+    // no_claim: none beyond protects
+    const lib = await library();
     const registry = bindLitsearchOperations(new Registry(), lib);
-    const got = (await registry.call(
-      "litsearch.get",
-      { actor: "human" },
-      { runId: "run-sample" },
-    )) as {
-      papers: Array<{ key: string; newInWatch?: boolean }>;
+    for (const [id, extra] of [
+      ["run-new", { alert: "a" }],
+      ["run-old", { watchlist: "w" }],
+    ] as const) {
+      const dir = lib.paths.litsearchRunDir(id);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, "run.json"),
+        JSON.stringify({ topic: id, status: "done", created: "2026-10-01T09:00:00", ...extra }),
+      );
+    }
+    const { runs } = (await registry.call("litsearch.runs", { actor: "human" }, { limit: 10 })) as {
+      runs: Array<{ id: string; alert?: string }>;
     };
-    expect(got.papers.filter((p) => p.newInWatch).map((p) => p.key)).toEqual(["W4600000003"]);
+    expect(Object.fromEntries(runs.map((r) => [r.id, r.alert]))).toEqual({
+      "run-new": "a",
+      "run-old": "w",
+    });
   });
 });
 
@@ -1021,11 +1004,7 @@ describe.skipIf(!python3())("litsearch preprints", () => {
     const lib = await library();
     copyRun(lib, "run-sample");
     const registry = bindLitsearchOperations(new Registry(), lib, {
-      command: {
-        command: python3() as string,
-        args: [],
-        env: { CITEGEIST_LITSEARCH_NO_LAUNCHD: "1" },
-      },
+      command: { command: python3() as string, args: [] },
       scriptsDir: join(FIXTURES, "..", "..", "scripts"),
     });
     const call = <T>(name: string, input: unknown) =>
