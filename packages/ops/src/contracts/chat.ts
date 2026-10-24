@@ -1,4 +1,12 @@
-import { CardId, Citekey, JobId, OutlineNodeId, PlanSlug, ProjectSlug } from "@citegeist/schema";
+import {
+  CardId,
+  Citekey,
+  JobId,
+  OutlineNodeId,
+  PlanSlug,
+  ProjectSlug,
+  TextSlug,
+} from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
@@ -32,6 +40,8 @@ export const ChatContext = z.object({
   project: ProjectSlug.optional(),
   plan: PlanSlug.optional(),
   node: OutlineNodeId.optional(),
+  /** The text open in the Texte tab of the project. */
+  text: TextSlug.optional(),
   item: Citekey.optional(),
   selection: ChatSelection.optional(),
 });

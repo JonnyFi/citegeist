@@ -1,4 +1,10 @@
-import { NoteEditorView, type OpenLinkEvent, type WikiLinkProvider } from "@citegeist/editor";
+import {
+  type CitationProvider,
+  type NoteEditorProps,
+  NoteEditorView,
+  type OpenLinkEvent,
+  type WikiLinkProvider,
+} from "@citegeist/editor";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { type MessageKey, useI18n } from "../i18n";
@@ -13,6 +19,9 @@ const LABEL_KEYS = {
   sectionItem: "editor.sectionItem",
   sectionNote: "editor.sectionNote",
   sectionCard: "editor.sectionCard",
+  citationUnknown: "editor.citationUnknown",
+  sectionProject: "editor.sectionProject",
+  sectionLibrary: "editor.sectionLibrary",
 } as const satisfies Record<string, MessageKey>;
 
 /** Markdown editor wired to the library: autocomplete data, card embeds and opening links. */
@@ -20,6 +29,8 @@ export function EditorField({
   value,
   onChange,
   provider,
+  citations,
+  editorRef,
   index,
   label,
   placeholder,
@@ -29,6 +40,10 @@ export function EditorField({
   value: string;
   onChange: (value: string) => void;
   provider: WikiLinkProvider | undefined;
+  /** Pandoc citations (`[@key]`) of a text: completion and marks for unknown keys. */
+  citations?: CitationProvider | undefined;
+  /** Gives access to the editor, for inserting at the cursor. */
+  editorRef?: NoteEditorProps["editorRef"];
   index: LinkIndex | undefined;
   label: string;
   placeholder: string;
@@ -71,6 +86,8 @@ export function EditorField({
       value={value}
       onChange={onChange}
       {...(provider ? { provider } : {})}
+      {...(citations ? { citations } : {})}
+      {...(editorRef ? { editorRef } : {})}
       labels={labels}
       onOpenLink={open}
       ariaLabel={label}

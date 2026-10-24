@@ -415,6 +415,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@citegeist/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.4

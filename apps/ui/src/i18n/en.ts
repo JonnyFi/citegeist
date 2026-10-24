@@ -4,6 +4,7 @@ import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
+import { textsEn } from "../texts/strings";
 import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
 import { manageEn } from "./manage";
@@ -392,6 +393,9 @@ export const en: Record<MessageKey, string> = {
   "editor.sectionItem": "Sources",
   "editor.sectionNote": "Notes",
   "editor.sectionCard": "Cards",
+  "editor.citationUnknown": "Unknown citekey",
+  "editor.sectionProject": "This project",
+  "editor.sectionLibrary": "Library",
   "nav.graph": "Graph",
   "rel.untyped": "Linked",
   "rel.cites": "cites",
@@ -444,6 +448,7 @@ export const en: Record<MessageKey, string> = {
   ...matrixEn,
   ...conceptsEn,
   ...litsearchEn,
+  ...textsEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",
@@ -476,6 +481,7 @@ export const en: Record<MessageKey, string> = {
   "job.kind.import": "Importing",
   "job.kind.export": "Exporting",
   "job.kind.worker-setup": "Installing environment",
+  "job.kind.pandoc-setup": "Downloading Pandoc",
   "job.status.queued": "queued",
   "job.status.running": "running",
   "job.status.succeeded": "done",

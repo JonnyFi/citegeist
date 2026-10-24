@@ -39,12 +39,13 @@ Stand: 2026-10-24. Die Wellen 0 bis 4 sind gebaut und gemergt, die App läuft al
 | | Matrix, verwandte Werke, Rückruf-Hinweise, Planung auf echten Verträgen (UI-2a) | #49 |
 | Nachbesserung | Fehler aus der ersten echten Chat-Sitzung, Karten-Logik und Prompt | #43, #44, #45, #46 |
 | Werkzeuge | `pnpm app:update`, Linux-CI mit lokalem Pre-push-Gate, Beitragsablauf | #42, #23, #53 |
+| Schreiben | Texte als Markdown mit Pandoc-Zitaten, Tab „Texte“, Export über Pandoc nach Word, LaTeX und PDF, Pandoc-Download mit fester Prüfsumme (D20) | dieser PR |
 | Abschluss | Dateiauswahl, Rückruf-Marker in `items.list`, schlankere App, Hinzufügen-Menü, Löschen mit Rückgängig, PDF anhängen | dieser PR |
 
 Offen sind:
 
 - **iPad.** Die App ist nur für macOS gebaut.
-- **Schreiben.** Ein eigener Schreibeditor oder Add-ins für Word und Google Docs. Eine Entscheidung zwischen diesen Wegen steht aus.
+- **Visueller Editor und Add-ins.** Ein Schreibeditor ohne Markdown oder Add-ins für Word und Google Docs entstehen nur, wenn sich Bedarf zeigt (D20). Geschrieben wird bis dahin als Markdown in citegeist.
 - **Signierung.** Die App ist ad hoc signiert und nicht notarisiert. Ohne Developer ID verteilt `install.sh` sie über `curl`, `pnpm release` baut und veröffentlicht lokal, und die App weist selbst auf neue Versionen hin (siehe `docs/run.md`). Eine notarisierte App mit Auto-Update braucht die Developer ID.
 - **Prüfung für den Open-Source-Release (D1).** Die AGPL-Isolation der Abhängigkeiten (der Python-Worker läuft als eigener Prozess), die Nutzungsbedingungen von Gemma für EmbeddingGemma und die CPAL-Namensnennung. Dazu läuft vor dem Release `/cso`.
 - **Erledigt nach Plan:** Alerts (PR #57), Begriffsregister (PR #59), Lizenz- und Sicherheitsprüfung (PR #58).
@@ -171,6 +172,7 @@ Abnahme der Welle: Die E2E-Tests laufen, und Jonny kann ab hier echte Literatur 
 | W3.7 Einsichten und Pläne | Einsichten als datierte Absätze, Absatzindex, Suche über Links und dann semantisch, Gliederung mit festen Feldern, Verlauf mit Rückgängig pro Zug, Vorschläge für ungefragte Änderungen | L |
 | W3.8 Planansicht | Tab pro Plan mit Gliederung, Knotenformular, Dokumenten und Verlauf | M |
 | W3.9 Planungs-Chat | Festhalten von Einsichten im Chat, Zurückholen mit Zitat, direkte Änderungen mit Rückgängig | M |
+| W3.11 Texte | Markdown-Texte pro Projekt (`texts.*`), Pandoc-Zitate im Editor mit Vervollständigung und Markierung, Karten fügen Zitat und Beleg ein, `texts.export` und `pandoc.*` über Pandoc als eigenen Prozess (D20) | L |
 
 Die Forschungsplanung folgt `docs/spec/research-planning.md`. Vor W3.7 liefert die Lead-Session `plan.ts` und die Verträge aus Abschnitt 6 der Spec. Der erste Schnitt ist W3.7 zusammen mit dem Festhalten aus W3.9, das bis zum Ende von W3.3 über Claude Code und MCP läuft.
 
@@ -224,6 +226,24 @@ Abnahme:
 - [ ] „Rückgängig“ an einem Zug nimmt alle seine Änderungen zurück
 - [ ] Ein manueller Lauf gegen das Abo hält drei Einsichten aus Fixture-Quellen fest und zitiert eine davon beim Umbau eines Kapitels
 Modell: Sonnet. Größe: M.
+```
+
+```markdown
+## W3.11 Texte
+
+Ziel: Jonny schreibt ein Kapitel in citegeist, belegt es aus seinen Karten und exportiert es nach Word oder LaTeX.
+Besitzt: packages/core/src/texts/**, packages/editor/src/citations.ts, apps/ui/src/texts/**
+Liest: D20, docs/spec/library-format.md Abschnitt „Texte“, W3.1, W3.3
+Darf nicht ändern: Hotspots (der Lead hat `packages/schema/src/texts.ts` und `packages/ops/src/contracts/texts.ts` geliefert)
+Abnahme:
+- [x] `[@` im Editor bietet die Bibliothek an, Quellen des Projekts zuerst, und ein unbekannter Citekey ist markiert
+- [x] „Wörtlich zitieren“ und „Sinngemäß zitieren“ einer Karte fügen Zitat und Beleg an der Cursorposition des offenen Texts ein
+- [x] `texts.export` erzeugt docx, LaTeX (ZIP mit `main.tex` und `references.bib`), PDF und Markdown, das Verzeichnis enthält nur zitierte Quellen
+- [x] Pandoc wird im PATH und in den Homebrew-Ordnern gefunden, sonst lädt `pandoc.setup` das festgelegte Release mit Prüfsumme
+- [x] Ein echter Export mit Pandoc 3.12.1 gegen eine Fixture-Bibliothek enthält den formatierten Beleg und das Literaturverzeichnis
+- [x] Agents erreichen Texte über `cg texts ...` und die Dateien, ohne neues MCP-Werkzeug
+- [ ] Ein PDF-Export gegen eine installierte LaTeX-Engine oder Typst (von Hand zu prüfen)
+Modell: Sonnet. Größe: L.
 ```
 
 ### Design-Umsetzung

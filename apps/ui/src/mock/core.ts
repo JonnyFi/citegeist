@@ -46,6 +46,7 @@ import {
   createWebhooksMockState,
   mockConflict,
 } from "../settings/mock";
+import { bindTextsMock } from "../texts/mock";
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
@@ -735,6 +736,7 @@ export function createMockRegistry(
   const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
   bindNotesMock(registry, data, emit);
   bindPlanningMock(registry, data, emit);
+  bindTextsMock(registry, data, emit, jobs, aiDelayMs);
   bindRelatedMock(registry, data, emit);
   bindMatrixMock(registry, data, emit, jobs, aiDelayMs);
   bindConceptsMock(registry, data, emit, jobs, aiDelayMs);

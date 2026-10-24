@@ -1,128 +1,13 @@
 import type { NumberedNode } from "@citegeist/ops";
 import { planDocsGet, planDocsUpdate } from "@citegeist/ops";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "../components/ui/button";
+import { useMemo, useState } from "react";
 import { ErrorState, Loading } from "../components/ui/states";
-import { type MessageKey, useI18n } from "../i18n";
+import { useI18n } from "../i18n";
+import { SaveStatus, useDocAutosave } from "../lib/autosave";
 import { useCore, useOp } from "../lib/hooks";
-import { describeError } from "../lib/utils";
 import { EditorField } from "../notes/editor-field";
 import { useLibraryLinks } from "../notes/library-links";
 import { withNodeLinks } from "./node-links";
-
-type SaveState = "saved" | "dirty" | "saving" | "failed";
-
-const STATE_KEY: Record<SaveState, MessageKey> = {
-  saved: "notes.saved",
-  dirty: "notes.unsaved",
-  saving: "notes.saving",
-  failed: "notes.saveFailed",
-};
-
-/**
- * Saves a plan document through plan.docs.update shortly after the last edit, with the hash of the
- * version that was read. A change from outside replaces the text while nothing is pending.
- */
-function useDocAutosave(
-  target: { project: string; plan: string; doc: string },
-  saved: { body: string; hash: string },
-  draft: string,
-  onExternal: (body: string) => void,
-  delayMs = 800,
-) {
-  const core = useCore();
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<SaveState>("saved");
-  const [error, setError] = useState<string | null>(null);
-  const confirmed = useRef({ body: saved.body, hash: saved.hash });
-  const latest = useRef({ draft, target, saved });
-  latest.current = { draft, target, saved };
-  const running = useRef(false);
-  const again = useRef(false);
-  const alive = useRef(true);
-  const onExt = useRef(onExternal);
-  onExt.current = onExternal;
-
-  const isDirty = useCallback(() => latest.current.draft !== confirmed.current.body, []);
-
-  const flush = useCallback(
-    async (options: { overwrite?: boolean } = {}) => {
-      if (running.current) {
-        again.current = true;
-        return;
-      }
-      if (!isDirty()) return;
-      running.current = true;
-      if (alive.current) setState("saving");
-      const { draft: body, target: t, saved: s } = latest.current;
-      try {
-        const out = await core.call(planDocsUpdate, {
-          project: t.project,
-          plan: t.plan,
-          doc: t.doc,
-          body,
-          baseHash: options.overwrite ? s.hash : confirmed.current.hash,
-        });
-        confirmed.current = { body, hash: out.hash };
-        setError(null);
-        void queryClient.invalidateQueries({ queryKey: ["op"] });
-        if (alive.current) setState("saved");
-      } catch (err) {
-        if (alive.current) {
-          setError(describeError(err).message);
-          setState("failed");
-        }
-        again.current = false;
-        running.current = false;
-        return;
-      }
-      running.current = false;
-      if (again.current || isDirty()) {
-        again.current = false;
-        if (alive.current) setState("dirty");
-        void flush();
-      }
-    },
-    [core, isDirty, queryClient],
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the stored text changes
-  useEffect(() => {
-    if (running.current || isDirty()) return;
-    if (saved.body !== confirmed.current.body || saved.hash !== confirmed.current.hash) {
-      confirmed.current = { body: saved.body, hash: saved.hash };
-      onExt.current(saved.body);
-    }
-  }, [saved.body, saved.hash]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the draft triggers the timer
-  useEffect(() => {
-    if (!isDirty()) {
-      setState((s) => (s === "dirty" ? "saved" : s));
-      return;
-    }
-    setState((s) => (s === "saving" || s === "failed" ? s : "dirty"));
-    const timer = setTimeout(() => void flush(), delayMs);
-    return () => clearTimeout(timer);
-  }, [draft, delayMs, flush, isDirty]);
-
-  useEffect(() => {
-    const onBlur = () => void flush();
-    window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
-  }, [flush]);
-
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      void flush();
-    };
-  }, [flush]);
-
-  return { state, error, flush };
-}
 
 function DocBody({
   project,
@@ -145,8 +30,14 @@ function DocBody({
 }) {
   const { t } = useI18n();
   const links = useLibraryLinks();
+  const core = useCore();
   const [draft, setDraft] = useState(initial.body);
-  const save = useDocAutosave({ project, plan, doc }, initial, draft, setDraft);
+  const save = useDocAutosave(
+    (body, baseHash) => core.call(planDocsUpdate, { project, plan, doc, body, baseHash }),
+    initial,
+    draft,
+    setDraft,
+  );
   const provider = useMemo(
     () => withNodeLinks(links.provider, nodes, t("plan.linkDetail")),
     [links.provider, nodes, t],
@@ -156,19 +47,7 @@ function DocBody({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-4">
       <div className="mb-3 flex items-center justify-between gap-3 text-[12px] text-muted">
         <span>{hint ?? ""}</span>
-        <span role="status" aria-live="polite" data-testid="save-state" data-state={save.state}>
-          {save.state === "failed" ? (
-            <span className="text-danger">
-              {t("notes.saveFailed")}
-              {save.error ? `: ${save.error}` : ""}{" "}
-              <Button size="sm" onClick={() => void save.flush({ overwrite: true })}>
-                {t("plan.doc.keepMine")}
-              </Button>
-            </span>
-          ) : (
-            t(STATE_KEY[save.state])
-          )}
-        </span>
+        <SaveStatus save={save} keepMine={t("plan.doc.keepMine")} />
       </div>
       <EditorField
         value={draft}

@@ -53,6 +53,10 @@ In der Seitenleiste schreibt Jonny: „Suche Arbeiten seit 2020, die Systemtheor
 
 In Google Docs drückt Jonny einen globalen Hotkey, sucht „Autopoiesis“ und wählt eine Zitatkarte. citegeist fügt Zitat und Beleg als formatierten Text ein. Das Literaturverzeichnis erzeugt citegeist pro Projekt im gewählten Stil, und eine `.bib`- und CSL-JSON-Datei pro Projekt aktualisiert sich selbst.
 
+### Ein Kapitel schreiben
+
+Jonny öffnet das Projekt „PhD-Proposal“, wechselt auf „Texte“ und legt den Text „Kapitel 2“ an. Er schreibt Markdown, und wo ein Beleg hingehört, tippt er `[@`. Die Quellen des Projekts erscheinen zuerst, ein Klick setzt den Citekey, und `, S. 12` ergänzt er von Hand. Ein Citekey, den die Bibliothek nicht kennt, ist rot unterstrichen. In der rechten Spalte stehen die Zitatkarten des Projekts, und „Wörtlich zitieren“ oder „Sinngemäß zitieren“ fügt Zitat oder Paraphrase samt Beleg an der Cursorposition ein. Im Chat bittet er den Agent, den Absatz zur Plattformlogik auszuformulieren. Der Agent schreibt ihn direkt in die Datei, und ein Klick nimmt den Zug zurück. Zum Schluss exportiert Jonny eine `.docx`-Datei für seine Betreuerin oder ein ZIP mit `main.tex` und `references.bib` für Overleaf. Belege und Literaturverzeichnis stehen im Zitierstil des Texts, und das Verzeichnis enthält nur, was zitiert wurde.
+
 ### Ein anderer Agent nutzt die Bibliothek
 
 Claude Code arbeitet im kiimu-Repo an einem RAG-Feature und fragt über MCP: „Welche Paper zu Retrieval-Evaluation habe ich gelesen, und was waren die Kernaussagen?“ Die Antwort verweist auf Zitatkarten und Notizen mit Seitenangaben.
@@ -115,7 +119,10 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 | Inferenz | Codex und Cursor mit eigenem Abo, API-Keys, lokale Modelle, Routing pro Aufgabe | v0.2 | Jonny |
 | Inferenz | Lokale Embeddings für semantische Suche | v0.2 | Vorschlag |
 | Sync | iCloud- oder Dropbox-Ordner, git mit ausgelagertem `.git` | v0.3 | D5 |
-| Schreiben | Eigener Schreibeditor oder Add-ins für Google Docs und LibreOffice | später | D2 |
+| Schreiben | Texte als Markdown-Dateien im Projekt, Zitate als `[@citekey, S. 12]`, Autovervollständigung aus der Bibliothek (Projektquellen zuerst), unbekannte Citekeys markiert | v0.3 | D20 |
+| Schreiben | Zitat oder Paraphrase einer Karte mit Beleg an der Cursorposition einfügen, Agent schreibt im Chat direkt in den Text | v0.3 | D20, D17, D12 |
+| Schreiben | Export nach Word, LaTeX (ZIP mit `.bib`) und PDF im gewählten Zitierstil über Pandoc, das citegeist bei Bedarf selbst lädt | v0.3 | D20 |
+| Schreiben | Visueller Editor, Add-ins für Word und Google Docs | später, nur bei Bedarf | D20 |
 | Geräte | iPad und iPhone | später | D5 |
 
 ## Releases
@@ -127,4 +134,4 @@ Die Startseite zeigt über alle Projekte hinweg, was zuletzt gelesen und markier
 
 ## Entschiedene Feature-Fragen
 
-D7 bis D10 in `decisions.md` beantworten die Fragen aus dem ersten Entwurf. Alle Vorschläge der Landkarte sind angenommen (D10). D11 bis D14 regeln die Forschungsplanung, die Spec dazu steht in `docs/spec/research-planning.md`.
+D7 bis D10 in `decisions.md` beantworten die Fragen aus dem ersten Entwurf. Alle Vorschläge der Landkarte sind angenommen (D10). D11 bis D14 regeln die Forschungsplanung, die Spec dazu steht in `docs/spec/research-planning.md`. D20 legt fest, dass Texte in citegeist als Markdown mit Pandoc-Zitaten entstehen und Pandoc sie exportiert, das Dateiformat steht in `docs/spec/library-format.md`.

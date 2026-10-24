@@ -39,6 +39,7 @@ Keine Komponente steht unter GPL oder AGPL und läuft im Prozess von citegeist. 
 | 10 | GROBID | Apache-2.0 | Unkritisch | Wird zur Laufzeit aus dem Release-Archiv gebaut (Prüfsumme fest), eigener Prozess | Keine |
 | 11 | `opencv-python-headless`, `torch`, `numpy`, `pypdfium2` (Python) | Apache-2.0, BSD, gebündelte Fremdbibliotheken | Die Wheels bündeln eigene native Bibliotheken. Bei OpenCV sind das laut Projekt teils LGPL-Teile wie FFmpeg (ungeprüft) | Der Worker installiert sie beim ersten Start per `uv` von PyPI auf den Rechner des Nutzers. citegeist gibt sie nicht weiter, nur den Quelltext des Workers | Keine, solange die App die Wheels nicht selbst mitliefert |
 | 12 | Fixture-Daten und Spike-Ausgaben | CC BY 4.0, CC BY-SA 4.0, gemeinfrei, bei drei Dateien ungeklärt | `fixtures/pdf/manifest.json` führt je Datei Lizenz und Beleg. Drei Einträge tragen den Vermerk, die Lizenz vor einer Weitergabe zu prüfen. `spikes/s1/out` enthält extrahierten Volltext dieser Dokumente | Die PDFs liegen nicht im Repository (`fetch.mjs` lädt sie mit Prüfsumme) | Vor dem Release `spikes/*/out` aus dem Repository nehmen oder auf klar lizenzierte Quellen beschränken |
+| 13 | Pandoc 3.12.1 (Export von Texten nach Word, LaTeX und PDF) | GPL-2.0-or-later | Starkes Copyleft. Gilt für das Programm selbst, nicht für Dateien, die es erzeugt | Wird nicht mitgeliefert und nie gelinkt. citegeist startet es als eigenen Prozess mit Kommandozeilenargumenten und Dateien (Prüfsumme fest, Download nur auf Wunsch, siehe `packages/core/src/texts/pandoc.ts`). Ein vorhandenes Pandoc im `PATH` oder in Homebrew hat Vorrang | Keine |
 
 ## Zotero und AGPL
 
@@ -64,6 +65,7 @@ Wer später Zoteros translation-server anbindet, startet ihn als eigenen Prozess
 | Qwen3-Embedding-0.6B (ONNX) | Apache-2.0 laut Ursprungsmodell, die ONNX-Karte trägt kein Lizenzfeld | Hugging Face, fester Commit | Einstellung Semantische Suche |
 | EmbeddingGemma 300M (ONNX) | Gemma Terms of Use | Hugging Face, fester Commit | Standard der Semantischen Suche |
 | GROBID und Temurin-JRE | Apache-2.0, GPL-2.0 mit Classpath Exception | GitHub, Prüfsumme im Code | `install-grobid` |
+| Pandoc | GPL-2.0-or-later | GitHub-Release von jgm/pandoc (arm64-macOS-ZIP), Prüfsumme im Code | `pandoc.setup`, nur auf Wunsch |
 | Apple Vision (OCR) | Teil von macOS | System | Scans |
 
 Die Qwen3-Lizenz sollte vor dem Release gegen die Modellkarte des Ursprungsmodells `Qwen/Qwen3-Embedding-0.6B` geprüft werden, weil die ONNX-Karte keine Angabe macht.

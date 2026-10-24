@@ -14,6 +14,8 @@ export function extraBinDirs(home = homedir()): string[] {
     join(home, ".claude", "local"),
     "/opt/homebrew/bin",
     "/usr/local/bin",
+    // MacTeX and BasicTeX, where Pandoc finds xelatex for PDF export
+    "/Library/TeX/texbin",
     join(home, ".npm-global", "bin"),
     join(home, ".bun", "bin"),
     join(home, ".cargo", "bin"),

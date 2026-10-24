@@ -38,6 +38,7 @@ function readVendor(file: string): string {
 const localeXml = new Map<string, string>();
 let registered = false;
 const customStyles = new Set<string>();
+const customXml = new Map<string, string>();
 
 /** Registers the vendored styles and locales with citation-js. Idempotent. */
 export function ensureRegistered(): void {
@@ -57,6 +58,14 @@ export function registerStyle(id: string, xml: string): void {
   ensureRegistered();
   config().styles.add(id, xml);
   customStyles.add(id);
+  customXml.set(id, xml);
+}
+
+/** The XML of a bundled or registered CSL style, for tools such as Pandoc that read the file. */
+export function styleXml(id: string): string | undefined {
+  ensureRegistered();
+  if ((BUNDLED_STYLES as readonly string[]).includes(id)) return readVendor(`${id}.csl`);
+  return customXml.get(id);
 }
 
 export function hasStyle(id: string): boolean {

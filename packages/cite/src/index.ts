@@ -64,6 +64,7 @@ export {
   localeTerms,
   registerStyle,
   resolveLocale,
+  styleXml,
 } from "./styles.js";
 
 import { type CslItem, cslToDraft, type ItemDraft } from "./csl.js";

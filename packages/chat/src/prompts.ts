@@ -30,7 +30,7 @@ export function instructions(opts: {
     }
     if (opts.directEdits) {
       lines.push(
-        `- The library folder is ${opts.libraryRoot}. You may edit its text files directly: notes/*.md, projects/*/project.md and the note text of items/<citekey>/<citekey>.md. Never touch items/*/derived, items/*/sources, the quote block of a card or citegeist.json.`,
+        `- The library folder is ${opts.libraryRoot}. You may edit its text files directly: notes/*.md, projects/*/project.md, the plans and texts under projects/*/ and the note text of items/<citekey>/<citekey>.md. Never touch items/*/derived, items/*/sources, the quote block of a card or citegeist.json.`,
       );
     }
   }
@@ -49,6 +49,11 @@ export function renderContext(ctx: ChatContext): string {
   if (ctx.node) {
     lines.push(
       `Open outline node: ${ctx.node} (pass it as the node or target of the planning tools)`,
+    );
+  }
+  if (ctx.text && ctx.project) {
+    lines.push(
+      `Open text: projects/${ctx.project}/texts/${ctx.text}.md (Markdown with Pandoc citations such as [@citekey, S. 12]. Read it with \`cg texts get\`, draft or revise passages in the file itself, and cite only citekeys that exist in the library. \`cg texts export\` makes the Word or LaTeX file.)`,
     );
   }
   if (ctx.item) lines.push(`Open source: ${ctx.item}`);

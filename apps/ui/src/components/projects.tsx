@@ -6,6 +6,7 @@ import {
   projectsGet,
   projectsList,
   projectsUpdate,
+  textsList,
 } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Pencil } from "lucide-react";
@@ -18,6 +19,8 @@ import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
 import { MatrixTab } from "../matrix";
 import { type PlanSearch, PlanTab, type PlanView } from "../planning/plan-tab";
+import { ProjectCardColumn } from "../texts/card-column";
+import { TextsTab } from "../texts/texts-tab";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { ProjectCards } from "./project-cards";
 import { ProjectReadingList } from "./project-list";
@@ -220,13 +223,15 @@ function ProjectTabLink({
   );
 }
 
-export type ProjectTab = "brief" | "list" | "cards" | "plan" | "matrix";
+export type ProjectTab = "brief" | "list" | "cards" | "plan" | "texts" | "matrix";
 
 /** The URL state of the project screen: the tab and, on the plan tab, the plan, node and view. */
 export interface ProjectSearch extends PlanSearch {
   tab?: ProjectTab | undefined;
   /** The matrix open on the matrix tab. */
   matrix?: string | undefined;
+  /** The text open on the texts tab. */
+  text?: string | undefined;
 }
 
 const PLAN_VIEWS: readonly PlanView[] = ["doc", "insights", "gaps"];
@@ -237,6 +242,7 @@ export function parseProjectSearch(search: Record<string, unknown>): ProjectSear
     search.tab === "list" ||
     search.tab === "cards" ||
     search.tab === "plan" ||
+    search.tab === "texts" ||
     search.tab === "matrix"
       ? search.tab
       : undefined;
@@ -246,6 +252,7 @@ export function parseProjectSearch(search: Record<string, unknown>): ProjectSear
     ...(str(search.plan) ? { plan: str(search.plan) } : {}),
     ...(str(search.node) ? { node: str(search.node) } : {}),
     ...(str(search.matrix) ? { matrix: str(search.matrix) } : {}),
+    ...(str(search.text) ? { text: str(search.text) } : {}),
     ...(view && view !== "doc" ? { view } : {}),
   };
 }
@@ -264,6 +271,7 @@ export function ProjectView({
   const items = useOp(itemsList, { project: slug, inbox: false, limit: 500 });
   const cards = useOp(cardsList, { project: slug, limit: 500 });
   const plans = useOp(plansList, { project: slug });
+  const texts = useOp(textsList, { project: slug });
   const tab: ProjectTab = search.tab ?? "brief";
   const update = useOpMutation(projectsUpdate);
 
@@ -345,6 +353,12 @@ export function ProjectView({
                 <span className="ml-1.5 font-mono font-normal">{plans.data.plans.length}</span>
               ) : null}
             </ProjectTabLink>
+            <ProjectTabLink slug={slug} tab="texts" active={tab === "texts"}>
+              {t("project.textsTab")}
+              {texts.data ? (
+                <span className="ml-1.5 font-mono font-normal">{texts.data.texts.length}</span>
+              ) : null}
+            </ProjectTabLink>
             <ProjectTabLink slug={slug} tab="matrix" active={tab === "matrix"}>
               {t("project.matrixTab")}
             </ProjectTabLink>
@@ -359,6 +373,16 @@ export function ProjectView({
             questions={fm.questions}
             search={search}
             onSearch={(next) => onSearch?.({ ...next, tab: "plan" })}
+          />
+        ) : tab === "texts" ? (
+          <TextsTab
+            project={slug}
+            projectStyle={fm.style}
+            projectLang={fm.ai_language ?? fm.locale}
+            search={search}
+            onSearch={(next) =>
+              onSearch?.({ tab: "texts", ...(next.text ? { text: next.text } : {}) })
+            }
           />
         ) : tab === "list" ? (
           <ProjectReadingList slug={slug} />
@@ -424,7 +448,21 @@ export function ProjectView({
       </div>
       <RightColumn
         label={t("project.settingsTab")}
-        tabs={[{ id: "settings", label: t("project.settingsTab"), content: settings }]}
+        tabs={[
+          // next to a text the cards are at hand: their quote actions insert at the cursor
+          ...(tab === "texts"
+            ? [
+                {
+                  id: "cards",
+                  label: t("item.cards"),
+                  sunken: true,
+                  ...(cards.data ? { count: cards.data.cards.length } : {}),
+                  content: <ProjectCardColumn project={slug} language={fm.ai_language ?? "de"} />,
+                },
+              ]
+            : []),
+          { id: "settings", label: t("project.settingsTab"), content: settings },
+        ]}
       />
     </div>
   );

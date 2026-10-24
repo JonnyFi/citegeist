@@ -4,6 +4,7 @@ import { importDe } from "../import/strings";
 import { litsearchDe } from "../litsearch/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
+import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
@@ -398,6 +399,9 @@ export const de = {
   "editor.sectionItem": "Quellen",
   "editor.sectionNote": "Notizen",
   "editor.sectionCard": "Karten",
+  "editor.citationUnknown": "Unbekannter Citekey",
+  "editor.sectionProject": "Dieses Projekt",
+  "editor.sectionLibrary": "Bibliothek",
   "nav.graph": "Graph",
   "rel.untyped": "Verknüpft",
   "rel.cites": "zitiert",
@@ -451,6 +455,7 @@ export const de = {
   ...matrixDe,
   ...conceptsDe,
   ...litsearchDe,
+  ...textsDe,
   "agent.tab": "Agent",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",
@@ -483,6 +488,7 @@ export const de = {
   "job.kind.import": "Wird importiert",
   "job.kind.export": "Wird exportiert",
   "job.kind.worker-setup": "Umgebung wird installiert",
+  "job.kind.pandoc-setup": "Pandoc wird geladen",
   "job.status.queued": "wartet",
   "job.status.running": "läuft",
   "job.status.succeeded": "fertig",

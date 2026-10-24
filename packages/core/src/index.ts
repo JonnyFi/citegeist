@@ -52,4 +52,5 @@ export * from "./semantic/index.js";
 export * from "./settings/index.js";
 export * from "./sync/index.js";
 export { snippet, stemmedText, stems, words } from "./text.js";
+export * from "./texts/index.js";
 export { extractWikiLinks, type WikiLinkRef, wikiTarget } from "./wikilinks.js";

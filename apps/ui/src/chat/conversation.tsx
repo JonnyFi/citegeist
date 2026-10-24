@@ -19,19 +19,23 @@ import { useI18n } from "../i18n";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { type PlanContext, planContextLabel, usePlanContext } from "../planning/context";
+import { type ActiveText, useOpenText } from "../texts/active";
 import { useChatSelection, useScreenContext } from "./context";
 import { Messages } from "./messages";
 
-type Chip = "project" | "plan" | "item" | "selection";
+type Chip = "project" | "plan" | "text" | "item" | "selection";
 
 function ContextChips({
   context,
   plan,
+  text,
   onRemove,
 }: {
   context: ChatContext;
   /** The plan open in the project view, given to the agent next to the project. */
   plan: PlanContext | null;
+  /** The text open in the Texte tab. */
+  text: ActiveText | null;
   onRemove: (chip: Chip) => void;
 }) {
   const { t } = useI18n();
@@ -41,6 +45,9 @@ function ContextChips({
       : []),
     ...(plan
       ? [{ id: "plan" as const, label: t("chat.context.plan", { plan: planContextLabel(plan) }) }]
+      : []),
+    ...(text
+      ? [{ id: "text" as const, label: t("chat.context.text", { title: text.title }) }]
       : []),
     ...(context.item
       ? [{ id: "item" as const, label: t("chat.context.item", { citekey: context.item }) }]
@@ -99,6 +106,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
   const screen = useScreenContext();
   const marked = useChatSelection();
   const openPlan = usePlanContext();
+  const openText = useOpenText();
 
   const backends = useOp(chatBackends, {});
   const history = useOp(chatList, { kind: "chat", limit: 30 });
@@ -134,6 +142,8 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
 
   const plan =
     openPlan && openPlan.project === screen.project && !removed.has("plan") ? openPlan : null;
+  const text =
+    openText && openText.project === screen.project && !removed.has("text") ? openText : null;
   const context: ChatContext = {
     ...(screen.project && !removed.has("project") ? { project: screen.project } : {}),
     ...(screen.item && !removed.has("item") ? { item: screen.item } : {}),
@@ -179,10 +189,11 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
     ? (view.data?.session.backend ?? agent)
     : (agent ?? backends.data?.default);
 
-  // ChatContext has no plan field yet, so the core drops these two until the contract grows them
-  const agentContext = (
-    plan ? { ...context, plan: plan.plan, ...(plan.node ? { node: plan.node.id } : {}) } : context
-  ) as ChatContext;
+  const agentContext: ChatContext = {
+    ...context,
+    ...(plan ? { plan: plan.plan, ...(plan.node ? { node: plan.node.id } : {}) } : {}),
+    ...(text ? { text: text.text } : {}),
+  };
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -298,6 +309,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
       <ContextChips
         context={context}
         plan={plan}
+        text={text}
         onRemove={(chip) => setRemoved((r) => new Set([...r, chip]))}
       />
 

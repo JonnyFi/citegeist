@@ -47,6 +47,25 @@ export interface WikiLinkProvider {
   card?(id: string): CardEmbed | undefined | Promise<CardEmbed | undefined>;
 }
 
+/** One source offered after `@` in a text, written as a Pandoc citation. */
+export interface CitationSuggestion {
+  /** The citekey written after `@`. */
+  key: string;
+  title: string;
+  /** Authors and year, such as "Luhmann 1984". */
+  detail?: string;
+  /** Sources of the open project are listed before the rest of the library. */
+  group?: "project" | "library";
+}
+
+/** Everything the editor needs to complete and check Pandoc citations such as `[@key, S. 12]`. */
+export interface CitationProvider {
+  /** Candidates for the text typed after `@`. May be async. */
+  suggest(query: string): CitationSuggestion[] | Promise<CitationSuggestion[]>;
+  /** Synchronous lookup so unknown citekeys can be marked while typing. */
+  resolve(key: string): { title: string } | undefined;
+}
+
 /** Strings shown inside widgets; the host passes translations. */
 export interface EditorLabels {
   frontmatter: string;
@@ -57,6 +76,9 @@ export interface EditorLabels {
   sectionItem: string;
   sectionNote: string;
   sectionCard: string;
+  citationUnknown: string;
+  sectionProject: string;
+  sectionLibrary: string;
 }
 
 export const DEFAULT_LABELS: EditorLabels = {
@@ -68,4 +90,7 @@ export const DEFAULT_LABELS: EditorLabels = {
   sectionItem: "Sources",
   sectionNote: "Notes",
   sectionCard: "Cards",
+  citationUnknown: "Unknown citekey",
+  sectionProject: "This project",
+  sectionLibrary: "Library",
 };

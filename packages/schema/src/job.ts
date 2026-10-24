@@ -18,6 +18,7 @@ export const JobKind = z.enum([
   "litsearch.run",
   /** Preprint check of the literature search. */
   "litsearch.preprints",
+  "pandoc-setup",
 ]);
 export const JobStatus = z.enum(["queued", "running", "succeeded", "failed", "cancelled"]);
 

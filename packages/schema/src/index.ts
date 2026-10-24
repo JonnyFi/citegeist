@@ -25,6 +25,7 @@ export * from "./matrix.js";
 export * from "./note.js";
 export * from "./planning.js";
 export * from "./project.js";
+export * from "./texts.js";
 export * from "./worker.js";
 
 /** Schemas exported as JSON Schema for agents and the Python worker (`pnpm --filter @citegeist/schema export`). */

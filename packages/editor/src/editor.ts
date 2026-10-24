@@ -4,10 +4,11 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { Annotation, Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { wikiLinkAutocomplete } from "./autocomplete";
+import { citationMarks } from "./citations";
 import { configFacet, DEFAULT_CONFIG, type EditorConfig, refreshEffect } from "./config";
 import { livePreview } from "./live-preview";
 import { noteTheme } from "./theme";
-import type { EditorLabels, OpenLinkEvent, WikiLinkProvider } from "./types";
+import type { CitationProvider, EditorLabels, OpenLinkEvent, WikiLinkProvider } from "./types";
 
 /** Marks transactions that come from `setValue`, so they do not call `onChange`. */
 const external = Annotation.define<boolean>();
@@ -17,6 +18,8 @@ export interface NoteEditorOptions {
   /** Markdown text. Whatever is not edited comes back from `getValue` unchanged, byte for byte. */
   value: string;
   provider?: WikiLinkProvider;
+  /** Turns on Pandoc citations: completion after `@` and marks for unknown citekeys. */
+  citations?: CitationProvider;
   labels?: Partial<EditorLabels>;
   /** Called after every edit made in the editor, not after `setValue`. */
   onChange?: (value: string) => void;
@@ -35,11 +38,17 @@ export interface NoteEditor {
   /** Swaps provider, labels or callbacks. */
   configure(patch: {
     provider?: WikiLinkProvider | undefined;
+    citations?: CitationProvider | undefined;
     labels?: Partial<EditorLabels>;
     onOpenLink?: ((event: OpenLinkEvent) => void) | undefined;
   }): void;
   /** Recomputes link styling after the provider's data changed. */
   refresh(): void;
+  /**
+   * Writes `text` at the cursor, replacing a selection. An editor nobody has clicked into yet
+   * takes the text at the end, in a paragraph of its own, rather than at the top.
+   */
+  insert(text: string): void;
   focus(): void;
   destroy(): void;
 }
@@ -94,10 +103,13 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
   let config: EditorConfig = {
     ...DEFAULT_CONFIG,
     provider: options.provider,
+    citations: options.citations,
     labels: { ...DEFAULT_CONFIG.labels, ...options.labels },
     onOpenLink: options.onOpenLink,
   };
   const configCompartment = new Compartment();
+  /** True once the person edited or moved the cursor, so `insert` knows where they are. */
+  let touched = false;
   const onChange = options.onChange;
 
   const extensions = (): Extension[] => [
@@ -108,6 +120,7 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
     markdown({ base: markdownLanguage }),
     livePreview,
     wikiLinkAutocomplete,
+    citationMarks,
     openLinkHandler(),
     EditorView.lineWrapping,
     noteTheme,
@@ -118,6 +131,8 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
     ...(options.placeholder ? [placeholderExt(options.placeholder)] : []),
     ...(options.readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
     EditorView.updateListener.of((update) => {
+      const own = !update.transactions.some((t) => t.annotation(external));
+      if (own && (update.docChanged || update.selectionSet)) touched = true;
       if (
         update.docChanged &&
         onChange &&
@@ -168,6 +183,7 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
     configure(patch) {
       config = {
         provider: "provider" in patch ? patch.provider : config.provider,
+        citations: "citations" in patch ? patch.citations : config.citations,
         labels: { ...config.labels, ...patch.labels },
         onOpenLink: "onOpenLink" in patch ? patch.onOpenLink : config.onOpenLink,
       };
@@ -175,6 +191,27 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
     },
     refresh() {
       view.dispatch({ effects: refreshEffect.of(null) });
+    },
+    insert(text) {
+      const doc = view.state.doc;
+      if (touched || view.hasFocus || doc.length === 0) {
+        view.dispatch({
+          ...view.state.replaceSelection(text),
+          scrollIntoView: true,
+          userEvent: "input.paste",
+        });
+        return;
+      }
+      const tail = doc.sliceString(Math.max(0, doc.length - 2));
+      const gap = tail.endsWith("\n\n") ? "" : tail.endsWith("\n") ? "\n" : "\n\n";
+      const at = doc.length;
+      view.dispatch({
+        changes: { from: at, insert: `${gap}${text}\n` },
+        selection: { anchor: at + gap.length + text.length },
+        scrollIntoView: true,
+        userEvent: "input.paste",
+      });
+      touched = true;
     },
     focus: () => view.focus(),
     destroy: () => view.destroy(),

@@ -11,6 +11,7 @@ import { copyRich } from "../lib/clipboard";
 import { locatorText } from "../lib/format";
 import { useCore, useOpMutation } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
+import { insertIntoText, useInsertTarget } from "../texts/active";
 import type { CardData } from "./card-list";
 import { Stamp } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -146,6 +147,7 @@ export function QuoteCard({
   const { t } = i18n;
   const core = useCore();
   const { frontmatter: fm, body } = card;
+  const insertTarget = useInsertTarget();
   const update = useOpMutation(cardsUpdate);
   const regenerate = useOpMutation(cardsRegenerate);
   const [regenLanguage, setRegenLanguage] = useState(defaultLanguage);
@@ -179,6 +181,18 @@ export function QuoteCard({
   const copyAs = async (mode: "direct" | "indirect") => {
     setCopy(null);
     try {
+      if (insertTarget) {
+        // a text is open: the quotation goes into it, with the citation in Pandoc syntax (D20)
+        const out = await core.call(cardsExport, {
+          ids: [fm.id],
+          mode,
+          format: "pandoc",
+          project: insertTarget.project,
+        });
+        const into = await insertIntoText(core, out.text);
+        setCopy({ kind: "ok", text: t("card.insertedIn", { title: into.title }) });
+        return;
+      }
       const out = await core.call(cardsExport, {
         ids: [fm.id],
         mode,
@@ -399,7 +413,11 @@ export function QuoteCard({
             <div className="grid grid-cols-2 border-t border-line">
               <button
                 type="button"
-                title={t("card.quoteDirectHint")}
+                title={
+                  insertTarget
+                    ? t("card.quoteDirectInsertHint", { title: insertTarget.title })
+                    : t("card.quoteDirectHint")
+                }
                 onClick={() => void copyAs("direct")}
                 className="h-8 border-r border-line text-[12px] hover:bg-sunken"
               >
@@ -407,7 +425,11 @@ export function QuoteCard({
               </button>
               <button
                 type="button"
-                title={t("card.quoteIndirectHint")}
+                title={
+                  insertTarget
+                    ? t("card.quoteIndirectInsertHint", { title: insertTarget.title })
+                    : t("card.quoteIndirectHint")
+                }
                 onClick={() => void copyAs("indirect")}
                 className="h-8 text-[12px] hover:bg-sunken"
               >

@@ -54,6 +54,12 @@ export const noteTheme = EditorView.theme({
   ".cm-wikilink-note": { color: accent, textDecoration: "underline" },
   ".cm-wikilink-card": { color: accent, fontFamily: mono, fontSize: "0.9em" },
   ".cm-wikilink-missing": { color: danger, textDecoration: "underline dashed" },
+  ".cm-cite": { color: accent, fontFamily: mono, fontSize: "0.9em" },
+  ".cm-cite-unknown": {
+    color: danger,
+    textDecoration: "underline wavy",
+    textDecorationColor: danger,
+  },
   ".cm-wikilink-raw": { backgroundColor: accentSoft, fontFamily: mono, fontSize: "0.9em" },
 
   ".cm-frontmatter": {
