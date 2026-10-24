@@ -57,6 +57,17 @@ Costs of the choice: EmbeddingGemma ships under the Gemma Terms of Use, not Apac
 is downloaded by each user from Hugging Face and not redistributed by citegeist. Its context is
 2048 tokens against 32K for Qwen3, which is why chunks stay below 512 tokens.
 
+## Golden set and reranker (W5.3)
+
+The 20-query check above only separates a working model from a broken one. The golden set in
+`fixtures/retrieval/` (43 queries, 6 CC-BY documents, 943 chunks) is the regression gate in `pnpm
+verify`; see `docs/decisions.md` D24 for the numbers. In short, on that set the default model scores
+hit@5 88.4% and MRR 0.738 in hybrid search. EmbeddingGemma 2 (text model, q8) scores 81.4% and 0.692
+at 768 dimensions and 81.4% and 0.674 at 256. The rerankers `mxbai-rerank-xsmall-v1`,
+`bge-reranker-base` and `bge-reranker-v2-m3` score 79.1%, 86.0% and 90.7% hit@5 at 0.34 s, 0.44 s
+and 1.4 s per search (top 15 candidates, 256 tokens per pair), against 88.4% without. Only the
+slowest one is better than no reranker, so the reranker ships off.
+
 ## Similarity floor
 
 With EmbeddingGemma at 512 dimensions, the weakest correct top-1 in the check scored 0.36 and the

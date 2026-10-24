@@ -53,11 +53,22 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
   const model = data.settings.semantic.model ?? EMBEDDING_MODEL_KEYS[0];
   const status = data.semantic;
   const percent = Math.round((status?.progress ?? 0) * 100);
+  const rerank = data.settings.semantic.rerank;
 
   const toggle = async (next: boolean) => {
     setError(undefined);
     try {
       await update.mutateAsync({ patch: { semantic: { enabled: next } } });
+    } catch (err) {
+      const { message, fix } = describeError(err);
+      setError(fix ? `${message} ${fix}` : message);
+    }
+  };
+
+  const toggleRerank = async (next: boolean) => {
+    setError(undefined);
+    try {
+      await update.mutateAsync({ patch: { semantic: { rerank: next } } });
     } catch (err) {
       const { message, fix } = describeError(err);
       setError(fix ? `${message} ${fix}` : message);
@@ -83,6 +94,13 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
     else if (status.state === "error") {
       line = t("settings.semantic.error", { detail: status.detail ?? "" });
     }
+  }
+
+  let rerankLine: string | undefined;
+  if (enabled && rerank && status?.rerank) {
+    if (status.rerank === "loading") rerankLine = t("settings.rerank.loading");
+    else if (status.rerank === "ready") rerankLine = t("settings.rerank.ready");
+    else rerankLine = t("settings.rerank.error", { detail: status.rerankDetail ?? "" });
   }
 
   return (
@@ -116,6 +134,21 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
           className={status?.state === "error" ? "text-sm text-danger" : "text-sm text-muted"}
         >
           {line}
+        </p>
+      ) : null}
+      <Switch
+        checked={rerank}
+        onChange={(next) => void toggleRerank(next)}
+        label={t("settings.rerank.switch")}
+        disabled={update.isPending}
+      />
+      <p className="text-sm text-muted">{t("settings.rerank.hint")}</p>
+      {rerankLine ? (
+        <p
+          role="status"
+          className={status?.rerank === "error" ? "text-sm text-danger" : "text-sm text-muted"}
+        >
+          {rerankLine}
         </p>
       ) : null}
       <ErrorLine error={error} />

@@ -1,7 +1,8 @@
-import type { Embedder } from "@citegeist/embed";
+import type { Embedder, Reranker } from "@citegeist/embed";
 import type { Index } from "../index-db.js";
 import { type SearchHit, type SearchInput, search } from "../search.js";
 import { snippet } from "../text.js";
+import { MAX_CHUNK_CHARS } from "./chunks.js";
 import { type RankedList, reciprocalRankFusion } from "./fusion.js";
 import { SemanticStore, type SyncOptions, type SyncReport, type VectorHit } from "./store.js";
 
@@ -15,9 +16,18 @@ export interface SemanticOptions {
   weights?: { lexical?: number; vector?: number };
   /** Candidates taken from each side before fusion, as a multiple of `limit`. Default 4. */
   pool?: number;
+  /**
+   * A cross-encoder that re-sorts the best fused candidates. Off when absent. The score of a
+   * reranked hit is the reranker's, squashed into 0 to 1.
+   */
+  reranker?: Reranker | undefined;
+  /** How many fused candidates the reranker sees (at least `limit`). Default 15. */
+  rerankTop?: number;
 }
 
 const QUERY_CACHE = 64;
+/** Fused candidates the reranker reads. 15 gave the best hit@5 on the golden set at half the time of 30. */
+export const RERANK_TOP = 15;
 
 const hitKey = (h: Pick<SearchHit, "kind" | "citekey" | "id">): string =>
   `${h.kind}\0${h.citekey ?? ""}\0${h.id}`;
@@ -30,6 +40,7 @@ const hitKey = (h: Pick<SearchHit, "kind" | "citekey" | "id">): string =>
 export class SemanticSearch {
   readonly store: SemanticStore;
   private readonly cache = new Map<string, Float32Array>();
+  private reranker: Reranker | undefined;
 
   constructor(
     private readonly index: Index,
@@ -37,6 +48,12 @@ export class SemanticSearch {
     private readonly opts: SemanticOptions = {},
   ) {
     this.store = new SemanticStore(index);
+    this.reranker = opts.reranker;
+  }
+
+  /** Turns the reranker on, or off with undefined. Takes effect with the next search. */
+  setReranker(reranker: Reranker | undefined): void {
+    this.reranker = reranker;
   }
 
   /** True when searches currently use the vectors. */
@@ -64,17 +81,63 @@ export class SemanticSearch {
       return search(this.index, input);
     }
 
-    const lexical = search(this.index, { ...input, limit: pool });
-    const vector = this.vectorHits(query, input, kinds, pool);
-    if (vector.length === 0) return lexical.slice(0, limit);
+    // The reranker needs a longer list than the caller asked for; it cuts back to `limit`.
+    const want = this.reranker ? Math.max(limit, this.opts.rerankTop ?? RERANK_TOP) : limit;
+    const lexical = search(this.index, { ...input, limit: Math.max(pool, want) });
+    const vector = this.vectorHits(query, input, kinds, Math.max(pool, want));
+    if (vector.length === 0) return this.rerank(input.q, lexical.slice(0, want), limit, signal);
 
     const lists: RankedList<SearchHit>[] = [
       { items: lexical, weight: this.opts.weights?.lexical ?? 1 },
       { items: vector, weight: this.opts.weights?.vector ?? 1 },
     ];
-    return reciprocalRankFusion(lists, hitKey)
-      .slice(0, limit)
+    const fused = reciprocalRankFusion(lists, hitKey)
+      .slice(0, want)
       .map(({ item, score }) => ({ ...item, score }));
+    return this.rerank(input.q, fused, limit, signal);
+  }
+
+  /** Re-sorts `hits` by the reranker and keeps `limit`. Without a reranker, or when it fails, the fused order stands. */
+  private async rerank(
+    q: string,
+    hits: SearchHit[],
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<SearchHit[]> {
+    const reranker = this.reranker;
+    if (!reranker || hits.length < 2) return hits.slice(0, limit);
+    try {
+      const scores = await reranker.rerank(
+        q,
+        hits.map((h) => this.passage(h)),
+        signal ? { signal } : {},
+      );
+      return hits
+        .map((hit, i) => ({ hit, s: scores[i] ?? Number.NEGATIVE_INFINITY }))
+        .sort((a, b) => b.s - a.s)
+        .slice(0, limit)
+        .map(({ hit, s }) => ({ ...hit, score: 1 / (1 + Math.exp(-s)) }));
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      return hits.slice(0, limit);
+    }
+  }
+
+  /** What the reranker reads for a hit: the title of the document and the start of its text. */
+  private passage(hit: SearchHit): string {
+    const where =
+      hit.kind === "block"
+        ? {
+            sql: "d.kind = 'block' AND d.citekey = ? AND d.ref LIKE ?",
+            params: [hit.citekey, `%:${hit.id}`],
+          }
+        : { sql: "d.kind = ? AND d.ref = ?", params: [hit.kind, hit.id] };
+    const body =
+      this.index.get<{ body: string }>(
+        `SELECT f.body FROM docs d JOIN fts_tri f ON f.rowid = d.id WHERE ${where.sql} LIMIT 1`,
+        ...where.params,
+      )?.body ?? hit.snippet;
+    return `${hit.title}\n${body.slice(0, MAX_CHUNK_CHARS)}`;
   }
 
   private async queryVector(q: string, signal?: AbortSignal): Promise<Float32Array> {

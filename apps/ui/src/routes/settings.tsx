@@ -132,7 +132,10 @@ export function SettingsScreen({
     {},
     {
       refetchInterval: (q) =>
-        q.state.data?.semantic?.state === "downloading" ? pollConfig.ms : false,
+        q.state.data?.semantic?.state === "downloading" ||
+        q.state.data?.semantic?.rerank === "loading"
+          ? pollConfig.ms
+          : false,
     },
   );
   const update = useOpMutation(settingsUpdate);

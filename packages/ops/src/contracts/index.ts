@@ -655,10 +655,18 @@ export const Settings = z.object({
   /** `tool` parameter of NCBI E-utilities calls. Default "citegeist". The NCBI key is the API key slot "ncbi". */
   ncbiTool: z.string().optional(),
   uiLanguage: z.enum(["de", "en"]).default("de"),
-  /** Semantic search with a local embedding model. Off until the user turns it on. */
+  /**
+   * Semantic search with a local embedding model. Off until the user turns it on. `rerank` adds a
+   * local cross-encoder that re-sorts the best hits: slower (about a second per search) and a
+   * download of about 570 MB, so it is off by default (numbers in docs/decisions.md).
+   */
   semantic: z
-    .object({ enabled: z.boolean().default(false), model: EmbeddingModelKey.optional() })
-    .default({ enabled: false }),
+    .object({
+      enabled: z.boolean().default(false),
+      model: EmbeddingModelKey.optional(),
+      rerank: z.boolean().default(false),
+    })
+    .default({ enabled: false, rerank: false }),
   /** Listener on 127.0.0.1 that lets the Zotero Connector browser extension save into citegeist. */
   connector: z
     .object({
@@ -692,6 +700,9 @@ export const SemanticStatus = z.object({
   model: z.string(),
   progress: z.number().min(0).max(1).optional(),
   detail: z.string().optional(),
+  /** Reranker, when `semantic.rerank` is on: "loading" while its files download. */
+  rerank: z.enum(["loading", "ready", "error"]).optional(),
+  rerankDetail: z.string().optional(),
 });
 export const ConnectorStatus = z.object({
   state: z.enum(["off", "listening", "error"]),
@@ -734,7 +745,11 @@ export const settingsUpdate = defineContract({
       ncbiTool: z.string().optional(),
       uiLanguage: z.enum(["de", "en"]).optional(),
       semantic: z
-        .object({ enabled: z.boolean().optional(), model: EmbeddingModelKey.optional() })
+        .object({
+          enabled: z.boolean().optional(),
+          model: EmbeddingModelKey.optional(),
+          rerank: z.boolean().optional(),
+        })
         .optional(),
       connector: z
         .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })

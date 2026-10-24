@@ -81,7 +81,7 @@ export interface RuntimeOptions {
   embedder?: ModelEmbedder;
   /** Tuning and test hooks for semantic search. Only used when background jobs run. */
   semantic?: Omit<AttachSemanticOptions, "embedder"> &
-    Pick<SemanticControllerOptions, "createEmbedder">;
+    Pick<SemanticControllerOptions, "createEmbedder" | "createReranker">;
   /** Tuning and test hooks for versioning and sync (quiet period, brctl runner, LFS check). */
   sync?: Omit<BindSyncOptions, "autoStart" | "onError">;
   /** Receives errors of background work such as sync commits. */
@@ -327,7 +327,11 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
       router = undefined;
       applyResolverSettings(settings);
       readNcbiKey();
-      void semantic?.configure(settings.semantic.enabled, settings.semantic.model);
+      void semantic?.configure(
+        settings.semantic.enabled,
+        settings.semantic.model,
+        settings.semantic.rerank === true,
+      );
     },
   });
   provider = fixed ? fixedBackends(fixed) : (opts.settings?.backends ?? deps.backends);
@@ -409,18 +413,19 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   });
   // Semantic search needs the job queue to run, so a one-shot process leaves it out.
   if (opts.autoStart !== false) {
-    const { createEmbedder, ...tuning } = opts.semantic ?? {};
+    const { createEmbedder, createReranker, ...tuning } = opts.semantic ?? {};
     semantic = new SemanticController({
       lib,
       queue: ingest.queue,
       embedder: opts.embedder,
       createEmbedder,
+      createReranker,
       semantic: tuning,
     });
     const controller = semantic;
     service.status.semantic = () => controller.status();
     const stored = deps.store.load().semantic;
-    void controller.configure(stored.enabled, stored.model);
+    void controller.configure(stored.enabled, stored.model, stored.rerank === true);
   }
 
   let alertSchedule: AlertSchedule | undefined;

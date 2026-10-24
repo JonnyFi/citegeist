@@ -1,10 +1,13 @@
 import {
   DEFAULT_MODEL,
+  DEFAULT_RERANKER,
   type DownloadProgress,
   type Embedder,
   MODELS,
   type ModelSpec,
+  type Reranker,
   TransformersEmbedder,
+  TransformersReranker,
 } from "@citegeist/embed";
 import type { JobQueue } from "../jobs/index.js";
 import type { Library } from "../library.js";
@@ -13,6 +16,11 @@ import { type AttachedSemantic, type AttachSemanticOptions, attachSemantic } fro
 
 /** An embedder that can fetch and load its model ahead of the first text (TransformersEmbedder). */
 export interface ModelEmbedder extends Embedder {
+  warmup?(): Promise<void>;
+}
+
+/** A reranker that can fetch and load its model ahead of the first search. */
+export interface ModelReranker extends Reranker {
   warmup?(): Promise<void>;
 }
 
@@ -26,6 +34,9 @@ export interface SemanticStatus {
   progress?: number;
   /** The reason when `state` is "error". */
   detail?: string;
+  /** Reranker, present while the setting is on and search is ready. */
+  rerank?: "loading" | "ready" | "error";
+  rerankDetail?: string;
 }
 
 export interface SemanticControllerOptions {
@@ -40,6 +51,8 @@ export interface SemanticControllerOptions {
   createEmbedder?:
     | ((onDownload: (p: DownloadProgress) => void, model: ModelSpec) => ModelEmbedder)
     | undefined;
+  /** Builds the reranker that `rerank` turns on. Default: the Transformers.js one. */
+  createReranker?: (() => ModelReranker) | undefined;
   /** Passed on to attachSemantic (debounce, similarity floor, weights). */
   semantic?: Omit<AttachSemanticOptions, "embedder"> | undefined;
 }
@@ -61,6 +74,10 @@ export class SemanticController {
   private starting: Promise<void> | undefined;
   /** Key of the model the settings ask for. */
   private wanted: string = DEFAULT_MODEL.key;
+  private wantRerank = false;
+  private reranker: ModelReranker | undefined;
+  private rerankState: "loading" | "ready" | "error" | undefined;
+  private rerankDetail: string | undefined;
 
   constructor(private readonly opts: SemanticControllerOptions) {
     this.fixed = opts.embedder !== undefined;
@@ -74,6 +91,10 @@ export class SemanticController {
     };
     if (this.state === "downloading") status.progress = this.progress();
     if (this.detail) status.detail = this.detail;
+    if (this.attached && this.rerankState) {
+      status.rerank = this.rerankState;
+      if (this.rerankDetail) status.rerankDetail = this.rerankDetail;
+    }
     return status;
   }
 
@@ -104,12 +125,15 @@ export class SemanticController {
    * Follows the settings: the switch and the model. A different model while the search runs
    * replaces the embedder; the store sees the new model id and re-embeds from scratch.
    */
-  configure(enabled: boolean, model?: string): Promise<void> {
+  configure(enabled: boolean, model?: string, rerank = false): Promise<void> {
     const key = model && MODELS[model] ? model : DEFAULT_MODEL.key;
     const changed = key !== this.wanted;
     this.wanted = key;
+    this.wantRerank = rerank;
     if (changed && !this.fixed && this.state !== "off") this.stop();
-    return this.setEnabled(enabled);
+    const started = this.setEnabled(enabled);
+    this.syncReranker();
+    return started;
   }
 
   /** Follows the setting. Returns when the model is ready or the attempt has failed. */
@@ -169,9 +193,56 @@ export class SemanticController {
     });
     this.state = "ready";
     this.detail = undefined;
+    this.syncReranker();
+  }
+
+  /**
+   * Makes the reranker match the setting. It is downloaded and loaded in the background and only
+   * joins the search once it is ready, so turning it on never blocks or changes a search early.
+   */
+  private syncReranker(): void {
+    const semantic = this.attached?.semantic;
+    if (!semantic || !this.wantRerank) {
+      this.dropReranker();
+      return;
+    }
+    if (this.reranker) return;
+    const reranker =
+      this.opts.createReranker?.() ??
+      new TransformersReranker({
+        model: DEFAULT_RERANKER,
+        modelsDir: this.opts.lib.local.modelsDir,
+      });
+    this.reranker = reranker;
+    this.rerankState = "loading";
+    this.rerankDetail = undefined;
+    void (async () => {
+      try {
+        await reranker.warmup?.();
+        if (this.reranker !== reranker) return;
+        semantic.setReranker(reranker);
+        this.rerankState = "ready";
+      } catch (err) {
+        if (this.reranker !== reranker) return;
+        this.reranker = undefined;
+        this.rerankState = "error";
+        this.rerankDetail = err instanceof Error ? err.message : String(err);
+        await reranker.close?.().catch(() => {});
+      }
+    })();
+  }
+
+  private dropReranker(): void {
+    const reranker = this.reranker;
+    this.attached?.semantic.setReranker(undefined);
+    this.reranker = undefined;
+    this.rerankState = undefined;
+    this.rerankDetail = undefined;
+    void reranker?.close?.().catch(() => {});
   }
 
   private stop(): void {
+    this.dropReranker();
     if (this.fixed) {
       this.attached?.detach();
       this.attached = undefined;

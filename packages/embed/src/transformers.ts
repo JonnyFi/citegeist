@@ -135,8 +135,21 @@ export class TransformersEmbedder implements Embedder {
       this.model.repo,
       common,
     )) as unknown as TokenizerLike;
+    // Without the vision and audio configs Transformers.js neither downloads nor loads the
+    // encoders of a multimodal repository.
+    let config: unknown;
+    if (this.model.textOnly) {
+      const c = (await tf.AutoConfig.from_pretrained(this.model.repo, common)) as unknown as Record<
+        string,
+        unknown
+      >;
+      c.vision_config = null;
+      c.audio_config = null;
+      config = c;
+    }
     const model = await tf.AutoModel.from_pretrained(this.model.repo, {
       ...common,
+      ...(config ? { config: config as never } : {}),
       dtype: this.model.dtype,
       device: this.opts.device ?? "cpu",
     });

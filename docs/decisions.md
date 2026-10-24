@@ -213,3 +213,37 @@ Abbrechen ist wirksam. Ein Job, der abgebrochen wird, brach bisher nur seinen St
 Recherche-Aufträge haben Grenzen, die in den Einstellungen stehen: 20 Minuten Laufzeit, 200 Werkzeugaufrufe und 2 Millionen Tokens, jeweils mit 0 abschaltbar. Außerdem endet ein Auftrag, wenn derselbe Werkzeugaufruf mit denselben Angaben dreimal hintereinander kommt. Der Auftrag endet als fehlgeschlagen mit `RESEARCH_BUDGET_EXCEEDED` oder `RESEARCH_LOOP`. Was bis dahin gefunden wurde, steht in der Inbox und im Ergebnis des Jobs (`result.added`). Die Token-Grenze zählt, wie viel der Kontext des Agenten während des Laufs gewachsen ist, und greift nur, wenn der Adapter `usage_update` während der Arbeit sendet. Der Adapter für Claude Code sendet es einmal am Ende eines Zuges, dort bleibt die Grenze ungeprüft, und das Ergebnis des Jobs sagt es (`budget.note`). Zeit und Werkzeugaufrufe gelten immer.
 
 Das Verbrauchsbuch ist die Tabelle `ai_usage` in `state.sqlite`, also rechnerlokal und nie im Sync. Jede Zeile hält Quelle (Aufgabe, Chat, Recherche), Aufgabe, Backend, Modell, Tokens für Eingabe, Ausgabe, Cache-Lesen und Cache-Schreiben, den Listenpreis in Dollar, die Dauer, den Ausgang, den Akteur und den Job. `claude -p` meldet Tokens und `total_cost_usd`, `agent -p` die Tokens, `codex exec --json` die Tokens im Ereignis `turn.completed`, die HTTP-Backends den `usage`-Block (OpenRouter auch den Preis). Wo ein Backend keinen Preis meldet, fehlt er, und die Übersicht sagt, bei wie vielen Aufrufen. Bei einem Abo ist der Preis eine Schätzung zum Listenpreis der API. `usage.summary` (Lesezugriff, `cg usage`) fasst nach Tag, Aufgabe und Backend zusammen, die Einstellungen zeigen 7 und 30 Tage.
+
+## D24: Die Suche hat eine Messlatte, Abschnitte tragen ihren Überschriftenpfad, der Reranker ist ein Schalter
+
+Datum: 2026-10-24. Status: entschieden (W5.3).
+
+Ein Testsatz in `fixtures/retrieval/` misst die Suche. Er besteht aus sechs konvertierten CC-BY-Dokumenten (vier englische, zwei deutsche, 943 Abschnitte) und 43 Fragen auf Deutsch und Englisch, davon 12 Stichwortfragen und 31 umschriebene Fragen. Jede Frage nennt den Abschnitt, der sie beantwortet, über einen Textausschnitt und nicht über die Block-ID, damit eine neu konvertierte Fassung weiter passt. `packages/core/src/semantic/golden.test.ts` läuft in `pnpm verify` und schlägt fehl, wenn hit@5 um mehr als 0,03 oder MRR um mehr als 0,05 unter den Wert in `fixtures/retrieval/baseline.json` fällt. Ohne Modell im lokalen Cache (oder mit `CITEGEIST_SKIP_MODELS=1`, wie in CI) läuft nur die Volltextsuche gegen ihre eigene Messlatte. `pnpm eval:retrieval --golden` zeigt die Zahlen, `--record` schreibt sie als neue Messlatte.
+
+Gemessen mit EmbeddingGemma 300M (512 Dimensionen, q8) auf dem M4 Pro, Treffer sind Abschnitte, Liste mit 10 Treffern:
+
+| Stand | hit@5 | MRR | hit@10 |
+|---|---|---|---|
+| Nur Volltext | 20,9 % | 0,192 | 20,9 % |
+| Hybrid vor W5.3 (Abschnitt trägt die Gliederungsnummer, z. B. "3.2") | 86,0 % | 0,728 | 93,0 % |
+| Hybrid, Abschnitt trägt den Überschriftenpfad | 88,4 % | 0,738 | 95,3 % |
+| Hybrid, Pfad plus Autor und Jahr | 86,0 % | 0,753 | 93,0 % |
+| Hybrid, Pfad plus Titel, Autor und Jahr | 79,1 % | 0,710 | 83,7 % |
+| Hybrid, nur Titel, Autor und Jahr | 79,1 % | 0,710 | 86,0 % |
+
+Der Überschriftenpfad bleibt, Titel, Autor und Jahr bleiben draußen. Der Titel in jedem Abschnitt eines Dokuments zieht die Vektoren der Abschnitte desselben Dokuments zusammen und kostete 4 von 43 Fragen. Autor und Jahr allein ändern hit@5 nicht messbar. Die Messlatte hat nur 43 Fragen, ein Unterschied von einer Frage (2,3 Punkte) liegt im Rauschen, die 9 Punkte des Titels nicht.
+
+Der Pfad ändert die Eingabe aller Abschnitte konvertierter Dokumente. Der Hash eines Chunks enthält Modell-ID und Eingabe, also bettet der nächste Abgleich genau diese Chunks neu ein. Notizen, Karten und Items behalten ihren Hash und kosten nichts. Der einmalige Aufwand liegt bei etwa 24 Chunks pro Sekunde auf dem M4 Pro, die 943 Chunks des Testsatzes brauchen 37 bis 41 Sekunden, eine Bibliothek mit 10 000 Abschnitten rund 7 Minuten im Hintergrund.
+
+Der Reranker ist ein Cross-Encoder, der die besten fusionierten Treffer noch einmal einzeln gegen die Frage liest. Er läuft lokal mit Transformers.js (festes Commit, q8). Gemessen mit den 15 besten Kandidaten und höchstens 256 Token pro Paar:
+
+| Reranker | Lizenz | Größe (q8) | hit@5 | MRR | Dauer pro Suche (Median) |
+|---|---|---|---|---|---|
+| ohne | | | 88,4 % | 0,738 | 39 ms |
+| mxbai-rerank-xsmall-v1 | Apache-2.0 | 87 MB | 79,1 % | 0,677 | 0,34 s |
+| bge-reranker-base | MIT | 279 MB | 86,0 % | 0,730 | 0,44 s |
+| bge-reranker-v2-m3 | Apache-2.0 | 571 MB | 90,7 % | 0,772 | 1,4 s |
+
+mxbai ist auf Englisch trainiert und verschlechtert die Ergebnisse am stärksten. bge-reranker-v2-m3 ist als einziger nicht schlechter, und sein Gewinn von einer Frage bei hit@5 liegt im Rauschen. Der Gewinn bei MRR (0,034) ist größer, kostet aber 1,4 Sekunden pro Suche statt der angepeilten 0,3 Sekunden. Mit den 30 besten Kandidaten und 512 Token pro Paar dauert eine Suche 1,1 bis 3,4 Sekunden, hit@5 liegt dann bei 76,7 %, 83,7 % und 88,4 %. Der Reranker bleibt deshalb standardmäßig aus. Die Einstellung `semantic.rerank` schaltet ihn ein (Einstellungen, Suche nach Bedeutung, "Treffer neu sortieren"). Er wird dann im Hintergrund geladen und greift erst, wenn er bereit ist. Falsifikator: Bringt ein Reranker mit höchstens 0,3 Sekunden pro Suche bei 15 Kandidaten mindestens 5 Punkte hit@5 auf diesem Testsatz, wird er zum Standard.
+
+EmbeddingGemma 2 (`onnx-community/embeddinggemma-2-ONNX`, Apache-2.0, nur das Textmodell, q8, 305 MB) erreicht bei 768 Dimensionen hit@5 81,4 % und MRR 0,692, bei 256 Dimensionen 81,4 % und 0,674, gegen 88,4 % und 0,738 für den Standard bei 512. Der Standard bleibt. Beide Varianten stehen in `MODELS` und laufen mit `pnpm eval:retrieval --golden --model embeddinggemma-2`, die Einstellungen bieten sie nicht an.

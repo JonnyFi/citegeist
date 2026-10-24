@@ -1,0 +1,528 @@
+{
+  "queries": [
+    {
+      "id": "q01",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How does the model keep its memory use bounded by overwriting old cache entries?",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "Rolling Buffer Cache. A fixed attention span"
+        }
+      ]
+    },
+    {
+      "id": "q02",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Which open licence is the 7B model released under?",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "Mistral 7B is released under the Apache 2.0 license"
+        }
+      ]
+    },
+    {
+      "id": "q03",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "sliding window attention hidden state previous layer",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "SWA exploits the stacked layers"
+        }
+      ]
+    },
+    {
+      "id": "q04",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "What share of dangerous prompts does the model turn down when a safety system prompt is active?",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "properly declines to answer 100% of the harmful questions"
+        }
+      ]
+    },
+    {
+      "id": "q05",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "prompt pre-fill chunking cache",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "Pre-fill and Chunking. When generating a sequence"
+        }
+      ]
+    },
+    {
+      "id": "q06",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Can the chat model itself decide whether a user message is acceptable?",
+      "expect": [
+        {
+          "item": "jiang2023mistral",
+          "contains": "can be used as a content moderator"
+        }
+      ]
+    },
+    {
+      "id": "q07",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Which neural network recovers the rows and columns of a table?",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "The TableFormer model [12], first published in 2022"
+        }
+      ]
+    },
+    {
+      "id": "q08",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How many pages per second can it convert on a laptop and how much memory does that take?",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "Apple M3 Max"
+        },
+        {
+          "item": "auer2024docling",
+          "contains": "Table 1: Runtime characteristics of Docling"
+        }
+      ]
+    },
+    {
+      "id": "q09",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "OCR scanned documents EasyOCR",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "Docling provides optional support for OCR"
+        }
+      ]
+    },
+    {
+      "id": "q10",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How do I install the converter and call it from Python code?",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "To use Docling, you can simply install the docling package from PyPI"
+        },
+        {
+          "item": "auer2024docling",
+          "contains": "converter = DocumentConverter()"
+        }
+      ]
+    },
+    {
+      "id": "q11",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "layout analysis model RT-DETR DocLayNet bounding boxes",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "Our layout analysis model is an object-detector"
+        }
+      ]
+    },
+    {
+      "id": "q12",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Which parser should I choose when memory is scarce?",
+      "expect": [
+        {
+          "item": "auer2024docling",
+          "contains": "If you need to run Docling in very low-resource environments"
+        }
+      ]
+    },
+    {
+      "id": "q13",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How many training and evaluation examples does the public release contain?",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "The public release contains 307,373 training examples"
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Where do the questions in the benchmark come from?",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "Source of questions The questions consist of real anonymized"
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "super-annotator upper bound",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "To place an upper bound on the metrics introduced above we create"
+        }
+      ]
+    },
+    {
+      "id": "q16",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "What does an annotator return if the page does not answer the question?",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "the annotator can return l = NULL"
+        }
+      ]
+    },
+    {
+      "id": "q17",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How many people annotated the data and how long did each item take?",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "a pool of around 50 annotators, with an average annotation time of 80 seconds"
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "decomposable attention long answer selection",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "Long answer selection Let t(d, l) denote"
+        }
+      ]
+    },
+    {
+      "id": "q19",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Why do different annotators disagree on the same question?",
+      "expect": [
+        {
+          "item": "kwiatkowski2019natural",
+          "contains": "Study of variability One clear finding in NQ"
+        }
+      ]
+    },
+    {
+      "id": "q20",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "What are the two ways a web reference can stop being useful?",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "Reference rot is a term we introduced in the Hiberlink project"
+        }
+      ]
+    },
+    {
+      "id": "q21",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Where did the sample of papers come from?",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "we generated three corpora of articles from different sources"
+        }
+      ]
+    },
+    {
+      "id": "q22",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "content drift resource changes over time",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "Content drift: The resource identified by a URI may change over time"
+        }
+      ]
+    },
+    {
+      "id": "q23",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Why were links to journal articles left out of the analysis?",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "References to journal articles, which are outside the scope of our research"
+        }
+      ]
+    },
+    {
+      "id": "q24",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "What share of recent science papers contain references that have rotted?",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "around 20% - one in five - of all STM articles suffer from reference rot"
+        }
+      ]
+    },
+    {
+      "id": "q25",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Which services let you take a snapshot of a page on demand?",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "Perma.cc, and archive.today support such an on demand approach"
+        }
+      ]
+    },
+    {
+      "id": "q26",
+      "lang": "en",
+      "kind": "keyword",
+      "q": "Crossref DOI randomizer Elsevier articles",
+      "expect": [
+        {
+          "item": "klein2014scholarly",
+          "contains": "Using the DOI randomizer Randoim"
+        }
+      ]
+    },
+    {
+      "id": "q27",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Welche Fähigkeit hilft dabei, komplexe Systeme zu analysieren und Zusammenhänge zu erkennen?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Kompetenz zum Vernetzten Denken"
+        }
+      ]
+    },
+    {
+      "id": "q28",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Warum kann man Werte und Kompetenzen nicht einfach beibringen?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Kompetenzen und Werteorientierungen können nicht vermittelt"
+        }
+      ]
+    },
+    {
+      "id": "q29",
+      "lang": "de",
+      "kind": "keyword",
+      "q": "Zukunftswerkstätten Szenarioanalysen Backcasting",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Methoden zur Entwicklung von Zukunftsentwürfen wie Zukunftswerkstätten"
+        }
+      ]
+    },
+    {
+      "id": "q30",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Welches Jahrzehnt der Vereinten Nationen hat das Bildungskonzept in den Schulsystemen verbreitet?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Die Integration von BNE in alle Bildungssysteme"
+        }
+      ]
+    },
+    {
+      "id": "q31",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Was bedeutet Gerechtigkeit zwischen den Generationen?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "intergenerationeller Gerechtigkeit"
+        }
+      ]
+    },
+    {
+      "id": "q32",
+      "lang": "de",
+      "kind": "keyword",
+      "q": "Service-Learning Kampagnen Ernstsituationen",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Kollaborative Projekte in Ernstsituationen"
+        }
+      ]
+    },
+    {
+      "id": "q33",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Was müssen Lehrende selbst mitbringen, wenn sie Nachhaltigkeit unterrichten?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "bei den Lehrenden neue pädagogische Kompetenzen voraus"
+        }
+      ]
+    },
+    {
+      "id": "q34",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "Which key competencies should learners acquire for sustainable development?",
+      "expect": [
+        {
+          "item": "rieckmann2021bildung",
+          "contains": "Schlüsselkompetenzen 1 , die für eine nachhaltige Entwicklung"
+        }
+      ]
+    },
+    {
+      "id": "q35",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Wie hat sich der Anteil rauchender Jugendlicher entwickelt?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "Beim Rauchen ist ebenfalls ein starker Rückgang zu beobachten"
+        }
+      ]
+    },
+    {
+      "id": "q36",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Wer beurteilt den allgemeinen Gesundheitszustand der Kinder?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "wird auf Grundlage der Einschätzung ihrer Eltern beurteilt"
+        }
+      ]
+    },
+    {
+      "id": "q37",
+      "lang": "de",
+      "kind": "keyword",
+      "q": "Slope Index of Inequality Relative Index of Inequality",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "Der SII ist als Prävalenzdifferenz"
+        }
+      ]
+    },
+    {
+      "id": "q38",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Bewegen sich Kinder heute weniger als früher?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "geringer körperlicher Aktivität zugenommen"
+        }
+      ]
+    },
+    {
+      "id": "q39",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Wie viele junge Menschen nahmen an der zweiten Folgebefragung teil?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "Alter bei Erhebung der KiGGS Welle 2: 10 - 31 Jahre"
+        }
+      ]
+    },
+    {
+      "id": "q40",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Gehen psychische Probleme nur bei Jungen zurück?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "Dieser Rückgang ist auf die Entwicklung bei Jungen zurückzuführen"
+        }
+      ]
+    },
+    {
+      "id": "q41",
+      "lang": "de",
+      "kind": "keyword",
+      "q": "zuckerhaltige Erfrischungsgetränke 500 ml täglich",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "500 ml und mehr zuckerhaltige Erfrischungsgetränke pro Tag"
+        }
+      ]
+    },
+    {
+      "id": "q42",
+      "lang": "de",
+      "kind": "conceptual",
+      "q": "Genügen drei Messzeitpunkte, um verlässliche Trends abzulesen?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "ob drei Beobachtungen innerhalb von zehn Jahren ausreichen"
+        }
+      ]
+    },
+    {
+      "id": "q43",
+      "lang": "en",
+      "kind": "conceptual",
+      "q": "How do health differences between rich and poor families in Germany develop over time?",
+      "expect": [
+        {
+          "item": "lampert2019gesundheitliche",
+          "contains": "Darüber hinaus weisen die KiGGS-Daten auf erhebliche sozioökonomische Unterschiede"
+        }
+      ]
+    }
+  ]
+}

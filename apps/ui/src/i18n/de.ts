@@ -259,6 +259,12 @@ export const de = {
   "settings.semantic.downloading": "Das Modell wird geladen, {percent} %.",
   "settings.semantic.ready": "Das Modell ist bereit. Die Suche verbindet Volltext und Bedeutung.",
   "settings.semantic.error": "Das Modell konnte nicht geladen werden: {detail}",
+  "settings.rerank.switch": "Treffer neu sortieren",
+  "settings.rerank.hint":
+    "Ein zweites Modell prüft die besten Treffer genauer. Eine Suche dauert dann etwa eine Sekunde länger, und das Modell ist rund 570 MB groß.",
+  "settings.rerank.loading": "Das Sortiermodell wird geladen.",
+  "settings.rerank.ready": "Das Sortiermodell ist bereit.",
+  "settings.rerank.error": "Das Sortiermodell konnte nicht geladen werden: {detail}",
   "settings.connector.title": "Zotero Connector",
   "settings.connector.desc":
     "Mit dem Browser-Add-on Zotero Connector speicherst du Artikel direkt in citegeist. Der Empfänger hört nur auf diesem Mac (127.0.0.1) zu. Läuft Zotero selbst, belegt es denselben Port.",

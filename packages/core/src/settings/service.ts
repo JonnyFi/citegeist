@@ -165,7 +165,7 @@ export class SettingsService {
       ...(stored.unpaywallEmail ? { unpaywallEmail: stored.unpaywallEmail } : {}),
       ...(stored.ncbiTool ? { ncbiTool: stored.ncbiTool } : {}),
       uiLanguage: stored.uiLanguage,
-      semantic: { ...stored.semantic },
+      semantic: { ...stored.semantic, rerank: stored.semantic.rerank === true },
       connector: { ...stored.connector },
       webhooks: { ...stored.webhooks },
       chat: { ...stored.chat },
@@ -273,9 +273,11 @@ export class SettingsService {
     if (patch.uiLanguage) stored.uiLanguage = patch.uiLanguage;
     if (patch.semantic) {
       const model = patch.semantic.model ?? stored.semantic.model;
+      const rerank = patch.semantic.rerank ?? stored.semantic.rerank;
       stored.semantic = {
         enabled: patch.semantic.enabled ?? stored.semantic.enabled,
         ...(model ? { model } : {}),
+        ...(rerank ? { rerank } : {}),
       };
     }
     if (patch.connector) {

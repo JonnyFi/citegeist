@@ -163,6 +163,21 @@ describe("settings screen", () => {
     expect(screen.queryByText(/Das Modell ist bereit/)).toBeNull();
   });
 
+  it("turns on re-sorting of the best results as a separate switch", async () => {
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />, {
+      semantic: { enabled: true, state: "ready", progress: 1 },
+    });
+    const toggle = await screen.findByRole("checkbox", { name: "Treffer neu sortieren" });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { semantic: { rerank: true } },
+    });
+    expect(state.semantic.rerank).toBe(true);
+    expect(await screen.findByText("Das Sortiermodell ist bereit.")).toBeVisible();
+  });
+
   it("lets the chat agent work in the user's environment until Isolierter Agent is turned on (A11)", async () => {
     const user = userEvent.setup();
     const { state, calls } = renderWithSettingsCore(<SettingsScreen />);

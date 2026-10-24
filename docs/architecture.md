@@ -313,6 +313,8 @@ Jede Agent-Antwort mit Zitat geht durch eine Prüfung: Ein Zitat, das zu keiner 
 
 Die Abos bieten keine Embeddings, deshalb laufen sie lokal mit Transformers.js. Kandidaten sind Qwen3-Embedding-0.6B und EmbeddingGemma, die Wahl fällt ein Test mit echten deutschen und englischen Anfragen. Für Ähnlichkeit auf Paper-Ebene kommen SPECTER2-Vektoren von Semantic Scholar dazu, wo es sie gibt.
 
+Abschnitte konvertierter Dokumente werden zusammen mit dem Pfad ihrer Überschriften eingebettet. Ein lokaler Reranker kann die besten Treffer nachsortieren und ist standardmäßig aus. Ein Testsatz misst beides (D24).
+
 ## Zugänge für Agents
 
 ### MCP-Server
