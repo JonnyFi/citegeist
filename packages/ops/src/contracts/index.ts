@@ -133,6 +133,7 @@ export const itemsAttach = defineContract({
     /** Conversion of the new file. Absent when nothing was added. */
     job: JobId.optional(),
   }),
+  mcp: { tool: "attach_file", readOnly: false },
 });
 export const itemsGet = defineContract({
   name: "items.get",
@@ -170,10 +171,12 @@ export const itemsRename = defineContract({
 });
 export const itemsTrash = defineContract({
   name: "items.trash",
-  summary: "Move an item to the trash",
+  summary:
+    "Move an item to the trash. An agent may trash inbox items, incomplete items and items an agent added, as long as no card or link refers to them; the folder stays in the library trash and records who removed it",
   access: "write",
   input: ItemRef,
   output: Ok,
+  mcp: { tool: "trash_item", readOnly: false },
 });
 export const inboxAccept = defineContract({
   name: "inbox.accept",
@@ -448,6 +451,7 @@ export const projectsCreate = defineContract({
   access: "write",
   input: z.object({ slug: ProjectSlug, title: z.string().min(1), brief: z.string().default("") }),
   output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string() }),
+  mcp: { tool: "create_project", readOnly: false },
 });
 export const projectsGet = defineContract({
   name: "projects.get",
@@ -473,6 +477,7 @@ export const projectsList = defineContract({
   access: "read",
   input: z.object({}),
   output: z.object({ projects: z.array(ProjectFrontmatter) }),
+  mcp: { tool: "list_projects", readOnly: true, idempotent: true },
 });
 
 // Search and citations ------------------------------------------------------------------------------

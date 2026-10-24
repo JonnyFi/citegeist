@@ -1,6 +1,8 @@
-import type { OperationContract } from "@citegeist/ops";
+import { commandPath, kebab, type OperationContract } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { z } from "zod";
+
+export { commandPath };
 
 type Json = Record<string, unknown>;
 
@@ -22,18 +24,6 @@ export interface CommandSpec {
   /** Property filled by the positional argument, if any. */
   positional?: { prop: string; list: boolean };
   flags: FlagSpec[];
-}
-
-export function kebab(name: string): string {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/_/g, "-")
-    .toLowerCase();
-}
-
-/** CLI path of a contract: `cli` when set, else the name split at dots (camelCase becomes kebab-case). */
-export function commandPath(contract: OperationContract): string[] {
-  return contract.cli ?? contract.name.split(".").map(kebab);
 }
 
 function scalarKind(prop: Json): "string" | "number" | "boolean" | undefined {

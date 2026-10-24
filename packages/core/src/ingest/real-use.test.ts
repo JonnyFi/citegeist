@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FetchLike } from "@citegeist/metadata";
 import { CitegeistError } from "@citegeist/schema";
@@ -406,5 +406,60 @@ describe("#36 duplicates", () => {
       identifier: pdfFile("aloneagain.pdf", BAUMAN),
     });
     expect(out.duplicateOf).toBeUndefined();
+  });
+});
+
+describe("#38 items.trash by an agent (D7)", () => {
+  const BIB = "@book{k, title={Trash target}, author={Nobody, Nina}, year={2001}}";
+
+  it("lets an agent trash what an agent added, and records who did it", async () => {
+    const e = await env();
+    const out = await e.call<AddOut>("items.add", { identifier: BIB }, "agent:grok");
+    await e.svc.queue.waitFor(out.job);
+    await e.call("items.trash", { citekey: out.citekey }, "agent:claude-code");
+    expect(e.lib.index.get("SELECT 1 FROM items WHERE citekey = ?", out.citekey)).toBeUndefined();
+    const trash = join(e.root, ".trash");
+    const dir = readdirSync(trash).find((d) => d.startsWith(`${out.citekey}-`)) ?? "";
+    const record = JSON.parse(readFileSync(join(trash, dir, "trashed.json"), "utf8")) as {
+      by: string;
+    };
+    expect(record.by).toBe("agent:claude-code");
+  });
+
+  it("refuses an item the user added, but lets the user trash it", async () => {
+    const e = await env();
+    const out = await e.call<AddOut>("items.add", { identifier: BIB });
+    await e.svc.queue.waitFor(out.job);
+    const err = await e
+      .call("items.trash", { citekey: out.citekey }, "agent:claude-code")
+      .catch((x: unknown) => x);
+    expect((err as CitegeistError).detail.code).toBe("TRASH_NOT_ALLOWED");
+    expect((err as CitegeistError).detail.recovery).toBe("ask-human");
+    await e.call("items.trash", { citekey: out.citekey });
+  });
+
+  it("refuses an item that a note already cites", async () => {
+    const e = await env();
+    const out = await e.call<AddOut>(
+      "items.add",
+      { identifier: BIB, target: "library" },
+      "agent:grok",
+    );
+    await e.svc.queue.waitFor(out.job);
+    await e.call("notes.create", { title: "Cites it", body: `See [[${out.citekey}]].` });
+    const err = await e
+      .call("items.trash", { citekey: out.citekey }, "agent:grok")
+      .catch((x: unknown) => x);
+    expect((err as CitegeistError).detail.code).toBe("TRASH_NOT_ALLOWED");
+  });
+
+  it("lets an agent trash an incomplete item the user added, once nothing cites it", async () => {
+    const e = await env({ deps: { worker: flakyWorker(1) } });
+    const out = await e.call<AddOut>("items.add", {
+      identifier: pdfFile("scan_of_something.pdf", [["x"]]),
+    });
+    await e.svc.queue.waitFor(out.job);
+    await e.call("items.trash", { citekey: out.citekey }, "agent:claude-code");
+    expect(e.lib.listItems({ limit: 10 }).items).toEqual([]);
   });
 });

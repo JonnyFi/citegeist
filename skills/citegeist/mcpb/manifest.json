@@ -38,6 +38,16 @@
     { "name": "create_note", "description": "Create a note" },
     { "name": "link", "description": "Add a typed link from a note to an item, card or note" },
     {
+      "name": "attach_file",
+      "description": "Attach a local PDF, HTML page or EPUB to an existing item and convert it"
+    },
+    {
+      "name": "trash_item",
+      "description": "Move an inbox item or an item an agent added to the trash"
+    },
+    { "name": "create_project", "description": "Create a project with a brief" },
+    { "name": "list_projects", "description": "List the projects of the library" },
+    {
       "name": "get_project",
       "description": "Read a project with its brief, plans and the outline of a plan with computed numbers"
     },

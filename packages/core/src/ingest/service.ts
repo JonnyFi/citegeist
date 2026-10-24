@@ -52,6 +52,7 @@ import { findDuplicate } from "./dupes.js";
 import { enrichAfterConvert, splitName } from "./enrich.js";
 import {
   acceptInbox,
+  assertMayTrash,
   loadItem,
   problem,
   rejectInbox,
@@ -1187,11 +1188,13 @@ export class IngestService {
   updateItem = (actor: Actor, citekey: string, patch: Record<string, unknown>) =>
     updateItem(this.lib, actor, citekey, patch);
   renameItem = (actor: Actor, from: string, to: string) => renameItem(this.lib, actor, from, to);
-  trashItem = (citekey: string) => {
-    trashItem(this.lib, citekey);
+  trashItem = (actor: Actor, citekey: string) => {
+    assertMayTrash(this.lib, actor, citekey);
+    trashItem(this.lib, citekey, actor);
   };
   acceptInbox = (actor: Actor, citekeys: string[]) => acceptInbox(this.lib, actor, citekeys);
-  rejectInbox = (citekeys: string[]) => rejectInbox(this.lib, citekeys);
+  rejectInbox = (citekeys: string[], actor: Actor = "human") =>
+    rejectInbox(this.lib, citekeys, actor);
 }
 
 function isFatal(err: unknown): boolean {

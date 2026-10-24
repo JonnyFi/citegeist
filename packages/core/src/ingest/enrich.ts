@@ -9,7 +9,7 @@ import {
 } from "@citegeist/metadata";
 import type { Actor, ItemFrontmatter, Source } from "@citegeist/schema";
 import type { Library } from "../library.js";
-import { loadItem, renameItem, saveItem } from "./items.js";
+import { isCited, loadItem, renameItem, saveItem } from "./items.js";
 import { guessHeader, type HeaderGuess, type PdfTextExtractor } from "./pdf-text.js";
 import type { MetadataLookup } from "./service.js";
 
@@ -81,21 +81,6 @@ function keySource(fm: Record<string, unknown>) {
     ...(fm.editor ? { editor: fm.editor as never } : {}),
     ...(fm.issued !== undefined ? { issued: fm.issued as never } : {}),
   };
-}
-
-/** Cards of the item and links to it from anywhere outside its own folder. */
-export function isCited(lib: Library, citekey: string): boolean {
-  const cards =
-    lib.index.get<{ n: number }>("SELECT COUNT(*) AS n FROM cards WHERE citekey = ?", citekey)?.n ??
-    0;
-  if (cards > 0) return true;
-  const links =
-    lib.index.get<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM links WHERE dst = ? AND path NOT LIKE ?",
-      citekey,
-      `items/${citekey}/%`,
-    )?.n ?? 0;
-  return links > 0;
 }
 
 async function headerFromAi(
