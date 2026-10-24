@@ -4,6 +4,7 @@ import {
   cardsList,
   citeFormat,
   documentsRead,
+  graphRelated,
   inboxAccept,
   inboxReject,
   insightsFind,
@@ -19,6 +20,7 @@ import {
   notesGet,
   type OperationContract,
   outlineGet,
+  projectsContext,
   projectsGet,
   projectsList,
   Registry,
@@ -271,6 +273,36 @@ export function createFixtureRegistry(): Registry {
   reg.bind(jobsGet, async (_ctx, input) => job(input.job));
   reg.bind(jobsList, async () => ({ jobs: [job(JOB)] }));
 
+  reg.bind(graphRelated, async (_ctx, input) => ({
+    citekey: input.citekey,
+    direction: input.direction,
+    total: 1,
+    works: [
+      {
+        doi: "10.1000/related",
+        title: "A related work",
+        year: 1990,
+        status: "new" as const,
+        addable: true,
+      },
+    ],
+    counts: { library: 0, inbox: 0, new: 1 },
+    errors: [],
+  }));
+  reg.bind(projectsContext, async (_ctx, input) => {
+    const project = await reg.call("projects.get", { actor: "human" }, { slug: input.slug });
+    const outline = await reg.call(
+      "outline.get",
+      { actor: "human" },
+      { project: input.slug, plan: input.plan },
+    );
+    const { nodes, plan, title } = outline as { nodes: never[]; plan: string; title: string };
+    return {
+      ...(project as { frontmatter: never; brief: string; items: number }),
+      plans: [{ plan, title, nodes: nodes.length }],
+      outline: { plan, title, nodes },
+    };
+  });
   reg.bind(outlineGet, async (_ctx, input) => ({
     project: input.project,
     plan: input.plan ?? "proposal",

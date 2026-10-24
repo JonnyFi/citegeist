@@ -417,7 +417,7 @@ function entryFor(item: ItemFrontmatter, flavor: "biblatex" | "bibtex"): string 
     add("eprinttype", "arxiv", "raw");
   } else {
     for (const [k, v] of Object.entries(item.ids)) {
-      if (k === "pmid" || k === "pmcid") continue;
+      if (k === "pmid" || k === "pmcid" || k === "zotero") continue;
       add("eprint", v, "raw");
       add("eprinttype", k, "raw");
       break;

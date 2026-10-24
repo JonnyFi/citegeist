@@ -4,6 +4,7 @@ import {
   OutlineNodeId,
   PlanSlug,
   PlanTemplate,
+  ProjectFrontmatter,
   ProjectSlug,
 } from "@citegeist/schema";
 import { z } from "zod";
@@ -88,7 +89,36 @@ export const outlineGet = defineContract({
     title: z.string(),
     nodes: z.array(NumberedNode),
   }),
-  mcp: { tool: "get_outline", readOnly: true, idempotent: true },
+});
+
+export const projectsContext = defineContract({
+  name: "projects.context",
+  summary:
+    "Read a project: brief, research questions, settings, item count and its plans. With a plan (or when the project has exactly one) the outline comes along: nodes with ids, computed numbers like 4.4, purpose, status and document path",
+  access: "read",
+  input: z.object({
+    slug: ProjectSlug,
+    plan: PlanSlug.optional().describe(
+      "plan slug for the outline; may be left out when the project has one plan",
+    ),
+  }),
+  output: z.object({
+    frontmatter: ProjectFrontmatter,
+    brief: z.string(),
+    items: z.number(),
+    plans: z.array(
+      z.object({
+        plan: PlanSlug,
+        title: z.string(),
+        template: PlanTemplate.optional(),
+        nodes: z.number().int().nonnegative(),
+      }),
+    ),
+    outline: z
+      .object({ plan: PlanSlug, title: z.string(), nodes: z.array(NumberedNode) })
+      .optional(),
+  }),
+  mcp: { tool: "get_project", readOnly: true, idempotent: true },
 });
 
 const OutlineOp = z.discriminatedUnion("op", [
@@ -220,6 +250,7 @@ export const PLANNING_CONTRACTS: readonly OperationContract[] = [
   plansCreate,
   plansList,
   outlineGet,
+  projectsContext,
   outlineApply,
   planDocsUpdate,
   insightsNote,

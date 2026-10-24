@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tool-size": "tsx src/testing/tool-size.ts"
   },
   "dependencies": {
     "@citegeist/core": "workspace:*",

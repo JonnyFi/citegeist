@@ -654,9 +654,15 @@ importers:
       '@citegeist/core':
         specifier: workspace:*
         version: link:../core
+      '@citegeist/import':
+        specifier: workspace:*
+        version: link:../import
       '@citegeist/mcp':
         specifier: workspace:*
         version: link:../mcp
+      '@citegeist/metadata':
+        specifier: workspace:*
+        version: link:../metadata
       '@citegeist/ops':
         specifier: workspace:*
         version: link:../ops

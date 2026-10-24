@@ -27,6 +27,7 @@ import {
 } from "../shared/lockfile.js";
 import { type ChatOptions, type ChatRuntime, startChat } from "./chat.js";
 import { FILES_PREFIX, serveLibraryFile } from "./files.js";
+import { bindImport } from "./import.js";
 
 export { LockHeldError };
 
@@ -203,6 +204,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     ...opts.runtime,
   });
   const registry = runtime.registry;
+  bindImport(runtime, library);
   // The chat binds its operations to the registry, so it starts before the router is built.
   let chat: ChatRuntime | undefined;
   try {
@@ -260,7 +262,12 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
     if (!tokenOk(req, url)) return reply(res, 401, { error: "missing or wrong token" });
 
     if (url.pathname.startsWith(FILES_PREFIX)) {
-      serveLibraryFile(library.root, url.pathname, req, res);
+      serveLibraryFile(library.root, url.pathname, req, res, (rel) =>
+        runtime.sync.ensureLocal(rel),
+      ).catch(() => {
+        if (!res.headersSent) reply(res, 500, { error: "internal error" });
+        else res.destroy();
+      });
       return;
     }
     if (url.pathname === "/health") {

@@ -3,7 +3,12 @@
 //
 //   CITEGEIST_TEST_LIBRARY  library folder
 //   CITEGEIST_TEST_LOCAL    machine-local base for index and settings
-import { bindPlanningOperations, Library } from "@citegeist/core";
+import {
+  bindCoreOperations,
+  bindPlanningOperations,
+  bindProjectContext,
+  Library,
+} from "@citegeist/core";
 import { Registry } from "@citegeist/ops";
 import { serveMcpStdio } from "../transports.js";
 
@@ -15,8 +20,9 @@ if (!root || !localBase) {
 }
 
 const lib = await Library.open(root, { localBase, watch: false });
-const registry = new Registry();
+const registry = bindCoreOperations(new Registry(), lib);
 bindPlanningOperations(registry, lib);
+bindProjectContext(registry);
 const handle = serveMcpStdio(registry, {
   onerror: (e) => process.stderr.write(`mcp error: ${e.message}\n`),
 });

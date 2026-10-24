@@ -67,7 +67,7 @@ Nummern wie „4.4“ berechnet citegeist aus `parent` und `order` und speichert
 
 Ein Kapitel hat immer ein eigenes Dokument. Ein Abschnitt bekommt erst eines, wenn er Behauptungen oder Quellen trägt (D11), bis dahin stehen seine Einsichten im Dokument des Kapitels. Ein Dokument trägt im Frontmatter nur `node` und denselben Wert unter `aliases`, damit Obsidian Links auf den Knoten zur Datei auflöst. Links auf Abschnitte ohne Dokument löst nur citegeist auf.
 
-Sagt Jonny „füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“, liest der Agent die berechneten Nummern aus `get_outline` und legt den Knoten über `edit_outline` an. Jonny kann jedes Feld in der Planansicht oder direkt in der YAML-Datei ändern und muss keines selbst ausfüllen.
+Sagt Jonny „füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“, liest der Agent die berechneten Nummern aus `get_project` und legt den Knoten über `edit_outline` an. Jonny kann jedes Feld in der Planansicht oder direkt in der YAML-Datei ändern und muss keines selbst ausfüllen.
 
 ### Ordner
 
@@ -101,7 +101,7 @@ Ein Projekt kann mehrere Pläne haben (D13). Beim Anlegen stehen die Vorlagen �
 - `insights.note` (write, MCP `note_insight`): `project`, `plan?`, `target` (Knoten-ID, `plan` oder `project`), `text`. Der Kern setzt Datum und Block-ID. Ausgabe `path`, `block`, `number` des Knotens.
 - `insights.find` (read, MCP `find_insights`): `project`, `plan?`, `node?`, `refs?`, `query?`, `limit = 5`. Ausgabe Absätze mit `path`, `block`, `date`, `text`, `stage` (`links` oder `semantic`) und `why`.
 - `plans.create` (write): `project`, `slug`, `title`, `template?: "expose" | "imrad"`. `plans.list` (read): `project`.
-- `outline.get` (read, MCP `get_outline`): `project`, `plan`. Ausgabe Knoten mit Feldern, berechneter Nummer und Pfad des Dokuments.
+- `outline.get` (read, MCP über `get_project`, das Projekt, Pläne und Gliederung in einem Aufruf liefert): `project`, `plan`. Ausgabe Knoten mit Feldern, berechneter Nummer und Pfad des Dokuments.
 - `outline.apply` (write, MCP `edit_outline`): `project`, `plan`, `ops` aus `add` (`parent`, `position`, `title`, `purpose?`), `update` (`id`, Felder), `move` (`id`, `parent`, `position`) und `remove` (`id`). Ein Aufruf ist atomar und ein Schritt im Verlauf. `remove` eines Knotens mit Dokument oder eingehenden Links meldet diese und verlangt `force`.
 - `plan.docs.update` (write, MCP `edit_plan_doc`): `project`, `plan`, `doc`, `baseHash`, `body`. Legt bei Bedarf das Dokument eines Knotens an.
 - `history.list`, `history.restore`, `history.revertTurn` (write): Verlauf einer Datei, eine Fassung wiederherstellen, einen Agent-Zug zurücknehmen.

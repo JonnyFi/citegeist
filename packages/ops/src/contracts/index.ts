@@ -446,7 +446,6 @@ export const projectsGet = defineContract({
   access: "read",
   input: z.object({ slug: ProjectSlug }),
   output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string(), items: z.number() }),
-  mcp: { tool: "get_project", readOnly: true },
 });
 export const projectsUpdate = defineContract({
   name: "projects.update",
