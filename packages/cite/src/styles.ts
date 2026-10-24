@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { plugins } from "@citation-js/core";
 import "@citation-js/plugin-csl";
@@ -31,8 +31,25 @@ function config(): CslConfig {
   return plugins.config.get("@csl") as unknown as CslConfig;
 }
 
+/**
+ * Path of a vendored style or locale. In the repo `vendor/` sits next to this module. In the
+ * packaged app the module is bundled, either into `out/main/core.js` or, when several entries share
+ * it, into `out/main/chunks/*.js`, while the build copies `vendor/` to `out/main/vendor`. So the
+ * directory one level up counts as well.
+ */
+export function vendorPath(
+  file: string,
+  base: string = import.meta.url,
+  exists: (path: string) => boolean = existsSync,
+): string {
+  const candidates = [`./vendor/${file}`, `../vendor/${file}`].map((rel) =>
+    fileURLToPath(new URL(rel, base)),
+  );
+  return candidates.find((path) => exists(path)) ?? (candidates[0] as string);
+}
+
 function readVendor(file: string): string {
-  return readFileSync(fileURLToPath(new URL(`./vendor/${file}`, import.meta.url)), "utf8");
+  return readFileSync(vendorPath(file), "utf8");
 }
 
 const localeXml = new Map<string, string>();
