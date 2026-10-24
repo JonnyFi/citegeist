@@ -156,7 +156,7 @@ export function bindSettingsMock(
       if (patch.uiLanguage) state.uiLanguage = patch.uiLanguage;
       if (patch.semantic) {
         if (patch.semantic.enabled && !state.semantic.enabled) semanticReads = 0;
-        state.semantic.enabled = patch.semantic.enabled;
+        state.semantic.enabled = patch.semantic.enabled ?? state.semantic.enabled;
       }
       if (patch.connector) {
         state.connector.enabled = patch.connector.enabled ?? state.connector.enabled;

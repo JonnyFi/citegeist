@@ -210,7 +210,13 @@ export class SettingsService {
       else delete stored.mailto;
     }
     if (patch.uiLanguage) stored.uiLanguage = patch.uiLanguage;
-    if (patch.semantic) stored.semantic = { enabled: patch.semantic.enabled };
+    if (patch.semantic) {
+      const model = patch.semantic.model ?? stored.semantic.model;
+      stored.semantic = {
+        enabled: patch.semantic.enabled ?? stored.semantic.enabled,
+        ...(model ? { model } : {}),
+      };
+    }
     if (patch.connector) {
       stored.connector = {
         enabled: patch.connector.enabled ?? stored.connector.enabled,

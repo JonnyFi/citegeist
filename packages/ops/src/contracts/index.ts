@@ -552,6 +552,11 @@ const BackendStatus = z.object({
 /** Port of the Zotero Connector listener unless the user picks another one. */
 export const DEFAULT_CONNECTOR_PORT = 23119;
 const ConnectorPort = z.number().int().min(1024).max(65535);
+/** The embedding models semantic search can use. The first one is the default. */
+export const EMBEDDING_MODEL_KEYS = ["embeddinggemma-300m", "qwen3-embedding-0.6b"] as const;
+export const EmbeddingModelKey = z.enum(EMBEDDING_MODEL_KEYS);
+export type EmbeddingModelKey = z.infer<typeof EmbeddingModelKey>;
+
 export const Settings = z.object({
   ai: z.object({
     routing: z.record(z.string(), z.string()),
@@ -560,7 +565,9 @@ export const Settings = z.object({
   mailto: z.string().optional(),
   uiLanguage: z.enum(["de", "en"]).default("de"),
   /** Semantic search with a local embedding model. Off until the user turns it on. */
-  semantic: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
+  semantic: z
+    .object({ enabled: z.boolean().default(false), model: EmbeddingModelKey.optional() })
+    .default({ enabled: false }),
   /** Listener on 127.0.0.1 that lets the Zotero Connector browser extension save into citegeist. */
   connector: z
     .object({
@@ -614,7 +621,9 @@ export const settingsUpdate = defineContract({
         .optional(),
       mailto: z.string().optional(),
       uiLanguage: z.enum(["de", "en"]).optional(),
-      semantic: z.object({ enabled: z.boolean() }).optional(),
+      semantic: z
+        .object({ enabled: z.boolean().optional(), model: EmbeddingModelKey.optional() })
+        .optional(),
       connector: z
         .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })
         .optional(),

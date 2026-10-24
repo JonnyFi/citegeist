@@ -68,9 +68,11 @@ function gatedModel() {
   });
   let report: (p: DownloadProgress) => void = () => {};
   const created: ModelEmbedder[] = [];
+  const models: string[] = [];
   const base = createFakeEmbedder({ synonyms: SYNONYMS });
   return {
     created,
+    models,
     release: () => release(),
     fail: (message: string) => fail(new Error(message)),
     progress: (loaded: number, total: number) =>
@@ -80,8 +82,12 @@ function gatedModel() {
         loadedBytes: loaded,
         totalBytes: total,
       }),
-    createEmbedder: (onDownload: (p: DownloadProgress) => void): ModelEmbedder => {
+    createEmbedder: (
+      onDownload: (p: DownloadProgress) => void,
+      spec?: { key: string },
+    ): ModelEmbedder => {
       report = onDownload;
+      if (spec) models.push(spec.key);
       const embedder: ModelEmbedder = {
         id: base.id,
         dimensions: base.dimensions,
@@ -181,6 +187,31 @@ describe("semantic search in the runtime", () => {
       semantic: { debounceMs: 5, createEmbedder: model.createEmbedder },
     });
     await until(async () => again.rt.semantic?.status().state === "ready");
+  });
+
+  it("lets the settings choose the embedding model and starts over when it changes", async () => {
+    const model = gatedModel();
+    const s = await setup({ semantic: { debounceMs: 5, createEmbedder: model.createEmbedder } });
+    model.release();
+
+    // EmbeddingGemma is the default.
+    await s.call("settings.update", { patch: { semantic: { enabled: true } } });
+    await until(async () => s.rt.semantic?.status().state === "ready");
+    expect(model.models).toEqual(["embeddinggemma-300m"]);
+
+    // Qwen3-Embedding replaces it; the switch stays on.
+    const res = await s.call<{ settings: { semantic: { enabled: boolean; model?: string } } }>(
+      "settings.update",
+      { patch: { semantic: { model: "qwen3-embedding-0.6b" } } },
+    );
+    expect(res.settings.semantic).toEqual({ enabled: true, model: "qwen3-embedding-0.6b" });
+    await until(async () => model.models.length === 2 && s.rt.semantic?.status().state === "ready");
+    expect(model.models).toEqual(["embeddinggemma-300m", "qwen3-embedding-0.6b"]);
+
+    // An unknown model is refused by the contract.
+    await expect(
+      s.call("settings.update", { patch: { semantic: { model: "word2vec" } } }),
+    ).rejects.toThrow();
   });
 
   it("leaves semantic search out of a one-shot process", async () => {

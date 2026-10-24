@@ -193,7 +193,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     onChange: (settings) => {
       router = undefined;
       resolver?.use(settings.mailto);
-      void semantic?.setEnabled(settings.semantic.enabled);
+      void semantic?.configure(settings.semantic.enabled, settings.semantic.model);
     },
   });
   provider = fixed ? fixedBackends(fixed) : (opts.settings?.backends ?? deps.backends);
@@ -245,7 +245,8 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
     });
     const controller = semantic;
     service.status.semantic = () => controller.status();
-    void controller.setEnabled(deps.store.load().semantic.enabled);
+    const stored = deps.store.load().semantic;
+    void controller.configure(stored.enabled, stored.model);
   }
 
   return {

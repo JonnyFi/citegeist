@@ -2,6 +2,8 @@ import {
   DEFAULT_MODEL,
   type DownloadProgress,
   type Embedder,
+  MODELS,
+  type ModelSpec,
   TransformersEmbedder,
 } from "@citegeist/embed";
 import type { JobQueue } from "../jobs/index.js";
@@ -35,7 +37,9 @@ export interface SemanticControllerOptions {
    */
   embedder?: ModelEmbedder | undefined;
   /** Builds the embedder that the switch turns on. Default: the Transformers.js one. */
-  createEmbedder?: ((onDownload: (p: DownloadProgress) => void) => ModelEmbedder) | undefined;
+  createEmbedder?:
+    | ((onDownload: (p: DownloadProgress) => void, model: ModelSpec) => ModelEmbedder)
+    | undefined;
   /** Passed on to attachSemantic (debounce, similarity floor, weights). */
   semantic?: Omit<AttachSemanticOptions, "embedder"> | undefined;
 }
@@ -55,6 +59,8 @@ export class SemanticController {
   private readonly files = new Map<string, { loaded: number; total: number }>();
   private readonly fixed: boolean;
   private starting: Promise<void> | undefined;
+  /** Key of the model the settings ask for. */
+  private wanted: string = DEFAULT_MODEL.key;
 
   constructor(private readonly opts: SemanticControllerOptions) {
     this.fixed = opts.embedder !== undefined;
@@ -64,7 +70,7 @@ export class SemanticController {
   status(): SemanticStatus {
     const status: SemanticStatus = {
       state: this.state,
-      model: this.embedder?.id.split("@")[0] ?? DEFAULT_MODEL.key,
+      model: this.embedder?.id.split("@")[0] ?? this.wanted,
     };
     if (this.state === "downloading") status.progress = this.progress();
     if (this.detail) status.detail = this.detail;
@@ -75,6 +81,18 @@ export class SemanticController {
   async search(input: SearchInput, signal?: AbortSignal): Promise<SearchHit[]> {
     if (this.attached) return this.attached.semantic.search(input, signal);
     return this.opts.lib.search(input);
+  }
+
+  /**
+   * Follows the settings: the switch and the model. A different model while the search runs
+   * replaces the embedder; the store sees the new model id and re-embeds from scratch.
+   */
+  configure(enabled: boolean, model?: string): Promise<void> {
+    const key = model && MODELS[model] ? model : DEFAULT_MODEL.key;
+    const changed = key !== this.wanted;
+    this.wanted = key;
+    if (changed && !this.fixed && this.state !== "off") this.stop();
+    return this.setEnabled(enabled);
   }
 
   /** Follows the setting. Returns when the model is ready or the attempt has failed. */
@@ -101,8 +119,10 @@ export class SemanticController {
     this.state = "downloading";
     this.detail = undefined;
     this.files.clear();
-    const embedder = (this.opts.createEmbedder ?? defaultEmbedder(this.opts.lib))((p) =>
-      this.onDownload(p),
+    const spec = MODELS[this.wanted] ?? DEFAULT_MODEL;
+    const embedder = (this.opts.createEmbedder ?? defaultEmbedder(this.opts.lib))(
+      (p) => this.onDownload(p),
+      spec,
     );
     this.embedder = embedder;
     try {
@@ -166,7 +186,8 @@ export class SemanticController {
 
 function defaultEmbedder(
   lib: Library,
-): (onDownload: (p: DownloadProgress) => void) => ModelEmbedder {
+): (onDownload: (p: DownloadProgress) => void, model: ModelSpec) => ModelEmbedder {
   // Nothing is fetched or loaded until warmup() runs.
-  return (onDownload) => new TransformersEmbedder({ modelsDir: lib.local.modelsDir, onDownload });
+  return (onDownload, model) =>
+    new TransformersEmbedder({ modelsDir: lib.local.modelsDir, model, onDownload });
 }
