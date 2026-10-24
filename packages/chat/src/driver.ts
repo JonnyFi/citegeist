@@ -1,6 +1,16 @@
 import type { McpServer } from "@agentclientprotocol/sdk";
 import type { SessionMode } from "./policy.js";
 
+/** What an agent turn consumed. `costUsd` is the list price when the agent reports one. */
+export interface DriverUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costUsd?: number | undefined;
+  model?: string | undefined;
+}
+
 /** What a driver reports while an agent works on a turn. */
 export type DriverEvent =
   | { type: "text"; text: string }
@@ -15,7 +25,12 @@ export type DriverEvent =
       input?: unknown;
       output?: unknown;
     }
-  | { type: "notice"; level: "info" | "error"; text: string; fix?: string };
+  | { type: "notice"; level: "info" | "error"; text: string; fix?: string }
+  /**
+   * ACP `usage_update`: how many tokens the context holds now and the price added since the last
+   * update. Adapters send it rarely (Claude's once per turn), so it is no meter for a running turn.
+   */
+  | { type: "usage"; contextTokens: number; costUsd?: number | undefined; model?: string };
 
 export interface DriverRequest {
   /** citegeist session id, for logs. */
@@ -43,7 +58,7 @@ export interface AgentDriver {
     text: string,
     sink: (event: DriverEvent) => void,
     signal: AbortSignal,
-  ): Promise<{ stopReason: string }>;
+  ): Promise<{ stopReason: string; usage?: DriverUsage | undefined }>;
   close(): Promise<void>;
 }
 

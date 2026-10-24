@@ -1,8 +1,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
-import * as acp from "@agentclientprotocol/sdk";
+import * as acp from "@agentclientprotocol/sdk/unstable";
 import type { BackendDefinition } from "./backends.js";
-import type { AgentDriver, DriverEvent, DriverRequest } from "./driver.js";
+import type { AgentDriver, DriverEvent, DriverRequest, DriverUsage } from "./driver.js";
 import { addressesIn, webToolOf } from "./egress.js";
 import { citegeistTool, decide, pickOption, type SessionMode } from "./policy.js";
 import { chatError, oneLine } from "./util.js";
@@ -89,6 +89,8 @@ export class AcpConnection {
       cwd: spec.cwd,
       env: spec.env,
       stdio: ["pipe", "pipe", "pipe"],
+      // Own process group: closing the adapter also ends the agent CLI and the tools it started.
+      detached: true,
     });
     const spawnFailed = new Promise<never>((_, reject) => {
       child.once("error", (err: NodeJS.ErrnoException) =>
@@ -196,13 +198,22 @@ export class AcpConnection {
     }
   }
 
+  private signalGroup(signal: NodeJS.Signals): void {
+    try {
+      if (this.child.pid !== undefined) process.kill(-this.child.pid, signal);
+      else this.child.kill(signal);
+    } catch {
+      this.child.kill(signal);
+    }
+  }
+
   close(): void {
     this.sinks.clear();
     if (!this.exited) {
-      this.child.kill("SIGTERM");
-      const kill = setTimeout(() => this.child.kill("SIGKILL"), 2000);
+      this.signalGroup("SIGTERM");
+      const kill = setTimeout(() => this.signalGroup("SIGKILL"), 2000);
+      // Not cleared when the adapter exits: helpers that ignored SIGTERM still get the SIGKILL.
       kill.unref();
-      this.child.once("exit", () => clearTimeout(kill));
     }
     this.connection.close();
   }
@@ -267,6 +278,12 @@ export class AcpDriver implements AgentDriver {
   private readonly seenUrls = new Set<string>();
   private sink: ((event: DriverEvent) => void) | undefined;
   private cancelled = false;
+  /** Cumulative price of the session as of the last usage update, to turn it into per-turn prices. */
+  private costSeen = 0;
+  private turnCost: number | undefined;
+  /** Context size at the last usage update, and the tokens the turn added to it. */
+  private contextSeen = 0;
+  private turnAdded = 0;
 
   private constructor(
     private readonly conn: AcpConnection,
@@ -363,6 +380,27 @@ export class AcpDriver implements AgentDriver {
         });
         break;
       }
+      case "usage_update": {
+        const total = update.cost?.currency === "USD" ? update.cost.amount : undefined;
+        let delta: number | undefined;
+        if (total !== undefined) {
+          // The price is cumulative for the session. A smaller value means the agent started over.
+          delta = total >= this.costSeen ? total - this.costSeen : total;
+          this.costSeen = total;
+          this.turnCost = (this.turnCost ?? 0) + delta;
+        }
+        // Growth of the context is what the turn read and wrote anew; a drop is a compaction.
+        this.turnAdded += Math.max(0, update.used - this.contextSeen);
+        this.contextSeen = update.used;
+        const model = update._meta?.["_claude/model"];
+        this.emit({
+          type: "usage",
+          contextTokens: update.used,
+          ...(delta !== undefined ? { costUsd: delta } : {}),
+          ...(typeof model === "string" ? { model } : {}),
+        });
+        break;
+      }
       default:
         break;
     }
@@ -395,9 +433,11 @@ export class AcpDriver implements AgentDriver {
     text: string,
     sink: (event: DriverEvent) => void,
     signal: AbortSignal,
-  ): Promise<{ stopReason: string }> {
+  ): Promise<{ stopReason: string; usage?: DriverUsage | undefined }> {
     this.sink = sink;
     this.cancelled = false;
+    this.turnCost = undefined;
+    this.turnAdded = 0;
     const onAbort = () => {
       this.cancelled = true;
       this.conn.cancel(this.sessionId);
@@ -406,14 +446,53 @@ export class AcpDriver implements AgentDriver {
     signal.addEventListener("abort", onAbort, { once: true });
     try {
       const res = await this.conn.prompt(this.sessionId, text);
-      return { stopReason: res.stopReason };
+      const usage = this.turnUsage(res.usage);
+      return { stopReason: res.stopReason, ...(usage ? { usage } : {}) };
     } catch (err) {
-      if (this.cancelled) return { stopReason: "cancelled" };
+      if (this.cancelled) {
+        const usage = this.turnUsage(undefined);
+        return { stopReason: "cancelled", ...(usage ? { usage } : {}) };
+      }
       throw this.conn.wrap(err, "the turn");
     } finally {
       signal.removeEventListener("abort", onAbort);
       this.sink = undefined;
     }
+  }
+
+  /**
+   * What the turn used. The response carries exact token counts when the adapter sends them. If
+   * not, the tokens the context grew by stand in for the input, and only the price is exact.
+   */
+  private turnUsage(
+    reported:
+      | {
+          inputTokens: number;
+          outputTokens: number;
+          cachedReadTokens?: number | null | undefined;
+          cachedWriteTokens?: number | null | undefined;
+        }
+      | null
+      | undefined,
+  ): DriverUsage | undefined {
+    const costUsd = this.turnCost === undefined ? {} : { costUsd: this.turnCost };
+    if (reported) {
+      return {
+        inputTokens: reported.inputTokens,
+        outputTokens: reported.outputTokens,
+        cacheReadTokens: reported.cachedReadTokens ?? 0,
+        cacheWriteTokens: reported.cachedWriteTokens ?? 0,
+        ...costUsd,
+      };
+    }
+    if (this.turnCost === undefined && this.turnAdded === 0) return undefined;
+    return {
+      inputTokens: this.turnAdded,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      ...costUsd,
+    };
   }
 
   async close(): Promise<void> {

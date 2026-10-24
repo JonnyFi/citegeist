@@ -2,6 +2,7 @@ import { aiErrors } from "../errors.js";
 import { structured, toModelJsonSchema } from "../structured.js";
 import {
   type AgentSession,
+  type AiUsage,
   type CompleteRequest,
   type InferenceBackend,
   isModelClass,
@@ -61,6 +62,34 @@ export const OPENAI_COMPAT_PRESETS = {
 interface ChatCompletion {
   choices?: { message?: { content?: string | null } }[];
   error?: { message?: string };
+  model?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    /** OpenRouter reports the price of the call in credits, which are US dollars. */
+    cost?: number;
+    prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+  };
+}
+
+const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/**
+ * Usage of a chat completion. `prompt_tokens` includes the cached ones, so they are taken out of
+ * it. Only OpenRouter reports a price; the other endpoints leave it open.
+ */
+export function chatCompletionUsage(data: ChatCompletion): AiUsage | undefined {
+  const u = data.usage;
+  if (!u) return undefined;
+  const cached = num(u.prompt_tokens_details?.cached_tokens);
+  return {
+    inputTokens: Math.max(0, num(u.prompt_tokens) - cached),
+    outputTokens: num(u.completion_tokens),
+    cacheReadTokens: cached,
+    cacheWriteTokens: num(u.prompt_tokens_details?.cache_write_tokens),
+    ...(typeof u.cost === "number" ? { costUsd: u.cost } : {}),
+    ...(data.model ? { model: data.model } : {}),
+  };
 }
 
 export class OpenAiCompatBackend implements InferenceBackend {
@@ -123,9 +152,12 @@ export class OpenAiCompatBackend implements InferenceBackend {
             method: "POST",
             headers,
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(this.timeoutMs),
+            signal: req.signal
+              ? AbortSignal.any([req.signal, AbortSignal.timeout(this.timeoutMs)])
+              : AbortSignal.timeout(this.timeoutMs),
           });
         } catch (e) {
+          if (req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
           if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
             throw aiErrors.timeout(this.id, req.task, this.timeoutMs);
           }
@@ -135,7 +167,17 @@ export class OpenAiCompatBackend implements InferenceBackend {
             `${e instanceof Error ? e.message : String(e)} (${this.opts.baseUrl})`,
           );
         }
-        const text = await res.text();
+        let text: string;
+        try {
+          text = await res.text();
+        } catch (e) {
+          if (req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
+          throw aiErrors.backendFailed(
+            this.id,
+            req.task,
+            `${e instanceof Error ? e.message : String(e)} (${this.opts.baseUrl})`,
+          );
+        }
         if (res.status === 401 || res.status === 403) {
           throw aiErrors.notConfigured(
             `API key for backend ${this.id}`,
@@ -151,6 +193,8 @@ export class OpenAiCompatBackend implements InferenceBackend {
         } catch {
           throw aiErrors.backendFailed(this.id, req.task, `response is not JSON: ${text}`);
         }
+        const used = chatCompletionUsage(data);
+        if (used) req.onUsage?.(used);
         return data.choices?.[0]?.message?.content ?? "";
       },
     });

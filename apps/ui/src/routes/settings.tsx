@@ -11,6 +11,7 @@ import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { BackendRow, pollConfig, useBackendTests, WorkerPanel } from "../onboarding/parts";
 import { Section } from "../settings/parts";
+import { ResearchLimitsPanel, UsagePanel } from "../settings/run-control";
 import { SourcesPanel } from "../settings/sources-panel";
 import { SyncPanel } from "../settings/sync-panel";
 import { WebhooksPanel } from "../settings/webhooks-panel";
@@ -254,6 +255,14 @@ export function SettingsScreen({
       </Section>
 
       <Section
+        id="settings-usage"
+        title={t("settings.usage.title")}
+        description={t("settings.usage.desc")}
+      >
+        <UsagePanel />
+      </Section>
+
+      <Section
         id="settings-contact"
         title={t("settings.contact.title")}
         description={t("settings.contact.desc")}
@@ -275,6 +284,14 @@ export function SettingsScreen({
         description={t("settings.chat.desc")}
       >
         <ChatPanel data={query.data} />
+      </Section>
+
+      <Section
+        id="settings-research"
+        title={t("settings.research.title")}
+        description={t("settings.research.desc")}
+      >
+        <ResearchLimitsPanel data={query.data} />
       </Section>
 
       <Section

@@ -8,6 +8,8 @@ export interface RunSpec {
   /** Written to stdin, then stdin is closed. */
   stdin?: string;
   timeoutMs: number;
+  /** Aborting kills the process and everything it started, and resolves with `aborted: true`. */
+  signal?: AbortSignal;
 }
 
 export interface RunResult {
@@ -16,6 +18,8 @@ export interface RunResult {
   /** Null when the process did not start or was killed. */
   exitCode: number | null;
   timedOut: boolean;
+  /** True when `signal` ended the run. */
+  aborted?: boolean;
   /** Node spawn error code such as `ENOENT` when the process could not start. */
   spawnError?: string;
 }
@@ -23,26 +27,80 @@ export interface RunResult {
 /** All process spawning goes through this seam so tests never call real CLIs. */
 export type ProcessRunner = (spec: RunSpec) => Promise<RunResult>;
 
+/** Process groups of running children, so that a dying parent does not leave them behind. */
+const liveGroups = new Set<number>();
+let exitHookInstalled = false;
+
+function killGroup(pid: number | undefined, fallback: () => void): void {
+  if (pid === undefined) {
+    fallback();
+    return;
+  }
+  try {
+    // A negative pid addresses the whole group; the child leads its own group (detached).
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    fallback();
+  }
+}
+
+function installExitHook(): void {
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.once("exit", () => {
+    for (const pid of liveGroups) {
+      try {
+        process.kill(-pid, "SIGKILL");
+      } catch {
+        // already gone
+      }
+    }
+  });
+}
+
+/**
+ * Runs the command in its own process group. A timeout or an abort signal kills the group with
+ * SIGKILL, so the CLI and every child it started (node helpers, MCP servers, shells) are gone.
+ */
 export const nodeRunner: ProcessRunner = (spec) =>
   new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let aborted = false;
     let settled = false;
+    let timer: NodeJS.Timeout | undefined;
     const done = (r: RunResult) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
+      spec.signal?.removeEventListener("abort", onAbort);
+      if (child.pid !== undefined) liveGroups.delete(child.pid);
       resolve(r);
     };
+    if (spec.signal?.aborted) {
+      resolve({ stdout, stderr, exitCode: null, timedOut: false, aborted: true });
+      return;
+    }
+    installExitHook();
     const child = spawn(spec.command, spec.args, {
       cwd: spec.cwd,
       env: spec.env as NodeJS.ProcessEnv,
       stdio: ["pipe", "pipe", "pipe"],
+      detached: true,
     });
-    const timer = setTimeout(() => {
+    if (child.pid !== undefined) liveGroups.add(child.pid);
+    const kill = () => killGroup(child.pid, () => child.kill("SIGKILL"));
+    function onAbort() {
+      aborted = true;
+      kill();
+      // The group is dead; do not wait for pipes that a grandchild might still hold open.
+      done({ stdout, stderr, exitCode: null, timedOut, aborted: true });
+    }
+    spec.signal?.addEventListener("abort", onAbort, { once: true });
+    timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      kill();
     }, spec.timeoutMs);
     child.stdout.on("data", (d) => {
       stdout += d;
@@ -54,7 +112,7 @@ export const nodeRunner: ProcessRunner = (spec) =>
       done({ stdout, stderr, exitCode: null, timedOut, spawnError: err.code ?? err.message });
     });
     child.on("close", (code) => {
-      done({ stdout, stderr, exitCode: code, timedOut });
+      done({ stdout, stderr, exitCode: code, timedOut, ...(aborted ? { aborted } : {}) });
     });
     child.stdin.on("error", () => {});
     child.stdin.end(spec.stdin ?? "");

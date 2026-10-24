@@ -6,6 +6,7 @@ import { CURSOR_ENV_BLOCKLIST, cleanEnv, nodeRunner, type ProcessRunner } from "
 import { structured, toModelJsonSchema } from "../structured.js";
 import {
   type AgentSession,
+  type AiUsage,
   type CompleteRequest,
   type InferenceBackend,
   isModelClass,
@@ -52,6 +53,25 @@ interface CursorResult {
   subtype?: string;
   is_error?: boolean;
   result?: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+  };
+}
+
+const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/** Usage of an `agent -p --output-format json` result. The CLI reports tokens but no price. */
+export function cursorUsage(r: CursorResult | undefined): AiUsage | undefined {
+  if (!r?.usage) return undefined;
+  return {
+    inputTokens: num(r.usage.inputTokens),
+    outputTokens: num(r.usage.outputTokens),
+    cacheReadTokens: num(r.usage.cacheReadTokens),
+    cacheWriteTokens: num(r.usage.cacheWriteTokens),
+  };
 }
 
 /**
@@ -170,7 +190,9 @@ export class CursorCliBackend implements InferenceBackend {
           env: this.env,
           stdin: this.buildInput(req, prompt),
           timeoutMs: this.timeoutMs,
+          ...(req.signal ? { signal: req.signal } : {}),
         });
+        if (r.aborted || req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
         if (r.timedOut) throw aiErrors.timeout(this.id, req.task, this.timeoutMs);
         if (r.spawnError === "ENOENT") throw aiErrors.cliMissing("agent", INSTALL_HINT);
         let parsed: CursorResult | undefined;
@@ -179,6 +201,8 @@ export class CursorCliBackend implements InferenceBackend {
         } catch {
           // plain-text errors are handled below
         }
+        const used = cursorUsage(parsed);
+        if (used) req.onUsage?.(used);
         const errText = `${parsed?.result ?? ""} ${r.stderr} ${parsed ? "" : r.stdout}`;
         if (LOGGED_OUT.test(errText) && (parsed?.is_error || r.exitCode !== 0)) {
           this.ready = undefined;

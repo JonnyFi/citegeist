@@ -2,6 +2,7 @@ import { aiErrors } from "../errors.js";
 import { structured } from "../structured.js";
 import type {
   AgentSession,
+  AiUsage,
   CompleteRequest,
   InferenceBackend,
   ModelChoice,
@@ -31,6 +32,8 @@ export class MockBackend implements InferenceBackend {
   readonly calls: MockCall[] = [];
   private readonly queues = new Map<string, MockResponse[]>();
   private readonly fallbacks = new Map<string, MockResponse>();
+  /** Reported as the usage of every attempt, to test the ledger. */
+  usage: AiUsage | undefined;
 
   constructor(responses: Record<string, MockResponse | MockResponse[]> = {}, id = "mock") {
     this.id = id;
@@ -71,6 +74,8 @@ export class MockBackend implements InferenceBackend {
       prompt: req.prompt,
       attempt: async () => {
         attempts++;
+        if (req.signal?.aborted) throw aiErrors.cancelled(this.id, req.task);
+        if (this.usage) req.onUsage?.(this.usage);
         const queue = this.queues.get(req.task);
         let response: MockResponse;
         if (queue) {

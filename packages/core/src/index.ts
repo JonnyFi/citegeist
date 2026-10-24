@@ -17,10 +17,13 @@ export { INDEX_SCHEMA_VERSION, Index, type Scope } from "./index-db.js";
 export { Indexer, type IndexResult, type IndexStatus, type SyncSummary } from "./indexer.js";
 export * from "./ingest/index.js";
 export {
+  currentJobScope,
   type JobContext,
   type JobHandler,
   JobQueue,
+  type JobScope,
   type KindPort,
+  runInJobScope,
   type SharedKind,
   shareKind,
 } from "./jobs/index.js";
@@ -53,4 +56,5 @@ export * from "./settings/index.js";
 export * from "./sync/index.js";
 export { snippet, stemmedText, stems, words } from "./text.js";
 export * from "./texts/index.js";
+export { type UsageEntry, UsageLedger, type UsageSummary } from "./usage/index.js";
 export { extractWikiLinks, type WikiLinkRef, wikiTarget } from "./wikilinks.js";
