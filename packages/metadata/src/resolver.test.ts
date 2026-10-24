@@ -19,7 +19,7 @@ const TEST_MAILTO = "tester@example.invalid";
 
 function resolver(config: MetadataConfig = {}, fetch: FetchLike = createReplayFetch(HTTP_DIR)) {
   return createResolver({
-    config: { mailto: TEST_MAILTO, ...config },
+    config: { mailto: TEST_MAILTO, unpaywall: false, ...config },
     fetch,
     now: () => NOW,
     sleep: async () => {},
@@ -246,7 +246,7 @@ describe("failures", () => {
   });
 
   it("says which kinds are not resolvable yet", async () => {
-    for (const input of ["PMID: 32939066", "https://example.org/page", "just some words"]) {
+    for (const input of ["https://example.org/page", "just some words"]) {
       const r = await resolver({}, status(500)).resolve(input);
       expect(r.status).toBe("unsupported");
       expect(r.errors).toHaveLength(1);

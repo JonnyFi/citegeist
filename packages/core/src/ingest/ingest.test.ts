@@ -257,15 +257,21 @@ describe("other inputs", () => {
     expectConverted(e, out.citekey, fm.sources[0]?.hash ?? "");
   });
 
+  it("adds an item by PMID through PubMed and the DOI it names", async () => {
+    const e = await env();
+    const out = await add(e, "PMID: 9500320");
+    const fm = item(e, out.citekey);
+    expect(fm.DOI).toBe("10.1016/s0140-6736(97)11096-0");
+    expect(fm.ids.pmid).toBe("9500320");
+    expect(fm.provenance["ids.pmid"]).toMatch(/^pubmed@/);
+  });
+
   it("says what to do for identifiers it cannot resolve", async () => {
     const e = await env();
     await expect(
       e.call("items.add", { identifier: "not an identifier at all" }),
     ).rejects.toMatchObject({
       detail: { code: "INVALID_IDENTIFIER" },
-    });
-    await expect(e.call("items.add", { identifier: "PMID: 16204405" })).rejects.toMatchObject({
-      detail: { code: "IDENTIFIER_UNSUPPORTED" },
     });
     await expect(
       e.call("items.add", { identifier: "/nonexistent/file.pdf" }),
