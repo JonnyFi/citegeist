@@ -83,8 +83,8 @@ export const textsUpdate = defineContract({
   input: TextRef.extend({
     body: z.string().optional(),
     title: z.string().min(1).optional(),
-    style: z.string().optional(),
-    lang: z.string().optional(),
+    style: z.string().optional().describe("CSL style id; an empty string removes it"),
+    lang: z.string().optional().describe("BCP 47 language; an empty string removes it"),
     baseHash: Sha256.optional().describe(
       "sha256 of the file you read; the call fails when the file changed since",
     ),

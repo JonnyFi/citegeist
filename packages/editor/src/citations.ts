@@ -1,5 +1,9 @@
 import { scanCitations } from "@citegeist/schema";
-import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
+import {
+  type Completion,
+  CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import { type EditorState, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import { configFacet, refreshEffect } from "./config";
@@ -67,6 +71,14 @@ export async function citationSource(context: CompletionContext): Promise<Comple
     apply: s.key,
   }));
   return { from: context.pos - query.length, options, filter: false };
+}
+
+/** What the `@` completion offers at `pos` (default: the end of the text). For hosts and tests. */
+export function citationCompletions(
+  state: EditorState,
+  pos: number = state.doc.length,
+): Promise<CompletionResult | null> {
+  return citationSource(new CompletionContext(state, pos, true));
 }
 
 function build(state: EditorState): DecorationSet {

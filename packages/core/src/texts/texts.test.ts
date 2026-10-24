@@ -470,6 +470,10 @@ describe("texts operations", () => {
     const after = readFileSync(join(lib.root, "projects/phd/texts/k.md"), "utf8");
     expect(after).toContain("title: Kapitel K");
     expect(after).toContain("style: apa");
+    await call("texts.update", { project: "phd", text: "k", style: "", lang: "" });
+    const cleared = readFileSync(join(lib.root, "projects/phd/texts/k.md"), "utf8");
+    expect(cleared).not.toContain("style:");
+    expect(cleared).toContain("title: Kapitel K");
   });
 
   it("names the texts that exist when one is missing", async () => {

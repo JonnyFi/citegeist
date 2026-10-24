@@ -1,7 +1,7 @@
 export const name = "@citegeist/editor";
 
 export { filterSuggestions, wikiLinkAutocomplete, wikiLinkSource } from "./autocomplete";
-export { citationMarks, citationSource, filterCitations } from "./citations";
+export { citationCompletions, citationMarks, citationSource, filterCitations } from "./citations";
 export {
   createNoteEditor,
   type NoteEditor,

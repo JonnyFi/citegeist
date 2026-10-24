@@ -256,12 +256,13 @@ export class TextsService {
         { path: current.path },
       );
     }
-    this.checkStyle(input.style);
+    // An empty style or language takes the key out, so the project's setting applies again.
+    this.checkStyle(input.style || undefined);
     const file = MarkdownFile.parse(current.raw);
     const patch: Record<string, unknown> = {};
     if (input.title !== undefined) patch.title = input.title;
-    if (input.style !== undefined) patch.style = input.style;
-    if (input.lang !== undefined) patch.lang = input.lang;
+    if (input.style !== undefined) patch.style = input.style || undefined;
+    if (input.lang !== undefined) patch.lang = input.lang || undefined;
     if (Object.keys(patch).length > 0) file.patch(patch);
     if (input.body !== undefined) file.setBody(input.body);
     const out = file.toString();
