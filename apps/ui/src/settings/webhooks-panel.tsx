@@ -22,6 +22,7 @@ import { Segmented } from "../components/ui/segmented";
 import { ErrorState, Loading } from "../components/ui/states";
 import { type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
+import { type AgentMessage, buildAgentMessage } from "./agent-message";
 import { CopyButton, ErrorLine, Fact, FieldLabel, Section, useGuarded } from "./parts";
 
 type Hook = z.output<typeof WebhookInfo>;
@@ -46,7 +47,16 @@ interface Revealed {
 }
 
 /** Secrets and tokens are shown here once, right after they were created or renewed. */
-function SecretNotice({ items, onDone }: { items: Revealed[]; onDone: () => void }) {
+function SecretNotice({
+  items,
+  message,
+  onDone,
+}: {
+  items: Revealed[];
+  /** The text for the agent with the new tokens filled in. */
+  message?: string;
+  onDone: () => void;
+}) {
   const { t } = useI18n();
   return (
     <div
@@ -69,6 +79,13 @@ function SecretNotice({ items, onDone }: { items: Revealed[]; onDone: () => void
         </div>
       ))}
       <p className="text-sm text-muted">{t("webhooks.secret.once")}</p>
+      {message ? (
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          <p className="font-medium">{t("webhooks.agent.title")}</p>
+          <MessageBlock text={message} testId="agent-message-fresh" />
+          <p className="text-sm text-muted">{t("webhooks.agent.once")}</p>
+        </div>
+      ) : null}
       <div>
         <Button size="sm" variant="primary" onClick={onDone}>
           {t("webhooks.secret.done")}
@@ -78,7 +95,86 @@ function SecretNotice({ items, onDone }: { items: Revealed[]; onDone: () => void
   );
 }
 
-type Reveal = (name: string, items: Revealed[]) => void;
+/** The tokens created in this session, kept only while the notice is open. */
+interface FreshTokens {
+  mcp?: string;
+  inbound?: string;
+}
+
+type Reveal = (name: string, items: Revealed[], tokens?: FreshTokens) => void;
+
+/** A ready-to-copy text in a code block with a copy button. */
+function MessageBlock({ text, testId }: { text: string; testId: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col gap-2">
+      <pre
+        data-testid={testId}
+        className="max-h-72 overflow-auto whitespace-pre-wrap break-words border border-line bg-sunken p-2 font-mono text-[12px]"
+      >
+        {text}
+      </pre>
+      <div>
+        <CopyButton
+          text={text}
+          label={t("webhooks.agent.copy")}
+          copiedLabel={t("webhooks.secret.copied")}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** The text for the agent of one connector, with placeholders for tokens that are not known. */
+function AgentSection({
+  message,
+  busy,
+  hasInboundToken,
+  onNewMcp,
+  onNewInbound,
+}: {
+  message: AgentMessage;
+  busy: boolean;
+  hasInboundToken: boolean;
+  onNewMcp: () => void;
+  onNewInbound: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div data-testid="agent-section" className="flex flex-col gap-2 border-t border-line-soft pt-3">
+      <p className="font-medium">{t("webhooks.agent.title")}</p>
+      {message.ok ? (
+        <>
+          <p className="text-sm text-muted">{t("webhooks.agent.hint")}</p>
+          <MessageBlock text={message.text} testId="agent-message" />
+          {message.needsMcpToken || message.needsInboundToken ? (
+            <>
+              <p className="text-sm text-muted">{t("webhooks.agent.placeholders")}</p>
+              <div className="flex flex-wrap gap-2">
+                {message.needsMcpToken ? (
+                  <Button size="sm" disabled={busy} onClick={onNewMcp}>
+                    {t("webhooks.agent.newMcp")}
+                  </Button>
+                ) : null}
+                {message.needsInboundToken ? (
+                  <Button size="sm" disabled={busy} onClick={onNewInbound}>
+                    {hasInboundToken
+                      ? t("webhooks.agent.newInbound")
+                      : t("webhooks.agent.createInbound")}
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <p role="status" className="text-sm text-danger">
+          {t("webhooks.agent.noPublicUrl")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function testLine(
   result: TestResult,
@@ -101,7 +197,27 @@ const secretItem = (t: ReturnType<typeof useI18n>["t"], name: string, value: str
   value,
 });
 
-function ConnectorCard({ hook, onReveal }: { hook: Hook; onReveal: Reveal }) {
+function agentMessage(hook: Hook, publicUrl: string | undefined, tokens?: FreshTokens) {
+  return buildAgentMessage({
+    name: hook.name,
+    kind: hook.kind,
+    ...(publicUrl ? { publicUrl } : {}),
+    ...(hook.mcpScope ? { mcpScope: hook.mcpScope } : {}),
+    ...(hook.mcpScope && tokens?.mcp ? { mcpToken: tokens.mcp } : {}),
+    hasInboundToken: hook.hasInboundToken,
+    ...(hook.hasInboundToken && tokens?.inbound ? { inboundToken: tokens.inbound } : {}),
+  });
+}
+
+function ConnectorCard({
+  hook,
+  publicUrl,
+  onReveal,
+}: {
+  hook: Hook;
+  publicUrl?: string;
+  onReveal: Reveal;
+}) {
   const { t, lang } = useI18n();
   const test = useOpMutation(webhooksTest);
   const rotate = useOpMutation(webhooksRotateSecret);
@@ -176,22 +292,24 @@ function ConnectorCard({ hook, onReveal }: { hook: Hook; onReveal: Reveal }) {
     if (!out) return;
     setMode("idle");
     if (out.token) {
-      onReveal(hook.name, [
-        { label: t("webhooks.token.title", { name: hook.name }), value: out.token },
-      ]);
+      onReveal(
+        hook.name,
+        [{ label: t("webhooks.token.title", { name: hook.name }), value: out.token }],
+        { inbound: out.token },
+      );
     }
   };
 
-  const changeMcp = async (enabled: boolean) => {
-    const out = await guard.run(() =>
-      setMcp.mutateAsync({ name: hook.name, enabled, scope: mcpScope }),
-    );
+  const changeMcp = async (enabled: boolean, scope: "read" | "write" = mcpScope) => {
+    const out = await guard.run(() => setMcp.mutateAsync({ name: hook.name, enabled, scope }));
     if (!out) return;
     setMode("idle");
     if (out.token) {
-      onReveal(hook.name, [
-        { label: t("webhooks.mcp.tokenTitle", { name: hook.name }), value: out.token },
-      ]);
+      onReveal(
+        hook.name,
+        [{ label: t("webhooks.mcp.tokenTitle", { name: hook.name }), value: out.token }],
+        { mcp: out.token },
+      );
     }
   };
 
@@ -244,6 +362,13 @@ function ConnectorCard({ hook, onReveal }: { hook: Hook; onReveal: Reveal }) {
       {until ? (
         <p className="text-sm text-muted">{t("webhooks.secret.previous", { until })}</p>
       ) : null}
+      <AgentSection
+        message={agentMessage(hook, publicUrl)}
+        busy={setMcp.isPending || setToken.isPending}
+        hasInboundToken={hook.hasInboundToken}
+        onNewMcp={() => void changeMcp(true, hook.mcpScope ?? mcpScope)}
+        onNewInbound={() => void changeToken(true)}
+      />
 
       {mode === "rotate" ? (
         <form onSubmit={(e) => void runRotate(e)} className="flex items-end gap-2">
@@ -439,13 +564,16 @@ function CreateForm({ onReveal }: { onReveal: Reveal }) {
       setInboundToken(false);
       setMcp("off");
       const items = [secretItem(t, out.webhook.name, out.secret)];
+      const tokens: FreshTokens = {};
       if (out.inboundToken) {
         items.push({ label: t("webhooks.token.title", { name }), value: out.inboundToken });
+        tokens.inbound = out.inboundToken;
       }
       if (out.mcpToken) {
         items.push({ label: t("webhooks.mcp.tokenTitle", { name }), value: out.mcpToken });
+        tokens.mcp = out.mcpToken;
       }
-      onReveal(out.webhook.name, items);
+      onReveal(out.webhook.name, items, tokens);
     }
   };
 
@@ -656,30 +784,58 @@ function ReachSection({ list }: { list: z.output<typeof webhooksList.output> }) 
   );
 }
 
+function hasTokens(tokens: FreshTokens): boolean {
+  return tokens.mcp !== undefined || tokens.inbound !== undefined;
+}
+
 /** Webhooks section of the settings: connectors for external agents such as Grok. */
 export function WebhooksPanel() {
   const { t } = useI18n();
   const query = useOp(webhooksList, {});
-  const [revealed, setRevealed] = useState<{ name: string; items: Revealed[] }>();
+  const [revealed, setRevealed] = useState<{
+    name: string;
+    items: Revealed[];
+    tokens: FreshTokens;
+  }>();
 
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorState error={query.error} />;
   const { webhooks } = query.data;
-  const reveal: Reveal = (name, items) => setRevealed({ name, items });
+  const reveal: Reveal = (name, items, tokens = {}) =>
+    setRevealed((prev) => ({
+      name,
+      items,
+      tokens: prev?.name === name ? { ...prev.tokens, ...tokens } : tokens,
+    }));
+  const { publicBaseUrl } = query.data;
+  const freshHook = revealed ? webhooks.find((h) => h.name === revealed.name) : undefined;
+  const freshMessage =
+    freshHook && revealed && hasTokens(revealed.tokens)
+      ? agentMessage(freshHook, publicBaseUrl, revealed.tokens)
+      : undefined;
 
   return (
     <div className="flex flex-col gap-8">
       <Section id="webhooks-list" title={t("webhooks.title")} description={t("webhooks.desc")}>
         <ReachSection list={query.data} />
         {revealed ? (
-          <SecretNotice items={revealed.items} onDone={() => setRevealed(undefined)} />
+          <SecretNotice
+            items={revealed.items}
+            {...(freshMessage?.ok ? { message: freshMessage.text } : {})}
+            onDone={() => setRevealed(undefined)}
+          />
         ) : null}
         {webhooks.length === 0 ? (
           <p className="text-muted">{t("webhooks.empty")}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {webhooks.map((hook) => (
-              <ConnectorCard key={hook.name} hook={hook} onReveal={reveal} />
+              <ConnectorCard
+                key={hook.name}
+                hook={hook}
+                {...(publicBaseUrl ? { publicUrl: publicBaseUrl } : {})}
+                onReveal={reveal}
+              />
             ))}
           </ul>
         )}
