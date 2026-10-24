@@ -2,14 +2,16 @@ import type { RequestPermissionRequest } from "@agentclientprotocol/sdk";
 import { describe, expect, it } from "vitest";
 import { citegeistTool, decide, pickOption } from "./policy.js";
 
-const ctx = {
-  mode: "chat" as const,
+type Ctx = Parameters<typeof decide>[1];
+
+const ctx: Ctx = {
+  mode: "chat",
   isolated: true,
   libraryRoot: "/lib",
   scratchDir: "/local/chats/ch_1/cwd",
 };
 /** A11: the user's own environment. */
-const open = { ...ctx, isolated: false };
+const open: Ctx = { ...ctx, isolated: false };
 
 const req = (
   toolCall: Partial<RequestPermissionRequest["toolCall"]>,
@@ -87,13 +89,13 @@ describe("decide", () => {
   });
 
   it("does not open the shell for a research job even when the chat is not isolated", () => {
-    const research = { ...open, mode: "research" as const };
+    const research: Ctx = { ...open, mode: "research" };
     expect(decide(req({ kind: "other", title: "Mystery" }), research).allow).toBe(false);
     expect(decide(req({ kind: "execute", title: "Bash" }), research).allow).toBe(false);
   });
 
   it("keeps research jobs on the inbox path of add_item", () => {
-    const research = { ...ctx, mode: "research" as const };
+    const research: Ctx = { ...ctx, mode: "research" };
     const add = (rawInput: unknown) =>
       decide(req({ name: "mcp__citegeist__add_item", kind: "other", rawInput }), research);
     expect(add({ identifier: "10.1/x", why: "passt" }).allow).toBe(true);
@@ -110,7 +112,7 @@ describe("decide", () => {
 });
 
 describe("reading outside the library", () => {
-  const research = { ...ctx, mode: "research" as const };
+  const research: Ctx = { ...ctx, mode: "research" };
   const read = (path: string, c = ctx, kind: "read" | "search" = "read") =>
     decide(req({ kind, locations: [{ path }] }), c).allow;
 
@@ -131,6 +133,16 @@ describe("reading outside the library", () => {
       decide(req({ kind: "search", rawInput: { path, pattern: "x" } }), ctx).allow;
     expect(grep("/lib/notes")).toBe(true);
     expect(grep("/Users/me")).toBe(false);
+    // A folder given relative to the working folder stays inside it; one that climbs out does not.
+    expect(grep(".")).toBe(true);
+    expect(grep("../../../../Users/me")).toBe(false);
+    // The fixed part of a glob or pattern counts as a path.
+    const glob = (pattern: string) =>
+      decide(req({ kind: "search", rawInput: { pattern } }), ctx).allow;
+    expect(glob("/lib/notes/**/*.md")).toBe(true);
+    expect(glob("/Users/me/.ssh/*")).toBe(false);
+    expect(glob("~/.aws/credentials")).toBe(false);
+    expect(glob("**/*.md")).toBe(true);
     // No path in the request: nothing to check.
     expect(decide(req({ kind: "read", title: "Read file" }), research).allow).toBe(true);
   });
@@ -143,7 +155,7 @@ describe("reading outside the library", () => {
 });
 
 describe("local files in citegeist tool calls", () => {
-  const research = { ...ctx, mode: "research" as const };
+  const research: Ctx = { ...ctx, mode: "research" };
   const tool = (name: string, rawInput: unknown, c = ctx) =>
     decide(req({ name: `mcp__citegeist__${name}`, kind: "other", rawInput }), c).allow;
 

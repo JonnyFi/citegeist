@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { PermissionOption, RequestPermissionRequest } from "@agentclientprotocol/sdk";
 import { relativeInside } from "./util.js";
 
@@ -88,6 +89,23 @@ function inAllowedArea(ctx: PolicyContext, abs: string): boolean {
   );
 }
 
+/**
+ * Paths a read or search names: the usual path arguments, plus the fixed part of a glob or
+ * pattern that starts at the root or at the home folder (`/Users/me/.ssh/*`).
+ */
+function readPathsOf(req: RequestPermissionRequest, scratchDir: string): string[] {
+  const out = pathsOf(req);
+  const raw = req.toolCall.rawInput;
+  if (raw && typeof raw === "object") {
+    for (const key of ["pattern", "glob"]) {
+      const v = (raw as Record<string, unknown>)[key];
+      if (typeof v === "string" && /^[/~]/.test(v)) out.push(v.split(/[*?[{]/)[0] ?? v);
+    }
+  }
+  // A relative path is relative to the working folder of the session.
+  return out.map((p) => (p.startsWith("~") ? p : resolve(scratchDir, p)));
+}
+
 function pathsOf(req: RequestPermissionRequest): string[] {
   const out: string[] = [];
   for (const loc of req.toolCall.locations ?? []) out.push(loc.path);
@@ -146,7 +164,7 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
       // Everything else on the disk (keys, the token of the core, other projects) stays closed,
       // because web content can steer the agent and the web fetch is an open exit.
       if (ctx.isolated || ctx.mode === "research") {
-        for (const p of pathsOf(req)) {
+        for (const p of readPathsOf(req, ctx.scratchDir)) {
           if (!inAllowedArea(ctx, p)) {
             return { allow: false, reason: `Reading ${p} is not allowed in an isolated chat.` };
           }
