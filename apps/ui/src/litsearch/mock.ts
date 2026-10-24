@@ -3,6 +3,7 @@ import {
   type LitsearchRunMeta,
   type LitsearchStage,
   litsearchCancel,
+  litsearchCompare,
   litsearchExport,
   litsearchGet,
   litsearchReport,
@@ -122,6 +123,8 @@ export const MOCK_PAPERS: readonly LitsearchPaper[] = [
 
 interface MockRun {
   meta: LitsearchRunMeta;
+  /** What the run found; MOCK_PAPERS when absent. */
+  papers?: readonly LitsearchPaper[];
   /** Stages finished so far; the next one is running while the run runs. */
   step: number;
   /** Stage that fails, for a run that hits the OpenAlex limit. */
@@ -147,6 +150,35 @@ export function createLitsearchMockState(): LitsearchMockState {
       created: "2026-10-20T10:12:00",
       finished: "2026-10-20T10:16:40",
       counts: { main: 2, preprint: 1, grey: 0, rejected: 1 },
+      droppedQueries: [],
+      attempts: 1,
+    },
+  });
+  // an earlier run on the same topic, so "compare with" has something to show
+  runs.set("2026-10-10-agent-communication-protocols", {
+    step: MOCK_STAGES.length,
+    papers: [
+      { ...(MOCK_PAPERS[1] as LitsearchPaper), rank: 1 },
+      paper({
+        key: "W4100000007",
+        rank: 2,
+        score: 48,
+        title: "Speech Acts for Software Agents, Revisited",
+        authors: ["M. Klein"],
+        year: 2021,
+        venue: "AAMAS",
+        venueTier: 2,
+        doi: "10.5555/old.7",
+      }),
+    ],
+    meta: {
+      id: "2026-10-10-agent-communication-protocols",
+      topic: "agent communication protocols",
+      status: "done",
+      queries: ['"agent communication protocol"'],
+      created: "2026-10-10T09:30:00",
+      finished: "2026-10-10T09:33:10",
+      counts: { main: 2, preprint: 0, grey: 0, rejected: 0 },
       droppedQueries: [],
       attempts: 1,
     },
@@ -426,13 +458,34 @@ export function bindLitsearchMock(
         failed: count("failed"),
       };
     })
+    .bind(litsearchCompare, async (_ctx, input) => {
+      const of = (id: string) => {
+        const run = state.runs.get(id);
+        if (!run) throw fail("LITSEARCH_RUN_NOT_FOUND", `There is no run "${id}".`);
+        return (run.papers ?? MOCK_PAPERS).filter((p) => p.section !== "rejected").map(marked);
+      };
+      const before = of(input.a);
+      const after = of(input.b);
+      const same = (x: LitsearchPaper, y: LitsearchPaper) =>
+        (x.doi && x.doi === y.doi) || x.title.toLowerCase() === y.title.toLowerCase();
+      return {
+        added: after.filter((p) => !before.some((o) => same(o, p))),
+        dropped: before.filter((p) => !after.some((o) => same(o, p))),
+        moved: after.flatMap((p) => {
+          const old = before.find((o) => same(o, p));
+          return old?.rank && p.rank && old.rank !== p.rank && old.section === p.section
+            ? [{ paper: p, from: old.rank, to: p.rank }]
+            : [];
+        }),
+      };
+    })
     .bind(litsearchGet, async (_ctx, input) => {
       const run = state.runs.get(input.runId);
       if (!run) throw fail("LITSEARCH_RUN_NOT_FOUND", `There is no run "${input.runId}".`);
       return {
         run: run.meta,
         stages: stagesOf(run),
-        papers: run.meta.status === "done" ? MOCK_PAPERS.map(marked) : [],
+        papers: run.meta.status === "done" ? (run.papers ?? MOCK_PAPERS).map(marked) : [],
       };
     });
 }

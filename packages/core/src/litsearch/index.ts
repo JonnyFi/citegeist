@@ -14,7 +14,13 @@ export {
   type ScriptResult,
   scriptEnv,
 } from "./runner.js";
-export { type LitsearchDeps, LitsearchService, runIdFor, workOf } from "./service.js";
+export {
+  type LitsearchDeps,
+  LitsearchService,
+  matchKeys,
+  runIdFor,
+  workOf,
+} from "./service.js";
 export {
   listRunSummaries,
   paperKey,

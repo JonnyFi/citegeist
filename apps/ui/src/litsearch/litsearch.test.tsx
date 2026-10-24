@@ -22,6 +22,7 @@ describe("literature search tab", () => {
     expect(list.map((r) => r.textContent)).toEqual([
       expect.stringContaining("agent communication protocols"),
       expect.stringContaining("recursive self-improvement"),
+      expect.stringContaining("agent communication protocols"),
     ]);
     expect(within(list[0] as HTMLElement).getByText("fertig")).toBeVisible();
     expect(within(list[0] as HTMLElement).getByText("3 Paper")).toBeVisible();
@@ -252,5 +253,45 @@ describe("adding papers from a run", () => {
       ).toBeDisabled(),
     );
     expect(screen.getAllByText("in Inbox")).toHaveLength(2);
+  });
+});
+
+describe("comparing runs", () => {
+  it("compares a run with an earlier one: new, dropped and re-ranked papers", async () => {
+    // protects: "compare with" on a finished run opens the diff with the earlier run as the base
+    // fails_when: the direction is wrong, or a group lists the wrong papers
+    // no_claim: the mock's diff matches by DOI or title; core's matching rule is tested in core
+    const user = userEvent.setup();
+    const { history } = renderApp("/litsearch/2026-10-20-agent-communication-protocols");
+    await user.selectOptions(
+      await screen.findByLabelText("Vergleichen mit"),
+      "2026-10-10-agent-communication-protocols",
+    );
+    await waitFor(() =>
+      expect(history.location.search).toBe(
+        "?a=2026-10-10-agent-communication-protocols&b=2026-10-20-agent-communication-protocols",
+      ),
+    );
+    const added = await screen.findByTestId("compare-added");
+    expect(within(added).getByText("A Survey of Agent Interoperability Protocols")).toBeVisible();
+    expect(within(added).getByText("LLM Agents Talking: A Benchmark")).toBeVisible();
+    expect(
+      within(screen.getByTestId("compare-dropped")).getByText(
+        "Speech Acts for Software Agents, Revisited",
+      ),
+    ).toBeVisible();
+    const moved = screen.getByTestId("compare-moved");
+    expect(
+      within(moved).getByText("Emergent Communication in Multi-Agent Reinforcement Learning"),
+    ).toBeVisible();
+    expect(within(moved).getByText("Rang 1 → 2")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Richtung tauschen" }));
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("compare-dropped")).getByText(
+          "A Survey of Agent Interoperability Protocols",
+        ),
+      ).toBeVisible(),
+    );
   });
 });

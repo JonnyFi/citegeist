@@ -14,7 +14,12 @@ import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
 import { type GraphDepth, GraphScreen } from "./graph";
 import { ImportScreen } from "./import";
-import { LitsearchNewScreen, LitsearchRunScreen, LitsearchRunsScreen } from "./litsearch";
+import {
+  LitsearchCompareScreen,
+  LitsearchNewScreen,
+  LitsearchRunScreen,
+  LitsearchRunsScreen,
+} from "./litsearch";
 import { NotesIndex, NotesLayout, NoteView } from "./notes";
 import { SETTINGS_SECTIONS, SettingsScreen, type SettingsSection } from "./routes/settings";
 
@@ -222,6 +227,19 @@ const litsearchNewRoute = createRoute({
   component: LitsearchNewScreen,
 });
 
+const litsearchCompareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/litsearch/compare",
+  validateSearch: (search: Record<string, unknown>): { a: string; b: string } => ({
+    a: typeof search.a === "string" ? search.a : "",
+    b: typeof search.b === "string" ? search.b : "",
+  }),
+  component: function LitsearchCompare() {
+    const { a, b } = litsearchCompareRoute.useSearch();
+    return <LitsearchCompareScreen a={a} b={b} />;
+  },
+});
+
 const litsearchRunRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/litsearch/$runId",
@@ -236,6 +254,7 @@ const routeTree = rootRoute.addChildren([
   inboxRoute,
   litsearchRoute,
   litsearchNewRoute,
+  litsearchCompareRoute,
   litsearchRunRoute,
   itemRoute,
   projectsRoute,

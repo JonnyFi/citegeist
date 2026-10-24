@@ -671,3 +671,56 @@ describe("litsearch.toInbox", () => {
     expect(got.papers.find((p) => p.key === "W4200000002")?.status).toBe("new");
   });
 });
+
+describe("litsearch.compare", () => {
+  it("lists new, dropped and re-ranked papers between two runs, matching by DOI, OpenAlex id or title", async () => {
+    // protects: the compare view says what a newer run found, lost and moved, the way watch.py diffs runs
+    // fails_when: a paper matched by title only counts as new, a rejected paper counts, or a rank change is missed
+    // no_claim: the second run is a hand-written papers.csv with only the columns the matching reads
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    const b = lib.paths.litsearchRunDir("run-newer");
+    mkdirSync(b, { recursive: true });
+    writeFileSync(
+      join(b, "run.json"),
+      JSON.stringify({
+        topic: "agent communication protocols",
+        status: "done",
+        created: "2026-10-31T10:00:00",
+      }),
+    );
+    writeFileSync(
+      join(b, "papers.csv"),
+      [
+        "section,rank,score,title,doi,verified_doi,openalex_id",
+        // same paper, other rank, found by OpenAlex id although the DOI changed
+        "main,2,70,A Survey of Agent Interoperability Protocols,,10.1145/9999999,W4400000001",
+        // same paper by title only (no DOI, no OpenAlex id), rank 2 -> 1
+        "main,1,72,Emergent Communication in Multi-Agent Reinforcement Learning,,,",
+        // new
+        "main,3,60,A Brand New Protocol Benchmark for Agents,10.1/new,,W5000000009",
+        // rejected papers never count
+        "rejected,,10,Agent Protocol Interop Notes,10.5281/zenodo.1234567,,",
+      ].join("\n"),
+    );
+    const registry = bindLitsearchOperations(new Registry(), lib);
+    const out = (await registry.call(
+      "litsearch.compare",
+      { actor: "human" },
+      { a: "run-sample", b: "run-newer" },
+    )) as {
+      added: Array<{ title: string }>;
+      dropped: Array<{ title: string }>;
+      moved: Array<{ paper: { title: string }; from: number; to: number }>;
+    };
+    expect(out.added.map((p) => p.title)).toEqual(["A Brand New Protocol Benchmark for Agents"]);
+    expect(out.dropped.map((p) => p.title).sort()).toEqual([
+      "Agent Protocol Interop Notes",
+      "LLM Agents Talking: A Benchmark",
+    ]);
+    expect(out.moved).toEqual([
+      expect.objectContaining({ paper: expect.objectContaining({ rank: 1 }), from: 2, to: 1 }),
+      expect.objectContaining({ paper: expect.objectContaining({ rank: 2 }), from: 1, to: 2 }),
+    ]);
+  });
+});

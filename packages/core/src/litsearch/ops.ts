@@ -1,5 +1,6 @@
 import {
   litsearchCancel,
+  litsearchCompare,
   litsearchExport,
   litsearchGet,
   litsearchReport,
@@ -14,7 +15,7 @@ import type { Library } from "../library.js";
 import { type LitsearchDeps, LitsearchService } from "./service.js";
 
 /**
- * Binds litsearch.suggest, start, resume, cancel, runs, get, export, report and toInbox. A run is a job of kind
+ * Binds litsearch.suggest, start, resume, cancel, runs, get, export, report, toInbox and compare. A run is a job of kind
  * "litsearch.run" on `deps.queue`. The other litsearch.* contracts answer OPERATION_NOT_IMPLEMENTED
  * until their part of issue #50 lands.
  */
@@ -33,6 +34,7 @@ export function bindLitsearchOperations(
     .bind(litsearchGet, async (_ctx, input) => litsearch.get(input.runId))
     .bind(litsearchExport, async (_ctx, input) => litsearch.export(input.runId, input.format))
     .bind(litsearchReport, async (_ctx, input) => litsearch.report(input.runId))
-    .bind(litsearchToInbox, async (_ctx, input) => litsearch.toInbox(input));
+    .bind(litsearchToInbox, async (_ctx, input) => litsearch.toInbox(input))
+    .bind(litsearchCompare, async (_ctx, input) => litsearch.compare(input.a, input.b));
   return Object.assign(registry, { litsearch });
 }

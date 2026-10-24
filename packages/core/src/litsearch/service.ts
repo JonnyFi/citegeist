@@ -54,6 +54,23 @@ export function workOf(p: RunPaper): GraphWork {
   };
 }
 
+/**
+ * Keys a paper is recognised by in another run: DOI, OpenAlex id and the normalised title (only
+ * when it is longer than 15 characters). Same rule as watch.py's match_keys.
+ */
+export function matchKeys(p: Pick<RunPaper, "doi" | "openalex" | "title">): string[] {
+  const doi = (p.doi ?? "").toLowerCase();
+  const title = p.title
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}_]+/gu, " ")
+    .trim();
+  return [
+    ...(doi ? [`doi:${doi}`] : []),
+    ...(p.openalex ? [`oa:${p.openalex}`] : []),
+    ...(title.length > 15 ? [`t:${title}`] : []),
+  ];
+}
+
 const RUN_ID = /^[a-z0-9][a-z0-9-]{0,119}$/;
 const EXPORT_FILES = {
   md: "papers.md",
@@ -234,6 +251,48 @@ export class LitsearchService {
       }
       return { ...p, status: "new" };
     });
+  }
+
+  /**
+   * What changed from run `a` to run `b`: papers only in `b`, papers `b` no longer has and papers
+   * whose rank moved within the same section. Rejected papers do not count, as in watch.py.
+   */
+  compare(a: string, b: string) {
+    this.meta(a);
+    this.meta(b);
+    const load = (id: string) => {
+      const dir = this.runDir(id);
+      return this.mark(
+        readRunPapers(dir).filter((p) => p.section !== "rejected"),
+        dir,
+      );
+    };
+    const before = load(a);
+    const after = load(b);
+    const index = (papers: LitsearchPaper[]) => {
+      const map = new Map<string, LitsearchPaper>();
+      for (const p of papers) for (const k of matchKeys(p)) if (!map.has(k)) map.set(k, p);
+      return map;
+    };
+    const beforeByKey = index(before);
+    const afterByKey = index(after);
+    const find = (p: LitsearchPaper, map: Map<string, LitsearchPaper>) =>
+      matchKeys(p)
+        .map((k) => map.get(k))
+        .find(Boolean);
+    const byRank = (x: LitsearchPaper, y: LitsearchPaper) =>
+      x.section.localeCompare(y.section) || (x.rank ?? 1e9) - (y.rank ?? 1e9);
+    const added = after.filter((p) => !find(p, beforeByKey)).sort(byRank);
+    const dropped = before.filter((p) => !find(p, afterByKey)).sort(byRank);
+    const moved: Array<{ paper: LitsearchPaper; from: number; to: number }> = [];
+    for (const p of after) {
+      const old = find(p, beforeByKey);
+      if (old && old.section === p.section && old.rank && p.rank && old.rank !== p.rank) {
+        moved.push({ paper: p, from: old.rank, to: p.rank });
+      }
+    }
+    moved.sort((x, y) => byRank(x.paper, y.paper));
+    return { added, dropped, moved };
   }
 
   /**

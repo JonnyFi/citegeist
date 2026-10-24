@@ -23,6 +23,7 @@ import { useOp, useOpMutation } from "../lib/hooks";
 import { cn } from "../lib/utils";
 import { Bar, ErrorLine, FieldLabel, Section, useGuarded } from "../settings/parts";
 import { ResultCharts } from "./charts";
+import { CompareWith } from "./compare";
 import { Downloads, PaperDetail, ResultsTable } from "./results";
 
 const SOURCES: readonly LitsearchSource[] = ["dblp", "openreview", "unpaywall", "orcid"];
@@ -446,6 +447,7 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {done ? <CompareWith run={run} /> : null}
           {run.status === "running" ? (
             <Button
               size="sm"
