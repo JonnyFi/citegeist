@@ -26,6 +26,7 @@ import {
   summarizeRetraction,
 } from "@citegeist/ops";
 import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
+import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
 import { bindChatMock } from "../chat/mock";
 import { bindConceptsMock } from "../concepts/mock";
 import { bindConnectionsMock } from "../connections/mock";
@@ -774,6 +775,44 @@ export function createMockRegistry(
       ],
     }),
     emit,
+  );
+  bindAlertsMock(
+    registry,
+    createAlertsMockState({
+      alerts: [
+        {
+          id: "rag-papers",
+          name: "RAG-Paper aus der Informatik",
+          project: "rag-evaluation",
+          source: { kind: "arxiv-query", value: "retrieval augmented generation evaluation" },
+          intervalHours: 24,
+          limit: 5,
+          rank: true,
+          enabled: true,
+          created: "2026-10-20T09:00:00.000Z",
+          lastRun: {
+            at: "2026-10-24T07:00:00.000Z",
+            ok: true,
+            fetched: 30,
+            found: 9,
+            added: 5,
+            ranked: true,
+          },
+        },
+        {
+          id: "neue-nlp-themen",
+          name: "Neue Arbeiten zu NLP",
+          source: { kind: "openalex-topic", value: "T10181" },
+          intervalHours: 168,
+          limit: 10,
+          rank: false,
+          enabled: true,
+          created: "2026-10-18T09:00:00.000Z",
+        },
+      ],
+    }),
+    emit,
+    jobs,
   );
   return bindSettingsMock(registry, settings, emit, false);
 }

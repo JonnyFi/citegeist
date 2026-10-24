@@ -20,6 +20,7 @@ import {
 } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
+import { ALERT_CONTRACTS } from "./alerts.js";
 import { CHAT_CONTRACTS } from "./chat.js";
 import { CONCEPT_CONTRACTS } from "./concepts.js";
 import { GRAPH_CONTRACTS, RetractionSummary } from "./graph.js";
@@ -64,6 +65,7 @@ const ItemSummary = z.object({
   retraction: RetractionSummary.optional(),
 });
 
+export * from "./alerts.js";
 export * from "./chat.js";
 export * from "./concepts.js";
 export * from "./graph.js";
@@ -781,4 +783,5 @@ export const CONTRACTS: readonly OperationContract[] = [
   ...SYNC_CONTRACTS,
   ...GRAPH_CONTRACTS,
   ...WEBHOOK_CONTRACTS,
+  ...ALERT_CONTRACTS,
 ];

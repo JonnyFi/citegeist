@@ -10,6 +10,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { FolderOpen, Pencil } from "lucide-react";
 import { useState } from "react";
+import { AlertsPanel } from "../alerts";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, LIBRARY_AI_LANGUAGE } from "../lib/ai-language";
 import { downloadText } from "../lib/clipboard";
@@ -405,6 +406,16 @@ export function ProjectView({
                   </ol>
                 </section>
               ) : null}
+
+              <section aria-labelledby="project-alerts">
+                <div className="flex flex-col gap-1">
+                  <h2 id="project-alerts" className="mb-0">
+                    <Label>{t("alerts.title")}</Label>
+                  </h2>
+                  <p className="mb-2 text-[12px] text-muted">{t("alerts.descProject")}</p>
+                </div>
+                <AlertsPanel project={slug} />
+              </section>
 
               {items.isError ? <ErrorState error={items.error} /> : null}
             </div>

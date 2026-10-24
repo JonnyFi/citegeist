@@ -17,7 +17,7 @@ const CROSSREF = "https://api.crossref.org";
 const OPENALEX = "https://api.openalex.org";
 
 /** Fields of a work in a list: enough to show it and to add it, nothing more. */
-const WORK_SELECT = [
+export const WORK_SELECT = [
   "id",
   "doi",
   "ids",
@@ -31,7 +31,11 @@ const WORK_SELECT = [
 /** Largest page OpenAlex allows is 200; batches of ids stay far below the URL length limit. */
 const ID_BATCH = 100;
 
-function openAlexUrl(ctx: SourceContext, path: string, params: Record<string, string>): string {
+export function openAlexUrl(
+  ctx: SourceContext,
+  path: string,
+  params: Record<string, string>,
+): string {
   const url = new URL(`${OPENALEX}/${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   if (ctx.config.mailto) url.searchParams.set("mailto", ctx.config.mailto);
@@ -39,7 +43,7 @@ function openAlexUrl(ctx: SourceContext, path: string, params: Record<string, st
   return url.toString();
 }
 
-async function openAlexJson(ctx: SourceContext, url: string): Promise<Json | undefined> {
+export async function openAlexJson(ctx: SourceContext, url: string): Promise<Json | undefined> {
   const res = await ctx.http.get({ source: "openalex", url, accept: "application/json" });
   if (res.status === 404) return undefined;
   if (!res.ok) throw new SourceError("openalex", `HTTP ${res.status}`, res.status);
@@ -59,7 +63,7 @@ function yearOf(v: unknown): number | undefined {
   return m ? Number(m[0]) : undefined;
 }
 
-function shortId(url: string | undefined): string | undefined {
+export function shortId(url: string | undefined): string | undefined {
   return url?.replace(/^https?:\/\/openalex\.org\//, "");
 }
 
