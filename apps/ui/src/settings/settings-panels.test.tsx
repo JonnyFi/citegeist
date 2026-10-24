@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { SettingsScreen } from "../routes/settings";
+import { sampleUsage } from "../routes/settings-mock";
 import { renderWithSettingsCore } from "../routes/settings-test-utils";
 import { mockConflict } from "./mock";
 import { renderWithPanelsCore } from "./test-utils";
@@ -688,5 +689,53 @@ describe("webhooks text for the agent", () => {
     expect(card.getByText(/Trage oben die öffentliche Adresse ein/)).toBeVisible();
     expect(card.queryByTestId("agent-message")).toBeNull();
     expect(card.queryByRole("button", { name: "MCP-Token neu erzeugen" })).toBeNull();
+  });
+});
+
+describe("usage", () => {
+  it("shows the last 7 and 30 days per task and backend, with the subscription note", async () => {
+    const user = userEvent.setup();
+    renderWithSettingsCore(<SettingsScreen />, {
+      usage: { 7: sampleUsage(7), 30: sampleUsage(30) },
+    });
+    const section = (await screen.findByRole("heading", { name: "Verbrauch" })).closest("section");
+    if (!section) throw new Error("no usage section");
+    const view = within(section);
+    expect(await view.findByRole("table", { name: "Nach Aufgabe" })).toBeVisible();
+    expect(view.getByRole("row", { name: /Paraphrase und Art/ })).toHaveTextContent("42");
+    expect(view.getByRole("row", { name: /Link-Vorschläge/ })).toHaveTextContent("6");
+    expect(view.getByRole("table", { name: "Nach Backend" })).toHaveTextContent("claude-code-cli");
+    expect(view.getByText(/Mit einem Abo kostet ein Aufruf nichts extra/)).toBeVisible();
+
+    await user.click(view.getByRole("button", { name: "30 Tage" }));
+    expect(await view.findByRole("row", { name: /Paraphrase und Art/ })).toHaveTextContent("168");
+  });
+
+  it("says so when nothing was used", async () => {
+    renderWithSettingsCore(<SettingsScreen />);
+    expect(await screen.findByText("In diesem Zeitraum gab es keine KI-Aufrufe.")).toBeVisible();
+  });
+});
+
+describe("research limits", () => {
+  it("saves the limits and refuses numbers that are no whole numbers", async () => {
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />);
+    const minutes = await screen.findByLabelText("Höchstdauer in Minuten");
+    expect(minutes).toHaveValue("20");
+    await user.clear(minutes);
+    await user.type(minutes, "5");
+    await user.clear(screen.getByLabelText("Höchstzahl der Werkzeugaufrufe"));
+    await user.type(screen.getByLabelText("Höchstzahl der Werkzeugaufrufe"), "40");
+    await user.click(screen.getByRole("button", { name: "Grenzen speichern" }));
+    await waitFor(() => expect(state.research.maxMinutes).toBe(5));
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { research: { maxMinutes: 5, maxTokens: 2_000_000, maxToolCalls: 40 } },
+    });
+
+    await user.clear(screen.getByLabelText("Höchstdauer in Minuten"));
+    await user.type(screen.getByLabelText("Höchstdauer in Minuten"), "abc");
+    await user.click(screen.getByRole("button", { name: "Grenzen speichern" }));
+    expect(await screen.findByText("Trage ganze Zahlen ab null ein.")).toBeVisible();
   });
 });

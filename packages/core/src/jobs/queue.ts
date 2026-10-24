@@ -5,6 +5,7 @@ import { type Actor, CitegeistError, Job, type JobKind as JobKindSchema } from "
 import Database from "better-sqlite3";
 import type { z } from "zod";
 import { ulid } from "../ids.js";
+import { runInJobScope } from "./scope.js";
 
 /** An error that is worth another attempt: network trouble, a crashed worker, a busy service. */
 type JobKind = z.infer<typeof JobKindSchema>;
@@ -367,18 +368,22 @@ export class JobQueue extends EventEmitter {
     const job = this.mustGet(id);
     const task: Promise<void> = (async () => {
       try {
-        const result = await cfg.handler({
-          job,
-          signal: controller.signal,
-          progress: (value, message) => {
-            if (this.get(id)?.status !== "running") return;
-            this.update(id, {
-              progress: Math.max(0, Math.min(1, value)),
-              ...(message !== undefined ? { message } : {}),
-            });
-          },
-          queue: this,
-        });
+        const result = await runInJobScope(
+          { job: id, actor: job.by, signal: controller.signal },
+          () =>
+            cfg.handler({
+              job,
+              signal: controller.signal,
+              progress: (value, message) => {
+                if (this.get(id)?.status !== "running") return;
+                this.update(id, {
+                  progress: Math.max(0, Math.min(1, value)),
+                  ...(message !== undefined ? { message } : {}),
+                });
+              },
+              queue: this,
+            }),
+        );
         if (this.get(id)?.status === "running") {
           this.update(id, {
             status: "succeeded",
@@ -423,7 +428,14 @@ export class JobQueue extends EventEmitter {
       });
       return;
     }
-    this.update(id, { status: "failed", message, error: { code, message } });
+    // A handler that stopped on purpose (a budget) can hand over what it had by then.
+    const partial = err instanceof CitegeistError ? err.detail.context.partial : undefined;
+    this.update(id, {
+      status: "failed",
+      message,
+      error: { code, message },
+      ...(partial !== undefined ? { result: partial } : {}),
+    });
   }
 
   private update(

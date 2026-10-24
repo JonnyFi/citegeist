@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { nodeRunner, type ProcessRunner } from "@citegeist/ai";
+import { nodeRunner, type ProcessRunner, type UsageRecord } from "@citegeist/ai";
 import type { ConvertWorker } from "../ingest/worker.js";
 import type { JobQueue } from "../jobs/queue.js";
 import { BackendRegistry, type FetchFn } from "./backends.js";
@@ -20,6 +20,8 @@ export interface DefaultSettingsOptions {
   /** Default: the macOS Keychain on darwin, otherwise memory only (keys vanish on exit). */
   keychain?: Keychain;
   fetch?: FetchFn;
+  /** Receives the usage of the test call of `ai.testBackend`. */
+  recordUsage?: (record: UsageRecord) => void;
   onChange?: SettingsDeps["onChange"];
 }
 
@@ -45,5 +47,6 @@ export function createSettingsDeps(opts: DefaultSettingsOptions): SettingsDeps {
     workerConfig: { sourceDir: opts.workerSource, envDir: defaultEnvDir(opts.localBase) },
     runner,
     ...(opts.onChange ? { onChange: opts.onChange } : {}),
+    ...(opts.recordUsage ? { recordUsage: opts.recordUsage } : {}),
   };
 }

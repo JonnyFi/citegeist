@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { aiErrors } from "../errors.js";
-import type { InferenceBackend, ModelChoice } from "../types.js";
+import type { AiUsage, InferenceBackend, ModelChoice } from "../types.js";
 import { cardParaphrase } from "./card-paraphrase/index.js";
 import { cardVerify } from "./card-verify/index.js";
 import { conceptDescribe } from "./concept-describe/index.js";
@@ -39,6 +39,29 @@ export interface RunTaskOptions {
   language?: string;
   /** Overrides the task's model class. */
   model?: ModelChoice;
+  /** Aborting stops the backend call (CLI process group killed, HTTP request aborted). */
+  signal?: AbortSignal | undefined;
+  /** Who asked for the run. Only carried into the usage record. */
+  actor?: string | undefined;
+  /**
+   * Called once when the run ends, whether it worked or not, with what it consumed. Not called
+   * when the input is invalid, because nothing was sent.
+   */
+  record?: ((record: UsageRecord) => void) | undefined;
+}
+
+/** One finished AI call, for the usage ledger. */
+export interface UsageRecord extends AiUsage {
+  task: string;
+  backend: string;
+  /** Concrete model name. */
+  model: string;
+  ms: number;
+  ok: boolean;
+  /** Error code of a failed call. */
+  error?: string | undefined;
+  /** The `actor` option of the run. */
+  actor?: string | undefined;
 }
 
 export interface TaskResult<O> {
@@ -48,6 +71,8 @@ export interface TaskResult<O> {
   promptVersion: number;
   /** Wall time of the backend call in milliseconds. */
   ms: number;
+  /** Tokens and list price of the call, when the backend reports them. */
+  usage?: AiUsage;
 }
 
 /** Validates the input, builds the versioned prompt and runs it on the backend. */
@@ -68,14 +93,54 @@ export async function runTask<N extends TaskName>(
   }
   const model = opts.model ?? task.modelClass;
   const t0 = performance.now();
-  const output = await backend.complete({
-    task: name,
-    system: task.system(language),
-    prompt: task.prompt(parsed.data, language),
-    schema: task.output,
-    model,
-    language,
-  });
+  const total: AiUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  };
+  let reported = false;
+  let reportedModel: string | undefined;
+  const finish = (ok: boolean, error?: string): number => {
+    const ms = Math.round(performance.now() - t0);
+    opts.record?.({
+      ...total,
+      task: name,
+      backend: backend.id,
+      model: reportedModel ?? backend.resolveModel(model),
+      ms,
+      ok,
+      error,
+      actor: opts.actor,
+    });
+    return ms;
+  };
+  let output: unknown;
+  try {
+    output = await backend.complete({
+      task: name,
+      system: task.system(language),
+      prompt: task.prompt(parsed.data, language),
+      schema: task.output,
+      model,
+      language,
+      signal: opts.signal,
+      onUsage: (u) => {
+        reported = true;
+        total.inputTokens += u.inputTokens;
+        total.outputTokens += u.outputTokens;
+        total.cacheReadTokens += u.cacheReadTokens;
+        total.cacheWriteTokens += u.cacheWriteTokens;
+        if (u.costUsd !== undefined) total.costUsd = (total.costUsd ?? 0) + u.costUsd;
+        reportedModel ??= u.model;
+      },
+    });
+  } catch (err) {
+    const code = (err as { detail?: { code?: string } }).detail?.code;
+    finish(false, code ?? "AI_BACKEND_FAILED");
+    throw err;
+  }
+  const ms = finish(true);
   return {
     output: output as TaskOutput<N>,
     stamp: {
@@ -84,6 +149,7 @@ export async function runTask<N extends TaskName>(
       language,
     },
     promptVersion: task.promptVersion,
-    ms: Math.round(performance.now() - t0),
+    ms,
+    ...(reported ? { usage: { ...total } } : {}),
   };
 }

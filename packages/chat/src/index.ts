@@ -19,7 +19,13 @@ export {
   type LoginCheck,
   resolveAdapterEntry,
 } from "./backends.js";
-export type { AgentDriver, DriverEvent, DriverFactory, DriverRequest } from "./driver.js";
+export type {
+  AgentDriver,
+  DriverEvent,
+  DriverFactory,
+  DriverRequest,
+  DriverUsage,
+} from "./driver.js";
 export { createDrivers, type DriverFactoryOptions, type Drivers } from "./drivers.js";
 export {
   diffSnapshots,
@@ -46,5 +52,17 @@ export {
   registerResearch,
   runResearch,
 } from "./research.js";
-export { type ChatHost, ChatService, type ServiceOptions, type TurnOptions } from "./service.js";
+export {
+  DEFAULT_RESEARCH_BUDGET,
+  LOOP_REPEATS,
+  type ResearchBudget,
+  resolveBudget,
+} from "./research-budget.js";
+export {
+  type ChatHost,
+  ChatService,
+  type ChatUsageEntry,
+  type ServiceOptions,
+  type TurnOptions,
+} from "./service.js";
 export { ChatStore, type SessionState } from "./store.js";

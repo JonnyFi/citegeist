@@ -1,5 +1,6 @@
 import type { Actor } from "@citegeist/schema";
 import { ulid } from "../ids.js";
+import { runInJobScope } from "../jobs/scope.js";
 
 /** One unit of background work. The queue decides when `run` is called. */
 export interface CardJobSpec {
@@ -36,7 +37,11 @@ export class DetachedJobs implements CardJobQueue {
     const job: DetachedJob = { id, label: spec.label, status: "running" };
     this.jobs.set(id, job);
     const p: Promise<void> = new Promise<void>((resolve) => setImmediate(resolve))
-      .then(() => spec.run())
+      .then(() =>
+        runInJobScope({ job: id, actor: spec.by, signal: new AbortController().signal }, () =>
+          spec.run(),
+        ),
+      )
       .then(() => {
         job.status = "succeeded";
       })

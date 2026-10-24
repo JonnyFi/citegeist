@@ -13,6 +13,22 @@ export function isModelClass(choice: string): choice is ModelClass {
   return choice === "fast" || choice === "smart";
 }
 
+/**
+ * What one backend call consumed, as the backend reports it. `inputTokens` counts the input that
+ * was not served from the cache; cache reads and writes are listed apart. `costUsd` is the list
+ * price the backend computed, when it reports one. With a subscription nothing is billed per call,
+ * so it is an estimate of what the call would cost on the API.
+ */
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  costUsd?: number | undefined;
+  /** Concrete model when the backend names one that differs from the requested model. */
+  model?: string | undefined;
+}
+
 export interface CompleteRequest<T> {
   /** Task name such as `card.paraphrase`. Used for logging and routing, never for behavior. */
   task: string;
@@ -25,6 +41,10 @@ export interface CompleteRequest<T> {
   model?: ModelChoice;
   /** BCP 47 tag the output should be written in. The task puts it into the prompt itself. */
   language?: string;
+  /** Aborting stops the call: CLI backends kill their process group, HTTP backends abort the fetch. */
+  signal?: AbortSignal | undefined;
+  /** Called once per model round trip that reports usage (a schema retry is a second one). */
+  onUsage?: ((usage: AiUsage) => void) | undefined;
 }
 
 export interface McpConfig {

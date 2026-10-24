@@ -96,6 +96,32 @@ export async function startChat(
       notify: (rel) =>
         library.emit("change", { rel, status: "unchanged", external: false } satisfies ChangeEvent),
       isolated: () => runtime.settings.chatIsolated(),
+      researchBudget: () => runtime.settings.researchBudget(),
+      recordUsage: (e) => {
+        try {
+          // A research turn counts for whoever started the job, a chat for the person at the app.
+          const queue = research ?? runtime.ingest.queue;
+          const actor = e.job ? (queue.get(e.job)?.by ?? "system") : "human";
+          runtime.usage.record({
+            source: e.kind,
+            task: e.kind,
+            backend: e.backend,
+            model: e.usage?.model ?? "",
+            inputTokens: e.usage?.inputTokens ?? 0,
+            outputTokens: e.usage?.outputTokens ?? 0,
+            cacheReadTokens: e.usage?.cacheReadTokens ?? 0,
+            cacheWriteTokens: e.usage?.cacheWriteTokens ?? 0,
+            costUsd: e.usage?.costUsd,
+            ms: e.ms,
+            ok: e.ok,
+            actor,
+            session: e.session,
+            job: e.job,
+          });
+        } catch {
+          // The ledger is a report, not part of the chat.
+        }
+      },
       defaultBackend: () =>
         chatBackendFromRouting(
           runtime.settings.routing().routing,

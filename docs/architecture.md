@@ -99,7 +99,7 @@ Fehler folgen dem Vertrag für agent-taugliche Fehlermeldungen aus gstack: Sie n
   chats/                                  gespeicherte Agent-Gespräche
 ```
 
-Rechnerlokal unter `~/Library/Application Support/citegeist/<library-id>/` liegen `index.sqlite` (Suche, Graph, Vektoren), `state.sqlite` (Jobs, Einstellungen dieses Rechners), Logs, Caches, die Python-Umgebung und die Modelle. Nichts davon gehört in einen synchronisierten Ordner.
+Rechnerlokal unter `~/Library/Application Support/citegeist/<library-id>/` liegen `index.sqlite` (Suche, Graph, Vektoren), `state.sqlite` (Jobs, Verbrauchsbuch der KI-Aufrufe, Einstellungen dieses Rechners), Logs, Caches, die Python-Umgebung und die Modelle. Nichts davon gehört in einen synchronisierten Ordner.
 
 Der Ordner ist ein gültiger Obsidian-Vault. Die Literaturnotiz heißt wie der Citekey, damit `[[luhmann1984soziale]]` in Obsidian und in citegeist auf dieselbe Datei zeigt. `[[luhmann1984soziale#^b7f3k2q]]` verlinkt einen Absatz des Volltexts, `![[c_01JB8Z3Q]]` bettet eine Zitatkarte ein.
 

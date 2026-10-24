@@ -1,5 +1,6 @@
 import type { Actor } from "@citegeist/schema";
 import { researchPrompt } from "./prompts.js";
+import { RunGuard, resolveBudget } from "./research-budget.js";
 import type { ChatService } from "./service.js";
 import { extractCitekey } from "./tools.js";
 import { chatError } from "./util.js";
@@ -39,6 +40,15 @@ export interface ResearchResult {
   /** Calls that broke the rules of D7: a paper added straight to the library, or without a reason. */
   violations: string[];
   stopReason?: string | undefined;
+  /** What the run used, against the limits it had. */
+  budget: {
+    seconds: number;
+    toolCalls: number;
+    /** Tokens the run added to the context. Absent when the adapter sent no usage update. */
+    tokens?: number | undefined;
+    /** Set when a limit could not be checked, with the reason. */
+    note?: string | undefined;
+  };
 }
 
 export function registerResearch(queue: JobQueuePort, service: ChatService): void {
@@ -68,6 +78,11 @@ export async function runResearch(
   const added = new Map<string, { citekey: string; why?: string }>();
   const violations: string[] = [];
   const seen = new Set<string>();
+  // Time, tool calls, tokens and loops of identical calls end the run; the guard only decides.
+  const guard = new RunGuard(resolveBudget(service.host.researchBudget?.()), () =>
+    service.cancel(session.id),
+  );
+  guard.start();
 
   ctx.progress(0.02, "Starting the agent");
   const turn = await service
@@ -77,6 +92,7 @@ export async function runResearch(
       {
         signal: ctx.signal,
         onEvent(event) {
+          guard.observe(event);
           if (event.type !== "tool" || event.tool !== "add_item") return;
           if (event.status !== "done" || seen.has(event.callId)) return;
           seen.add(event.callId);
@@ -103,8 +119,29 @@ export async function runResearch(
       },
       // The job is the only turn of this session: end the agent and revoke its token.
     )
-    .finally(() => service.end(session.id));
+    .finally(() => {
+      guard.dispose();
+      return service.end(session.id);
+    });
 
+  const budget: ResearchResult["budget"] = {
+    seconds: guard.seconds,
+    toolCalls: guard.toolCalls,
+    ...(guard.sawUsage ? { tokens: guard.tokens } : {}),
+    ...(!guard.sawUsage && guard.budget.maxTokens > 0
+      ? {
+          note: "The agent reported no token usage while it worked, so the token limit was not checked.",
+        }
+      : {}),
+  };
+  const stop = guard.stopped;
+  if (stop) {
+    // The papers found so far are in the inbox and the session keeps the transcript: both stay.
+    throw chatError(stop.code, stop.message, stop.fix, stop.recovery, {
+      session: session.id,
+      partial: { session: session.id, added: [...added.values()], violations, budget },
+    });
+  }
   if (turn.status === "failed") {
     const failure = service
       .get(session.id)
@@ -125,5 +162,6 @@ export async function runResearch(
     added: [...added.values()],
     violations,
     stopReason: turn.stopReason,
+    budget,
   };
 }

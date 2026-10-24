@@ -30,7 +30,7 @@ export function bindLitsearchOperations(
 ): Registry & { litsearch: LitsearchService } {
   const litsearch = new LitsearchService(lib, deps);
   registry
-    .bind(litsearchSuggest, async (_ctx, input) => litsearch.suggest(input))
+    .bind(litsearchSuggest, async (ctx, input) => litsearch.suggest(input, ctx.actor))
     .bind(litsearchStart, async (ctx, input) => litsearch.start(ctx.actor, input))
     .bind(litsearchResume, async (ctx, input) => litsearch.resume(ctx.actor, input.runId))
     .bind(litsearchCancel, async (_ctx, input) => litsearch.cancel(input.runId))

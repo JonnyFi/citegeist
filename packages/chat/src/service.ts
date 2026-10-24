@@ -10,14 +10,30 @@ import {
 } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { type BackendStatus, checkBackend, findExecutable } from "./backends.js";
-import type { AgentDriver, DriverEvent } from "./driver.js";
+import type { AgentDriver, DriverEvent, DriverUsage } from "./driver.js";
 import { createDrivers, type Drivers } from "./drivers.js";
 import { diffSnapshots, revertEdits, SnapshotCache } from "./journal.js";
 import type { SessionMode } from "./policy.js";
 import { instructions, transcriptMarkdown, turnPrompt } from "./prompts.js";
+import type { ResearchBudget } from "./research-budget.js";
 import { ChatStore, type SessionState } from "./store.js";
 import { extractCitekey, toolDetail } from "./tools.js";
 import { chatError, newId, oneLine, slugify, writeAtomic } from "./util.js";
+
+/** One finished agent turn, for the usage ledger of the host. */
+export interface ChatUsageEntry {
+  session: string;
+  /** `chat` for a conversation, `research` for a research job. */
+  kind: "chat" | "research";
+  /** Chat backend id such as `claude-code`. */
+  backend: string;
+  /** The job a research session belongs to. */
+  job?: string | undefined;
+  ok: boolean;
+  ms: number;
+  /** Absent when the agent reported nothing. */
+  usage?: DriverUsage | undefined;
+}
 
 export interface ChatHost {
   /** Absolute path of the library folder. */
@@ -45,6 +61,10 @@ export interface ChatHost {
    * get the user's own environment. Research jobs ignore this and always run isolated.
    */
   isolated?(): boolean;
+  /** Called after every agent turn with what it consumed. Chat sessions and research jobs both report. */
+  recordUsage?(entry: ChatUsageEntry): void;
+  /** Limits of research jobs from the settings. Fields that are missing fall back to the defaults. */
+  researchBudget?(): Partial<ResearchBudget> | undefined;
   now?(): Date;
 }
 
@@ -342,6 +362,7 @@ export class ChatService {
     // Research writes through add_item only and has its own record (the job), so it is not journaled.
     const journaled = s.kind === "chat";
     let before: Awaited<ReturnType<SnapshotCache["take"]>> | undefined;
+    let started: number | undefined;
     try {
       if (journaled) before = await this.cache.take();
       let fresh = false;
@@ -380,14 +401,17 @@ export class ChatService {
             .join("\n\n");
       s.instructed = true;
       const prompt = turnPrompt({ first, context: s.context, message });
+      started = performance.now();
       const res = await live.driver.prompt(
         prompt,
         (event) => this.apply(live, turn, event, opts),
         abort.signal,
       );
+      this.reportUsage(s, true, started, res.usage);
       record.stopReason = res.stopReason;
       record.status = res.stopReason === "cancelled" || abort.signal.aborted ? "cancelled" : "done";
     } catch (err) {
+      if (started !== undefined) this.reportUsage(s, false, started, undefined);
       record.status = abort.signal.aborted ? "cancelled" : "failed";
       if (record.status === "failed") this.addNotice(live, turn, err);
       // The agent process may be gone; the next turn starts a new session.
@@ -410,6 +434,27 @@ export class ChatService {
       record.endedAt = this.now().toISOString();
       s.updatedAt = record.endedAt;
       this.persist(live);
+    }
+  }
+
+  private reportUsage(
+    s: SessionState,
+    ok: boolean,
+    started: number,
+    usage: DriverUsage | undefined,
+  ): void {
+    try {
+      this.host.recordUsage?.({
+        session: s.id,
+        kind: s.kind,
+        backend: s.backend,
+        ...(s.job ? { job: s.job } : {}),
+        ok,
+        ms: Math.round(performance.now() - started),
+        usage,
+      });
+    } catch {
+      // The ledger must never break a turn.
     }
   }
 

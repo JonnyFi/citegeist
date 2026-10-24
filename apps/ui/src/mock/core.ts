@@ -38,7 +38,7 @@ import { bindMatrixMock } from "../matrix/mock";
 import { bindNotesMock } from "../notes/mock";
 import { bindPlanningMock } from "../planning/mock";
 import { bindRelatedMock } from "../related";
-import { bindSettingsMock, createSettingsMockState } from "../routes/settings-mock";
+import { bindSettingsMock, createSettingsMockState, sampleUsage } from "../routes/settings-mock";
 import {
   bindSyncMock,
   bindWebhooksMock,
@@ -733,7 +733,10 @@ export function createMockRegistry(
       return { hits: hits.sort((a, b) => b.score - a.score).slice(0, input.limit) };
     });
   // The browser preview has a working backend and worker, so it never asks for the setup.
-  const settings = createSettingsMockState({ worker: { ready: true, engines: { mock: "1.0" } } });
+  const settings = createSettingsMockState({
+    worker: { ready: true, engines: { mock: "1.0" } },
+    usage: { 7: sampleUsage(7), 30: sampleUsage(30) },
+  });
   bindNotesMock(registry, data, emit);
   bindPlanningMock(registry, data, emit);
   bindTextsMock(registry, data, emit, jobs, aiDelayMs);
