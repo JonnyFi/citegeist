@@ -442,6 +442,60 @@ describe("ReflowView", () => {
     expect(clean).not.toContain("javascript:");
     expect(clean).toContain("bpara0009");
   });
+
+  it("removes the bypasses of a plain deny list", () => {
+    const cases: Array<[string, RegExp]> = [
+      // SVG animation rewrites the href of the link that holds it (needs one click)
+      [
+        '<svg><a href="#"><animate attributeName="href" values="javascript:alert(1)"/></a></svg>',
+        /animate|javascript/i,
+      ],
+      [
+        '<svg><a href="#"><set attributeName="href" to="javascript:alert(1)"/></a></svg>',
+        /<set|javascript/i,
+      ],
+      // whitespace and control characters inside the scheme
+      ['<a href="java&#x09;script:alert(1)">x</a>', /javascript|java\s*script/i],
+      ['<a href="&#x01;javascript:alert(1)">x</a>', /javascript/i],
+      ['<a href="vbscript:msgbox(1)">x</a>', /vbscript/i],
+      // HTML and SVG in a data: URL, and other schemes
+      ['<a href="data:text/html;base64,PHNjcmlwdD4=">x</a>', /data:/i],
+      ['<img src="data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=">', /data:/i],
+      ['<a href="file:///etc/passwd">x</a>', /file:/i],
+      ['<img srcset="javascript:alert(1) 1x, https://example.org/a.png 2x">', /javascript/i],
+      // frames, embedded HTML and templates
+      [
+        '<svg><foreignObject><iframe src="https://example.org"></iframe></foreignObject></svg>',
+        /foreignobject|iframe/i,
+      ],
+      ['<svg><use href="data:image/svg+xml,x#a"/></svg>', /<use/i],
+      [
+        '<noscript><p title="</noscript><img src=x onerror=alert(1)>"></p></noscript>',
+        /noscript|onerror/i,
+      ],
+      [
+        '<math><annotation-xml encoding="text/html"><img src=x onerror=alert(1)></annotation-xml></math>',
+        /annotation-xml|onerror/i,
+      ],
+      ['<p onmouseover="x()" ONCLICK="y()">x</p>', /onmouseover|onclick/i],
+    ];
+    for (const [dirty, bad] of cases) expect(sanitizeHtml(dirty), dirty).not.toMatch(bad);
+  });
+
+  it("keeps links, images and formulas of a converted paper", () => {
+    const clean = sanitizeHtml(
+      '<p id="b1">see <a href="https://doi.org/10.1/x">doi</a>, <a href="#fn1">n</a>, <a href="mailto:a@b.c">m</a>' +
+        '<img src="data:image/png;base64,AAAA" alt="f"><img src="figures/a.png"></p>' +
+        '<math><mi>x</mi><annotation encoding="application/x-tex">x</annotation></math>',
+    );
+    expect(clean).toContain('href="https://doi.org/10.1/x"');
+    expect(clean).toContain('href="#fn1"');
+    expect(clean).toContain('href="mailto:a@b.c"');
+    expect(clean).toContain('src="data:image/png;base64,AAAA"');
+    expect(clean).toContain('src="figures/a.png"');
+    expect(clean).toContain("<mi>x</mi>");
+    expect(clean).toContain('id="b1"');
+  });
 });
 
 describe("one stored card in both views", () => {

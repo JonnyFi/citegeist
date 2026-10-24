@@ -10,6 +10,7 @@ import {
   type TaskRequestPayload,
   type TaskResultPayload,
 } from "./payload.js";
+import { assertRemoteSafe } from "./remote-input.js";
 import {
   generateSecret,
   ID_HEADER,
@@ -437,6 +438,8 @@ export class WebhookService {
       const identifier = typeof paper === "string" ? paper : (paper.identifier ?? paper.url ?? "");
       const why = (typeof paper === "string" ? undefined : paper.why) ?? defaults.why;
       try {
+        // The sender is on the internet: no local files, no addresses of this Mac or its network.
+        assertRemoteSafe(identifier);
         const out = (await this.opts.registry.call(
           "items.add",
           { actor },

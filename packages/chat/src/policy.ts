@@ -64,6 +64,30 @@ function writable(rel: string): boolean {
   return true;
 }
 
+const FILE_EXT = /\.(pdf|html?|epub)$/i;
+const DOI_LIKE = /^(doi:)?10\.\d{4,9}\//i;
+
+/**
+ * The local file a citegeist tool call would read, or undefined when it names none. `add_item`
+ * takes a DOI, a URL or a path; `attach_file` always takes a path.
+ */
+function localFileOf(tool: string, input: Record<string, unknown>): string | undefined {
+  if (tool === "attach_file" && typeof input.path === "string") return input.path;
+  if (tool !== "add_item" || typeof input.identifier !== "string") return undefined;
+  const id = input.identifier.trim();
+  if (id.startsWith("file://")) return id.slice("file://".length);
+  if (/^(\/|~|\.{1,2}\/)/.test(id)) return id;
+  if (DOI_LIKE.test(id) || /^[a-z][a-z0-9+.-]*:\/\//i.test(id)) return undefined;
+  return FILE_EXT.test(id) ? id : undefined;
+}
+
+/** Inside the library or the scratch folder: where an agent without the user's trust may read. */
+function inAllowedArea(ctx: PolicyContext, abs: string): boolean {
+  return [ctx.scratchDir, ctx.libraryRoot].some(
+    (root) => abs === root || relativeInside(root, abs) !== undefined,
+  );
+}
+
 function pathsOf(req: RequestPermissionRequest): string[] {
   const out: string[] = [];
   for (const loc of req.toolCall.locations ?? []) out.push(loc.path);
@@ -99,12 +123,37 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
         };
       }
     }
+    // The core reads a local file named in a tool call with the rights of the user. An agent
+    // that works on web content (research) or in the sandbox gets none of that: injected text
+    // must not be able to pull a file of the user into the library and read it from there.
+    if ((ctx.isolated || ctx.mode === "research") && isObject(call.rawInput)) {
+      const file = localFileOf(tool, call.rawInput as Record<string, unknown>);
+      if (file !== undefined && (ctx.mode === "research" || !inAllowedArea(ctx, file))) {
+        return {
+          allow: false,
+          reason:
+            "An isolated agent may not add files from outside the library. Pass a DOI, an arXiv id or a URL.",
+        };
+      }
+    }
     return { allow: true };
   }
 
   switch (call.kind) {
     case "read":
-    case "search":
+    case "search": {
+      // The sandbox and research jobs read the library and their scratch folder, nothing else.
+      // Everything else on the disk (keys, the token of the core, other projects) stays closed,
+      // because web content can steer the agent and the web fetch is an open exit.
+      if (ctx.isolated || ctx.mode === "research") {
+        for (const p of pathsOf(req)) {
+          if (!inAllowedArea(ctx, p)) {
+            return { allow: false, reason: `Reading ${p} is not allowed in an isolated chat.` };
+          }
+        }
+      }
+      return { allow: true };
+    }
     case "think":
     case "fetch":
       return { allow: true };
