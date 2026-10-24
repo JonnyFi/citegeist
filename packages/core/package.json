@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "retrieval": "tsx src/semantic/retrieval-check.ts"
+    "retrieval": "tsx src/semantic/retrieval-check.ts",
+    "eval:retrieval": "tsx src/semantic/eval-retrieval.ts"
   },
   "dependencies": {
     "@citegeist/ai": "workspace:*",

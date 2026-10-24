@@ -9,6 +9,18 @@ export {
   QWEN3_EMBEDDING_0_6B,
 } from "./models.js";
 export {
+  BGE_RERANKER_BASE,
+  BGE_RERANKER_V2_M3,
+  DEFAULT_RERANKER,
+  FakeReranker,
+  MXBAI_RERANK_XSMALL,
+  RERANKERS,
+  type Reranker,
+  type RerankerSpec,
+  TransformersReranker,
+  type TransformersRerankerOptions,
+} from "./rerank.js";
+export {
   createTransformersEmbedder,
   TransformersEmbedder,
   type TransformersEmbedderOptions,

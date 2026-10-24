@@ -14,6 +14,7 @@
     "package": "pnpm --filter @citegeist/desktop package",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "eval:retrieval": "pnpm --filter @citegeist/core --silent eval:retrieval",
     "test:convert": "uv run --directory workers/convert pytest",
     "test:research": "uv run --directory workers/research pytest",
     "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest && uv run --directory workers/research pytest",

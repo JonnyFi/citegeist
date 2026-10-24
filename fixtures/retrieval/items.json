@@ -1,0 +1,85 @@
+{
+  "note": "Metadata of the corpus documents. All six are CC-BY-4.0; the texts in corpus/ are converted copies of the original PDFs listed in fixtures/pdf/manifest.json and keep the authors' attribution given here.",
+  "items": [
+    {
+      "citekey": "kwiatkowski2019natural",
+      "fixture": "tacl-natural-questions-2019",
+      "title": "Natural Questions: A Benchmark for Question Answering Research",
+      "author": [
+        { "family": "Kwiatkowski", "given": "Tom" },
+        { "family": "Palomaki", "given": "Jennimaria" },
+        { "family": "Redfield", "given": "Olivia" }
+      ],
+      "year": 2019,
+      "language": "en",
+      "doi": "10.1162/tacl_a_00276",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "citekey": "klein2014scholarly",
+      "fixture": "plos-one-reference-rot-2014",
+      "title": "Scholarly Context Not Found: One in Five Articles Suffers from Reference Rot",
+      "author": [
+        { "family": "Klein", "given": "Martin" },
+        { "family": "Van de Sompel", "given": "Herbert" },
+        { "family": "Sanderson", "given": "Robert" }
+      ],
+      "year": 2014,
+      "language": "en",
+      "doi": "10.1371/journal.pone.0115253",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "citekey": "jiang2023mistral",
+      "fixture": "arxiv-2310.06825-mistral-7b",
+      "title": "Mistral 7B",
+      "author": [
+        { "family": "Jiang", "given": "Albert Q." },
+        { "family": "Sablayrolles", "given": "Alexandre" },
+        { "family": "Mensch", "given": "Arthur" }
+      ],
+      "year": 2023,
+      "language": "en",
+      "doi": "10.48550/arXiv.2310.06825",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "citekey": "auer2024docling",
+      "fixture": "arxiv-2408.09869-docling-report",
+      "title": "Docling Technical Report",
+      "author": [
+        { "family": "Auer", "given": "Christoph" },
+        { "family": "Lysak", "given": "Maksym" },
+        { "family": "Nassar", "given": "Ahmed" }
+      ],
+      "year": 2024,
+      "language": "en",
+      "doi": "10.48550/arXiv.2408.09869",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "citekey": "rieckmann2021bildung",
+      "fixture": "merz-bne-2021",
+      "title": "Bildung für nachhaltige Entwicklung: Ziele, didaktische Prinzipien und Methoden",
+      "author": [{ "family": "Rieckmann", "given": "Marco" }],
+      "year": 2021,
+      "language": "de",
+      "doi": "10.21240/merz/2021.4.7",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "citekey": "lampert2019gesundheitliche",
+      "fixture": "rki-johm-kiggs-2019",
+      "title": "Gesundheitliche Ungleichheiten bei Kindern und Jugendlichen in Deutschland: Zeitliche Entwicklung und Trends der KiGGS-Studie",
+      "author": [
+        { "family": "Lampert", "given": "Thomas" },
+        { "family": "Hoebel", "given": "Jens" },
+        { "family": "Kuntz", "given": "Benjamin" }
+      ],
+      "year": 2019,
+      "language": "de",
+      "doi": "10.25646/5867",
+      "license": "CC-BY-4.0"
+    }
+  ]
+}

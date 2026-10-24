@@ -1,0 +1,17 @@
+{
+  "tolerance": {
+    "hit5": 0.03,
+    "mrr": 0.05
+  },
+  "queries": 43,
+  "fts": {
+    "hit5": 0.209,
+    "mrr": 0.192
+  },
+  "hybrid": {
+    "embeddinggemma-300m": {
+      "hit5": 0.86,
+      "mrr": 0.728
+    }
+  }
+}
