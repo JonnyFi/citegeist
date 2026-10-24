@@ -19,6 +19,7 @@ import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
 import { anchorFromSelection, type CardsListOutput, itemCardsInput, kindColor } from "../lib/cards";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
+import { loadReadingPosition, restoreReading, trackReading } from "../lib/reading-position";
 import { describeError } from "../lib/utils";
 import { CardList } from "./card-list";
 import { CardPanel } from "./card-panel";
@@ -45,11 +46,14 @@ export function ReaderTab({
   onSelect,
   tabs,
   renderColumn,
+  resume = false,
 }: {
   fm: ItemFrontmatter;
   cards: CardsListOutput["cards"];
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
+  /** Pick up at the stored reading position ("Weiterlesen"). */
+  resume?: boolean;
   /** The Übersicht/Lesen tab row, drawn at the left of the sub bar. */
   tabs: ReactNode;
   /** The right column around the given card panel; the item view adds its other tabs. */
@@ -92,6 +96,7 @@ export function ReaderTab({
       onSelect={onSelect}
       tabs={tabs}
       renderColumn={renderColumn}
+      resume={resume}
     />
   );
 }
@@ -104,9 +109,11 @@ function ReaderLoaded({
   onSelect,
   tabs,
   renderColumn,
+  resume,
 }: {
   fm: ItemFrontmatter;
   data: DocumentAssets;
+  resume: boolean;
   cards: CardsListOutput["cards"];
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
@@ -120,6 +127,7 @@ function ReaderLoaded({
 
   const [view, setView] = useState<View>(data.pdfUrl ? "pdf" : "reflow");
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [statuses, setStatuses] = useState<Record<string, HighlightStatus>>({});
   const { jobs, track, watchers } = useCardJobs();
 
@@ -138,6 +146,19 @@ function ReaderLoaded({
 
   const stream = useMemo(() => buildBlockStream(data.blocks), [data.blocks]);
   const pageLabels = useMemo(() => data.pages?.pages.map((p) => p.label), [data.pages]);
+
+  // remember where Jonny stopped; "Weiterlesen" on the overview comes back to it
+  useEffect(
+    () =>
+      host ? trackReading(host, fm.citekey, (page) => pageLabels?.[page] ?? undefined) : undefined,
+    [host, fm.citekey, pageLabels],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: picks up once per opened view
+  useEffect(() => {
+    if (!resume || selectedId || !host) return;
+    const position = loadReadingPosition(fm.citekey);
+    return position ? restoreReading(host, position) : undefined;
+  }, [resume, host, view]);
 
   const highlights = useMemo<ReaderHighlight[]>(
     () =>
@@ -279,7 +300,7 @@ function ReaderLoaded({
         {data.pages && !data.pages.confirmed ? (
           <PageBanner citekey={fm.citekey} pages={data.pages} />
         ) : null}
-        <div className="min-h-0 flex-1">
+        <div ref={setHost} className="min-h-0 flex-1">
           {view === "pdf" ? (
             pdf.data ? (
               <PdfView data={pdf.data} source={data.source} pageLabels={pageLabels} {...shared} />

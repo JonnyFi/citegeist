@@ -19,6 +19,8 @@ import {
 import { ItemFrontmatter, type Job } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
+import { currentPlanContext } from "../planning/context";
+import { noteInsightIn, planStoreFor, removeInsightIn } from "../planning/mock";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 function id(prefix: string, length = 26): string {
@@ -40,6 +42,8 @@ interface MockSession {
   turns: ChatTurn[];
   timers: Set<ReturnType<typeof setTimeout>>;
   running: boolean;
+  /** Takes back what a turn wrote, by turn number. */
+  undo?: Map<number, () => void>;
 }
 
 interface MockChat {
@@ -135,7 +139,28 @@ export function bindChatMock(
     });
 
     function finish() {
-      if (writes) {
+      const plan = currentPlanContext();
+      if (writes && plan && s.context.project === plan.project) {
+        // a plan is open: the agent files the insight there with note_insight, like the core does
+        const target = plan.node?.id ?? "plan";
+        const text = `${message.trim().replace(/[.!]+$/, "")}, siehe [[${citekey}]].`;
+        const noted = noteInsightIn(planStoreFor(data), plan.project, plan.plan, target, text);
+        push({
+          type: "tool",
+          callId: `call-${turn.turn}-2`,
+          title: "note_insight",
+          kind: "other",
+          status: "done",
+          tool: "note_insight",
+          detail: noted.summary,
+        });
+        push({ type: "assistant", text: `${noted.summary}.` });
+        turn.edits = [{ path: noted.path, change: "modified" }];
+        const undo = s.undo ?? new Map<number, () => void>();
+        undo.set(turn.turn, () => removeInsightIn(planStoreFor(data), plan.project, noted.block));
+        s.undo = undo;
+        changed(noted.path);
+      } else if (writes) {
         push({
           type: "tool",
           callId: `call-${turn.turn}-2`,
@@ -283,6 +308,7 @@ export function bindChatMock(
       if (!turn || turn.edits.length === 0) {
         throw new Error(`CHAT_TURN_NO_EDITS: turn ${input.turn} changed no files`);
       }
+      s.undo?.get(turn.turn)?.();
       turn.reverted = { at: now(), restored: turn.edits.length, conflicts: 0 };
       changed(chatChangePath(s.summary.id));
       for (const e of turn.edits) changed(e.path);

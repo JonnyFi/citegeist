@@ -3,24 +3,37 @@ import { useI18n } from "../i18n";
 import type { CardJob } from "../lib/card-jobs";
 import { kindColor } from "../lib/cards";
 import { QuoteCard } from "./card-editor";
+import { CardExport } from "./card-export";
 import type { CardData } from "./card-list";
 import { EmptyState } from "./ui/states";
 
-/** One coloured square and the word for each card kind in use: the colour is never the only sign. */
-function Legend({ cards }: { cards: readonly CardData[] }) {
+/**
+ * Bar above the card column: one coloured square and the word for each card kind in use (the
+ * colour is never the only sign), and the export of all cards at the right.
+ */
+export function CardColumnBar({
+  cards,
+  project,
+}: {
+  cards: readonly CardData[];
+  project?: string | undefined;
+}) {
   const { t } = useI18n();
   const kinds = [...new Set(cards.map((c) => c.frontmatter.kind))];
   return (
-    <div
-      aria-hidden="true"
-      className="flex h-8 shrink-0 items-center gap-3 border-b border-line-soft bg-bg px-4 text-[11px] uppercase tracking-[0.08em] text-muted"
-    >
-      {kinds.map((kind) => (
-        <span key={kind} className="flex items-center gap-1.5">
-          <span className="size-2" style={{ background: kindColor(kind) }} />
-          {t(`kind.${kind}`)}
-        </span>
-      ))}
+    <div className="flex h-8 shrink-0 items-center justify-between gap-3 border-b border-line-soft bg-bg px-4">
+      <div
+        aria-hidden="true"
+        className="flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] text-muted"
+      >
+        {kinds.map((kind) => (
+          <span key={kind} className="flex items-center gap-1.5">
+            <span className="size-2" style={{ background: kindColor(kind) }} />
+            {t(`kind.${kind}`)}
+          </span>
+        ))}
+      </div>
+      <CardExport ids={cards.map((c) => c.frontmatter.id)} project={project} />
     </div>
   );
 }
@@ -61,7 +74,7 @@ export function CardPanel({
 
   return (
     <section aria-label={t("panel.title")} className="flex min-h-0 flex-1 flex-col">
-      <Legend cards={cards} />
+      <CardColumnBar cards={cards} />
       <ul className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         {cards.map((card) => {
           const id = card.frontmatter.id;

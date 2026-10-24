@@ -23,6 +23,8 @@ export function EditorField({
   index,
   label,
   placeholder,
+  onOpenTarget,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +32,9 @@ export function EditorField({
   index: LinkIndex | undefined;
   label: string;
   placeholder: string;
+  /** Gets a link target first; returns true when it handled the click (outline nodes do). */
+  onOpenTarget?: (target: string) => boolean;
+  className?: string;
 }) {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
@@ -44,6 +49,7 @@ export function EditorField({
   );
 
   const open = (event: OpenLinkEvent) => {
+    if (onOpenTarget?.(event.target)) return;
     if (!index) return;
     const target = resolveTarget(index, event.target);
     if (!target) return;
@@ -69,7 +75,7 @@ export function EditorField({
       onOpenLink={open}
       ariaLabel={label}
       placeholder={placeholder}
-      className="note-editor min-h-48"
+      className={className ?? "note-editor min-h-48"}
     />
   );
 }

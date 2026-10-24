@@ -6,17 +6,59 @@ import { ConnectionsPanel } from "../connections";
 import { useI18n } from "../i18n";
 import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
-import { useOp } from "../lib/hooks";
+import { useOp, useOpMutation } from "../lib/hooks";
+import { useReadingPosition } from "../lib/reading-position";
+import { cn, describeError } from "../lib/utils";
+import { itemsResolve } from "../planning/contracts";
 import { CardList } from "./card-list";
+import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
 import { Badge, StatusSquare } from "./ui/badge";
+import { Button } from "./ui/button";
 import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
 export type ItemTab = "overview" | "read";
+
+/**
+ * Actions of the overview's sub bar: look the metadata up again, and pick the reading up where it
+ * stopped. The position comes from localStorage until the core keeps it.
+ */
+function OverviewActions({ citekey, onResume }: { citekey: string; onResume: () => void }) {
+  const { t } = useI18n();
+  const position = useReadingPosition(citekey);
+  const resolve = useOpMutation(itemsResolve);
+  const failure = resolve.error ? describeError(resolve.error).message : undefined;
+  const status = resolve.data
+    ? resolve.data.changed.length > 0
+      ? t("resolve.changed", { fields: resolve.data.changed.join(", ") })
+      : t("resolve.unchanged")
+    : failure
+      ? /UNKNOWN_OPERATION|No operation/i.test(failure)
+        ? t("resolve.unsupported")
+        : failure
+      : undefined;
+  return (
+    <div className="flex items-center gap-2">
+      {status ? (
+        <span role="status" className={cn("text-[12px]", failure ? "text-danger" : "text-muted")}>
+          {status}
+        </span>
+      ) : null}
+      <Button size="sm" disabled={resolve.isPending} onClick={() => resolve.mutate({ citekey })}>
+        {resolve.isPending ? t("resolve.running") : t("resolve.button")}
+      </Button>
+      <Button size="sm" variant="primary" onClick={onResume}>
+        {position
+          ? t("reading.resume", { page: position.label ?? String(position.page + 1) })
+          : t("reading.start")}
+      </Button>
+    </div>
+  );
+}
 
 /** One block of the overview: a 140px label column and the content, separated by an ink rule. */
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
@@ -47,13 +89,20 @@ export function ItemView({
   citekey,
   tab = "overview",
   cardId,
+  resume = false,
   onChange,
 }: {
   citekey: string;
   tab?: ItemTab;
   /** The card open in the reader. */
   cardId?: string | undefined;
-  onChange?: (next: { tab: ItemTab; card?: string | undefined }) => void;
+  /** Open the reader at the stored reading position. */
+  resume?: boolean;
+  onChange?: (next: {
+    tab: ItemTab;
+    card?: string | undefined;
+    resume?: boolean | undefined;
+  }) => void;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -181,6 +230,7 @@ export function ItemView({
             onSelect={(id) => onChange?.({ tab: "read", card: id })}
             tabs={tabs}
             renderColumn={renderColumn}
+            resume={resume}
           />
         )}
       </>
@@ -188,20 +238,28 @@ export function ItemView({
   }
 
   const cardsContent = (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      {cards.isPending ? (
-        <Loading label={t("item.loadingCards")} />
-      ) : cards.isError ? (
-        <ErrorState error={cards.error} />
-      ) : cards.data.cards.length === 0 ? (
-        <EmptyState
-          icon={<Quote />}
-          title={t("item.noCardsTitle")}
-          description={t("item.noCardsDescription")}
-        />
-      ) : (
-        <CardList cards={cards.data.cards} onOpen={(id) => onChange?.({ tab: "read", card: id })} />
-      )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      {cards.data && cards.data.cards.length > 0 ? (
+        <CardColumnBar cards={cards.data.cards} />
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {cards.isPending ? (
+          <Loading label={t("item.loadingCards")} />
+        ) : cards.isError ? (
+          <ErrorState error={cards.error} />
+        ) : cards.data.cards.length === 0 ? (
+          <EmptyState
+            icon={<Quote />}
+            title={t("item.noCardsTitle")}
+            description={t("item.noCardsDescription")}
+          />
+        ) : (
+          <CardList
+            cards={cards.data.cards}
+            onOpen={(id) => onChange?.({ tab: "read", card: id })}
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -209,7 +267,13 @@ export function ItemView({
     <div className="flex h-full min-h-0">
       {header}
       <div className="flex min-w-0 flex-1 flex-col">
-        <SubBar>{tabs}</SubBar>
+        <SubBar>
+          {tabs}
+          <OverviewActions
+            citekey={citekey}
+            onResume={() => onChange?.({ tab: "read", resume: true })}
+          />
+        </SubBar>
         <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
           <article className="mx-auto flex w-full max-w-[720px] flex-col">
             <header className="flex flex-col gap-2.5 pb-7">

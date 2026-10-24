@@ -9,7 +9,7 @@ import {
 import { InboxScreen } from "./components/inbox-screen";
 import { type ItemTab, ItemView } from "./components/item-view";
 import { type ItemFilters, ItemsScreen } from "./components/items-screen";
-import { ProjectsScreen, ProjectView } from "./components/projects";
+import { ProjectsScreen, ProjectView, parseProjectSearch } from "./components/projects";
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
 import { type GraphDepth, GraphScreen } from "./graph";
@@ -55,19 +55,23 @@ const inboxRoute = createRoute({
 const itemRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/items/$citekey",
-  validateSearch: (search: Record<string, unknown>): { tab?: ItemTab; card?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: ItemTab; card?: string; resume?: true } => ({
     ...(search.tab === "read" ? { tab: "read" as const } : {}),
     ...(typeof search.card === "string" && search.card ? { card: search.card } : {}),
+    ...(search.resume === true || search.resume === "true" ? { resume: true as const } : {}),
   }),
   component: function ItemRoute() {
     const { citekey } = itemRoute.useParams();
-    const { tab, card } = itemRoute.useSearch();
+    const { tab, card, resume } = itemRoute.useSearch();
     const navigate = useNavigate();
     return (
       <ItemView
         citekey={citekey}
         tab={tab ?? "overview"}
         cardId={card}
+        resume={resume === true}
         onChange={(next) =>
           void navigate({
             to: "/items/$citekey",
@@ -75,6 +79,7 @@ const itemRoute = createRoute({
             search: {
               ...(next.tab === "read" ? { tab: "read" as const } : {}),
               ...(next.card ? { card: next.card } : {}),
+              ...(next.resume ? { resume: true as const } : {}),
             },
             replace: true,
           })
@@ -93,9 +98,20 @@ const projectsRoute = createRoute({
 const projectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects/$slug",
+  validateSearch: parseProjectSearch,
   component: function ProjectRoute() {
     const { slug } = projectRoute.useParams();
-    return <ProjectView slug={slug} />;
+    const search = projectRoute.useSearch();
+    const navigate = useNavigate();
+    return (
+      <ProjectView
+        slug={slug}
+        search={search}
+        onSearch={(next) =>
+          void navigate({ to: "/projects/$slug", params: { slug }, search: next, replace: true })
+        }
+      />
+    );
   },
 });
 

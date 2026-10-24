@@ -1,4 +1,5 @@
 import { chatEn } from "../chat/strings";
+import { planningEn } from "../planning/strings";
 import type { MessageKey } from "./de";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -412,6 +413,7 @@ export const en: Record<MessageKey, string> = {
   "graph.noWebgl":
     "The graph needs WebGL and is not available here. The node list next to it still works.",
   ...chatEn,
+  ...planningEn,
   "agent.tab": "Agent",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",
