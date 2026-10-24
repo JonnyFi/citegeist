@@ -21,6 +21,7 @@ import { anchorFromSelection, type CardsListOutput, itemCardsInput, kindColor } 
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { loadReadingPosition, restoreReading, trackReading } from "../lib/reading-position";
 import { describeError } from "../lib/utils";
+import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardPanel } from "./card-panel";
 import { SubBar } from "./layout";
@@ -74,6 +75,9 @@ export function ReaderTab({
               icon={<FileX />}
               title={t("reader.unavailableTitle")}
               description={`${t("reader.unavailableDescription")} ${describeError(assets.error).message}`}
+              {...(fm.sources.length === 0
+                ? { action: <AttachPdf citekey={fm.citekey} variant="button" /> }
+                : {})}
             />
           )}
         </div>

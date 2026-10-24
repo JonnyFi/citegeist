@@ -4,6 +4,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -190,6 +191,55 @@ export function trashItem(
   );
   emitRemoved(lib, lib.indexer.removeUnder(`items/${citekey}`));
   return { trashedTo: dest };
+}
+
+/**
+ * items.restore: moves the newest trashed folder of a citekey back to `items/` and indexes it
+ * again. The marker `trashed.json` is removed.
+ */
+export function restoreItem(lib: Library, citekey: string): void {
+  if (existsSync(lib.paths.itemDir(citekey))) {
+    throw problem(
+      "CITEKEY_TAKEN",
+      `cannot restore ${citekey}: an item with that citekey exists again`,
+      "Rename the item that is there, then restore.",
+      { citekey },
+    );
+  }
+  const trash = join(lib.root, ".trash");
+  const candidates = existsSync(trash)
+    ? readdirSync(trash)
+        .filter(
+          (name) => name.startsWith(`${citekey}-`) && existsSync(join(trash, name, "trashed.json")),
+        )
+        .filter((name) => {
+          try {
+            const meta = JSON.parse(readFileSync(join(trash, name, "trashed.json"), "utf8")) as {
+              citekey?: string;
+            };
+            return meta.citekey === citekey;
+          } catch {
+            return false;
+          }
+        })
+        .sort()
+    : [];
+  const newest = candidates[candidates.length - 1];
+  if (!newest) {
+    throw problem(
+      "NOT_IN_TRASH",
+      `no trashed item with citekey ${citekey}`,
+      "Check the citekey, or look in the .trash folder of the library.",
+      { citekey },
+    );
+  }
+  const from = join(trash, newest);
+  renameSync(from, lib.paths.itemDir(citekey));
+  rmSync(join(lib.paths.itemDir(citekey), "trashed.json"), { force: true });
+  const rel = `items/${citekey}/${citekey}.md`;
+  const result = lib.indexer.indexFile(rel);
+  lib.emit("change", { ...result, external: false } satisfies ChangeEvent);
+  lib.sync();
 }
 
 export function acceptInbox(lib: Library, actor: Actor, citekeys: string[]): void {

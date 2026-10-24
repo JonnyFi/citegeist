@@ -1,4 +1,9 @@
-import { itemsGet, RetractionMarker } from "@citegeist/ops";
+import {
+  itemsGet,
+  RetractionMarker,
+  type RetractionSummary,
+  retractionNoticeUrl,
+} from "@citegeist/ops";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { useEffect } from "react";
@@ -24,29 +29,28 @@ function isSevere(marker: RetractionMarker): boolean {
 }
 
 /** Link to the notice: the DOI of the first notice that has one. */
-export function noticeUrl(marker: RetractionMarker): string | undefined {
-  const doi = marker.notices.find((n) => n.doi)?.doi;
-  return doi ? `https://doi.org/${doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : undefined;
-}
+export const noticeUrl = retractionNoticeUrl;
 
 /**
  * Stamp with the status word. With the DOI of a notice it is a link to that notice; a click on the
- * badge in a table row opens the notice and does not open the item.
+ * badge in a table row opens the notice and does not open the item. It takes the full marker or
+ * the summary that items.list carries.
  */
 export function RetractionBadge({
   marker,
   className,
 }: {
-  marker: RetractionMarker;
+  marker: RetractionMarker | RetractionSummary;
   className?: string;
 }) {
   const { t } = useI18n();
   const status = t(`retraction.status.${marker.status}` as MessageKey);
-  const url = noticeUrl(marker);
-  const first = marker.notices[0];
+  const full = "notices" in marker;
+  const url = full ? retractionNoticeUrl(marker) : marker.noticeUrl;
+  const first = full ? marker.notices[0] : undefined;
   const title = [first?.label, first?.date].filter(Boolean).join(", ") || status;
   const stamp = (
-    <Stamp tone={isSevere(marker) ? "danger" : "ink"} className={className}>
+    <Stamp tone={marker.status !== "corrected" ? "danger" : "ink"} className={className}>
       {status}
     </Stamp>
   );
@@ -120,10 +124,11 @@ export function RetractionNote({ marker }: { marker: RetractionMarker }) {
 }
 
 /**
- * Markers for a list of items, for the table. items.list does not carry the marker, so each row
- * reads its item once; the result is kept for five minutes and refetched when the item's file
- * changes. The keys stay outside the ["op"] family so that unrelated library changes do not make
- * a whole table refetch.
+ * Markers for a list of citekeys that did not come from items.list (the rows of a literature
+ * matrix): each one reads its item once; the result is kept for five minutes and refetched when
+ * the item's file changes. The library table does not need this, items.list carries the summary.
+ * The keys stay outside the ["op"] family so that unrelated library changes do not make a whole
+ * table refetch.
  */
 export function useRetractionMarkers(citekeys: readonly string[]): Map<string, RetractionMarker> {
   const core = useCore();

@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
-import { accessSync, constants, readdirSync } from "node:fs";
+import { accessSync, constants, readdirSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
+import { delimiter, dirname, extname, join } from "node:path";
 
 /**
  * The agents the chat can talk to. Every user brings an own subscription through the official CLI
@@ -40,14 +40,33 @@ export function resolveAdapterEntry(pkg: string): string | undefined {
  * Command line that runs a bundled adapter with the Node of this process. Inside Electron that
  * is the app binary itself, which acts as plain Node with ELECTRON_RUN_AS_NODE.
  */
-export function adapterLaunch(pkg: string): AcpLaunch | undefined {
+export function adapterLaunch(
+  pkg: string,
+  extraEnv: Record<string, string> = {},
+): AcpLaunch | undefined {
   const entry = resolveAdapterEntry(pkg);
   if (!entry) return undefined;
+  const env = { ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}), ...extraEnv };
   return {
     command: process.execPath,
     args: [entry],
-    ...(process.versions.electron ? { env: { ELECTRON_RUN_AS_NODE: "1" } } : {}),
+    ...(Object.keys(env).length > 0 ? { env } : {}),
   };
+}
+
+/**
+ * The CLI the user installed, when the adapter can run it directly: a native executable. An npm
+ * shim (a `.js` file with a node shebang) needs a node on PATH, which a Finder-launched app does
+ * not have, so it is skipped and the adapter falls back to the CLI bundled with it.
+ */
+export function installedCli(path: string | undefined): string | undefined {
+  if (!path) return undefined;
+  try {
+    const real = realpathSync(path);
+    return /^\.(c|m)?js$/.test(extname(real)) ? undefined : path;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface AcpLaunch {
@@ -107,8 +126,11 @@ export const CLAUDE_CODE: BackendDefinition = {
       hint: "Run `claude auth login` in a terminal, then retry.",
     },
   },
-  launch() {
-    return adapterLaunch(CLAUDE_ACP_PACKAGE);
+  // The adapter runs the Claude Code binary the user installed (CLAUDE_CODE_EXECUTABLE) and falls
+  // back to the one bundled with citegeist when there is none.
+  launch(find) {
+    const cli = installedCli(find("claude"));
+    return adapterLaunch(CLAUDE_ACP_PACKAGE, cli ? { CLAUDE_CODE_EXECUTABLE: cli } : {});
   },
   // Read by claude-agent-acp. Sandbox: no personal ~/.claude config, only the MCP servers citegeist
   // passes, no shell (research notes, section 4.5, points 3 and 4). Otherwise (A11): the settings
@@ -143,8 +165,10 @@ export const CODEX: BackendDefinition = {
       hint: "Run `codex login` in a terminal, then retry.",
     },
   },
-  launch() {
-    return adapterLaunch(CODEX_ACP_PACKAGE);
+  // Same for Codex (CODEX_PATH): the user's own binary first, the bundled one as fallback.
+  launch(find) {
+    const cli = installedCli(find("codex"));
+    return adapterLaunch(CODEX_ACP_PACKAGE, cli ? { CODEX_PATH: cli } : {});
   },
 };
 

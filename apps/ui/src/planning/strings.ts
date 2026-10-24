@@ -112,6 +112,8 @@ export const planningDe = {
   "add.added": "Hinzugefügt:",
   "add.duplicate": "Ist schon in der Bibliothek:",
   "add.drop": "PDF hier ablegen",
+  "add.pick": "PDF wählen",
+  "add.pick.title": "PDF zur Bibliothek hinzufügen",
   "add.notPdf": "{name} ist kein PDF.",
   "add.noPath":
     "Der Pfad von {name} ist hier nicht verfügbar. Füge die Datei in der Desktop-App hinzu.",
@@ -254,6 +256,8 @@ export const planningEn: Record<keyof typeof planningDe, string> = {
   "add.added": "Added:",
   "add.duplicate": "Already in the library:",
   "add.drop": "Drop the PDF here",
+  "add.pick": "Choose PDF",
+  "add.pick.title": "Add a PDF to the library",
   "add.notPdf": "{name} is not a PDF.",
   "add.noPath": "The path of {name} is not available here. Add the file in the desktop app.",
   "add.kind.doi": "DOI",

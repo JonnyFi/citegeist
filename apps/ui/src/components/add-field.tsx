@@ -6,7 +6,7 @@ import { type MessageKey, useI18n } from "../i18n";
 import { useCore, useOpMutation } from "../lib/hooks";
 import { classifyIdentifier } from "../lib/identifier";
 import { cn, describeError } from "../lib/utils";
-import { Label } from "./layout";
+import { Menu } from "./ui/menu";
 
 type Outcome =
   | { kind: "added"; citekey: string }
@@ -42,6 +42,8 @@ export function AddField({ project }: { project?: string | undefined }) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
+  const textField = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const detected = classifyIdentifier(value);
   const hint =
@@ -81,6 +83,24 @@ export function AddField({ project }: { project?: string | undefined }) {
       }
       submit(path);
     }
+  };
+
+  // the desktop app opens the native file dialog; the browser preview uses a plain file input
+  const pickFiles = () => {
+    const pick = window.citegeist?.pickPaths;
+    if (!pick) {
+      fileInput.current?.click();
+      return;
+    }
+    void pick({
+      kind: "file",
+      multiple: true,
+      extensions: ["pdf"],
+      title: t("add.pick.title"),
+    }).then((paths) => {
+      setOutcome(null);
+      for (const path of paths) submit(path);
+    });
   };
 
   useEffect(() => {
@@ -128,17 +148,42 @@ export function AddField({ project }: { project?: string | undefined }) {
       }}
       className="relative flex min-w-0 items-center gap-3"
     >
-      <label htmlFor={id}>
-        <Label className="font-medium tracking-[0.08em]">{t("add.label")}</Label>
-      </label>
+      <Menu
+        label={t("add.menu")}
+        trigger={t("add.menu")}
+        className="inline-flex h-[26px] shrink-0 items-center border border-ink px-2.5 text-[12px] font-medium hover:bg-sunken"
+        entries={[
+          { label: t("add.pick"), onSelect: pickFiles },
+          {
+            label: t("add.menu.type"),
+            onSelect: () => setTimeout(() => textField.current?.focus(), 0),
+          },
+        ]}
+      />
       <input
+        ref={textField}
         id={id}
         type="text"
+        aria-label={t("add.label")}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("add.placeholder")}
         autoComplete="off"
         className="h-[30px] w-[420px] min-w-0 max-w-full border-0 border-b border-line bg-transparent px-0 text-[13px] placeholder:text-muted"
+      />
+      <button type="submit" hidden tabIndex={-1} aria-hidden="true" />
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        multiple
+        hidden
+        data-testid="pdf-file-input"
+        onChange={(e) => {
+          setOutcome(null);
+          dropFiles(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
       />
       {hint ? (
         <span className="shrink-0 font-mono text-[11px] text-muted" aria-live="polite">

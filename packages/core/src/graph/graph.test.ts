@@ -438,6 +438,15 @@ describe("items.checkRetractions", () => {
       citekey: "wakefield1998",
     });
     expect(retractionOf(got.frontmatter)?.status).toBe("retracted");
+    // items.list carries the status and the link of the first notice with a DOI, so a table needs no per-row items.get.
+    const listed = await e.call<{
+      items: Array<{ citekey: string; retraction?: { status: string; noticeUrl?: string } }>;
+    }>("items.list", { limit: 50 });
+    expect(listed.items.find((i) => i.citekey === "wakefield1998")?.retraction).toEqual({
+      status: "retracted",
+      noticeUrl: "https://doi.org/10.1016/s0140-6736(04)15715-2",
+    });
+    expect(listed.items.find((i) => i.citekey === "harris2020")?.retraction).toBeUndefined();
     expect(listFlagged(e.lib)).toEqual([
       { citekey: "wakefield1998", title: "Title of wakefield1998", status: "retracted" },
     ]);

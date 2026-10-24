@@ -7,6 +7,7 @@ import {
   itemsAttach,
   itemsRename,
   itemsResolve,
+  itemsRestore,
   itemsTrash,
   itemsUpdate,
   type Registry,
@@ -66,6 +67,10 @@ export function bindIngestOperations(
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
     .bind(itemsTrash, async (ctx, input) => {
       svc.trashItem(ctx.actor, input.citekey);
+      return { ok: true as const };
+    })
+    .bind(itemsRestore, async (_ctx, input) => {
+      svc.restoreItem(input.citekey);
       return { ok: true as const };
     })
     .bind(inboxAccept, async (ctx, input) => {
