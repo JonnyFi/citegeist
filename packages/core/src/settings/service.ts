@@ -56,6 +56,23 @@ function invalid(message: string, fix: string): CitegeistError {
   });
 }
 
+/** The public address of the tunnel: an http(s) origin, plus an optional path, without a trailing slash. */
+function normalizePublicUrl(text: string): string {
+  let parsed: URL | undefined;
+  try {
+    parsed = new URL(text);
+  } catch {
+    // handled below
+  }
+  if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:") || !parsed.host) {
+    throw invalid(
+      "The public address is not a web address.",
+      "Enter the address of your tunnel, for example https://mac.tailnet-name.ts.net, or leave the field empty.",
+    );
+  }
+  return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
+}
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function scrub(text: string): string {
@@ -142,8 +159,14 @@ export class SettingsService {
       uiLanguage: stored.uiLanguage,
       semantic: { ...stored.semantic },
       connector: { ...stored.connector },
+      webhooks: { ...stored.webhooks },
       chat: { ...stored.chat },
     };
+  }
+
+  /** Stored webhook settings, read synchronously by the hooks listener and the callback URLs. */
+  webhooks(): { port: number; publicUrl?: string } {
+    return { ...this.deps.store.load().webhooks };
   }
 
   /** A11: true when chat agents run in the sandbox instead of the user's own environment. */
@@ -246,6 +269,17 @@ export class SettingsService {
         enabled: patch.connector.enabled ?? stored.connector.enabled,
         port: patch.connector.port ?? stored.connector.port,
       };
+    }
+
+    if (patch.webhooks) {
+      const next = { ...stored.webhooks };
+      if (patch.webhooks.port !== undefined) next.port = patch.webhooks.port;
+      if (patch.webhooks.publicUrl !== undefined) {
+        const url = patch.webhooks.publicUrl.trim();
+        if (!url) delete next.publicUrl;
+        else next.publicUrl = normalizePublicUrl(url);
+      }
+      stored.webhooks = next;
     }
 
     if (patch.chat?.isolated !== undefined) stored.chat = { isolated: patch.chat.isolated };

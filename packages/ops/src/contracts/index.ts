@@ -28,7 +28,7 @@ import { IMPORT_CONTRACTS } from "./import.js";
 import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
-import { WEBHOOK_CONTRACTS } from "./webhooks.js";
+import { DEFAULT_HOOKS_PORT, HooksPort, WEBHOOK_CONTRACTS } from "./webhooks.js";
 
 const Paged = z.object({
   limit: z.number().int().positive().max(500).default(50),
@@ -646,6 +646,17 @@ export const Settings = z.object({
     })
     .default({ enabled: false, port: DEFAULT_CONNECTOR_PORT }),
   /**
+   * Webhooks for external agents. A listener on 127.0.0.1:`port` serves only /hooks/ (the tunnel
+   * points there) while at least one connector exists. `publicUrl` is the address of the tunnel;
+   * the CITEGEIST_PUBLIC_URL variable overrides it.
+   */
+  webhooks: z
+    .object({
+      port: HooksPort.default(DEFAULT_HOOKS_PORT),
+      publicUrl: z.string().optional(),
+    })
+    .default({ port: DEFAULT_HOOKS_PORT }),
+  /**
    * A11: chat agents run in the user's own environment (shell, the user's MCP servers and
    * settings) unless this is on. "Isolierter Agent" restores the sandbox: no shell, no user
    * settings, only the citegeist tools.
@@ -704,6 +715,13 @@ export const settingsUpdate = defineContract({
         .optional(),
       connector: z
         .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })
+        .optional(),
+      webhooks: z
+        .object({
+          port: HooksPort.optional(),
+          /** An empty string removes the setting. */
+          publicUrl: z.string().optional(),
+        })
         .optional(),
       chat: z.object({ isolated: z.boolean().optional() }).optional(),
     }),

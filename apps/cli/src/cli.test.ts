@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { createFixtureRegistry, FIXTURE_CITEKEY } from "@citegeist/mcp";
-import { CONTRACTS, type Registry } from "@citegeist/ops";
+import { CONTRACTS, Registry, webhooksCreate } from "@citegeist/ops";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { describe, expect, it } from "vitest";
@@ -177,6 +177,26 @@ describe("cg", () => {
       stdin: '{"identifier":"10.1000/b"}',
     });
     expect(b.code).toBe(EXIT.ok);
+  });
+
+  it("reads a secret value from standard input with --<field>-stdin", async () => {
+    const seen: unknown[] = [];
+    const registry = new Registry().bind(webhooksCreate, async (_ctx, input) => {
+      seen.push(input);
+      throw new Error("stop here");
+    });
+    const base = ["webhooks", "create", "grok", "--kind", "both", "--url", "https://a.example/t"];
+    await cg([...base, "--auth-header", "Authorization", "--auth-value-stdin"], {
+      registry,
+      stdin: "Bearer crsr_abc\n",
+    });
+    expect(seen[0]).toMatchObject({ authHeader: "Authorization", authValue: "Bearer crsr_abc" });
+    const empty = await cg([...base, "--auth-header", "Authorization", "--auth-value-stdin"], {
+      registry,
+      stdin: "",
+    });
+    expect(empty.code).toBe(EXIT.usage);
+    expect(seen).toHaveLength(1);
   });
 
   it("accepts a variadic positional", async () => {
