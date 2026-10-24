@@ -61,7 +61,11 @@ extraResources:
       - NOTICE.md
       - "*.yaml"
       - scripts/**
-      - vendor/**
+      # opendraft, Text to LaTeX and the legacy import wait for issue #61 and have no operation yet
+      - "!vendor/**"
+      - "!scripts/word_latex.py"
+      - "!scripts/latex_export.py"
+      - "!scripts/opendraft_bridge.py"
       - "!**/__pycache__/**"
       - "!**/*.pyc"
 asar: true

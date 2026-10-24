@@ -9,6 +9,7 @@ import { detectGitDir, type GitDirState } from "./location.js";
  * `blocks.jsonl` are kept on purpose: ids would change if they were regenerated. `pages.json`
  * holds page labels that the user confirmed, so it stays as well. Of a literature search run only
  * the results are kept; the query cache, the cached OpenAlex records and the log can be refetched.
+ * The watchlist logs, the watchlist lock and half-written `.tmp` files of the scripts are local too.
  */
 export const IGNORE_LINES = [
   ".DS_Store",
@@ -25,6 +26,9 @@ export const IGNORE_LINES = [
   "research/runs/*/query-cache/",
   "research/runs/*/stderr.log",
   "research/runs/*/works/",
+  "research/watches/logs/",
+  "research/watches/.lock",
+  "research/**/*.tmp",
 ];
 
 export const LFS_LINES = ["items/*/sources/* filter=lfs diff=lfs merge=lfs -text"];

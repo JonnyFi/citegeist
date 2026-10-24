@@ -368,96 +368,6 @@ export const litsearchPreprintsCheck = defineContract({
   output: z.object({ job: JobId }),
 });
 
-export const litsearchTools = defineContract({
-  name: "litsearch.tools",
-  summary:
-    "Which external tools the opendraft handover, paper writing and Text to LaTeX can use on this machine",
-  access: "read",
-  input: z.object({}),
-  output: z.object({
-    claude: z.boolean(),
-    pandoc: z.boolean(),
-    latexmk: z.boolean(),
-    opendraft: z.boolean(),
-  }),
-});
-
-export const litsearchOpendraft = defineContract({
-  name: "litsearch.opendraft",
-  summary:
-    "Hand selected papers of a run to opendraft as a project folder with sources, summaries and verified citations",
-  access: "write",
-  input: z.object({
-    runId: LitsearchRunId,
-    keys: z.array(z.string().min(1)).min(1).max(200),
-    dest: z.string().optional(),
-  }),
-  output: z.object({
-    path: z.string(),
-    command: z.string(),
-    prompt: z.string(),
-    sources: z.number().int().nonnegative(),
-    skipped: z.array(z.string()),
-    citationsOk: z.boolean(),
-  }),
-});
-
-export const litsearchWritePaper = defineContract({
-  name: "litsearch.writePaper",
-  summary: "Open Terminal with Claude Code in an opendraft project folder to write the paper",
-  access: "admin",
-  input: z.object({ path: z.string().min(1) }),
-  output: Ok,
-});
-
-export const litsearchWordToLatex = defineContract({
-  name: "litsearch.wordToLatex",
-  summary:
-    "Turn a Word text (.docx or pasted HTML) into main.tex in a journal template with references.bib and a zip for Overleaf",
-  access: "write",
-  input: z
-    .object({
-      file: z.string().optional().describe("path of a .docx"),
-      pasted: z.string().optional().describe("HTML copied from Word"),
-      template: z.enum(["ieee-conference", "ieee-journal", "article"]).default("ieee-conference"),
-      bib: z.string().optional(),
-      lang: z.string().default("english"),
-      style: z.string().default("apa"),
-      out: z.string().optional(),
-    })
-    .refine((v) => Boolean(v.file) !== Boolean(v.pasted), {
-      message: "pass either file or pasted",
-    }),
-  output: z.object({ path: z.string(), zip: z.string().optional(), warnings: z.array(z.string()) }),
-});
-
-export const litsearchLegacy = defineContract({
-  name: "litsearch.legacy",
-  summary: "Whether this machine has runs of the standalone research-pipeline that can be imported",
-  access: "read",
-  input: z.object({}),
-  output: z.object({
-    found: z.boolean(),
-    dir: z.string().optional(),
-    runs: z.number().int().nonnegative(),
-    watches: z.number().int().nonnegative(),
-    imported: z.boolean(),
-  }),
-});
-
-export const litsearchImportLegacy = defineContract({
-  name: "litsearch.importLegacy",
-  summary:
-    "Copy the runs and watchlists of the standalone research-pipeline into this library; background runs stay off",
-  access: "admin",
-  input: z.object({}),
-  output: z.object({
-    runs: z.number().int().nonnegative(),
-    watches: z.number().int().nonnegative(),
-    skipped: z.number().int().nonnegative(),
-  }),
-});
-
 export const LITSEARCH_CONTRACTS: readonly OperationContract[] = [
   litsearchSuggest,
   litsearchStart,
@@ -478,10 +388,4 @@ export const LITSEARCH_CONTRACTS: readonly OperationContract[] = [
   litsearchPreprints,
   litsearchPreprintsImport,
   litsearchPreprintsCheck,
-  litsearchTools,
-  litsearchOpendraft,
-  litsearchWritePaper,
-  litsearchWordToLatex,
-  litsearchLegacy,
-  litsearchImportLegacy,
 ];
