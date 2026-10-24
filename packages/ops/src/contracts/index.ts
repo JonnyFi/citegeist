@@ -54,6 +54,9 @@ const ItemSummary = z.object({
   /** Who added an inbox item and why (D7). */
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
+  /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
+  incomplete: z.boolean().optional(),
+  incompleteReason: z.string().optional(),
 });
 
 export * from "./chat.js";
@@ -103,7 +106,13 @@ export const itemsAdd = defineContract({
     target: z.enum(["inbox", "library"]).default("inbox"),
     why: z.string().optional(),
   }),
-  output: z.object({ citekey: Citekey, job: JobId, duplicateOf: Citekey.optional() }),
+  output: z.object({
+    citekey: Citekey,
+    job: JobId,
+    duplicateOf: Citekey.optional(),
+    /** True when the matched item had no working source and the new file or download repairs it. */
+    repaired: z.boolean().optional(),
+  }),
   mcp: { tool: "add_item", readOnly: false },
 });
 export const itemsAttach = defineContract({
@@ -128,6 +137,7 @@ export const itemsAttach = defineContract({
     /** Conversion of the new file. Absent when nothing was added. */
     job: JobId.optional(),
   }),
+  mcp: { tool: "attach_file", readOnly: false },
 });
 export const itemsGet = defineContract({
   name: "items.get",
@@ -165,10 +175,12 @@ export const itemsRename = defineContract({
 });
 export const itemsTrash = defineContract({
   name: "items.trash",
-  summary: "Move an item to the trash",
+  summary:
+    "Move an item to the trash. An agent may trash inbox items, incomplete items and items an agent added, as long as no card or link refers to them; the folder stays in the library trash and records who removed it",
   access: "write",
   input: ItemRef,
   output: Ok,
+  mcp: { tool: "trash_item", readOnly: false },
 });
 export const inboxAccept = defineContract({
   name: "inbox.accept",
@@ -443,6 +455,7 @@ export const projectsCreate = defineContract({
   access: "write",
   input: z.object({ slug: ProjectSlug, title: z.string().min(1), brief: z.string().default("") }),
   output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string() }),
+  mcp: { tool: "create_project", readOnly: false },
 });
 export const projectsGet = defineContract({
   name: "projects.get",
@@ -468,6 +481,7 @@ export const projectsList = defineContract({
   access: "read",
   input: z.object({}),
   output: z.object({ projects: z.array(ProjectFrontmatter) }),
+  mcp: { tool: "list_projects", readOnly: true, idempotent: true },
 });
 
 // Search and citations ------------------------------------------------------------------------------
@@ -586,6 +600,12 @@ export const Settings = z.object({
       port: ConnectorPort.default(DEFAULT_CONNECTOR_PORT),
     })
     .default({ enabled: false, port: DEFAULT_CONNECTOR_PORT }),
+  /**
+   * A11: chat agents run in the user's own environment (shell, the user's MCP servers and
+   * settings) unless this is on. "Isolierter Agent" restores the sandbox: no shell, no user
+   * settings, only the citegeist tools.
+   */
+  chat: z.object({ isolated: z.boolean().default(false) }).default({ isolated: false }),
 });
 /** Where the embedding model stands. `progress` (0 to 1) is set while the files download. */
 export const SemanticStatus = z.object({
@@ -638,6 +658,7 @@ export const settingsUpdate = defineContract({
       connector: z
         .object({ enabled: z.boolean().optional(), port: ConnectorPort.optional() })
         .optional(),
+      chat: z.object({ isolated: z.boolean().optional() }).optional(),
     }),
     apiKey: z.object({ provider: z.string(), key: z.string().min(1) }).optional(),
   }),

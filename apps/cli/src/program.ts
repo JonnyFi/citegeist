@@ -6,7 +6,7 @@ import {
   startMcpHttpServer,
   toAgentError,
 } from "@citegeist/mcp";
-import type { OperationContract, Registry } from "@citegeist/ops";
+import { localizeError, type OperationContract, type Registry } from "@citegeist/ops";
 import { Actor, type AgentError, CitegeistError } from "@citegeist/schema";
 import { Command, CommanderError } from "commander";
 import { EXIT, EXIT_HELP, exitCodeFor } from "./exit.js";
@@ -75,7 +75,9 @@ export function buildProgram(registry: Registry, io: CliIO, onExit: (code: numbe
     return parent;
   };
 
-  const report = (error: AgentError, json: boolean) => {
+  const report = (raw: AgentError, json: boolean) => {
+    // Fix texts name operations; on the command line they are `cg` commands.
+    const error = localizeError(raw, "cli", registry.list());
     io.stderr(json ? `${JSON.stringify({ error })}\n` : `${formatAgentError(error)}\n`);
     onExit(exitCodeFor(error));
   };

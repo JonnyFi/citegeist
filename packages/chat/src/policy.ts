@@ -10,13 +10,18 @@ import { relativeInside } from "./util.js";
  * - Reading, searching and fetching are allowed, because research needs the web.
  * - Edits are allowed inside the library's text areas (D12), never in derived data, converted
  *   sources or the manifest, and never in a research job.
- * - Shell commands and everything unknown are rejected.
+ * - Shell commands and everything unknown are rejected in the sandbox (A11, isolated).
+ *   Outside the sandbox the agent runs in the user's own environment: the shell and the user's
+ *   other tools are allowed, and edits outside the library are allowed. The library keeps its
+ *   protected areas (derived data, converted sources, the manifest).
  */
 
 export type SessionMode = "chat" | "research";
 
 export interface PolicyContext {
   mode: SessionMode;
+  /** A11: the sandbox. Research jobs are always isolated. */
+  isolated: boolean;
   libraryRoot: string;
   /** The session's scratch directory, where the agent may keep working files. */
   scratchDir: string;
@@ -114,11 +119,14 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
       }
       const paths = pathsOf(req);
       if (paths.length === 0) {
+        if (!ctx.isolated) return { allow: true };
         return { allow: false, reason: "The edit names no file, so citegeist cannot record it." };
       }
       for (const p of paths) {
         if (relativeInside(ctx.scratchDir, p) !== undefined) continue;
         const rel = relativeInside(ctx.libraryRoot, p);
+        // The user's own environment may change files outside the library.
+        if (rel === undefined && !ctx.isolated) continue;
         if (rel === undefined || !writable(rel)) {
           return { allow: false, reason: `Editing ${p} is not allowed in a chat.` };
         }
@@ -126,8 +134,15 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
       return { allow: true };
     }
     case "execute":
-      return { allow: false, reason: "Shell commands are not allowed in a chat." };
+      if (!ctx.isolated && ctx.mode === "chat") return { allow: true };
+      return {
+        allow: false,
+        reason:
+          "Shell commands are not allowed in an isolated chat. Turn off Isolierter Agent in the settings to allow them.",
+      };
     default:
+      // The user's own MCP servers and other tools.
+      if (!ctx.isolated && ctx.mode === "chat") return { allow: true };
       return {
         allow: false,
         reason: `The tool call "${call.title ?? call.name ?? "?"}" is not allowed.`,

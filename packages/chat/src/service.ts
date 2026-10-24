@@ -34,6 +34,11 @@ export interface ChatHost {
   notify(path: string): void;
   /** Backend to use when `chat.start` names none: the routing setting. */
   defaultBackend?(): string | undefined;
+  /**
+   * A11: true when chat sessions run in the sandbox (setting "Isolierter Agent"). Otherwise they
+   * get the user's own environment. Research jobs ignore this and always run isolated.
+   */
+  isolated?(): boolean;
   now?(): Date;
 }
 
@@ -46,6 +51,8 @@ export interface ServiceOptions {
 interface Live {
   state: SessionState;
   driver?: AgentDriver | undefined;
+  /** Whether `driver` was started in the sandbox; a changed setting starts a new one. */
+  driverIsolated?: boolean | undefined;
   abort?: AbortController | undefined;
   running?: Promise<void> | undefined;
   timer?: NodeJS.Timeout | undefined;
@@ -84,6 +91,11 @@ export class ChatService {
 
   private now(): Date {
     return this.host.now?.() ?? new Date();
+  }
+
+  /** A11: research jobs and the setting "Isolierter Agent" give the sandbox. */
+  private isolated(kind: "chat" | "research"): boolean {
+    return kind === "research" || this.host.isolated?.() === true;
   }
 
   // Sessions ------------------------------------------------------------------------------------
@@ -323,6 +335,13 @@ export class ChatService {
     try {
       if (journaled) before = await this.cache.take();
       let fresh = false;
+      const isolated = this.isolated(s.kind);
+      if (live.driver && live.driverIsolated !== isolated) {
+        // The setting changed since this agent started: the next turn gets the other environment.
+        const old = live.driver;
+        live.driver = undefined;
+        await old.close().catch(() => {});
+      }
       if (!live.driver) {
         const mode: SessionMode = s.kind;
         live.driver = await this.drivers.factory(s.backend, {
@@ -332,7 +351,9 @@ export class ChatService {
           libraryRoot: this.host.libraryRoot,
           mcpServers: await this.host.mcpServers({ session: s.id, mode }),
           directEdits: s.kind === "chat",
+          isolated,
         });
+        live.driverIsolated = isolated;
         s.instructed = false;
         fresh = true;
       }
@@ -343,6 +364,7 @@ export class ChatService {
               mode: s.kind,
               libraryRoot: this.host.libraryRoot,
               directEdits: s.kind === "chat",
+              isolated,
             }),
             fresh ? recap(s, turn) : "",
           ]

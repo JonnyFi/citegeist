@@ -85,6 +85,7 @@ describe("SettingsStore", () => {
       uiLanguage: "de",
       semantic: { enabled: false },
       connector: { enabled: false, port: 23119 },
+      chat: { isolated: false },
     });
     writeFileSync(join(dir, "settings.json"), "{ nope");
     expect(store.load().uiLanguage).toBe("de");
@@ -94,6 +95,7 @@ describe("SettingsStore", () => {
       uiLanguage: "en",
       semantic: { enabled: true },
       connector: { enabled: true, port: 23120 },
+      chat: { isolated: true },
     });
     expect(store.load()).toEqual({
       ai: { routing: { "*": "codex-exec" } },
@@ -101,6 +103,7 @@ describe("SettingsStore", () => {
       uiLanguage: "en",
       semantic: { enabled: true },
       connector: { enabled: true, port: 23120 },
+      chat: { isolated: true },
     });
     writeFileSync(
       join(dir, "settings.json"),
@@ -309,6 +312,24 @@ describe("settings operations", () => {
       patch: { ai: { routing: { "*": "claude-code-cli" }, apiKeys: { openai: false } } },
     });
     expect(await t.keychain.has("openai")).toBe(false);
+    await t.queue.close();
+  });
+
+  it("keeps chat agents out of the sandbox until the isolated switch is turned on", async () => {
+    const t = setup();
+    const read = async () =>
+      (
+        (await t.registry.call("settings.get", human, {})) as {
+          settings: { chat: { isolated: boolean } };
+        }
+      ).settings.chat.isolated;
+    expect(await read()).toBe(false);
+    await t.registry.call("settings.update", human, { patch: { chat: { isolated: true } } });
+    expect(await read()).toBe(true);
+    await t.registry.call("settings.update", human, { patch: { uiLanguage: "en" } });
+    expect(await read()).toBe(true);
+    await t.registry.call("settings.update", human, { patch: { chat: { isolated: false } } });
+    expect(await read()).toBe(false);
     await t.queue.close();
   });
 

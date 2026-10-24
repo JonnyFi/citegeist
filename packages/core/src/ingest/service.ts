@@ -2,13 +2,15 @@ import { randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   renameSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import {
   basename,
   dirname,
@@ -19,6 +21,7 @@ import {
   resolve as resolvePath,
 } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { AiRouter } from "@citegeist/ai";
 import { generateCitekey, parseBibtex, resolveImportedCitekey } from "@citegeist/cite";
 import {
   detectIdentifier,
@@ -31,7 +34,14 @@ import {
   type TitleQuery,
   type TitleResolveResult,
 } from "@citegeist/metadata";
-import { type Actor, CitegeistError, ItemFrontmatter, Pages, type Source } from "@citegeist/schema";
+import {
+  type Actor,
+  CitegeistError,
+  ItemFrontmatter,
+  type Job,
+  Pages,
+  type Source,
+} from "@citegeist/schema";
 import { writeFileAtomic } from "../fsutil.js";
 import { sha256Hex } from "../hash.js";
 import { newItemId } from "../ids.js";
@@ -39,8 +49,10 @@ import { type JobContext, JobQueue, TransientError } from "../jobs/queue.js";
 import type { Library } from "../library.js";
 import { readDocument } from "./documents.js";
 import { findDuplicate } from "./dupes.js";
+import { enrichAfterConvert, splitName } from "./enrich.js";
 import {
   acceptInbox,
+  assertMayTrash,
   loadItem,
   problem,
   rejectInbox,
@@ -65,6 +77,11 @@ export interface IngestDeps {
   fetch?: FetchLike;
   /** Reads the first pages of a PDF. Default: pdfjs-dist. */
   pdfText?: PdfTextExtractor;
+  /**
+   * AI tasks, for reading title, author and year from a first page after a conversion. Without
+   * it, the header heuristic does that.
+   */
+  ai?: Pick<AiRouter, "run">;
   /** Use an existing queue instead of one in the library's state.sqlite. */
   queue?: JobQueue;
   backoffMs?: (attempt: number) => number;
@@ -89,6 +106,8 @@ export interface AddResult {
   citekey: string;
   job: string;
   duplicateOf?: string;
+  /** The matched item had no working source; the new file or download was attached to it. */
+  repaired?: boolean;
 }
 
 interface RemotePlan {
@@ -134,6 +153,11 @@ const FILE_KINDS: Record<string, { kind: Source["kind"]; ext: string }> = {
 
 const MAX_DOWNLOAD = 300 * 1024 * 1024;
 
+/** Servers that turn away unknown clients answer a browser. Redirects are followed by fetch. */
+const BROWSER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+const ACCEPT_ANY = "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8";
+
 /** Ingest pipeline, item operations and the job queue behind them. */
 export class IngestService {
   readonly queue: JobQueue;
@@ -154,6 +178,7 @@ export class IngestService {
     this.pdfText = deps.pdfText ?? extractPdfText;
     this.queue.register("ingest", (ctx) => this.runIngest(ctx), { concurrency: 3 });
     this.queue.register("convert", (ctx) => this.runConvert(ctx), { concurrency: 1 });
+    this.queue.on("job", (job: Job) => this.onJob(job));
     if (deps.autoStart !== false) this.queue.start();
   }
 
@@ -167,24 +192,28 @@ export class IngestService {
   async addItem(actor: Actor, input: AddInput): Promise<AddResult> {
     const raw = input.identifier.trim();
     const early = this.earlyDuplicate(raw);
-    if (early) return this.duplicate(actor, early);
+    // An item whose source failed is not a finished duplicate: the new input may repair it.
+    if (early && !this.mayRepair(early)) return this.duplicate(actor, early);
 
     const prepared = await this.prepare(actor, raw);
     const lookupHash = prepared.file ? sha256Hex(prepared.file.buf).slice(0, 12) : undefined;
     const first = (
       prepared.fields.author as { family?: string; literal?: string }[] | undefined
     )?.[0];
-    const dup = findDuplicate(this.lib, {
-      doi: prepared.fields.DOI as string | undefined,
-      arxiv: prepared.ids.arxiv,
-      isbn: detectIdentifier(raw)?.kind === "isbn" ? detectIdentifier(raw)?.value : undefined,
-      url: prepared.file?.url,
-      hash: lookupHash,
-      title: prepared.proposal ? undefined : (prepared.fields.title as string | undefined),
-      year: prepared.fields.issued as string | number | undefined,
-      firstAuthor: first?.family ?? first?.literal,
-    });
-    if (dup) return this.duplicate(actor, dup);
+    const dup =
+      early ??
+      findDuplicate(this.lib, {
+        doi: prepared.fields.DOI as string | undefined,
+        arxiv: prepared.ids.arxiv,
+        pmid: prepared.ids.pmid,
+        isbn: detectIdentifier(raw)?.kind === "isbn" ? detectIdentifier(raw)?.value : undefined,
+        url: prepared.file?.url,
+        hash: lookupHash,
+        title: prepared.proposal ? undefined : (prepared.fields.title as string | undefined),
+        year: prepared.fields.issued as string | number | undefined,
+        firstAuthor: first?.family ?? first?.literal,
+      });
+    if (dup) return this.repairDuplicate(actor, dup, prepared) ?? this.duplicate(actor, dup);
 
     const jobId = this.queue.newId();
     const citekey = this.createItem(actor, input, prepared, jobId);
@@ -197,6 +226,90 @@ export class IngestService {
       input: { citekey, remote: prepared.remote, convert: !!hasSources },
     });
     return { citekey, job: jobId };
+  }
+
+  /** True when a source exists that was converted: the item can be read. */
+  hasWorkingSource(citekey: string): boolean {
+    const item = loadItem(this.lib, citekey);
+    return item.fm.sources.some((s) => existsSync(this.lib.paths.derivedManifest(citekey, s.hash)));
+  }
+
+  /** True while an ingest or conversion of the item is queued or running. */
+  private conversionPending(citekey: string): boolean {
+    return this.queue
+      .open()
+      .some(
+        (j) =>
+          (j.kind === "convert" || j.kind === "ingest") &&
+          (j.input as { citekey?: unknown } | null)?.citekey === citekey,
+      );
+  }
+
+  /** No source works and nothing is converting: the item is broken, not just still working. */
+  private needsRepair(citekey: string): boolean {
+    return !this.hasWorkingSource(citekey) && !this.conversionPending(citekey);
+  }
+
+  /** An early duplicate is only final when it works, or never had a source to fail. */
+  private mayRepair(citekey: string): boolean {
+    if (!this.needsRepair(citekey)) return false;
+    const fm = loadItem(this.lib, citekey).fm;
+    return fm.sources.length > 0 || fm.incomplete !== undefined;
+  }
+
+  /**
+   * The matched item has no working source (its download or conversion failed, or it never had a
+   * file): attach what the new input brings and convert, instead of dropping it as a duplicate.
+   */
+  private repairDuplicate(actor: Actor, citekey: string, p: Prepared): AddResult | undefined {
+    if (!this.needsRepair(citekey)) return undefined;
+    let jobId: string;
+    if (p.file) {
+      this.dropBrokenSources(citekey);
+      const hash = sha256Hex(p.file.buf).slice(0, 12);
+      this.addSource(actor, citekey, p.file);
+      jobId = this.queue.enqueue({
+        kind: "convert",
+        by: actor,
+        input: { citekey, source: hash, force: true },
+      }).id;
+    } else if (p.remote.arxiv || p.remote.pdfUrl) {
+      this.dropBrokenSources(citekey);
+      jobId = this.queue.enqueue({
+        kind: "ingest",
+        by: actor,
+        input: { citekey, remote: p.remote, convert: true },
+      }).id;
+    } else {
+      return undefined;
+    }
+    if (actor === "human") {
+      const item = loadItem(this.lib, citekey);
+      if (item.fm.inbox) saveItem(this.lib, actor, item, { inbox: undefined });
+    }
+    return { citekey, job: jobId, duplicateOf: citekey, repaired: true };
+  }
+
+  /**
+   * Moves sources that never converted out of the item (into the library trash) so that a new
+   * file replaces them. Only called for an item without any working source.
+   */
+  private dropBrokenSources(citekey: string): void {
+    const item = loadItem(this.lib, citekey);
+    const broken = item.fm.sources.filter(
+      (s) => !existsSync(this.lib.paths.derivedManifest(citekey, s.hash)),
+    );
+    if (broken.length === 0) return;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const dest = join(this.lib.root, ".trash", `${citekey}-sources-${stamp}`);
+    mkdirSync(dest, { recursive: true });
+    for (const s of broken) {
+      const ext = s.kind === "pdf" ? "pdf" : s.kind === "epub" ? "epub" : "html";
+      const file = this.lib.paths.sourceFile(citekey, s.hash, ext);
+      if (existsSync(file)) renameSync(file, join(dest, basename(file)));
+    }
+    const keep = item.fm.sources.filter((s) => !broken.includes(s));
+    saveItem(this.lib, "system", item, { sources: keep });
   }
 
   private duplicate(actor: Actor, citekey: string): AddResult {
@@ -239,7 +352,7 @@ export class IngestService {
         { input: raw.slice(0, 80) },
       );
     }
-    if (id.kind === "url") return this.prepareUrl(id.value);
+    if (id.kind === "url") return this.prepareUrl(actor, id.value);
     const res = await this.deps.resolver.resolve(id);
     return this.fromResolved(res, id);
   }
@@ -336,27 +449,86 @@ export class IngestService {
     };
   }
 
-  private async prepareUrl(url: string): Promise<Prepared> {
-    const res = await this.get(url, undefined, "text/html,application/xhtml+xml");
+  /**
+   * Fetches a URL as a browser would and decides by the content, not by the URL or the content
+   * type: a PDF is added like a local PDF, a page like a web page. A file URL that answers with
+   * a page (login, cookie or bot wall) is refused, because the page is not the file.
+   */
+  private async prepareUrl(actor: Actor, url: string): Promise<Prepared> {
+    const res = await this.get(url, undefined, ACCEPT_ANY);
     if (!res) {
       throw problem(
         "URL_UNREACHABLE",
-        `${url} did not return a page`,
-        "Open the URL in a browser to check it, or add the article by DOI.",
+        `${url} did not return a page (the server answered 401, 403, 404 or 410)`,
+        "Open the URL in a browser to check it. If it needs a login, download the file there and add it by its local path with items.add, or add the article by DOI.",
         { url },
       );
     }
+    const kind = sniffContent(res.buf, res.contentType);
+    if (kind === "pdf") return this.prepareDownloadedPdf(actor, url, res.buf);
+    const claimsFile = isFileUrl(url) || /pdf|epub/i.test(res.contentType);
+    if (kind === "html" && claimsFile) {
+      throw problem(
+        "URL_RETURNED_HTML",
+        `${url} returned an HTML page, not the file the address names (a login, cookie or bot wall, or a moved file)`,
+        "Download the file in a browser and add it by its local path with items.add, for example ~/Downloads/paper.pdf.",
+        { url, contentType: res.contentType || null },
+      );
+    }
+    if (kind !== "html") {
+      throw problem(
+        "URL_UNSUPPORTED_CONTENT",
+        `${url} returned content that is neither a PDF nor a web page${res.contentType ? ` (${res.contentType})` : ""}`,
+        "Download the file and add it by its local path with items.add if it is a PDF, HTML page or EPUB.",
+        { url, contentType: res.contentType || null },
+      );
+    }
     const html = res.buf.toString("utf8");
-    const title = pageTitle(html) ?? new URL(url).hostname;
+    const found = pageTitle(html);
+    const title = found ?? titleFromUrl(url);
     const today = this.lib.stamp("system").at.slice(0, 10);
     const host = new URL(url).hostname.replace(/^www\./, "");
     return {
       fields: { type: "webpage", title, URL: url, "container-title": host },
-      provenance: { title: `web@${today}`, URL: `web@${today}` },
+      provenance: {
+        title: `web@${today}`,
+        URL: `web@${today}`,
+        "container-title": `web@${today}`,
+      },
       ids: {},
       remote: {},
       file: { buf: res.buf, kind: "web", ext: "html", filename: `${slugFile(title)}.html`, url },
+      ...(found
+        ? {}
+        : {
+            proposal: {
+              status: "needs-review",
+              source: "url",
+              reason: "the page has no title, the title was taken from the address",
+            },
+          }),
     };
+  }
+
+  /** A PDF that came from a URL: handled like a local PDF, with the URL as its origin. */
+  private async prepareDownloadedPdf(actor: Actor, url: string, buf: Buffer): Promise<Prepared> {
+    const stem = urlStem(url);
+    const dir = mkdtempSync(join(tmpdir(), "citegeist-url-"));
+    const path = join(dir, `${slugFile(stem)}.pdf`);
+    try {
+      writeFileSync(path, buf);
+      const file: LocalFile = {
+        buf,
+        kind: "pdf",
+        ext: "pdf",
+        filename: `${slugFile(stem)}.pdf`,
+        url,
+      };
+      const prepared = await this.preparePdf(actor, path, file, stem);
+      return { ...prepared, fields: { URL: url, ...prepared.fields } };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   private async prepareFile(actor: Actor, path: string): Promise<Prepared> {
@@ -371,6 +543,14 @@ export class IngestService {
       );
     }
     const buf = readFileSync(path);
+    if (type.kind === "pdf" && !isPdf(buf) && sniffContent(buf, "") === "html") {
+      throw problem(
+        "FILE_IS_HTML",
+        `${basename(path)} has the extension .pdf but holds an HTML page (usually a download that failed)`,
+        "Download the file again in a browser, check that it opens as a PDF, and pass its path.",
+        { path },
+      );
+    }
     const file: LocalFile = { buf, kind: type.kind, ext: type.ext, filename: basename(path) };
     const today = this.lib.stamp(actor).at.slice(0, 10);
     const stem = basename(path, extname(path));
@@ -400,7 +580,17 @@ export class IngestService {
       };
     }
 
-    // PDF: identifiers in the first pages, then title matching on the first page.
+    return this.preparePdf(actor, path, file, stem);
+  }
+
+  /** PDF: identifiers in the first pages, then title matching on the first page. */
+  private async preparePdf(
+    actor: Actor,
+    path: string,
+    file: LocalFile,
+    stem: string,
+  ): Promise<Prepared> {
+    const today = this.lib.stamp(actor).at.slice(0, 10);
     const text = await this.pdfText(path);
     const found = pickPrimary(extractIdentifiers(text.leading));
     if (found) {
@@ -563,7 +753,11 @@ export class IngestService {
       res = await this.fetchFn(url, {
         ...(signal ? { signal } : {}),
         redirect: "follow",
-        headers: { accept, "user-agent": "citegeist/0.0.0" },
+        headers: {
+          accept,
+          "user-agent": BROWSER_UA,
+          "accept-language": "en-US,en;q=0.9,de;q=0.8",
+        },
       });
     } catch (err) {
       if (signal?.aborted) throw err;
@@ -643,10 +837,27 @@ export class IngestService {
     const url = input.url && /^https?:\/\//i.test(input.url) ? input.url : undefined;
     const hash = sha256Hex(buf).slice(0, 12);
     const known = item.fm.sources.find((s) => s.hash === hash || (url && s.url === url));
-    if (known) return { citekey: input.citekey, source: known.hash, added: false };
+    if (known) {
+      if (existsSync(this.lib.paths.derivedManifest(input.citekey, known.hash))) {
+        return { citekey: input.citekey, source: known.hash, added: false };
+      }
+      if (!this.needsRepair(input.citekey)) {
+        return { citekey: input.citekey, source: known.hash, added: false };
+      }
+      // The file is there but never converted: convert it again.
+      const retry = this.queue.enqueue({
+        kind: "convert",
+        by: actor,
+        input: { citekey: input.citekey, source: known.hash, force: true },
+      });
+      return { citekey: input.citekey, source: known.hash, added: false, job: retry.id };
+    }
 
+    // Sources that never converted give way to the new file when the item has no working one.
+    if (this.needsRepair(input.citekey)) this.dropBrokenSources(input.citekey);
     writeFileAtomic(this.lib.paths.sourceFile(input.citekey, hash, type.ext), buf);
-    const hasMain = item.fm.sources.some((s) => s.kind === type.kind && s.role === "main");
+    const fresh = loadItem(this.lib, input.citekey);
+    const hasMain = fresh.fm.sources.some((s) => s.kind === type.kind && s.role === "main");
     const source: Source = {
       hash,
       kind: type.kind,
@@ -655,7 +866,7 @@ export class IngestService {
       ...(url ? { url } : {}),
       added: this.lib.stamp(actor),
     };
-    saveItem(this.lib, actor, item, { sources: [...item.fm.sources, source] });
+    saveItem(this.lib, actor, fresh, { sources: [...fresh.fm.sources, source] });
     const job = this.queue.enqueue({
       kind: "convert",
       by: actor,
@@ -760,12 +971,13 @@ export class IngestService {
       throw problem(
         done.error?.code ?? "CONVERT_FAILED",
         `the item ${citekey} was added, but its conversion failed: ${done.error?.message ?? "unknown error"}`,
-        `Call documents.convert for ${citekey} with force once the cause is fixed.`,
+        `The item is marked incomplete. Retry with documents.convert (force) once the cause is fixed, attach a correct file with items.attach, or remove the item with items.trash.`,
         { citekey, convertJob: child.id },
       );
     }
+    const finalKey = (done.result as { citekey?: string } | undefined)?.citekey ?? citekey;
     return {
-      citekey,
+      citekey: finalKey,
       sources: item.fm.sources.length,
       converted: true,
       convertJob: child.id,
@@ -808,11 +1020,97 @@ export class IngestService {
       throw problem(
         "CONVERT_FAILED",
         `no source of ${citekey} could be converted: ${failed.join("; ")}`,
-        "Check the source files and run documents.convert again.",
+        "The item is marked incomplete. Attach a correct file with items.attach, retry with documents.convert (force), or remove the item with items.trash.",
         { citekey },
       );
     }
-    return { citekey, converted, skipped: item.fm.sources.length - todo.length, failed };
+    let finalKey = citekey;
+    let renamed: { from: string; to: string } | undefined;
+    if (converted.length > 0) {
+      const done = await this.afterConvert(ctx, citekey, converted);
+      finalKey = done.citekey;
+      renamed = done.renamed;
+    }
+    return {
+      citekey: finalKey,
+      converted,
+      skipped: item.fm.sources.length - todo.length,
+      failed,
+      ...(renamed ? { renamed } : {}),
+    };
+  }
+
+  /**
+   * A conversion worked: the item is no longer incomplete, and when its metadata was only a
+   * guess, the first page now improves it (and a placeholder citekey, if nothing cites the item).
+   */
+  private async afterConvert(
+    ctx: JobContext,
+    citekey: string,
+    converted: string[],
+  ): Promise<{ citekey: string; renamed?: { from: string; to: string } }> {
+    const actor = ctx.job.by;
+    let key = citekey;
+    let renamed: { from: string; to: string } | undefined;
+    const item = loadItem(this.lib, citekey);
+    const wasIncomplete = item.fm.incomplete !== undefined;
+    const source = item.fm.sources.find((s) => converted.includes(s.hash) && s.kind === "pdf");
+    if (source) {
+      try {
+        const sourcePath = this.lib.paths.sourceFile(citekey, source.hash, "pdf");
+        const res = await enrichAfterConvert(
+          {
+            lib: this.lib,
+            resolver: this.deps.resolver,
+            pdfText: this.pdfText,
+            ai: this.deps.ai,
+          },
+          actor,
+          citekey,
+          source,
+          sourcePath,
+          wasIncomplete,
+        );
+        if (res.renamed) {
+          key = res.renamed.to;
+          renamed = res.renamed;
+        }
+      } catch {
+        // Better metadata is a bonus; the conversion itself worked.
+      }
+    }
+    try {
+      const now = loadItem(this.lib, key);
+      if (now.fm.incomplete !== undefined)
+        saveItem(this.lib, actor, now, { incomplete: undefined });
+    } catch {
+      // the item was removed in the meantime
+    }
+    return { citekey: key, ...(renamed ? { renamed } : {}) };
+  }
+
+  /** Marks an item incomplete when its ingest or conversion failed and no source works. */
+  private onJob(job: Job): void {
+    if (job.status !== "failed" || (job.kind !== "convert" && job.kind !== "ingest")) return;
+    const citekey = (job.input as { citekey?: unknown } | null)?.citekey;
+    if (typeof citekey !== "string") return;
+    try {
+      if (!this.lib.index.get("SELECT 1 FROM items WHERE citekey = ?", citekey)) return;
+      if (this.hasWorkingSource(citekey)) return;
+      const item = loadItem(this.lib, citekey);
+      // The convert job names the cause; the ingest job around it only repeats it.
+      if (item.fm.incomplete && job.kind === "ingest") return;
+      saveItem(this.lib, "system", item, {
+        incomplete: {
+          code: job.error?.code ?? "JOB_FAILED",
+          message: job.error?.message ?? job.message ?? "the job failed",
+          at: this.lib.stamp("system").at,
+          job: job.id,
+        },
+      });
+    } catch {
+      // The item is gone or the library is closing. Nothing to mark.
+    }
   }
 
   private async convertSource(
@@ -890,11 +1188,13 @@ export class IngestService {
   updateItem = (actor: Actor, citekey: string, patch: Record<string, unknown>) =>
     updateItem(this.lib, actor, citekey, patch);
   renameItem = (actor: Actor, from: string, to: string) => renameItem(this.lib, actor, from, to);
-  trashItem = (citekey: string) => {
-    trashItem(this.lib, citekey);
+  trashItem = (actor: Actor, citekey: string) => {
+    assertMayTrash(this.lib, actor, citekey);
+    trashItem(this.lib, citekey, actor);
   };
   acceptInbox = (actor: Actor, citekeys: string[]) => acceptInbox(this.lib, actor, citekeys);
-  rejectInbox = (citekeys: string[]) => rejectInbox(this.lib, citekeys);
+  rejectInbox = (citekeys: string[], actor: Actor = "human") =>
+    rejectInbox(this.lib, citekeys, actor);
 }
 
 function isFatal(err: unknown): boolean {
@@ -903,6 +1203,45 @@ function isFatal(err: unknown): boolean {
 
 function isPdf(buf: Buffer): boolean {
   return buf.subarray(0, 5).toString("latin1") === "%PDF-";
+}
+
+/** What a response really is, judged by its bytes first and by the content type second. */
+function sniffContent(buf: Buffer, contentType: string): "pdf" | "html" | "other" {
+  // Some servers put a few bytes in front of the PDF header; the spec allows the first 1024.
+  if (buf.subarray(0, 1024).toString("latin1").includes("%PDF-")) return "pdf";
+  const head = buf.subarray(0, 4096).toString("utf8").toLowerCase();
+  if (/<!doctype\s+html|<html[\s>]|<head[\s>]|<body[\s>]|<title[\s>]/.test(head)) return "html";
+  if (/html|xml/i.test(contentType) && head.trim().startsWith("<")) return "html";
+  return "other";
+}
+
+/** An address that names a file, not a page: it ends in .pdf or .epub before query and anchor. */
+function isFileUrl(url: string): boolean {
+  try {
+    return /\.(pdf|epub)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** File name stem of the last path segment, for a name and a title when nothing better exists. */
+function urlStem(url: string): string {
+  try {
+    const last = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() ?? "");
+    const stem = last
+      .replace(/\.[A-Za-z0-9]{1,5}$/, "")
+      .replace(/[_+-]+/g, " ")
+      .trim();
+    return stem || "download";
+  } catch {
+    return "download";
+  }
+}
+
+/** A page without a title gets the readable part of its address, never its domain name. */
+function titleFromUrl(url: string): string {
+  const stem = urlStem(url);
+  return stem === "download" ? url.replace(/^https?:\/\//i, "").replace(/\/$/, "") : stem;
 }
 
 function pageTitle(html: string): string | undefined {
@@ -926,11 +1265,4 @@ function slugFile(s: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 80) || "file"
   );
-}
-
-function splitName(name: string): { family: string; given?: string } {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return { family: parts[0] ?? name };
-  const family = parts[parts.length - 1] ?? name;
-  return { family, given: parts.slice(0, -1).join(" ") };
 }

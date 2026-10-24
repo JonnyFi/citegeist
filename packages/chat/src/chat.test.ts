@@ -64,8 +64,13 @@ describe("a chat turn with the fake ACP agent", () => {
     const h = await harness({
       backend: fakeBackend(
         {},
-        { sessionMeta: { claudeCode: { options: { settingSources: [], strictMcpConfig: true } } } },
+        {
+          sessionMeta: () => ({
+            claudeCode: { options: { settingSources: [], strictMcpConfig: true } },
+          }),
+        },
       ),
+      host: { isolated: () => true },
     });
     const { session } = await h.chat("@fake report", {
       project: "phd",
@@ -88,8 +93,37 @@ describe("a chat turn with the fake ACP agent", () => {
     expect(JSON.parse((second as { text: string }).text).promptHasInstructions).toBe(false);
   });
 
-  it("rejects shell commands and edits outside the library's text areas", async () => {
-    const h = await harness();
+  it("gives the agent the user's own environment by default and the sandbox on request (A11)", async () => {
+    let isolated = false;
+    const h = await harness({ host: { isolated: () => isolated } });
+    const reports = (session: string) =>
+      h
+        .view(session)
+        .entries.filter((e) => e.type === "assistant")
+        .map((e) => JSON.parse((e as { text: string }).text));
+    const { session } = await h.chat("@fake report");
+    expect(reports(session)[0].meta).toEqual({ fake: { isolated: false } });
+
+    // The setting changes between two turns: the next turn starts an agent in the sandbox and
+    // briefs it again.
+    isolated = true;
+    await h.say(session, "@fake report");
+    const second = reports(session)[1];
+    expect(second.meta).toEqual({ fake: { isolated: true } });
+    expect(second.promptHasInstructions).toBe(true);
+  });
+
+  it("runs research jobs in the sandbox whatever the setting says", async () => {
+    const h = await harness({ host: { isolated: () => false } });
+    const session = h.service.create({ backend: "fake", kind: "research" });
+    h.service.send(session.id, "@fake report");
+    await h.service.idle(session.id);
+    const first = h.view(session.id).entries.find((e) => e.type === "assistant");
+    expect(JSON.parse((first as { text: string }).text).meta).toEqual({ fake: { isolated: true } });
+  });
+
+  it("rejects shell commands and edits outside the library's text areas in the sandbox", async () => {
+    const h = await harness({ host: { isolated: () => true } });
     const outside = join(h.root, "citegeist.json");
     const { session } = await h.chat(
       [

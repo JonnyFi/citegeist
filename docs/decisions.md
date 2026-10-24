@@ -117,3 +117,17 @@ Ein Projekt wie „PhD-Proposal“ kann neben dem Plan für das Proposal einen P
 Datum: 2026-10-24. Status: entschieden.
 
 Die ersten Vorlagen sind ein Exposé für das PhD-Proposal und IMRaD für Paper. Weitere Textsorten kommen später als Vorlagendateien dazu.
+
+## A11: Chat-Agents arbeiten standardmäßig in der Umgebung des Nutzers
+
+Datum: 2026-10-24. Status: entschieden. Ersetzt für Chat-Sitzungen die Isolationsregel im Abschnitt „AI-Schicht" der Architektur (`settingSources: []`, keine Shell, nur die citegeist-Werkzeuge).
+
+Anlass ist die erste echte Chat-Sitzung (Issues #34 bis #39). Der Agent konnte eine PDF nicht herunterladen, kein Issue anlegen und `cg` nicht aufrufen, weil seine Sitzung ohne Shell, ohne die MCP-Server des Nutzers und ohne dessen Claude-Code-Einstellungen lief. Die Isolation hatte den Zweck, dass eine Sitzung nicht die persönliche Konfiguration des Nutzers mitlädt. Im Chat sitzt der Nutzer aber selbst am Bildschirm und will genau diese Konfiguration.
+
+Eine Chat-Sitzung bekommt deshalb dieselbe Umgebung wie das Claude Code des Nutzers. Beim Claude-Adapter laden `settingSources` `user` und `project`. Damit kommen die MCP-Server und Einstellungen des Nutzers in die Sitzung, die Shell ist erlaubt, und der citegeist-MCP-Server wird pro Sitzung dazugegeben. Codex arbeitet mit der Codex-Konfiguration des Nutzers. Die Berechtigungsregel der Chat-Seitenleiste lässt Shell, fremde Werkzeuge und Änderungen außerhalb des Bibliotheksordners zu. Im Bibliotheksordner bleiben abgeleitete Daten, konvertierte Originale und das Manifest geschützt.
+
+Die Einstellung „Isolierter Agent" (Einstellungen, Abschnitt Chat-Agent) stellt die bisherige Sandbox wieder her: keine Shell, keine Nutzereinstellungen, nur die citegeist-Werkzeuge. Eine Änderung gilt ab dem nächsten Beitrag in einer laufenden Sitzung, der Agent wird dann neu gestartet und neu eingewiesen.
+
+Isoliert bleiben Recherche-Aufträge und die Inferenz-Aufgaben (Highlighter, Metadaten, Zusammenfassungen). Beide laufen ohne Gespräch und ohne dass jemand zusieht, deshalb bleibt es bei `settingSources: []`, ohne Shell und mit Schreibzugriff allein über `add_item` in die Inbox.
+
+Die Folgen für die Nachvollziehbarkeit sind gering. Der Verlauf eines Zuges (D12) vergleicht den Bibliotheksordner vor und nach dem Zug und erfasst deshalb auch Änderungen, die eine Shell-Anweisung ausgelöst hat. Was der Agent über MCP anlegt, trägt weiter `by: agent:<name>` (D7).

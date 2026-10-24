@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { z } from "zod";
 import { useI18n } from "../i18n";
 import { statusLabel, typeLabel } from "../lib/format";
-import { Badge, StatusSquare } from "./ui/badge";
+import { Badge, Stamp, StatusSquare } from "./ui/badge";
 
 export type ItemSummary = z.output<typeof itemsList.output>["items"][number];
 
@@ -76,6 +76,11 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
               <div className="flex items-center gap-2">
                 <span>{statusLabel(i18n, item.status)}</span>
                 {item.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
+                {item.incomplete ? (
+                  <span title={item.incompleteReason}>
+                    <Stamp tone="danger">{t("item.incomplete")}</Stamp>
+                  </span>
+                ) : null}
               </div>
             </td>
           </tr>

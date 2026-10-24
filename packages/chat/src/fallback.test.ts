@@ -55,6 +55,7 @@ beforeEach(() => {
         },
       ],
       notify: () => {},
+      isolated: () => true,
     },
     {
       drivers: createDrivers({
@@ -182,10 +183,47 @@ describe("ClaudePrintDriver", () => {
         libraryRoot: "/lib",
         mcpServers: [],
         directEdits: false,
+        isolated: true,
       },
     });
     const args = driver.buildArgs();
     expect(args).toEqual(expect.arrayContaining(["Edit", "Write", "MultiEdit", "NotebookEdit"]));
     expect(args).not.toContain("--add-dir");
+  });
+
+  const chatReq = (isolated: boolean) => ({
+    session: "ch_1",
+    mode: "chat" as const,
+    cwd: "/tmp",
+    libraryRoot: "/lib",
+    mcpServers: [],
+    directEdits: true,
+    isolated,
+  });
+
+  it("keeps the sandbox flags when the chat is isolated", () => {
+    const args = new ClaudePrintDriver({
+      command: "claude",
+      env: {},
+      req: chatReq(true),
+    }).buildArgs();
+    expect(args).toContain("--strict-mcp-config");
+    expect(args).toContain("--disable-slash-commands");
+    expect(args[args.indexOf("--setting-sources") + 1]).toBe("");
+    expect(args).toEqual(expect.arrayContaining(["--disallowedTools", "Bash"]));
+  });
+
+  it("loads the user's settings and allows the shell when the chat is not isolated (A11)", () => {
+    const args = new ClaudePrintDriver({
+      command: "claude",
+      env: {},
+      req: chatReq(false),
+    }).buildArgs();
+    expect(args).not.toContain("--strict-mcp-config");
+    expect(args).not.toContain("--disable-slash-commands");
+    expect(args).not.toContain("--disallowedTools");
+    expect(args[args.indexOf("--setting-sources") + 1]).toBe("user,project");
+    expect(args).toEqual(expect.arrayContaining(["--allowedTools", "mcp__citegeist", "Bash"]));
+    expect(args).toContain("--mcp-config");
   });
 });

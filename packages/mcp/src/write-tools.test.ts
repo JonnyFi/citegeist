@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -94,7 +94,15 @@ describe("write tools over stdio against a real library", () => {
   it("lists every write tool", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    expect(writeTools.sort()).toEqual(["add_item", "create_card", "create_note", "link"]);
+    expect(writeTools.sort()).toEqual([
+      "add_item",
+      "attach_file",
+      "create_card",
+      "create_note",
+      "create_project",
+      "link",
+      "trash_item",
+    ]);
     for (const tool of writeTools) expect(names).toContain(tool);
     expect(names).toContain("jobs_get");
   });
@@ -241,6 +249,103 @@ describe("write tools over stdio against a real library", () => {
       arguments: { job: "j_01JB8Z3QK7ABCDEFGH" },
     });
     expect(job.isError).toBe(true);
+  });
+
+  it("create_project and list_projects work, and a missing project names these two tools", async () => {
+    const missing = await client.callTool({
+      name: "get_project",
+      arguments: { slug: "phd-research" },
+    });
+    expect(missing.isError).toBe(true);
+    const missingText = JSON.stringify(missing.content);
+    expect(missingText).toContain("PROJECT_NOT_FOUND");
+    expect(missingText).toContain("list_projects");
+    expect(missingText).toContain("create_project");
+    expect(missingText).not.toMatch(/projects\.(list|create)/);
+
+    const created = await call<{ frontmatter: { slug: string; title: string } }>("create_project", {
+      slug: "phd-research",
+      title: "PhD research",
+      brief: "Loneliness and ethics.",
+    });
+    expect(created.frontmatter.slug).toBe("phd-research");
+    const listed = await call<{ projects: Array<{ slug: string }> }>("list_projects", {});
+    expect(listed.projects.map((p) => p.slug)).toContain("phd-research");
+    const got = await call<{ brief: string }>("get_project", { slug: "phd-research" });
+    expect(got.brief).toContain("Loneliness");
+  });
+
+  it("trash_item removes what an agent added, records who did it and refuses the rest", async () => {
+    const added = await call<{ citekey: string; job: string }>("add_item", {
+      identifier: "@book{trashme, title={Trash me}, author={Nobody, Nina}, year={2001}}",
+    });
+    await finished(added.job);
+    const got = await call<ItemGet>("get_item", { citekey: added.citekey });
+    expect(got.frontmatter.inbox?.by).toBe(`agent:${CLIENT}`);
+
+    await call("trash_item", { citekey: added.citekey });
+    const gone = await client.callTool({ name: "get_item", arguments: { citekey: added.citekey } });
+    expect(gone.isError).toBe(true);
+    const trashDir = join(root, ".trash");
+    const dirs = readdirSync(trashDir).filter((d) => d.startsWith(`${added.citekey}-`));
+    expect(dirs).toHaveLength(1);
+    const record = JSON.parse(
+      readFileSync(join(trashDir, dirs[0] ?? "", "trashed.json"), "utf8"),
+    ) as { citekey: string; by: string };
+    expect(record).toMatchObject({ citekey: added.citekey, by: `agent:${CLIENT}` });
+
+    // An item the user put in the library stays: only the user removes it.
+    const folder = join(root, "items", "usersowncopy");
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+      join(folder, "usersowncopy.md"),
+      [
+        "---",
+        "id: 01JB8Z3QK7ABCDEFGHJKMNPQRS",
+        "citekey: usersowncopy",
+        "type: book",
+        "title: The user's own copy",
+        "created:",
+        "  at: 2026-10-23T10:00:00Z",
+        "  by: human",
+        "---",
+        "",
+      ].join("\n"),
+    );
+    await waitFor("the watcher to index the item", async () => {
+      const r = await client.callTool({ name: "get_item", arguments: { citekey: "usersowncopy" } });
+      return r.isError ? undefined : true;
+    });
+    const refused = await client.callTool({
+      name: "trash_item",
+      arguments: { citekey: "usersowncopy" },
+    });
+    expect(refused.isError).toBe(true);
+    const refusedText = JSON.stringify(refused.content);
+    expect(refusedText).toContain("TRASH_NOT_ALLOWED");
+    expect(refusedText).not.toMatch(/\bitems\.trash\b/);
+  });
+
+  it("attach_file adds a file to an existing item and converts it", async () => {
+    const added = await call<{ citekey: string; job: string }>("add_item", {
+      identifier: "@book{attachme, title={Attach me}, author={Nobody, Nina}, year={2002}}",
+      target: "library",
+    });
+    await finished(added.job);
+    const pdf = join(root, "..", "attach-me.pdf");
+    writeFileSync(pdf, "%PDF-1.4\n% a file for the stub conversion worker\n%%EOF\n");
+    const attached = await call<{ citekey: string; source: string; added: boolean; job?: string }>(
+      "attach_file",
+      { citekey: added.citekey, path: pdf },
+    );
+    expect(attached.added).toBe(true);
+    const job = await finished(attached.job as string);
+    expect(job.status, JSON.stringify(job)).toBe("succeeded");
+    const item = await call<{
+      frontmatter: { sources: Array<{ hash: string; added: { by: string } }> };
+    }>("get_item", { citekey: added.citekey });
+    expect(item.frontmatter.sources[0]?.hash).toBe(attached.source);
+    expect(item.frontmatter.sources[0]?.added.by).toBe(`agent:${CLIENT}`);
   });
 
   it("indexes a note that is edited outside the server", async () => {

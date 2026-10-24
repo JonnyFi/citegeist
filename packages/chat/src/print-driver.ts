@@ -7,9 +7,10 @@ import { chatError, oneLine } from "./util.js";
 
 /**
  * Fallback for Claude Code when the ACP adapter cannot start: `claude -p` with streaming JSON
- * output, one process per turn, the conversation continued with `--resume`. It keeps the same
- * isolation (no user settings, only citegeist's MCP server, no shell) but cannot ask for
- * permissions, so tools outside the allow list are simply denied.
+ * output, one process per turn, the conversation continued with `--resume`. In the sandbox (A11)
+ * it keeps the isolation (no user settings, only citegeist's MCP server, no shell). Otherwise it
+ * loads the settings of the user and the project, which bring the user's MCP servers, and allows
+ * the shell. It cannot ask for permissions, so tools outside the allow list are simply denied.
  */
 
 export interface PrintDriverOptions {
@@ -95,30 +96,44 @@ export class ClaudePrintDriver implements AgentDriver {
   buildArgs(): string[] {
     const { req } = this.opts;
     const research = req.mode === "research";
-    const args = [
+    const common = [
       "-p",
       "--output-format",
       "stream-json",
       "--verbose",
       "--include-partial-messages",
-      "--strict-mcp-config",
       "--mcp-config",
       mcpConfigJson(req.mcpServers),
-      "--setting-sources",
-      "",
-      "--disable-slash-commands",
       "--permission-mode",
       "acceptEdits",
-      "--allowedTools",
-      "mcp__citegeist",
-      "WebSearch",
-      "WebFetch",
-      "--disallowedTools",
-      "Bash",
-      "BashOutput",
-      "KillShell",
-      ...(research ? ["Edit", "Write", "MultiEdit", "NotebookEdit"] : []),
     ];
+    const args = req.isolated
+      ? [
+          ...common,
+          "--strict-mcp-config",
+          "--setting-sources",
+          "",
+          "--disable-slash-commands",
+          "--allowedTools",
+          "mcp__citegeist",
+          "WebSearch",
+          "WebFetch",
+          "--disallowedTools",
+          "Bash",
+          "BashOutput",
+          "KillShell",
+          ...(research ? ["Edit", "Write", "MultiEdit", "NotebookEdit"] : []),
+        ]
+      : [
+          ...common,
+          "--setting-sources",
+          "user,project",
+          "--allowedTools",
+          "mcp__citegeist",
+          "WebSearch",
+          "WebFetch",
+          "Bash",
+        ];
     if (req.directEdits && !research) args.push("--add-dir", req.libraryRoot);
     args.push(this.started ? "--resume" : "--session-id", this.id);
     return args;

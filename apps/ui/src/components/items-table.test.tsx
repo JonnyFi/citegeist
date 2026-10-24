@@ -93,6 +93,30 @@ describe("library table", () => {
     expect(screen.queryByRole("button", { name: "Mehr laden" })).not.toBeInTheDocument();
   });
 
+  it("marks an item whose import did not finish", async () => {
+    const data = createFixtures();
+    const broken = data.items.get("kuhn1962structure");
+    if (!broken) throw new Error("fixture missing");
+    broken.frontmatter = ItemFrontmatter.parse({
+      ...broken.frontmatter,
+      incomplete: {
+        code: "CONVERT_FAILED",
+        message: "no article text found",
+        at: "2026-10-24T10:00:00.000Z",
+      },
+    });
+    renderApp("/", data);
+    const row = (await rows()).find((r) => r.textContent?.includes("kuhn1962structure"));
+    const stamp = within(row as HTMLElement).getByText("unvollständig");
+    expect(stamp).toBeVisible();
+    expect(stamp.closest("[title]")).toHaveAttribute(
+      "title",
+      "CONVERT_FAILED: no article text found",
+    );
+    const other = (await rows()).find((r) => r.textContent?.includes("lewis2020retrieval"));
+    expect(within(other as HTMLElement).queryByText("unvollständig")).toBeNull();
+  });
+
   it("opens an item from its row", async () => {
     const user = userEvent.setup();
     renderApp("/");

@@ -1,4 +1,4 @@
-import type { OperationContract, Registry } from "@citegeist/ops";
+import { localizeError, type OperationContract, type Registry } from "@citegeist/ops";
 import { CLIENT_INFO_META_KEY, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { actorFromClientName } from "./actor.js";
@@ -57,6 +57,7 @@ export function createMcpServer(
 ): McpServer {
   const scope = options.scope ?? "write";
   const contracts = mcpContracts(registry, scope);
+  const everything = registry.list();
   const server = new McpServer(
     { name: options.name ?? "citegeist", version: options.version ?? "0.0.0" },
     { instructions: buildInstructions(contracts) },
@@ -95,7 +96,15 @@ export function createMcpServer(
         } catch (err) {
           return {
             isError: true,
-            content: [{ type: "text" as const, text: formatAgentError(toAgentError(err)) }],
+            content: [
+              {
+                type: "text" as const,
+                // Fix texts name operations; the caller needs the tool names it can call.
+                text: formatAgentError(
+                  localizeError(toAgentError(err), "mcp", everything, contracts),
+                ),
+              },
+            ],
           };
         }
       },

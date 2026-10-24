@@ -58,16 +58,16 @@ export function bindIngestOperations(
     .bind(itemsAttach, async (ctx, input) => svc.attachFile(ctx.actor, input))
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
-    .bind(itemsTrash, async (_ctx, input) => {
-      svc.trashItem(input.citekey);
+    .bind(itemsTrash, async (ctx, input) => {
+      svc.trashItem(ctx.actor, input.citekey);
       return { ok: true as const };
     })
     .bind(inboxAccept, async (ctx, input) => {
       svc.acceptInbox(ctx.actor, input.citekeys);
       return { ok: true as const };
     })
-    .bind(inboxReject, async (_ctx, input) => {
-      svc.rejectInbox(input.citekeys);
+    .bind(inboxReject, async (ctx, input) => {
+      svc.rejectInbox(input.citekeys, ctx.actor);
       return { ok: true as const };
     })
     .bind(documentsRead, async (_ctx, input) => svc.readDocument(input))

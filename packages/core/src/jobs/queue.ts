@@ -249,6 +249,15 @@ export class JobQueue extends EventEmitter {
     return rows.length > opts.limit && last ? { jobs: page, next: last.id } : { jobs: page };
   }
 
+  /** Jobs that are queued or running, oldest first. */
+  open(): Job[] {
+    return (
+      this.db
+        .prepare("SELECT * FROM jobs WHERE status IN ('queued', 'running') ORDER BY id")
+        .all() as Row[]
+    ).map(toJob);
+  }
+
   /** Children of a job, oldest first. */
   children(parent: string): Job[] {
     return (

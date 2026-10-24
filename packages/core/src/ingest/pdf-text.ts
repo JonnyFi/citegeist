@@ -93,10 +93,41 @@ export function guessHeader(text: string): HeaderGuess | undefined {
   };
 }
 
+/** Small words that make a capitalised line a subtitle ("Ethics After Certainty"), not a name. */
+const TITLE_WORDS = new Set([
+  "and",
+  "after",
+  "before",
+  "between",
+  "beyond",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "the",
+  "to",
+  "toward",
+  "towards",
+  "with",
+  "without",
+  "und",
+  "oder",
+  "ueber",
+  "über",
+  "zur",
+  "zum",
+  "vom",
+  "im",
+  "die",
+  "das",
+]);
+
 function looksLikeName(line: string): boolean {
   if (/\d/.test(line) || line.length > 60) return false;
   const words = line.split(" ");
   if (words.length > 5) return false;
+  if (words.some((w) => TITLE_WORDS.has(w.toLowerCase()))) return false;
   return words.every(
     (w) => /^\p{Lu}[\p{L}'.-]*$/u.test(w) || /^(?:van|von|de|der|den|di|da|zu)$/.test(w),
   );

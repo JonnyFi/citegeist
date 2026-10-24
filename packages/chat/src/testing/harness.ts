@@ -28,7 +28,7 @@ export function fakeBackend(
       args: ["--import", TSX, FAKE_AGENT],
       env,
     }),
-    sessionMeta: { fake: { isolated: true } },
+    sessionMeta: (isolated) => ({ fake: { isolated } }),
     ...overrides,
   };
 }
