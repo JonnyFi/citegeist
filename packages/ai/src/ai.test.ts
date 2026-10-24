@@ -18,7 +18,7 @@ import { sentenceCount } from "./tasks/card-paraphrase/fixtures.js";
 import {
   prompt as paraphrasePrompt,
   PROMPT_VERSION as paraphraseVersion,
-} from "./tasks/card-paraphrase/prompt.v3.js";
+} from "./tasks/card-paraphrase/prompt.v4.js";
 import { inventedNumbers, isWrittenIn, longestSharedRun } from "./tasks/checks.js";
 
 describe("resolveLanguage (D9)", () => {
@@ -289,6 +289,7 @@ describe("eval checks", () => {
   });
 
   it("classifies kinds: every fixture names the kinds it accepts, and a wrong kind fails", () => {
+    const ACCEPTS_CRITIQUE = new Set(["en-sleep-memory", "en-survey-response"]);
     const byId = (id: string) => fixtures.find((f) => f.id === id);
     const good = "Gesellschaft entsteht aus Kommunikation. Das ist eine kurze Aussage.";
     const expected: Record<string, string> = {
@@ -314,7 +315,9 @@ describe("eval checks", () => {
           .check({ paraphrase: para, kind: k as "finding" }, f.input)
           .filter((m) => m.startsWith("kind is"));
       expect(kindFails(kind), id).toEqual([]);
-      expect(kindFails(kind === "critique" ? "example" : "critique"), id).toHaveLength(1);
+      // Passages that report results with stated limits accept finding or critique (prompt v4).
+      const wrong = kind === "critique" || ACCEPTS_CRITIQUE.has(id) ? "example" : "critique";
+      expect(kindFails(wrong), id).toHaveLength(1);
     }
   });
 

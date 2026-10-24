@@ -38,7 +38,7 @@ const cases: { id: string; language: string; kinds: CardKind[]; passage: string 
   {
     id: "en-sleep-memory",
     language: "de",
-    kinds: ["finding"],
+    kinds: ["finding", "critique"],
     passage:
       "Sleep-dependent memory consolidation is often described as a transfer from hippocampus to neocortex, but the evidence is more mixed than this picture suggests. In rodents, hippocampal sharp-wave ripples coincide with the replay of recently traversed paths, and disrupting them impairs later performance on spatial tasks. In humans, the effects are moderate and depend strongly on the material: declarative word-pair learning shows reliable gains after a night of sleep, whereas procedural skills improve mainly when learners have practiced enough before sleeping.",
   },
@@ -52,7 +52,7 @@ const cases: { id: string; language: string; kinds: CardKind[]; passage: string 
   {
     id: "en-survey-response",
     language: "en",
-    kinds: ["finding"],
+    kinds: ["finding", "critique"],
     passage:
       "Across the 14 panel waves, response rates fell from 61 percent in the first wave to 38 percent in the last. Attrition was not random: respondents with lower incomes and less formal education left earlier, which may bias estimates of mobility upward. The authors reweight the data using inverse probability weights, but they note that the weights rely on observed characteristics only and cannot correct for dropout driven by unobserved factors.",
   },
