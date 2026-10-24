@@ -1,5 +1,7 @@
+import { ItemFrontmatter } from "@citegeist/schema";
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { createFixtures } from "../mock/fixtures";
 import { renderApp } from "../test-utils";
 
 describe("item view", () => {
@@ -12,6 +14,24 @@ describe("item view", () => {
     expect(screen.getByText("(2020)")).toBeVisible();
     expect(screen.getByText("10.48550/arXiv.2005.11401")).toBeVisible();
     expect(screen.getByText("Advances in Neural Information Processing Systems 33")).toBeVisible();
+  });
+
+  it("tells the reader that an import did not finish and why", async () => {
+    const data = createFixtures();
+    const item = data.items.get("latour2005reassembling");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      incomplete: {
+        code: "CONVERT_FAILED",
+        message: "no article text found",
+        at: "2026-10-24T10:00:00.000Z",
+      },
+    });
+    renderApp("/items/latour2005reassembling", data);
+    const note = await screen.findByRole("note", { name: "unvollständig" });
+    expect(within(note).getByText(/Der Import ist nicht fertig geworden/)).toBeVisible();
+    expect(within(note).getByText("CONVERT_FAILED: no article text found")).toBeVisible();
   });
 
   it("renders the literature note with its headings", async () => {

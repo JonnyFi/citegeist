@@ -161,6 +161,24 @@ describe("settings screen", () => {
     expect(screen.queryByText(/Das Modell ist bereit/)).toBeNull();
   });
 
+  it("lets the chat agent work in the user's environment until Isolierter Agent is turned on (A11)", async () => {
+    const user = userEvent.setup();
+    const { state, calls } = renderWithSettingsCore(<SettingsScreen />);
+    const toggle = await screen.findByRole("checkbox", { name: "Isolierter Agent" });
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByText(/Der Agent arbeitet in deiner Umgebung/)).toBeVisible();
+
+    await user.click(toggle);
+    await waitFor(() => expect(state.chat.isolated).toBe(true));
+    expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
+      patch: { chat: { isolated: true } },
+    });
+    expect(await screen.findByText(/keine Shell/)).toBeVisible();
+
+    await user.click(screen.getByRole("checkbox", { name: "Isolierter Agent" }));
+    await waitFor(() => expect(state.chat.isolated).toBe(false));
+  });
+
   it("shows why the model could not be loaded", async () => {
     renderWithSettingsCore(<SettingsScreen />, {
       semantic: { enabled: true, state: "error", progress: 0, detail: "no network" },

@@ -45,6 +45,16 @@ DIR=~/Library/Application\ Support/citegeist/<Bibliothek-Id>
 curl -H "authorization: Bearer $(cat $DIR/core.token)" http://127.0.0.1:$(jq .port $DIR/core.lock)/health
 ```
 
+## App aktualisieren
+
+Im Haupt-Checkout (`~/Documents/Coding/citegeist`):
+
+```
+pnpm app:update
+```
+
+Der Befehl holt den neuesten Stand von `main`, baut die App, beendet die laufende citegeist-App, ersetzt `/Applications/citegeist.app` und startet sie neu. Deine Bibliothek und die Einstellungen bleiben dabei unberührt, weil sie außerhalb der App liegen.
+
 ## Erster Start
 
 1. **Bibliothek.** Beim ersten Start wählst du einen Ordner. Ist er noch keine Bibliothek, fragt die App und legt `citegeist.json` und die Unterordner an. Die App merkt sich den Ordner für den nächsten Start.

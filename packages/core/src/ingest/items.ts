@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { type Actor, CitegeistError, ItemFrontmatter } from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
@@ -116,8 +123,60 @@ export function updateItem(
 
 // items.trash, inbox.* --------------------------------------------------------------------------
 
-/** Moves the item folder (sources, derived files, cards) into <library>/.trash. */
-export function trashItem(lib: Library, citekey: string): { trashedTo: string } {
+/** Cards of the item and links to it from anywhere outside its own folder. */
+export function isCited(lib: Library, citekey: string): boolean {
+  const cards =
+    lib.index.get<{ n: number }>("SELECT COUNT(*) AS n FROM cards WHERE citekey = ?", citekey)?.n ??
+    0;
+  if (cards > 0) return true;
+  const links =
+    lib.index.get<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM links WHERE dst = ? AND path NOT LIKE ?",
+      citekey,
+      `items/${citekey}/%`,
+    )?.n ?? 0;
+  return links > 0;
+}
+
+/**
+ * D7 for deletion: a person may trash anything. An agent may trash an item that is in the inbox,
+ * that an agent added or that is incomplete, and only while no card or link refers to it.
+ * Everything else is the user's to remove.
+ */
+export function assertMayTrash(lib: Library, actor: Actor, citekey: string): void {
+  const item = loadItem(lib, citekey);
+  if (actor === "human" || actor === "system") return;
+  const own = item.fm.inbox !== undefined || item.fm.created.by.startsWith("agent:");
+  const broken = item.fm.incomplete !== undefined;
+  if (!own && !broken) {
+    throw problem(
+      "TRASH_NOT_ALLOWED",
+      `${actor} may not trash ${citekey}: the user added it to the library`,
+      "Ask the user to remove it in the app or with items.trash on the command line. Agents can trash inbox items, incomplete items and items an agent added.",
+      { citekey },
+      "ask-human",
+    );
+  }
+  if (isCited(lib, citekey)) {
+    throw problem(
+      "TRASH_NOT_ALLOWED",
+      `${citekey} has quote cards or links that refer to it, so ${actor} may not trash it`,
+      "Ask the user to remove the item, or leave it in place.",
+      { citekey },
+      "ask-human",
+    );
+  }
+}
+
+/**
+ * Moves the item folder (sources, derived files, cards) into <library>/.trash and leaves a
+ * trashed.json next to it that says who trashed it and when.
+ */
+export function trashItem(
+  lib: Library,
+  citekey: string,
+  actor: Actor = "human",
+): { trashedTo: string } {
   loadItem(lib, citekey);
   const trash = join(lib.root, ".trash");
   mkdirSync(trash, { recursive: true });
@@ -125,6 +184,10 @@ export function trashItem(lib: Library, citekey: string): { trashedTo: string } 
   let dest = join(trash, `${citekey}-${stamp}`);
   for (let n = 2; existsSync(dest); n++) dest = join(trash, `${citekey}-${stamp}-${n}`);
   renameSync(lib.paths.itemDir(citekey), dest);
+  writeFileSync(
+    join(dest, "trashed.json"),
+    `${JSON.stringify({ citekey, ...lib.stamp(actor) }, null, 2)}\n`,
+  );
   emitRemoved(lib, lib.indexer.removeUnder(`items/${citekey}`));
   return { trashedTo: dest };
 }
@@ -136,7 +199,7 @@ export function acceptInbox(lib: Library, actor: Actor, citekeys: string[]): voi
   }
 }
 
-export function rejectInbox(lib: Library, citekeys: string[]): void {
+export function rejectInbox(lib: Library, citekeys: string[], actor: Actor = "human"): void {
   const items = citekeys.map((c) => loadItem(lib, c));
   for (const item of items) {
     if (!item.fm.inbox) {
@@ -148,7 +211,7 @@ export function rejectInbox(lib: Library, citekeys: string[]): void {
       );
     }
   }
-  for (const item of items) trashItem(lib, item.fm.citekey);
+  for (const item of items) trashItem(lib, item.fm.citekey, actor);
 }
 
 // items.rename -----------------------------------------------------------------------------------

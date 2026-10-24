@@ -9,7 +9,7 @@ import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { BackendRow, pollConfig, useBackendTests, WorkerPanel } from "../onboarding/parts";
-import { ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
+import { ChatPanel, ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
 
 /** Tasks the routing can name besides the default. Mirrors TASKS of @citegeist/ai. */
 export const ROUTED_TASKS = ["card.paraphrase", "card.verify", "metadata.fromFirstPage"] as const;
@@ -220,6 +220,14 @@ export function SettingsScreen() {
         description={t("settings.contact.desc")}
       >
         <ContactForm current={settings.mailto ?? ""} />
+      </Section>
+
+      <Section
+        id="settings-chat"
+        title={t("settings.chat.title")}
+        description={t("settings.chat.desc")}
+      >
+        <ChatPanel data={query.data} />
       </Section>
 
       <Section

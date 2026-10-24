@@ -27,6 +27,12 @@ export interface DriverRequest {
   mcpServers: McpServer[];
   /** Let the agent edit text files in the library directly (D12). */
   directEdits: boolean;
+  /**
+   * A11: false gives the agent the user's own environment (shell, the user's MCP servers and
+   * settings). True is the sandbox: no shell, no user settings, only the citegeist tools.
+   * Research jobs always run isolated.
+   */
+  isolated: boolean;
 }
 
 /** One live conversation with one agent. A driver is created per session and closed with it. */

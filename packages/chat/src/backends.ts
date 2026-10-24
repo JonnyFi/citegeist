@@ -74,8 +74,11 @@ export interface BackendDefinition {
   cli: { command: string; login?: LoginCheck; installHint: string };
   /** Command that speaks ACP on stdio. Undefined when it cannot be found. */
   launch(find: (name: string) => string | undefined): AcpLaunch | undefined;
-  /** Extra `_meta` for `session/new`: per-agent knobs for isolation (no user settings, no shell). */
-  sessionMeta?: Record<string, unknown>;
+  /**
+   * Extra `_meta` for `session/new`, per agent. In the sandbox (A11, "Isolierter Agent" or a
+   * research job) it switches off the user's settings and the shell; otherwise it loads them.
+   */
+  sessionMeta?(isolated: boolean): Record<string, unknown> | undefined;
   /** Streaming fallback through the CLI itself when the ACP adapter cannot start. */
   fallback?: "claude-print";
 }
@@ -107,16 +110,22 @@ export const CLAUDE_CODE: BackendDefinition = {
   launch() {
     return adapterLaunch(CLAUDE_ACP_PACKAGE);
   },
-  // Read by claude-agent-acp: no personal ~/.claude config, only the MCP servers citegeist passes,
-  // no shell (the research notes, section 4.5, points 3 and 4).
-  sessionMeta: {
-    claudeCode: {
-      options: {
-        settingSources: [],
-        strictMcpConfig: true,
-        disallowedTools: ["Bash", "BashOutput", "KillShell"],
+  // Read by claude-agent-acp. Sandbox: no personal ~/.claude config, only the MCP servers citegeist
+  // passes, no shell (research notes, section 4.5, points 3 and 4). Otherwise (A11): the settings
+  // of the user and the project, which bring the user's MCP servers, plus the shell, and the
+  // citegeist MCP server that the session passes.
+  sessionMeta(isolated) {
+    return {
+      claudeCode: {
+        options: isolated
+          ? {
+              settingSources: [],
+              strictMcpConfig: true,
+              disallowedTools: ["Bash", "BashOutput", "KillShell"],
+            }
+          : { settingSources: ["user", "project"] },
       },
-    },
+    };
   },
   fallback: "claude-print",
 };

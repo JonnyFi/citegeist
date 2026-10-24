@@ -5,6 +5,7 @@ export interface DuplicateQuery {
   doi?: string | undefined;
   isbn?: string | undefined;
   arxiv?: string | undefined;
+  pmid?: string | undefined;
   url?: string | undefined;
   /** First 12 hex chars of the SHA-256 of a local file. */
   hash?: string | undefined;
@@ -31,8 +32,8 @@ export function yearOf(issued: string | number | undefined): string | undefined 
 }
 
 /**
- * Finds an item that is the same work: same DOI, ISBN, arXiv id or file hash, or the same
- * normalized title, year and first author. Returns its citekey.
+ * Finds an item that is the same work: same DOI, ISBN, arXiv id, URL or file hash, or the same
+ * normalized title, year and first author (all three must be known). Returns its citekey.
  */
 export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefined {
   const idx = lib.index;
@@ -47,6 +48,13 @@ export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefin
     const row = idx.get<{ citekey: string }>(
       "SELECT citekey FROM items WHERE lower(json_extract(frontmatter_json, '$.ids.arxiv')) = ?",
       q.arxiv.toLowerCase(),
+    );
+    if (row) return row.citekey;
+  }
+  if (q.pmid) {
+    const row = idx.get<{ citekey: string }>(
+      "SELECT citekey FROM items WHERE json_extract(frontmatter_json, '$.ids.pmid') = ?",
+      q.pmid,
     );
     if (row) return row.citekey;
   }
@@ -73,15 +81,16 @@ export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefin
       }
     }
   }
-  if (q.title) {
+  // Without a strong identifier, only the full set counts: the same title, the same year and the
+  // same first author. A title alone, or a title with a missing year or author, is not enough.
+  if (q.title && q.year !== undefined && q.firstAuthor) {
     const title = normalizeText(q.title);
     const year = yearOf(q.year);
-    const author = q.firstAuthor ? normalizeText(q.firstAuthor) : undefined;
-    const rows = idx.all<{ citekey: string; title: string; year: string | null }>(
-      year
-        ? "SELECT citekey, title, year FROM items WHERE year = ?"
-        : "SELECT citekey, title, year FROM items WHERE year IS NULL",
-      ...(year ? [year] : []),
+    const author = normalizeText(q.firstAuthor);
+    if (!title || !year || !author) return undefined;
+    const rows = idx.all<{ citekey: string; title: string }>(
+      "SELECT citekey, title FROM items WHERE year = ?",
+      year,
     );
     for (const r of rows) {
       if (normalizeText(r.title) !== title) continue;
@@ -89,13 +98,9 @@ export function findDuplicate(lib: Library, q: DuplicateQuery): string | undefin
         "SELECT family, literal FROM creators WHERE citekey = ? AND role = 'author' ORDER BY pos LIMIT 1",
         r.citekey,
       );
-      const other = first ? normalizeText(first.family ?? first.literal ?? "") : undefined;
-      if (author === undefined && other === undefined) return r.citekey;
-      if (author !== undefined && other !== undefined) {
-        const a = author.split(" ").pop();
-        const b = other.split(" ").pop();
-        if (author === other || a === b) return r.citekey;
-      }
+      const other = first ? normalizeText(first.family ?? first.literal ?? "") : "";
+      if (!other) continue;
+      if (author === other || author.split(" ").pop() === other.split(" ").pop()) return r.citekey;
     }
   }
   return undefined;

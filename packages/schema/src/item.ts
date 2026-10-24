@@ -92,6 +92,16 @@ export const Source = z.object({
 });
 export type Source = z.infer<typeof Source>;
 
+/** Why an item is incomplete: the error code and message of the step that failed. */
+export const ItemIncomplete = z.object({
+  code: z.string().min(1),
+  message: z.string().min(1),
+  at: z.string(),
+  /** The ingest or convert job that failed. */
+  job: z.string().optional(),
+});
+export type ItemIncomplete = z.infer<typeof ItemIncomplete>;
+
 /**
  * Frontmatter of items/<citekey>/<citekey>.md. Known CSL variables are typed; any other CSL
  * variable is allowed and validated later against the Zotero schema data.
@@ -132,6 +142,12 @@ export const ItemFrontmatter = z
     inbox: z
       .object({ by: Actor, why: z.string().optional(), job: z.string().optional() })
       .optional(),
+    /**
+     * Set when ingest did not finish: the source could not be fetched or converted. The item stays
+     * so that the user or an agent can retry, attach a file or trash it. It is cleared when a
+     * conversion succeeds.
+     */
+    incomplete: ItemIncomplete.optional(),
     sources: z.array(Source).default([]),
     provenance: Provenance.default({}),
     created: Stamp,

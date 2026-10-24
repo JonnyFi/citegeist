@@ -12,6 +12,9 @@ export const en: Record<MessageKey, string> = {
   "nav.main": "Main",
   "nav.library": "Library",
   "nav.inbox": "Inbox",
+  "item.incomplete": "incomplete",
+  "item.incomplete.text":
+    "The import did not finish. The item has no readable text. Attach a matching file or delete the item.",
   "nav.projects": "Projects",
   "shell.mockLibrary": "Mock library",
   "theme.label": "Theme",
@@ -249,6 +252,13 @@ export const en: Record<MessageKey, string> = {
   "settings.connector.portInvalid": "The port must be between 1024 and 65535.",
   "settings.connector.listening": "The listener is accepting connections on 127.0.0.1:{port}.",
   "settings.connector.error": "The listener does not start: {detail}",
+  "settings.chat.title": "Chat agent",
+  "settings.chat.desc":
+    "The chat agent gets the environment of your own Claude Code: shell, your MCP servers and your settings. Research jobs always run isolated.",
+  "settings.chat.switch": "Isolated agent",
+  "settings.chat.on": "The agent has no shell and only the citegeist tools.",
+  "settings.chat.off":
+    "The agent works in your environment. A change applies from the next chat message.",
   "settings.quickInsert.title": "Quick insert",
   "settings.quickInsert.desc":
     "A hotkey opens a search over your cards in any app and pastes the citation you pick.",

@@ -79,6 +79,7 @@ export async function startChat(
       // keeps the semantic index from scheduling work for a virtual chat path.
       notify: (rel) =>
         library.emit("change", { rel, status: "unchanged", external: false } satisfies ChangeEvent),
+      isolated: () => runtime.settings.chatIsolated(),
       defaultBackend: () =>
         chatBackendFromRouting(
           runtime.settings.routing().routing,

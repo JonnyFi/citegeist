@@ -397,10 +397,14 @@ export class Library extends EventEmitter {
       inbox: number;
       inbox_by: string | null;
       inbox_why: string | null;
+      incomplete_code: string | null;
+      incomplete_message: string | null;
     }>(
       `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
          json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
-         json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why
+         json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why,
+         json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
+         json_extract(i.frontmatter_json, '$.incomplete.message') AS incomplete_message
        FROM items i
        ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY i.citekey LIMIT ?`,
       ...params,
@@ -417,6 +421,12 @@ export class Library extends EventEmitter {
       inbox: r.inbox === 1,
       ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
       ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
+      ...(r.incomplete_code
+        ? {
+            incomplete: true,
+            incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
+          }
+        : {}),
     }));
     const next = rows.length > input.limit ? page[page.length - 1]?.citekey : undefined;
     return { items, ...(next ? { next } : {}) };

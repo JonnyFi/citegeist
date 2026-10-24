@@ -37,6 +37,14 @@ async function cg(
   return { code, out, err };
 }
 
+describe("cg errors", () => {
+  it("names the cg command in a fix that points to another operation", async () => {
+    const r = await cg(["projects", "get", "nope"]);
+    expect(r.err.trimEnd().split("\n").at(-1)).toContain("cg projects list");
+    expect(r.err).not.toMatch(/projects\.list/);
+  });
+});
+
 describe("cg", () => {
   it("adds an item with --json", async () => {
     const r = await cg(["items", "add", "10.1000/x", "--json"]);

@@ -59,6 +59,14 @@ If the citegeist app is open, `cg` and `cg mcp` hand every call to it, so the ap
 6. To find papers around one you have, call MCP `related_works {citekey, direction: "references" | "citing"}` (CLI: `cg graph related <citekey> --direction citing --json`). Each work is marked `library`, `inbox` or `new`. Pass the `doi` or `arxiv` id of a work marked `new` to `add_item` with a `why`.
 7. Tell the user what landed in the inbox and why. They accept or reject it in the app (`cg inbox accept <citekey>` for the user).
 
+## Workflow: repair or remove an item
+
+1. A URL that names a PDF is read as a PDF. If `add_item` fails with `URL_RETURNED_HTML`, the server sent a web page: download the file (with a shell if you have one) and call `add_item` with the local path.
+2. An item with `incomplete` in `get_item` (or `incomplete: true` in the item list) failed to convert. Attach a correct file: MCP `attach_file {citekey, path}`, CLI `cg items attach <citekey> --path <file>`. Adding the same file again with `add_item` does the same.
+3. A conversion that works replaces a placeholder title and citekey from the first page, as long as no card or link refers to the item. Read the new citekey from the job result (`renamed`).
+4. To remove an item you or another agent added, or an inbox item: MCP `trash_item {citekey}`, CLI `cg items trash <citekey>`. Items the user added stay; ask the user.
+5. Projects: `list_projects`, `create_project {slug, title, brief?}`, `get_project {slug}`.
+
 ## Workflow: add a paper straight to the library
 
 Use this when the user says "add this paper directly to my library" or hands you a paper from another tool, for example a chat with a research bot.

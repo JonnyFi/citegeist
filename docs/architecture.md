@@ -134,7 +134,9 @@ provenance:                  # pro Feld: Quelle und Zeitpunkt
 created: {at: 2026-10-23T10:12:00Z, by: human}
 ```
 
-Citekeys folgen einer Formel im Stil von Better BibTeX (Standard: Nachname, Jahr, erstes Titelwort). Ein Key entsteht einmal und wird nie still neu berechnet. Eine Umbenennung schreibt alle Wiki-Links und Kartenverweise um.
+Citekeys folgen einer Formel im Stil von Better BibTeX (Standard: Nachname, Jahr, erstes Titelwort). Ein Key entsteht einmal und wird nicht still neu berechnet. Eine Umbenennung schreibt alle Wiki-Links und Kartenverweise um. Eine Ausnahme gibt es für Platzhalter: Entsteht der Key aus einem fehlenden Autor oder Jahr (`anonnddemos`), ersetzt ihn der Kern nach einer erfolgreichen Konvertierung durch den Key aus den besseren Daten, sofern weder Karten noch Links auf den Eintrag verweisen.
+
+Ein Eintrag, dessen Import scheitert, bleibt mit dem Feld `incomplete` (Code, Meldung, Zeitpunkt, Job) im Frontmatter stehen. `items.get`, `items.list`, die Problemliste, die Oberfläche und MCP zeigen ihn an. Ein Anhängen oder erneutes Hinzufügen einer funktionierenden Datei, `documents.convert` oder das Löschen beseitigen den Zustand. Eine erfolgreiche Konvertierung entfernt das Feld.
 
 ### Dokument
 
@@ -229,8 +231,12 @@ Eingabe ──► Erkennen ──► Metadaten ──► Quelle holen ──► 
 - **Erkennen:** DOI, arXiv-ID und ISBN per Regex auf den ersten Seiten und aus XMP. Danach GROBID-Kopfdaten mit Titelabgleich, akzeptiert nur bei Übereinstimmung von Titelähnlichkeit, Erstautor, Jahr (plus minus eins) und Typ. Ein Suchscore allein reicht nicht. Zuletzt liest ein LLM die erste Seite und schlägt CSL-Felder vor, die als Vorschlag markiert bleiben.
 - **Metadaten:** Für Zitierfelder (DOI, Jahr, Typ, Seiten, Titel, Autorenreihenfolge) gewinnt der Datensatz der Registrierungsagentur (Crossref, DataCite über doi.org). OpenAlex ergänzt ORCIDs, Institutionen, Themen und Referenzen, Abstracts kommen aus der Quelle, die einen hat. Bücher kommen von DNB und K10plus, Open Library ist der Rückfall. Eingaben des Nutzers gewinnen immer. Alle Abfragen laufen über einen gemeinsamen Client mit Cache und Ratenbegrenzung pro Quelle.
 - **Quelle holen:** freie PDFs über Unpaywall, arXiv und OpenAlex, arXiv-HTML, wo es existiert.
-- **Konvertieren:** Python-Worker, siehe unten.
+- **Konvertieren:** Python-Worker, siehe unten. Nach einer erfolgreichen Konvertierung liest der Kern bei geratenen Metadaten (Platzhaltertitel, fehlender Autor, Review-Marke) die erste Seite der PDF erneut: Kennungen, dann `metadata.fromFirstPage` mit Titelabgleich. Bestätigte Werte ersetzen die geratenen, Werte von Nutzern und Registrierungsagenturen bleiben unberührt.
 - **Anreichern:** Referenzen, Zitationsgraph, Embeddings, eine AI-Zusammenfassung und eine Einschätzung der Relevanz für jedes Projekt.
+
+Eine URL wird wie von einem Browser abgerufen (Weiterleitungen, Browser-Kopfzeilen) und nach ihrem Inhalt beurteilt: Beginnt die Antwort mit `%PDF`, wird sie wie eine lokale PDF behandelt, auch wenn Adresse oder Content-Type etwas anderes sagen. Liefert eine Adresse, die auf eine Datei zeigt, eine Webseite (Login, Cookie- oder Bot-Sperre), scheitert der Aufruf mit `URL_RETURNED_HTML` und der Aufforderung, die Datei herunterzuladen und ihren Pfad zu übergeben.
+
+Ein Duplikat ist ein Treffer auf DOI, ISBN, arXiv-ID, PMID, URL oder Datei-Hash, ersatzweise auf vollständigen Titel mit Jahr und Erstautor. Hat der getroffene Eintrag keine funktionierende Quelle, hängt der Kern die neue Datei an und konvertiert sie, statt sie zu verwerfen.
 
 Was ein Agent hinzufügt, landet zuerst in der Inbox, dort übernimmt oder verwirft Jonny es. Mit `target: "library"` legt ein Agent ein Paper direkt in die Bibliothek. Was Jonny selbst hinzufügt, landet immer direkt in der Bibliothek (D7).
 
@@ -265,11 +271,24 @@ interface InferenceBackend {
 | Claude Code | Claude Agent SDK, Pool aus ein bis zwei vorgewärmten Prozessen (`startup()`), strukturierte Ausgabe über `outputFormat`, `settingSources: []`, feste Claude-Code-Version | Highlighter, Extraktion, Recherche-Jobs |
 | Codex | `codex app-server` als langlebiger JSON-RPC-Prozess, `codex exec --output-schema` für Einzelaufrufe | dieselben Aufgaben |
 | Cursor | `agent -p --output-format stream-json`, Struktur über Prompt und Validierung, `agent acp` für Chat | Chat und Recherche |
-| ACP-Agents | citegeist als ACP-Client, eigener MCP-Server pro Sitzung übergeben | Chat-Seitenleiste mit jedem ACP-fähigen Agent |
+| ACP-Agents | citegeist als ACP-Client, eigener MCP-Server pro Sitzung übergeben, Umgebung des Nutzers nach A11 | Chat-Seitenleiste mit jedem ACP-fähigen Agent |
 | API-Key | Anthropic, OpenAI, OpenRouter, xAI | Option pro Aufgabe |
 | Lokal | Ollama, MLX, LM Studio über OpenAI-kompatible Endpunkte | Option pro Aufgabe |
 
-Zwei Punkte aus der Recherche bestimmen die Konfiguration. `claude -p --bare` liest nur API-Keys und ignoriert das Abo, und laut Doku wird es künftig Standard für `-p`. citegeist pinnt deshalb die Claude-Code-Version und testet das Abo-Login in CI. Ohne `settingSources: []` lädt jede Sitzung die persönliche `~/.claude`-Konfiguration des Nutzers mit.
+Zwei Punkte aus der Recherche bestimmen die Konfiguration. `claude -p --bare` liest nur API-Keys und ignoriert das Abo, und laut Doku wird es künftig Standard für `-p`. citegeist pinnt deshalb die Claude-Code-Version und testet das Abo-Login in CI. Ohne `settingSources: []` lädt jede Sitzung die persönliche `~/.claude`-Konfiguration des Nutzers mit. Das ist für Inferenz-Aufgaben und Recherche-Jobs gewollt und bleibt so.
+
+### Chat-Agents arbeiten in der Umgebung des Nutzers
+
+Für Chat-Sitzungen gilt A11 statt der Isolation. Der Agent der Seitenleiste bekommt dieselbe Umgebung wie das Claude Code des Nutzers:
+
+| | Standard | Einstellung „Isolierter Agent" |
+|---|---|---|
+| Claude Code (ACP-Adapter) | `settingSources: ["user", "project"]`, Shell erlaubt, MCP-Server des Nutzers geladen | `settingSources: []`, `strictMcpConfig`, Shell gesperrt |
+| Claude Code (Rückfall `claude -p`) | `--setting-sources user,project`, `Bash` erlaubt | `--strict-mcp-config`, keine Einstellungen, `Bash` gesperrt |
+| Codex | Codex-Konfiguration des Nutzers | gleiche Konfiguration, Berechtigungen wie unten |
+| Berechtigungsregel | Shell, fremde Werkzeuge und Änderungen außerhalb der Bibliothek erlaubt | Shell und Änderungen außerhalb von Bibliothekstext und Arbeitsordner abgelehnt |
+
+Der citegeist-MCP-Server kommt in jedem Fall pro Sitzung dazu, mit eigenem Write-Token. Im Bibliotheksordner bleiben `derived`, `sources`, `exports` und `citegeist.json` auch in der Umgebung des Nutzers geschützt. Recherche-Aufträge laufen immer isoliert. Die Einstellung liegt in `settings.json` unter `chat.isolated` und wirkt ab dem nächsten Beitrag einer Sitzung.
 
 ### Aufgaben
 
@@ -289,8 +308,9 @@ Die Abos bieten keine Embeddings, deshalb laufen sie lokal mit Transformers.js. 
 
 - TypeScript-SDK v2 (`@modelcontextprotocol/server`), Spec-Revision 2026-07-28, ältere Clients bleiben über den Kompatibilitätsmodus des SDK bedient.
 - `cg mcp` als stdio-Shim für alle lokalen Clients, dazu Streamable HTTP auf `127.0.0.1` mit Bearer-Token sowie Origin- und Host-Prüfung. Für Claude Desktop gibt es zusätzlich ein `.mcpb`-Paket.
-- Etwa zehn Tools: `search`, `get_item`, `read_document` (nach Seite, Abschnitt oder Block), `list_cards`, `add_item`, `create_card`, `create_note`, `link`, `get_project` (Projekt, Pläne und Gliederung in einem Aufruf), `related_works` (zitierte und zitierende Werke eines Eintrags, `direction`), `cite`, `jobs_get`. Lesende Tools tragen `readOnlyHint`, jede Antwort hat einen kurzen Text plus `structuredContent`, Volltexte kommen als `resource_link`.
+- Höchstens zwanzig Tools: `search`, `get_item`, `read_document` (nach Seite, Abschnitt oder Block), `list_cards`, `add_item`, `attach_file` (lokale Datei an einen bestehenden Eintrag hängen und konvertieren), `trash_item` (Inbox-Einträge, unvollständige Einträge und von Agents angelegte Einträge, solange keine Karte und kein Link auf sie verweist; der Papierkorbordner hält fest, wer gelöscht hat), `create_card`, `create_note`, `link`, `list_projects`, `create_project`, `get_project` (Projekt, Pläne und Gliederung in einem Aufruf), `related_works` (zitierte und zitierende Werke eines Eintrags, `direction`), `cite`, `jobs_get`, dazu die Planungswerkzeuge `edit_outline`, `edit_plan_doc`, `note_insight` und `find_insights`. Lesende Tools tragen `readOnlyHint`, jede Antwort hat einen kurzen Text plus `structuredContent`, Volltexte kommen als `resource_link`.
 - Server-Anweisungen unter 4.096 Zeichen, weil Claude Code beim Start nur Tool-Namen und Anweisungen lädt.
+- Fehlertexte nennen Operationen einmal unter ihrem Operationsnamen (`items.trash`). Der MCP-Server schreibt sie auf den Namen des Tools um (`trash_item`), die CLI auf das Kommando (`cg items trash`). Eine Operation ohne Tool auf der Verbindung erscheint als `cg`-Kommando mit dem Hinweis, dass der Nutzer es ausführen muss. Ein Test stellt sicher, dass jeder Operationsname in den Quellen existiert.
 
 ### CLI
 

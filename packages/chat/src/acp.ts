@@ -269,6 +269,7 @@ export class AcpDriver implements AgentDriver {
     private readonly conn: AcpConnection,
     private readonly sessionId: string,
     private readonly mode: SessionMode,
+    private readonly isolated: boolean,
     private readonly paths: { libraryRoot: string; cwd: string },
   ) {}
 
@@ -290,17 +291,18 @@ export class AcpDriver implements AgentDriver {
           ? driver.onPermission(r)
           : Promise.resolve({ outcome: { outcome: "cancelled" } as const }),
     };
+    const meta = def.sessionMeta?.(req.isolated);
     try {
       const { sessionId } = await conn.newSession(
         {
           cwd: req.cwd,
           mcpServers: req.mcpServers,
           ...(extraDirs.length > 0 ? { additionalDirectories: extraDirs } : {}),
-          ...(def.sessionMeta ? { _meta: def.sessionMeta } : {}),
+          ...(meta ? { _meta: meta } : {}),
         },
         sink,
       );
-      driver = new AcpDriver(conn, sessionId, req.mode, {
+      driver = new AcpDriver(conn, sessionId, req.mode, req.isolated, {
         libraryRoot: req.libraryRoot,
         cwd: req.cwd,
       });
@@ -350,6 +352,7 @@ export class AcpDriver implements AgentDriver {
     if (this.cancelled) return { outcome: { outcome: "cancelled" } };
     const verdict = decide(req, {
       mode: this.mode,
+      isolated: this.isolated,
       libraryRoot: this.paths.libraryRoot,
       scratchDir: this.paths.cwd,
     });

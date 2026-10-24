@@ -6,9 +6,11 @@ export function instructions(opts: {
   mode: SessionMode;
   libraryRoot: string;
   directEdits: boolean;
+  /** A11: the sandbox. When false the agent has the user's shell and tools. */
+  isolated?: boolean;
 }): string {
   const lines = [
-    "You work inside citegeist, the user's research library on their Mac. It holds papers, quote cards, notes and projects. You reach it through the citegeist MCP server: search, get_item, read_document, list_cards, add_item, create_card, create_note, link, get_project, cite and jobs_get. Your working folder is an empty scratch folder, so use the MCP tools to look things up.",
+    "You work inside citegeist, the user's research library on their Mac. It holds papers, quote cards, notes and projects. You reach it through the citegeist MCP server: search, get_item, read_document, list_cards, add_item, attach_file, trash_item, create_card, create_note, link, list_projects, create_project, get_project, cite and jobs_get. Your working folder is an empty scratch folder, so use the MCP tools to look things up.",
     "",
     "How to work",
     "- Answer in the language the user writes in.",
@@ -21,6 +23,11 @@ export function instructions(opts: {
     lines.push(
       "- When the user asks for a change, make it directly. Afterwards say in one line what you changed and where.",
     );
+    if (opts.isolated === false) {
+      lines.push(
+        "- You run in the user's own environment: you have a shell, the user's other MCP servers and their Claude Code settings. When the citegeist tools are not enough, use them (for example download a PDF with curl, then add it with add_item or attach_file using the local path). If you lack a capability, say so plainly.",
+      );
+    }
     if (opts.directEdits) {
       lines.push(
         `- The library folder is ${opts.libraryRoot}. You may edit its text files directly: notes/*.md, projects/*/project.md and the note text of items/<citekey>/<citekey>.md. Never touch items/*/derived, items/*/sources, the quote block of a card or citegeist.json.`,

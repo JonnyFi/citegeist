@@ -140,7 +140,13 @@ export class SettingsService {
       uiLanguage: stored.uiLanguage,
       semantic: { ...stored.semantic },
       connector: { ...stored.connector },
+      chat: { ...stored.chat },
     };
+  }
+
+  /** A11: true when chat agents run in the sandbox instead of the user's own environment. */
+  chatIsolated(): boolean {
+    return this.deps.store.load().chat.isolated;
   }
 
   /** Routing in the shape the AiRouter takes. */
@@ -223,6 +229,8 @@ export class SettingsService {
         port: patch.connector.port ?? stored.connector.port,
       };
     }
+
+    if (patch.chat?.isolated !== undefined) stored.chat = { isolated: patch.chat.isolated };
 
     this.deps.store.save(stored);
     const settings = await this.settings();
