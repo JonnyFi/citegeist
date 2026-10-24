@@ -15,8 +15,10 @@ DOI a venue is kept as a hint, not as a publication.
 """
 
 import argparse
+import contextlib
 import csv
 import datetime
+import fcntl
 import json
 import os
 import re
@@ -59,14 +61,33 @@ def read_json(path, default=None):
 
 def write_json(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     os.replace(tmp, path)
 
 
+@contextlib.contextmanager
+def locked():
+    """Exclusive lock for read-modify-write of the store (the lock file is watch.py's, never held in a nest)."""
+    os.makedirs(WATCH_DIR, exist_ok=True)
+    with open(os.path.join(WATCH_DIR, ".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def save(store, before):
+    """Write the store only if it differs from what was loaded (`before` is its JSON text)."""
+    if dump(store) != before:
+        write_json(STORE, store)
+
+
 def load():
     return read_json(STORE, {"items": {}, "imports": []})
+
+
+def dump(store):
+    return json.dumps(store, sort_keys=True)
 
 
 def is_preprint_doi(doi):
@@ -112,22 +133,24 @@ def add(store, *, title, doi="", arxiv="", openalex_id="", year=None, authors=()
 # --- sources of preprints -------------------------------------------------------------------
 
 def sync_from_runs(runs_dir=RUNS_DIR):
-    """Track every preprint listed in any run's papers.csv."""
-    store, added = load(), 0
-    for name in sorted(os.listdir(runs_dir)) if os.path.isdir(runs_dir) else []:
-        path = os.path.join(runs_dir, name, "papers.csv")
-        if not os.path.exists(path):
-            continue
-        with open(path, encoding="utf-8-sig", newline="") as f:
-            for p in csv.DictReader(f):
-                if p.get("section") == "rejected" or not (p.get("section") == "preprint" or p.get("is_preprint") == "True"):
-                    continue
-                added += add(store, title=p.get("title"), doi=p.get("verified_doi") or p.get("doi"),
-                             arxiv=p.get("arxiv_id") or "", openalex_id=p.get("openalex_id") or "",
-                             year=int(p["year"]) if (p.get("year") or "").isdigit() else None,
-                             authors=[a.split(" ")[-1] for a in (p.get("authors") or "").split("; ") if a],
-                             origin=f"run:{name}")
-    write_json(STORE, store)
+    """Track every preprint listed in any run's papers.csv. The store is rewritten only when it changes."""
+    with locked():
+        store = load()
+        before, added = dump(store), 0
+        for name in sorted(os.listdir(runs_dir)) if os.path.isdir(runs_dir) else []:
+            path = os.path.join(runs_dir, name, "papers.csv")
+            if not os.path.exists(path):
+                continue
+            with open(path, encoding="utf-8-sig", newline="") as f:
+                for p in csv.DictReader(f):
+                    if p.get("section") == "rejected" or not (p.get("section") == "preprint" or p.get("is_preprint") == "True"):
+                        continue
+                    added += add(store, title=p.get("title"), doi=p.get("verified_doi") or p.get("doi"),
+                                 arxiv=p.get("arxiv_id") or "", openalex_id=p.get("openalex_id") or "",
+                                 year=int(p["year"]) if (p.get("year") or "").isdigit() else None,
+                                 authors=[a.split(" ")[-1] for a in (p.get("authors") or "").split("; ") if a],
+                                 origin=f"run:{name}")
+        save(store, before)
     return added
 
 
@@ -169,18 +192,20 @@ def parse_markdown(text):
 def import_text(name, text):
     """Track the preprints cited in a references.bib or a Markdown reference list."""
     entries = parse_bib(text) if re.search(r"^\s*@\w+\s*\{", text, re.M) else parse_markdown(text)
-    store, added, preprints_found = load(), 0, 0
-    for e in entries:
-        doi = clean_doi(e["doi"])
-        if not (e["arxiv"] or is_preprint_doi(doi) or (PREPRINT_VENUES.search(e["hint"]) and doi)):
-            continue
-        preprints_found += 1
-        year = int(e["year"]) if str(e.get("year") or "").isdigit() else None
-        added += add(store, title=e["title"], doi=doi, arxiv=e["arxiv"], year=year, authors=e["authors"],
-                     origin=f"import:{name}")
-    store["imports"] = [i for i in store["imports"] if i["name"] != name] + [
-        {"name": name, "added": now(), "entries": len(entries), "preprints": preprints_found}]
-    write_json(STORE, store)
+    with locked():
+        store = load()
+        before, added, preprints_found = dump(store), 0, 0
+        for e in entries:
+            doi = clean_doi(e["doi"])
+            if not (e["arxiv"] or is_preprint_doi(doi) or (PREPRINT_VENUES.search(e["hint"]) and doi)):
+                continue
+            preprints_found += 1
+            year = int(e["year"]) if str(e.get("year") or "").isdigit() else None
+            added += add(store, title=e["title"], doi=doi, arxiv=e["arxiv"], year=year, authors=e["authors"],
+                         origin=f"import:{name}")
+        store["imports"] = [i for i in store["imports"] if i["name"] != name] + [
+            {"name": name, "added": now(), "entries": len(entries), "preprints": preprints_found}]
+        save(store, before)
     return {"entries": len(entries), "preprints": preprints_found, "new": added}
 
 
@@ -409,7 +434,16 @@ def check(force=False, log=lambda m: print(m, file=sys.stderr)):
         elif hints:
             it["status"] = "hint"
     or_cache.save()
-    write_json(STORE, store)
+    # the checks took minutes: merge into the store as it is now, so a sync or import meanwhile is kept
+    with locked():
+        current = load()
+        before = dump(current)
+        for it in items:
+            seen = current["items"].get(it["id"])
+            if seen:
+                it["origins"] = list(dict.fromkeys(it["origins"] + seen.get("origins", [])))
+            current["items"][it["id"]] = it
+        save(current, before)
     return found
 
 

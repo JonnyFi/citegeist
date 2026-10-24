@@ -28,6 +28,7 @@ import json
 import os
 import plistlib
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -48,10 +49,13 @@ LIBRARY_ID = re.sub(r"[^A-Za-z0-9-]", "", os.environ.get("CITEGEIST_LIBRARY_ID",
 LABEL_PREFIX = f"app.citegeist.litsearch.{LIBRARY_ID}."
 # what a LaunchAgent needs to find the library and the key (never the key itself)
 AGENT_ENV = ("CITEGEIST_LITSEARCH_DIR", "CITEGEIST_LITSEARCH_CACHE", "CITEGEIST_KEYCHAIN_SERVICE",
-             "CITEGEIST_LIBRARY_ID", "OPENDRAFT_CONTACT_EMAIL", "SSL_CERT_FILE")
+             "CITEGEIST_LIBRARY_ID", "OPENDRAFT_CONTACT_EMAIL", "SSL_CERT_FILE", "PYTHONDONTWRITEBYTECODE")
 # weekly re-runs and notifications need launchd and osascript; tests switch both off
 SCHEDULER = sys.platform == "darwin" and not os.environ.get("CITEGEIST_LITSEARCH_NO_LAUNCHD")
 WEEKDAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]  # launchd: 0 = Sunday
+
+
+HOST = socket.gethostname()  # same value as os.hostname() in Node, which compares it with running_host
 
 
 def now():
@@ -139,7 +143,7 @@ def save(wid=None, from_run=None, topic=None, queries=None, since=None, top=None
         while wid in ids:
             wid, n = f"{base}-{n}", n + 1
         wl = {"id": wid, **fields, "paused": True, "created": now(), "base_run": from_run, "runs": [],
-              "last_run": None, "last_status": None, "last_new": None, "last_visit": now(), "running_pid": None}
+              "last_run": None, "last_status": None, "last_new": None, "last_visit": now(), "running_pid": None, "running_host": None}
         data["watchlists"].append(wl)
     if from_run:
         preprints.sync_from_runs(RUNS_DIR)
@@ -282,7 +286,7 @@ def execute(wl):
     path = os.path.join(RUNS_DIR, run_id)
     meta = {"id": run_id, "topic": wl["topic"], "queries": queries, "dropped_queries": dropped,
             "since": wl.get("since"), "top": wl.get("top"), "created": now(), "status": "running",
-            "counts": {}, "attempts": 1, "watchlist": wl["id"], "pid": os.getpid()}
+            "counts": {}, "attempts": 1, "watchlist": wl["id"], "pid": os.getpid(), "host": HOST}
     write_json(os.path.join(path, "run.json"), meta)
     cmd = [sys.executable, "-u", SCRIPT, "--topic", wl["topic"], "--out", path, "--progress-jsonl",
            "--query-cache", os.path.join(path, "query-cache")]
@@ -309,6 +313,7 @@ def execute(wl):
         out.write(json.dumps({"type": "end", "status": status, "returncode": rc, "t": round(time.time(), 3)}) + "\n")
     meta.update(status=status, finished=now())
     meta.pop("pid", None)
+    meta.pop("host", None)
     write_json(os.path.join(path, "run.json"), meta)
     return run_id, status
 
@@ -374,16 +379,17 @@ def run_watch(wid, scheduled=False):
         log(f"{wid}: paused, skipped")
         return 0
     pid = wl.get("running_pid")
-    if pid and pid != os.getpid() and _alive(pid):
+    # the pid and host are synced with the library: a pid of another Mac says nothing about this one
+    if pid and wl.get("running_host") == HOST and pid != os.getpid() and _alive(pid):
         log(f"{wid}: already running (pid {pid})")
         return 0
-    update(wid, running_pid=os.getpid(), running_since=now())
+    update(wid, running_pid=os.getpid(), running_host=HOST, running_since=now())
     status = "failed"
     try:
         run_id, status = execute(wl)
         record(wid, run_id, status, notify_user=True)
     finally:
-        update(wid, running_pid=None)
+        update(wid, running_pid=None, running_host=None)
     # preprint tracking rides along with every weekly run
     try:
         preprints.sync_from_runs(RUNS_DIR)

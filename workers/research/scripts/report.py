@@ -236,6 +236,8 @@ def paper_rows(rows):
     out = []
     for r in rows:
         link = r["link"] or (f"https://doi.org/{r['verified_doi']}" if r["verified_doi"] else "")
+        if not re.match(r"https?://", link, re.I):  # javascript: and data: links from a CSV cell are not rendered
+            link = ""
         title = f'<a class="t" href="{esc(link)}">{esc(r["title"])}</a>' if link else f'<span class="t">{esc(r["title"])}</span>'
         tier = TIER.get(r["venue_tier"] or "", TIER[""])[0]
         badges = []
