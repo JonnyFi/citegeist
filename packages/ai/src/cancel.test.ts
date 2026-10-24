@@ -106,7 +106,8 @@ describe("cancelling a CLI call", () => {
       args: ["-p"],
       cwd: dir,
       env: process.env,
-      timeoutMs: 400,
+      // long enough for the fake CLI to start node and write its pids on a loaded machine
+      timeoutMs: 3000,
     });
     expect(result.timedOut).toBe(true);
     const { parent, child } = pids(dir);
