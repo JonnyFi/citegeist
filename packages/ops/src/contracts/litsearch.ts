@@ -228,21 +228,23 @@ export const litsearchCompare = defineContract({
 
 export const litsearchReport = defineContract({
   name: "litsearch.report",
-  summary: "Write the self-contained HTML report of a run (report.html in the run folder)",
+  summary:
+    "Write the self-contained HTML report of a run (report.html in the run folder) and return it, so the app can offer it as a download",
   access: "write",
   input: z.object({ runId: LitsearchRunId }),
-  output: z.object({ path: z.string() }),
+  output: z.object({ path: z.string(), filename: z.string(), html: z.string() }),
 });
 
 export const litsearchExport = defineContract({
   name: "litsearch.export",
-  summary: "Path of a run's ranked list as Markdown, CSV, BibTeX or per-paper summaries",
+  summary:
+    "A run's ranked list as Markdown, CSV, BibTeX or per-paper summaries: the file in the run folder and its text",
   access: "read",
   input: z.object({
     runId: LitsearchRunId,
     format: z.enum(["md", "csv", "bib", "summaries"]),
   }),
-  output: z.object({ path: z.string() }),
+  output: z.object({ path: z.string(), filename: z.string(), content: z.string() }),
 });
 
 export const litsearchToInbox = defineContract({
