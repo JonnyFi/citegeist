@@ -7,8 +7,8 @@ import { defineConfig } from "electron-vite";
 const bundled = ["@citegeist/core", "@citegeist/ops", "@citegeist/schema", "@citegeist/server"];
 
 /**
- * @citegeist/cite reads its CSL styles and locales from `vendor/` next to its own module. Bundled
- * into core.js, that directory has to sit next to the bundle.
+ * @citegeist/cite reads its CSL styles and locales from `vendor/` next to its own module or one level
+ * up (see vendorPath), because a shared chunk lands in out/main/chunks. The directory sits in out/main.
  */
 const copyCslVendor = {
   name: "copy-csl-vendor",
