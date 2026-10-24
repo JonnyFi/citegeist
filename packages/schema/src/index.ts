@@ -21,6 +21,7 @@ export * from "./errors.js";
 export * from "./item.js";
 export * from "./job.js";
 export * from "./library.js";
+export * from "./matrix.js";
 export * from "./note.js";
 export * from "./planning.js";
 export * from "./project.js";

@@ -27,6 +27,20 @@ export {
 } from "./tasks/card-paraphrase/index.js";
 export { CardVerifyInput, CardVerifyOutput } from "./tasks/card-verify/index.js";
 export {
+  MAX_EVIDENCE,
+  MatrixFillCellInput,
+  MatrixFillCellOutput,
+  MatrixPassage,
+  MIN_QUOTE_CHARS,
+  noInfoText,
+  normalizeForMatch,
+  type QuoteMatch,
+  type SanitizedCell,
+  sanitizeCell,
+  type VerifiedEvidence,
+  verifyQuote,
+} from "./tasks/matrix-fill-cell/index.js";
+export {
   MetadataFromFirstPageInput,
   MetadataFromFirstPageOutput,
 } from "./tasks/metadata-from-first-page/index.js";

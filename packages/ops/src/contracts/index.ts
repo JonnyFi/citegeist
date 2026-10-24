@@ -23,6 +23,7 @@ import { defineContract, type OperationContract } from "../registry.js";
 import { CHAT_CONTRACTS } from "./chat.js";
 import { GRAPH_CONTRACTS } from "./graph.js";
 import { IMPORT_CONTRACTS } from "./import.js";
+import { MATRIX_CONTRACTS } from "./matrix.js";
 import { PLANNING_CONTRACTS } from "./planning.js";
 import { SYNC_CONTRACTS } from "./sync.js";
 import { WEBHOOK_CONTRACTS } from "./webhooks.js";
@@ -58,6 +59,7 @@ const ItemSummary = z.object({
 export * from "./chat.js";
 export * from "./graph.js";
 export * from "./import.js";
+export * from "./matrix.js";
 export * from "./planning.js";
 export * from "./sync.js";
 export * from "./webhooks.js";
@@ -705,6 +707,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   workerSetup,
   ...CHAT_CONTRACTS,
   ...IMPORT_CONTRACTS,
+  ...MATRIX_CONTRACTS,
   ...PLANNING_CONTRACTS,
   ...SYNC_CONTRACTS,
   ...GRAPH_CONTRACTS,
