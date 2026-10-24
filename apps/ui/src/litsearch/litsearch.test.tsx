@@ -57,11 +57,14 @@ describe("literature search tab", () => {
       disableSources: ["dblp"],
     });
     expect(await screen.findAllByTestId("litsearch-stage")).toHaveLength(18);
-    await waitFor(() => expect(screen.getByText("Fertig")).toBeVisible(), { timeout: 4000 });
+    expect(screen.getByTestId("litsearch-percent")).toHaveTextContent(/^\d{1,3} %$/);
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-paper")).toHaveLength(2), {
+      timeout: 4000,
+    });
     expect(screen.getAllByTestId("litsearch-stage").every((s) => s.dataset.status === "done")).toBe(
       true,
     );
-    expect(screen.getByText("Begutachtet").nextSibling).toHaveTextContent("2");
+    expect(screen.queryByTestId("litsearch-percent")).toBeNull();
   });
 
   it("shows why a run failed and resumes it", async () => {
@@ -117,5 +120,73 @@ describe("literature search tab", () => {
     await user.type(screen.getByLabelText("Suchanfrage 1"), "y");
     await user.type(screen.getByLabelText("Erschienen ab"), "20x2");
     expect(screen.getByRole("button", { name: "Suche starten" })).toBeDisabled();
+  });
+});
+
+describe("results of a finished run", () => {
+  const RUN = "/litsearch/2026-10-20-agent-communication-protocols";
+  const titles = () => screen.getAllByTestId("litsearch-paper").map((r) => r.textContent ?? "");
+
+  it("shows the peer-reviewed papers by rank, switches sections and opens a paper's details", async () => {
+    // protects: the result list is the run's papers per section, and a click shows score parts and the reason
+    // fails_when: a preprint shows among peer-reviewed papers, or the detail misses score, reason or DOI link
+    // no_claim: the papers come from the mock; parsing papers.csv is covered by core tests
+    const user = userEvent.setup();
+    renderApp(RUN);
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-paper")).toHaveLength(2));
+    expect(titles()[0]).toContain("A Survey of Agent Interoperability Protocols");
+    await user.click(screen.getByRole("button", { name: /^Preprints/ }));
+    await waitFor(() => expect(titles()).toEqual([expect.stringContaining("LLM Agents Talking")]));
+    await user.click(screen.getByRole("button", { name: /^Abgelehnt/ }));
+    await waitFor(() => expect(titles()[0]).toContain("DOI not found at Crossref or DataCite"));
+  });
+
+  it("filters by text, year and tier and sorts by year", async () => {
+    // protects: filters narrow the list and say how many are shown; sorting changes the order
+    // fails_when: a filter keeps a non-matching paper, the counter is wrong, or the sort is ignored
+    // no_claim: none beyond protects
+    const user = userEvent.setup();
+    renderApp(RUN);
+    await waitFor(() => expect(screen.getAllByTestId("litsearch-paper")).toHaveLength(2));
+    await user.type(screen.getByLabelText("Jahr von"), "2024");
+    expect(titles()).toEqual([expect.stringContaining("A Survey of Agent Interoperability")]);
+    expect(screen.getByText("1 von 2 angezeigt")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Filter zurücksetzen" }));
+    await user.selectOptions(screen.getByLabelText("Venue-Tier"), "2");
+    expect(titles()).toEqual([expect.stringContaining("Emergent Communication")]);
+    await user.selectOptions(screen.getByLabelText("Venue-Tier"), "all");
+    await user.type(screen.getByLabelText("Titel, Autor oder Venue filtern"), "zzz");
+    expect(screen.getByText("Kein Paper passt zu den Filtern.")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Filter zurücksetzen" }));
+    await user.click(screen.getByRole("button", { name: "Nach Jahr sortieren" }));
+    expect(titles()[0]).toContain("Emergent Communication");
+  });
+
+  it("offers the exports and the report as downloads and draws the charts", async () => {
+    // protects: each download asks core for the run's file and hands it to the browser as a file
+    // fails_when: a button calls the wrong format, or the charts are missing
+    // no_claim: the browser download itself (Electron's save dialog) is not exercised in jsdom
+    const user = userEvent.setup();
+    const created: string[] = [];
+    const original = URL.createObjectURL;
+    URL.createObjectURL = () => {
+      created.push("blob");
+      return "blob:x";
+    };
+    URL.revokeObjectURL = () => {};
+    const { calls } = renderApp(RUN);
+    await user.click(await screen.findByRole("button", { name: "BibTeX" }));
+    await user.click(screen.getByRole("button", { name: "Bericht (HTML)" }));
+    await waitFor(() => expect(created).toHaveLength(2));
+    expect(calls.filter((c) => c.name === "litsearch.export").map((c) => c.input)).toEqual([
+      { runId: "2026-10-20-agent-communication-protocols", format: "bib" },
+    ]);
+    expect(calls.some((c) => c.name === "litsearch.report")).toBe(true);
+    await user.click(screen.getByText("Diagramme"));
+    expect(screen.getByRole("img", { name: "Paper pro Jahr" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Zusammensetzung des Scores (Top 15)" }),
+    ).toBeInTheDocument();
+    URL.createObjectURL = original;
   });
 });

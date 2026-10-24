@@ -301,7 +301,7 @@ def build(run_dir):
 
     p = []
     p.append(f"<h1>Literaturrecherche: {esc(topic)}</h1>")
-    p.append(f'<p class="sub">Suche vom {esc(created)}{dur} · erstellt mit Research Pipeline · '
+    p.append(f'<p class="sub">Suche vom {esc(created)}{dur} · erstellt mit der Literatursuche von citegeist · '
              f'alle Angaben stammen aus den Antworten von OpenAlex, arXiv, Semantic Scholar, Crossref und DataCite</p>')
     p.append('<div class="kpis">'
              f'<div class="kpi"><b>{len(by["main"])}</b><span>begutachtete Paper</span></div>'

@@ -554,3 +554,66 @@ describe("runIdFor", () => {
     expect(runIdFor("!!!", date, () => false)).toBe("2026-10-24-run");
   });
 });
+
+describe("litsearch.export and litsearch.report", () => {
+  it("hands out the run's files with a download name and refuses runs without results", async () => {
+    // protects: the four downloads carry the file of the run folder, named after the run
+    // fails_when: a format maps to the wrong file, or a running run returns an empty file
+    // no_claim: the files are the fixture's; their content is the pipeline's (render.py)
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    writeFileSync(join(lib.paths.litsearchRunDir("run-sample"), "references.bib"), "@article{x}\n");
+    const registry = bindLitsearchOperations(new Registry(), lib);
+    const out = (await registry.call(
+      "litsearch.export",
+      { actor: "human" },
+      { runId: "run-sample", format: "csv" },
+    )) as { filename: string; content: string };
+    expect(out.filename).toBe("run-sample-papers.csv");
+    expect(out.content).toContain("A Survey of Agent Interoperability Protocols");
+    const bib = (await registry.call(
+      "litsearch.export",
+      { actor: "human" },
+      { runId: "run-sample", format: "bib" },
+    )) as { content: string };
+    expect(bib.content).toBe("@article{x}\n");
+    await expect(
+      registry.call("litsearch.export", { actor: "human" }, { runId: "run-sample", format: "md" }),
+    ).rejects.toMatchObject({ detail: { code: "LITSEARCH_OUTPUT_MISSING" } });
+  });
+
+  it.skipIf(!python3())("writes the HTML report with report.py from the run folder", async () => {
+    // protects: "Bericht (HTML)" runs the pipeline's own report.py on the run and returns one self-contained page
+    // fails_when: the script path or arguments are wrong, or the page lacks the run's papers
+    // no_claim: runs the system python3 instead of the uv environment; skipped where there is none
+    const lib = await library();
+    copyRun(lib, "run-sample");
+    const scriptsDir = join(FIXTURES, "..", "..", "scripts");
+    const registry = bindLitsearchOperations(new Registry(), lib, {
+      command: { command: python3() as string, args: [] },
+      scriptsDir,
+    });
+    const out = (await registry.call(
+      "litsearch.report",
+      { actor: "human" },
+      { runId: "run-sample" },
+    )) as {
+      path: string;
+      filename: string;
+      html: string;
+    };
+    expect(out.filename).toBe("run-sample-report.html");
+    expect(existsSync(out.path)).toBe(true);
+    expect(out.html).toMatch(/^<!doctype html>/i);
+    expect(out.html).toContain("A Survey of Agent Interoperability Protocols");
+    expect(out.html).toContain("agent communication protocols");
+    expect(out.html).not.toMatch(/<script[^>]+src=/);
+  });
+});
+
+function python3(): string | undefined {
+  for (const p of ["/usr/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"]) {
+    if (existsSync(p)) return p;
+  }
+  return undefined;
+}

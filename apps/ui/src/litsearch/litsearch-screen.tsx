@@ -13,7 +13,7 @@ import {
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus, Telescope, X } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
-import { HeaderSlot, Label, SubBar } from "../components/layout";
+import { HeaderSlot, Label, RightColumn, SubBar } from "../components/layout";
 import { Badge, StatusSquare } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -22,6 +22,8 @@ import { type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { cn } from "../lib/utils";
 import { Bar, ErrorLine, FieldLabel, Section, useGuarded } from "../settings/parts";
+import { ResultCharts } from "./charts";
+import { Downloads, PaperDetail, ResultsTable } from "./results";
 
 const SOURCES: readonly LitsearchSource[] = ["dblp", "openreview", "unpaywall", "orcid"];
 /** How often an open run is read again while it runs. */
@@ -369,7 +371,31 @@ function StageRow({ stage }: { stage: LitsearchStage }) {
   );
 }
 
-/** One run: its settings, the stages while it runs and the result counts when it is done. */
+/**
+ * Share of the run done, 0 to 1: finished, failed and skipped stages, plus the running stage by
+ * its own counter (e.g. 12 of 40 authors), so the percentage moves between stages too.
+ */
+export function runProgress(stages: readonly LitsearchStage[]): number {
+  if (stages.length === 0) return 0;
+  let done = 0;
+  for (const s of stages) {
+    if (s.status === "done" || s.status === "skipped" || s.status === "failed") done += 1;
+    else if (s.status === "running" && s.total) done += Math.min(1, (s.done ?? 0) / s.total);
+  }
+  return Math.min(1, done / stages.length);
+}
+
+function Stages({ stages }: { stages: readonly LitsearchStage[] }) {
+  return (
+    <ol className="flex flex-col">
+      {stages.map((s) => (
+        <StageRow key={s.id} stage={s} />
+      ))}
+    </ol>
+  );
+}
+
+/** One run: settings, live stages with percentage, and for a finished run the results. */
 export function LitsearchRunScreen({ runId }: { runId: string }) {
   const { t } = useI18n();
   const got = useOp(
@@ -380,6 +406,7 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
   const cancel = useOpMutation(litsearchCancel);
   const resume = useOpMutation(litsearchResume);
   const guard = useGuarded();
+  const [selected, setSelected] = useState<string>();
 
   if (got.isPending) return <Loading label={t("common.loading")} />;
   if (got.isError) {
@@ -390,21 +417,23 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
       </div>
     );
   }
-  const { run, stages } = got.data;
-  const finished = stages.filter((s) => s.status !== "pending" && s.status !== "running").length;
-  const progress = stages.length ? finished / stages.length : 0;
+  const { run, stages, papers } = got.data;
+  const progress = runProgress(stages);
+  const percent = Math.round(progress * 100);
+  const done = run.status === "done";
   const canResume =
     run.status === "failed" || run.status === "cancelled" || run.status === "interrupted";
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <Title>
-        <span className="text-[13px] text-muted">/</span>
-        <span className="truncate text-[13px] font-medium">{run.topic}</span>
-      </Title>
+  const main = (
+    <div className="flex min-w-0 flex-1 flex-col">
       <SubBar className="items-center">
         <div className="flex items-center gap-4">
           <StatusChip status={run.status} />
+          {run.status === "running" ? (
+            <span data-testid="litsearch-percent" className="font-mono text-[12px]">
+              {t("litsearch.run.percent", { p: percent })}
+            </span>
+          ) : null}
           <span className="text-[12px] text-muted">
             {[
               run.created.replace("T", " ").slice(0, 16),
@@ -440,58 +469,110 @@ export function LitsearchRunScreen({ runId }: { runId: string }) {
         </div>
       </SubBar>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6">
-        <ErrorLine error={guard.error} />
-        {run.status === "failed" ? (
-          <div role="alert" className="max-w-[720px] border border-danger px-4 py-3 text-danger">
-            <p className="font-medium">{t("litsearch.run.failed")}</p>
-            {run.error ? <p className="mt-1 text-[13px]">{run.error}</p> : null}
-            <p className="mt-1 text-[13px] text-muted">{t("litsearch.run.resumeHint")}</p>
-          </div>
-        ) : run.status === "cancelled" ? (
-          <p className="text-muted">{t("litsearch.run.cancelled")}</p>
-        ) : run.status === "interrupted" ? (
-          <p className="text-muted">{t("litsearch.run.interrupted")}</p>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-6 px-8 py-6">
+          <ErrorLine error={guard.error} />
+          {run.status === "failed" ? (
+            <div role="alert" className="max-w-[720px] border border-danger px-4 py-3 text-danger">
+              <p className="font-medium">{t("litsearch.run.failed")}</p>
+              {run.error ? <p className="mt-1 text-[13px]">{run.error}</p> : null}
+              <p className="mt-1 text-[13px] text-muted">{t("litsearch.run.resumeHint")}</p>
+            </div>
+          ) : run.status === "cancelled" ? (
+            <p className="text-muted">{t("litsearch.run.cancelled")}</p>
+          ) : run.status === "interrupted" ? (
+            <p className="text-muted">{t("litsearch.run.interrupted")}</p>
+          ) : null}
 
-        {run.status === "done" ? (
-          <section className="flex max-w-[720px] flex-col gap-3">
-            <Label>{t("litsearch.run.done")}</Label>
-            <dl className="flex flex-wrap gap-6">
-              {(["main", "preprint", "grey", "rejected"] as const).map((s) => (
-                <div key={s} className="flex flex-col">
-                  <dt className="text-[12px] text-muted">
-                    {t(`litsearch.section.${s}` as MessageKey)}
-                  </dt>
-                  <dd className="font-serif text-[24px]">{run.counts[s] ?? 0}</dd>
+          {done ? (
+            <>
+              <section className="flex flex-wrap items-end justify-between gap-6">
+                <dl className="flex flex-wrap gap-6">
+                  {(["main", "preprint", "grey", "rejected"] as const).map((s) => (
+                    <div key={s} className="flex flex-col">
+                      <dt className="text-[12px] text-muted">
+                        {t(`litsearch.section.${s}` as MessageKey)}
+                      </dt>
+                      <dd className="font-serif text-[24px]">{run.counts[s] ?? 0}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <Downloads runId={runId} />
+              </section>
+              <details className="group border-t border-line pt-4">
+                <summary className="cursor-pointer select-none">
+                  <Label>{t("litsearch.charts")}</Label>
+                </summary>
+                <div className="pt-4">
+                  <ResultCharts papers={papers} />
                 </div>
-              ))}
-            </dl>
-            <p className="text-muted">{t("litsearch.run.resultsSoon")}</p>
-          </section>
-        ) : null}
+              </details>
+            </>
+          ) : (
+            <section className="flex max-w-[720px] flex-col gap-2">
+              <Label>{t("litsearch.run.progress")}</Label>
+              <div className="flex items-center gap-3">
+                <Bar value={progress} label={t("litsearch.run.progress")} />
+                <span className="font-mono text-[12px]">
+                  {t("litsearch.run.percent", { p: percent })}
+                </span>
+              </div>
+              <Stages stages={stages} />
+            </section>
+          )}
 
-        <section className="flex max-w-[720px] flex-col gap-2">
-          <Label>{t("litsearch.run.queries")}</Label>
-          <ul className="flex flex-col gap-1 font-mono text-[12px]">
-            {run.queries.map((q) => (
-              <li key={q}>{q}</li>
-            ))}
-          </ul>
-        </section>
-
-        {stages.length > 0 ? (
           <section className="flex max-w-[720px] flex-col gap-2">
-            <Label>{t("litsearch.run.progress")}</Label>
-            <Bar value={progress} label={t("litsearch.run.progress")} />
-            <ol className="flex flex-col">
-              {stages.map((s) => (
-                <StageRow key={s.id} stage={s} />
+            <Label>{t("litsearch.run.queries")}</Label>
+            <ul className="flex flex-col gap-1 font-mono text-[12px]">
+              {run.queries.map((q) => (
+                <li key={q}>{q}</li>
               ))}
-            </ol>
+            </ul>
           </section>
+
+          {done && stages.length > 0 ? (
+            <details className="max-w-[720px]">
+              <summary className="cursor-pointer select-none">
+                <Label>{t("litsearch.run.stages")}</Label>
+              </summary>
+              <div className="pt-2">
+                <Stages stages={stages} />
+              </div>
+            </details>
+          ) : null}
+        </div>
+        {done ? (
+          <div className="border-t border-line">
+            <ResultsTable papers={papers} selected={selected} onSelect={setSelected} />
+          </div>
         ) : null}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <Title>
+        <span className="text-[13px] text-muted">/</span>
+        <span className="truncate text-[13px] font-medium">{run.topic}</span>
+      </Title>
+      {done ? (
+        <div className="flex min-h-0 flex-1">
+          {main}
+          <RightColumn
+            label={t("litsearch.detail.title")}
+            tabs={[
+              {
+                id: "paper",
+                label: t("litsearch.detail.title"),
+                content: <PaperDetail paper={papers.find((p) => p.key === selected)} />,
+              },
+            ]}
+          />
+        </div>
+      ) : (
+        main
+      )}
     </div>
   );
 }

@@ -3,7 +3,9 @@ import {
   type LitsearchRunMeta,
   type LitsearchStage,
   litsearchCancel,
+  litsearchExport,
   litsearchGet,
+  litsearchReport,
   litsearchResume,
   litsearchRuns,
   litsearchStart,
@@ -71,6 +73,7 @@ export const MOCK_PAPERS: readonly LitsearchPaper[] = [
     doi: "10.1145/3700001",
     openalex: "W4400000001",
     citedBy: 120,
+    citationsPerYear: 60,
     fwci: 3.1,
   }),
   paper({
@@ -85,6 +88,8 @@ export const MOCK_PAPERS: readonly LitsearchPaper[] = [
     venue: "AAMAS",
     venueTier: 2,
     doi: "10.5555/3535850.3535900",
+    citedBy: 45,
+    citationsPerYear: 11.3,
   }),
   paper({
     key: "W4600000003",
@@ -168,7 +173,9 @@ function stagesOf(run: MockRun): LitsearchStage[] {
   return MOCK_STAGES.map((s, i): LitsearchStage => {
     if (run.failAt === i) return { ...s, status: "failed" };
     if (i < run.step) return { ...s, status: "done", seconds: 1.2 };
-    if (i === run.step && run.meta.status === "running") return { ...s, status: "running" };
+    if (i === run.step && run.meta.status === "running") {
+      return { ...s, status: "running", done: 1, total: 2, note: "records" };
+    }
     return { ...s, status: "pending" };
   });
 }
@@ -326,6 +333,38 @@ export function bindLitsearchMock(
       const page = all.slice(start, start + input.limit);
       const end = start + page.length;
       return { runs: page, ...(end < all.length ? { next: String(end) } : {}) };
+    })
+    .bind(litsearchExport, async (_ctx, input) => {
+      const run = state.runs.get(input.runId);
+      if (run?.meta.status !== "done") {
+        throw fail("LITSEARCH_OUTPUT_MISSING", `Run "${input.runId}" has no results.`);
+      }
+      const file = {
+        md: "papers.md",
+        csv: "papers.csv",
+        bib: "references.bib",
+        summaries: "summaries.md",
+      }[input.format];
+      const content =
+        input.format === "csv"
+          ? `section,rank,score,title\n${MOCK_PAPERS.map((p) => `${p.section},${p.rank ?? ""},${p.score},"${p.title}"`).join("\n")}\n`
+          : MOCK_PAPERS.map((p) => `${p.rank ?? "-"}. ${p.title}`).join("\n");
+      return {
+        path: `research/runs/${input.runId}/${file}`,
+        filename: `${input.runId}-${file}`,
+        content,
+      };
+    })
+    .bind(litsearchReport, async (_ctx, input) => {
+      const run = state.runs.get(input.runId);
+      if (run?.meta.status !== "done") {
+        throw fail("LITSEARCH_OUTPUT_MISSING", `Run "${input.runId}" has no results.`);
+      }
+      return {
+        path: `research/runs/${input.runId}/report.html`,
+        filename: `${input.runId}-report.html`,
+        html: `<!doctype html><title>${run.meta.topic}</title><h1>${run.meta.topic}</h1>`,
+      };
     })
     .bind(litsearchGet, async (_ctx, input) => {
       const run = state.runs.get(input.runId);

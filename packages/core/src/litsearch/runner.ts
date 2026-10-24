@@ -246,3 +246,48 @@ export function runPipeline(run: PipelineRun): Promise<PipelineOutcome> {
     child.on("close", (code) => finish(code));
   });
 }
+
+export interface ScriptResult {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Runs a short script of workers/research to the end (report.py, later the opendraft and LaTeX
+ * helpers) and collects its output. A start failure resolves with code null and the reason.
+ */
+export function runScript(opts: {
+  command: LitsearchCommand;
+  script: string;
+  args: string[];
+  env: LitsearchEnv;
+  cwd?: string;
+  timeoutMs?: number;
+}): Promise<ScriptResult> {
+  return new Promise((resolve) => {
+    const child = spawn(opts.command.command, [...opts.command.args, opts.script, ...opts.args], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...opts.command.env, ...scriptEnv(opts.env) },
+      ...(opts.cwd ? { cwd: opts.cwd } : {}),
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8").on("data", (c: string) => {
+      stdout += c;
+    });
+    child.stderr.setEncoding("utf8").on("data", (c: string) => {
+      stderr = (stderr + c).slice(-4000);
+    });
+    const timer = setTimeout(() => child.kill("SIGKILL"), opts.timeoutMs ?? 120_000);
+    let settled = false;
+    const done = (r: ScriptResult): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(r);
+    };
+    child.on("error", (err) => done({ code: null, stdout, stderr: err.message }));
+    child.on("close", (code) => done({ code, stdout, stderr }));
+  });
+}

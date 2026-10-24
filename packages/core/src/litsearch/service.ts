@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { planSuggestedQueries } from "@citegeist/ai";
 import type {
@@ -11,7 +11,7 @@ import { type Actor, CitegeistError, type Job } from "@citegeist/schema";
 import { markWorks } from "../graph/marking.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { Library } from "../library.js";
-import { type LitsearchCommand, type RunRequest, runPipeline } from "./runner.js";
+import { type LitsearchCommand, type RunRequest, runPipeline, runScript } from "./runner.js";
 import {
   listRunSummaries,
   progressOf,
@@ -54,6 +54,12 @@ export function workOf(p: RunPaper): GraphWork {
 }
 
 const RUN_ID = /^[a-z0-9][a-z0-9-]{0,119}$/;
+const EXPORT_FILES = {
+  md: "papers.md",
+  csv: "papers.csv",
+  bib: "references.bib",
+  summaries: "summaries.md",
+} as const;
 const JOB_KIND = "litsearch.run";
 
 /** Folder name of a new run: date and topic, like research-pipeline's watch.py. */
@@ -268,6 +274,60 @@ export class LitsearchService {
     }
     this.deps.queue?.cancel(job.id);
     return { ok: true };
+  }
+
+  /** A run's output file and its text, for a download in the app. */
+  export(runId: string, format: "md" | "csv" | "bib" | "summaries") {
+    const meta = this.meta(runId);
+    const file = EXPORT_FILES[format];
+    const path = join(this.runDir(runId), file);
+    if (!existsSync(path)) {
+      throw new CitegeistError({
+        code: "LITSEARCH_OUTPUT_MISSING",
+        message: `Run "${runId}" has no ${file}; it is ${meta.status}.`,
+        fix: "Exports exist once a run is done. Resume the run first.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    return { path, filename: `${runId}-${file}`, content: readFileSync(path, "utf8") };
+  }
+
+  /** Writes report.html with report.py and returns it. */
+  async report(runId: string) {
+    const meta = this.meta(runId);
+    const dir = this.runDir(runId);
+    if (!existsSync(join(dir, "papers.csv"))) {
+      throw new CitegeistError({
+        code: "LITSEARCH_OUTPUT_MISSING",
+        message: `Run "${runId}" has no results yet; it is ${meta.status}.`,
+        fix: "The report exists once a run is done.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    const { command, scriptsDir } = this.deps;
+    if (!command || !scriptsDir) throw unavailable("the report is written by the citegeist app");
+    const path = join(dir, "report.html");
+    const res = await runScript({
+      command,
+      script: join(scriptsDir, "report.py"),
+      args: [dir, "--out", path],
+      env: {
+        dataDir: this.lib.paths.researchDir,
+        cacheDir: this.deps.cacheDir ?? join(this.lib.local.cacheDir, "litsearch"),
+      },
+    });
+    if (res.code !== 0 || !existsSync(path)) {
+      throw new CitegeistError({
+        code: "LITSEARCH_REPORT_FAILED",
+        message: `The report could not be written: ${res.stderr.trim().split("\n").pop() || `exit ${res.code}`}`,
+        fix: "Check that the run folder holds papers.csv and papers.md.",
+        recovery: "fix-and-retry",
+        sideEffects: "none",
+      });
+    }
+    return { path, filename: `${runId}-report.html`, html: readFileSync(path, "utf8") };
   }
 
   private requireQueue(): JobQueue {

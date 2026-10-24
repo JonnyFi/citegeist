@@ -10,6 +10,8 @@ export {
   type PipelineRun,
   type RunRequest,
   runPipeline,
+  runScript,
+  type ScriptResult,
   scriptEnv,
 } from "./runner.js";
 export { type LitsearchDeps, LitsearchService, runIdFor, workOf } from "./service.js";
