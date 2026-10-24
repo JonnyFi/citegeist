@@ -19,8 +19,8 @@ beforeEach(() => {
 const TAB = "/projects/phd-proposal?tab=matrix";
 
 /** Opens the matrix tab of the PhD project with a matrix of two sources and two questions. */
-async function withMatrix(path = TAB) {
-  const ctx = renderApp(path);
+async function withMatrix(path = TAB, options: Parameters<typeof renderApp>[2] = {}) {
+  const ctx = renderApp(path, undefined, options);
   await screen.findByText("Dieses Projekt hat noch keine Matrix");
   const out = await ctx.core.call(matrixCreate, {
     project: "phd-proposal",
@@ -121,7 +121,9 @@ describe("filling cells", () => {
 
   it("shows a cell the model is writing", async () => {
     const user = userEvent.setup();
-    await withMatrix();
+    // The mock writes a cell after aiDelayMs / 5 (at least 5 ms). With the default delay the cell can
+    // already be filled when the assertion runs on a loaded machine, so the delay is far beyond the test.
+    await withMatrix(TAB, { aiDelayMs: 600_000 });
     await user.click(screen.getByRole("button", { name: "Füllen: Luhmann 1984, Fragestellung" }));
     expect(cellFor("luhmann1984soziale", "Fragestellung")).toHaveAttribute(
       "data-status",
