@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 import type { PermissionOption, RequestPermissionRequest } from "@agentclientprotocol/sdk";
+import { isScholarlyUrl } from "@citegeist/ops";
+import { researchFetch } from "./egress.js";
 import { relativeInside } from "./util.js";
 
 /**
@@ -8,7 +10,9 @@ import { relativeInside } from "./util.js";
  *
  * - citegeist's own MCP tools are allowed. In a research job `add_item` must target the inbox
  *   and carry a reason (D7).
- * - Reading, searching and fetching are allowed, because research needs the web.
+ * - Reading, searching and fetching are allowed, because research needs the web. A research job
+ *   fetches only addresses that a web search returned or that sit on a scholarly host, and it
+ *   adds papers only by an address of such a host or by DOI or arXiv id (Agents Rule of Two, L9).
  * - Edits are allowed inside the library's text areas (D12), never in derived data, converted
  *   sources or the manifest, and never in a research job.
  * - Shell commands and everything unknown are rejected in the sandbox (A11, isolated).
@@ -26,6 +30,11 @@ export interface PolicyContext {
   libraryRoot: string;
   /** The session's scratch directory, where the agent may keep working files. */
   scratchDir: string;
+  /**
+   * Normalized addresses that the web search of this session returned. A research job may fetch
+   * exactly these besides the scholarly hosts (`egress.ts`).
+   */
+  seenUrls?: ReadonlySet<string>;
 }
 
 export interface Decision {
@@ -141,6 +150,18 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
         };
       }
     }
+    // The core opens the address of `add_item`. In a research job, an address that the model
+    // composed could carry library content to a server of the attacker (Agents Rule of Two).
+    if (ctx.mode === "research" && tool === "add_item" && isObject(call.rawInput)) {
+      const id = (call.rawInput as { identifier?: unknown }).identifier;
+      if (typeof id === "string" && /^https?:\/\//i.test(id.trim()) && !isScholarlyUrl(id.trim())) {
+        return {
+          allow: false,
+          reason:
+            "A research job adds a paper by DOI, arXiv id or the address of a scholarly host, not by an arbitrary web address. Call add_item with the DOI or leave the paper out.",
+        };
+      }
+    }
     // The core reads a local file named in a tool call with the rights of the user. An agent
     // that works on web content (research) or in the sandbox gets none of that: injected text
     // must not be able to pull a file of the user into the library and read it from there.
@@ -173,8 +194,12 @@ export function decide(req: RequestPermissionRequest, ctx: PolicyContext): Decis
       return { allow: true };
     }
     case "think":
-    case "fetch":
       return { allow: true };
+    case "fetch": {
+      if (ctx.mode !== "research") return { allow: true };
+      const verdict = researchFetch(call, ctx.seenUrls);
+      return verdict.allow ? { allow: true } : { allow: false, reason: verdict.reason };
+    }
     case "edit":
     case "delete":
     case "move": {

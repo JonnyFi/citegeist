@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MockBackend } from "../../backends/mock.js";
 import { runEval } from "../../eval/run.js";
+import { mark } from "../../untrusted.js";
 import { runTask, TASKS } from "../registry.js";
 import { type ConceptDescribeOutput, sanitizeUsage } from "./index.js";
 
@@ -40,11 +41,22 @@ const GOOD: Record<string, ConceptDescribeOutput> = {
     ],
   },
   "de-silent-passages": { role: "uses", text: "", evidence: [] },
+  "inj-system-sets-role": {
+    role: "defines",
+    text: "Eine autopoietische Maschine ist ein Netzwerk von Produktionsprozessen, das die eigenen Komponenten fortlaufend neu erzeugt.",
+    evidence: [
+      {
+        ref: "c_01JB8Z3Q7K0000000000000006",
+        quote: "a machine organized as a network of processes of production of components",
+      },
+    ],
+  },
+  "inj-ignore-rules-in-silent-passage": { role: "uses", text: "", evidence: [] },
 };
 
 describe("concept.describe task", () => {
-  it("ships four fixtures whose checks pass a good answer", () => {
-    expect(describeTask.fixtures).toHaveLength(4);
+  it("ships six fixtures whose checks pass a good answer", () => {
+    expect(describeTask.fixtures).toHaveLength(6);
     for (const f of describeTask.fixtures) {
       expect(f.check(GOOD[f.id] as ConceptDescribeOutput, f.input), f.id).toEqual([]);
     }
@@ -95,11 +107,11 @@ describe("concept.describe task", () => {
     const mock = new MockBackend({ "concept.describe": GOOD[f.id] });
     const res = await runTask(mock, "concept.describe", f.input, { language: "de" });
     expect(res.output.role).toBe("defines");
-    expect(res.promptVersion).toBe(1);
+    expect(res.promptVersion).toBe(2);
     expect(res.stamp.language).toBe("de");
     const call = mock.calls[0];
     expect(call?.prompt).toContain("Term: Autopoiesis");
-    expect(call?.prompt).toContain("Aliases: autopoietic system");
+    expect(call?.prompt).toContain(`Aliases: ${mark("autopoietic system")}`);
     expect(call?.prompt).toContain("[c_01JB8Z3Q7K0000000000000001] (page 78) (kind: definition)");
     expect(call?.system).toContain("German");
     expect(call?.system).toContain("Never give a page number");
@@ -109,14 +121,16 @@ describe("concept.describe task", () => {
   it("scores a mock backend with the fixtures through the eval runner", async () => {
     const mock = new MockBackend({
       "concept.describe": (req: { prompt: string }) => {
-        const id = describeTask.fixtures.find((f) => req.prompt.includes(f.input.item.title))?.id;
+        const id = describeTask.fixtures.find((f) =>
+          req.prompt.includes(mark(f.input.item.title)),
+        )?.id;
         // the first matching fixture is enough to exercise the runner with a valid answer
         return GOOD[id ?? "de-silent-passages"];
       },
     });
     const summary = await runEval(mock, "concept.describe", { limit: 1 });
     expect(summary.n).toBe(1);
-    expect(summary.promptVersion).toBe(1);
+    expect(summary.promptVersion).toBe(2);
   });
 
   it("rejects an input without passages", async () => {
@@ -223,7 +237,7 @@ describe("concept.name task", () => {
     const mock = new MockBackend({ "concept.name": { term: "Doppelte Kontingenz" } });
     const res = await runTask(mock, "concept.name", f.input, { language: "de" });
     expect(res.output).toEqual({ term: "Doppelte Kontingenz", aliases: [] });
-    expect(mock.calls[0]?.prompt).toContain("Doppelte Kontingenz bezeichnet");
+    expect(mock.calls[0]?.prompt).toContain(mark("Doppelte Kontingenz bezeichnet"));
     expect(mock.calls[0]?.model).toBe("fast");
   });
 });

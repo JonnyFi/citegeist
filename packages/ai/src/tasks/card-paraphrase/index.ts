@@ -2,7 +2,7 @@ import { CardKind } from "@citegeist/schema";
 import { z } from "zod";
 import { defineTask } from "../types.js";
 import { cardParaphraseFixtures } from "./fixtures.js";
-import { PROMPT_VERSION, prompt, system } from "./prompt.v4.js";
+import { PROMPT_VERSION, prompt, system } from "./prompt.v5.js";
 
 export const CardParaphraseInput = z.object({
   /** The verbatim passage of the card. */

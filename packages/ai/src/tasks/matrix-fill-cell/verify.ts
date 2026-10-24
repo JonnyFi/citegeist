@@ -1,3 +1,5 @@
+import { DATAMARK } from "../../untrusted.js";
+
 /**
  * Quote verification for matrix cells. A model may only quote what the passages say, so every
  * quote is searched in the passage text after both sides are normalized. What matches is cut out
@@ -22,7 +24,8 @@ interface Normalized {
 
 /**
  * Lowercases, applies NFKC, unifies quotes and dashes, drops soft hyphens, joins words broken by a
- * hyphen at a line end and collapses whitespace. Offsets map back to the original string.
+ * hyphen at a line end and collapses whitespace. The datamark of `untrusted.ts` counts as whitespace,
+ * for the case that a model copies it into a quote. Offsets map back to the original string.
  */
 export function normalizeForMatch(input: string): Normalized {
   const out: string[] = [];
@@ -45,7 +48,7 @@ export function normalizeForMatch(input: string): Normalized {
       }
     }
     let piece: string;
-    if (/\s/u.test(ch)) piece = " ";
+    if (/\s/u.test(ch) || ch === DATAMARK) piece = " ";
     else if (SINGLE_QUOTES.test(ch)) piece = "'";
     else if (DOUBLE_QUOTES.test(ch)) piece = '"';
     else if (DASHES.test(ch)) piece = "-";

@@ -1,4 +1,9 @@
-import { localizeError, type OperationContract, type Registry } from "@citegeist/ops";
+import {
+  localizeError,
+  type OperationContract,
+  RESEARCH_WRITE_TOOLS,
+  type Registry,
+} from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
 import { CLIENT_INFO_META_KEY, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -6,7 +11,12 @@ import { actorFromClientName } from "./actor.js";
 import { formatAgentError, toAgentError } from "./errors.js";
 import { buildInstructions } from "./instructions.js";
 
-export type McpScope = "read" | "write";
+/**
+ * What a connection sees: "read" has the read-only tools, "write" all tools, and "research" is
+ * "read" plus the tools of `RESEARCH_WRITE_TOOLS` (W5.1). A research connection never makes the
+ * core read local files and never lets it open an address outside the scholarly hosts.
+ */
+export type McpScope = "read" | "write" | "research";
 
 export interface CreateMcpServerOptions {
   /** Which tools the connection may see and call. Defaults to "write" (a local stdio client is trusted). */
@@ -44,7 +54,14 @@ export const TOOLS_LIST_TTL_MS = 5 * 60 * 1000;
 export function mcpContracts(registry: Registry, scope: McpScope): OperationContract[] {
   return registry
     .list()
-    .filter((c) => c.mcp && c.access !== "admin" && (scope === "write" || c.mcp.readOnly))
+    .filter(
+      (c) =>
+        c.mcp &&
+        c.access !== "admin" &&
+        (scope === "write" ||
+          c.mcp.readOnly ||
+          (scope === "research" && RESEARCH_WRITE_TOOLS.includes(c.mcp.tool))),
+    )
     .sort((a, b) => compareToolNames(a.mcp?.tool ?? "", b.mcp?.tool ?? ""));
 }
 
@@ -84,7 +101,8 @@ export function createMcpServer(
   options: CreateMcpServerOptions = {},
 ): McpServer {
   const scope = options.scope ?? "write";
-  const localFiles = options.localFiles ?? true;
+  const research = scope === "research";
+  const localFiles = research ? false : (options.localFiles ?? true);
   const contracts = mcpContracts(registry, scope);
   const everything = registry.list();
   const server = new McpServer(
@@ -122,6 +140,7 @@ export function createMcpServer(
               actor,
               signal: ctx.mcpReq.signal,
               ...(localFiles ? {} : { localFiles: false }),
+              ...(research ? { egress: "scholarly" as const } : {}),
             },
             args,
           );

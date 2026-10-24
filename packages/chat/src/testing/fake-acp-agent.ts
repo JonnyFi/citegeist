@@ -3,6 +3,8 @@
 //
 //   @fake say <text>                    stream an answer in two chunks
 //   @fake mcp <tool> <json>             call a tool of the first MCP server of the session
+//   @fake search <query> => <urls>     web search; the hits are the (space separated) urls
+//   @fake fetch <url>                   ask for permission to fetch a web address
 //   @fake write <abs path> <text>       write a file directly (\n in the text becomes a line break)
 //   @fake shell <command>               ask for permission to run a command (never runs it)
 //   @fake report                        stream what session/new received, as JSON
@@ -153,7 +155,14 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
         }
         await update({ sessionUpdate: "tool_call_update", toolCallId: id, status: "in_progress" });
         const client2 = await mcpClient(session);
-        const result = await client2.callTool({ name: tool, arguments: args });
+        // A tool the token does not see (research scope) fails the call, not the agent.
+        const result = await client2
+          .callTool({ name: tool, arguments: args })
+          .catch((e: unknown) => ({
+            isError: true,
+            structuredContent: undefined,
+            content: [{ type: "text", text: String(e) }],
+          }));
         const out = result.structuredContent ?? result.content;
         await update({
           sessionUpdate: "tool_call_update",
@@ -163,6 +172,54 @@ app.onRequest(acp.methods.agent.session.prompt, async ({ params, client }) => {
         });
         // A model needs a moment before its next step; a cancel sent meanwhile is seen in time.
         await new Promise((r) => setTimeout(r, 40));
+        break;
+      }
+      case "search": {
+        const [query = "", hits = ""] = rest.split(" => ");
+        const base = {
+          title: `Search "${query}"`,
+          kind: "fetch" as const,
+          rawInput: { query },
+          _meta: { claudeCode: { toolName: "WebSearch" } },
+        };
+        await update({ sessionUpdate: "tool_call", toolCallId: id, status: "pending", ...base });
+        const allowed = await ask(id, base);
+        await update({
+          sessionUpdate: "tool_call_update",
+          toolCallId: id,
+          status: allowed ? "completed" : "failed",
+          content: [
+            {
+              type: "content",
+              content: {
+                type: "text",
+                text: hits
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map((u) => `Some page (${u})`)
+                  .join("\n"),
+              },
+            },
+          ],
+        });
+        await say(allowed ? "Search allowed." : "Search rejected.");
+        break;
+      }
+      case "fetch": {
+        const base = {
+          title: `Fetch ${rest}`,
+          kind: "fetch" as const,
+          rawInput: { url: rest, prompt: "summarize" },
+          _meta: { claudeCode: { toolName: "WebFetch" } },
+        };
+        await update({ sessionUpdate: "tool_call", toolCallId: id, status: "pending", ...base });
+        const allowed = await ask(id, base);
+        await update({
+          sessionUpdate: "tool_call_update",
+          toolCallId: id,
+          status: allowed ? "completed" : "failed",
+        });
+        await say(allowed ? `Fetch allowed: ${rest}` : `Fetch rejected: ${rest}`);
         break;
       }
       case "write": {

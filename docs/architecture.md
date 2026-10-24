@@ -361,10 +361,12 @@ Siehe D5. Der Kern bietet optional ein automatisches git-Commit nach Arbeitssitz
 ## Sicherheit
 
 - Alle lokalen Server binden nur an `127.0.0.1` und prüfen Origin und Host gegen DNS-Rebinding.
-- Tokens für RPC und MCP-HTTP liegen in einer Datei mit Rechten 0600, MCP-Tokens haben Scopes (`read`, `write`).
+- Tokens für RPC und MCP-HTTP liegen in einer Datei mit Rechten 0600, MCP-Tokens haben Scopes (`read`, `write`, und `research` für unbeaufsichtigte Recherche-Aufträge).
 - Die Zugriffsklasse `admin` (Einstellungen, Löschen ohne Papierkorb) ist über MCP nicht erreichbar.
 - API-Keys liegen in der macOS-Keychain.
 - Agent-Sitzungen laufen mit einem eigenen Arbeitsordner und ohne persönliche Agent-Konfiguration.
+- Fremder Text (PDF- und Webinhalte, Metadaten, Texte von Agents und Webhooks) geht nur datamarkiert in die Prompts der AI-Aufgaben, siehe D22 und `packages/ai/src/untrusted.ts`.
+- Das MCP-Token eines Recherche-Auftrags hat den Scope `research`: die lesenden Werkzeuge und `add_item`, keine lokalen Dateien, keine Adresse außerhalb der Wissenschaftsserver.
 
 ## Tech-Stack
 
