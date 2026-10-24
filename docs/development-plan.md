@@ -4,7 +4,7 @@ Grundlage sind `product.md` und `architecture.md`.
 
 ## Stand
 
-Stand: 2026-10-24. Die Wellen 0 bis 4 sind gebaut und gemergt, die App läuft als gepackte arm64-App (`pnpm package`, Anleitung in `docs/run.md`).
+Stand: 2026-10-24. Die Wellen 0 bis 5 sind gebaut und gemergt, die App läuft als gepackte arm64-App (`pnpm package`, Anleitung in `docs/run.md`).
 
 | Welle | Workstreams | PRs |
 |---|---|---|
@@ -39,8 +39,11 @@ Stand: 2026-10-24. Die Wellen 0 bis 4 sind gebaut und gemergt, die App läuft al
 | | Matrix, verwandte Werke, Rückruf-Hinweise, Planung auf echten Verträgen (UI-2a) | #49 |
 | Nachbesserung | Fehler aus der ersten echten Chat-Sitzung, Karten-Logik und Prompt | #43, #44, #45, #46 |
 | Werkzeuge | `pnpm app:update`, Linux-CI mit lokalem Pre-push-Gate, Beitragsablauf | #42, #23, #53 |
-| Schreiben | Texte als Markdown mit Pandoc-Zitaten, Tab „Texte“, Export über Pandoc nach Word, LaTeX und PDF, Pandoc-Download mit fester Prüfsumme (D20) | dieser PR |
-| Abschluss | Dateiauswahl, Rückruf-Marker in `items.list`, schlankere App, Hinzufügen-Menü, Löschen mit Rückgängig, PDF anhängen | dieser PR |
+| Schreiben | Texte als Markdown mit Pandoc-Zitaten, Tab „Texte“, Export über Pandoc nach Word, LaTeX und PDF, Pandoc-Download mit fester Prüfsumme (D20) | #66 |
+| Abschluss | Dateiauswahl, Rückruf-Marker in `items.list`, schlankere App, Hinzufügen-Menü, Löschen mit Rückgängig, PDF anhängen | #54 |
+| Literatursuche | research-pipeline als Reiter, Preprints über den Zitationsgraphen, Beobachtungen als Alert-Art „Pipeline-Suche“ (D19) | #62 |
+| Verteilung und Agents | Logo, Installer per curl, `pnpm release`, Apache-2.0, Webhooks mit festem Port und entferntem MCP (D21), Cursor als KI-Backend, Text zum Kopieren für Agents, `cg` in der App | #63, #64, #65, #68, #69, #70 |
+| 5 Härtung | W5.1 Schutz vor eingeschleusten Anweisungen (D22), W5.2 Laufkontrolle und Verbrauch (D23), W5.3 Suche mit Messlatte (D24), W5.4 `AGENTS.md` und MCP-Konformitätstest | #74, #73, #76, #72 |
 
 Offen sind:
 
