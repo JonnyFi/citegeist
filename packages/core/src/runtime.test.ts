@@ -99,6 +99,7 @@ describe("createRuntime operations", () => {
       "links.propose",
       "links.decide",
       "graph.neighbors",
+      "graph.project",
       "cite.format",
       "items.attach",
       "notes.list",

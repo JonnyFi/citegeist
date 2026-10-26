@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from "node:fs";
+import { aggregateGraph, buildSemanticGraph, type GraphLibrary } from "@citegeist/ops";
+import { type CardKind, CitegeistError, citedKeys, type NoteFrontmatter } from "@citegeist/schema";
+import { MarkdownFile } from "./frontmatter.js";
 import type { Library } from "./library.js";
 
 type NodeKind = "item" | "card" | "note";
@@ -110,4 +114,151 @@ export function neighbors(
     frontier = next;
   }
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
+}
+
+interface NoteRow {
+  id: string;
+  slug: string;
+  type: NoteFrontmatter["type"];
+  title: string;
+  frontmatter_json: string;
+}
+
+interface ResolvedRow {
+  src_kind: NodeKind;
+  src_ref: string;
+  dst_kind: NodeKind;
+  dst_ref: string;
+  rel: string | null;
+  status: string;
+  why: string | null;
+  evidence: string | null;
+  actor: string | null;
+  origin: string;
+}
+
+/** The rows of the index in the plain shape `buildSemanticGraph` reads. Inbox items stay out. */
+export function graphLibrary(lib: Library): GraphLibrary {
+  const projects = new Map<string, string[]>();
+  for (const r of lib.index.all<{ ref: string; project: string }>(
+    "SELECT ref, project FROM project_members WHERE kind = 'item'",
+  )) {
+    projects.set(r.ref, [...(projects.get(r.ref) ?? []), r.project]);
+  }
+  const items = lib.index
+    .all<{ citekey: string; title: string; year: string | null; authors: string | null }>(
+      "SELECT citekey, title, year, authors FROM items WHERE inbox = 0",
+    )
+    .map((r) => ({
+      citekey: r.citekey,
+      title: r.title,
+      short: [r.authors, r.year].filter(Boolean).join(" ") || undefined,
+      projects: projects.get(r.citekey) ?? [],
+    }));
+  const known = new Set(items.map((i) => i.citekey));
+  const cards = lib.index
+    .all<{ id: string; citekey: string; kind: string | null; quote: string; fm: string }>(
+      "SELECT id, citekey, kind, quote, frontmatter_json AS fm FROM cards",
+    )
+    .filter((r) => known.has(r.citekey))
+    .map((r) => {
+      const fm = JSON.parse(r.fm) as { locator?: { start?: string } };
+      return {
+        id: r.id,
+        item: r.citekey,
+        kind: (r.kind ?? undefined) as CardKind | undefined,
+        quote: r.quote,
+        page: fm.locator?.start,
+      };
+    });
+  const notes = lib.index
+    .all<NoteRow>("SELECT id, slug, type, title, frontmatter_json FROM notes")
+    .map((r) => {
+      const fm = JSON.parse(r.frontmatter_json) as {
+        projects?: string[];
+        created?: { by?: string };
+      };
+      return {
+        id: r.id,
+        slug: r.slug,
+        type: r.type,
+        title: r.title,
+        projects: fm.projects ?? [],
+        by: fm.created?.by,
+      };
+    });
+  const links = lib.index
+    .all<ResolvedRow>(
+      `SELECT src_kind, src_ref, dst_kind, dst_ref, rel, status, why, evidence, actor, origin
+       FROM resolved_links WHERE dst_kind IS NOT NULL`,
+    )
+    .map((r) => ({
+      srcKind: r.src_kind,
+      src: r.src_ref,
+      toKind: r.dst_kind,
+      to: r.dst_ref,
+      rel: r.rel,
+      status: r.status,
+      why: r.why,
+      evidence: r.evidence,
+      by: r.actor,
+      origin: r.origin,
+    }));
+  return { items, cards, notes, links, noteBody: (id) => lib.getNote(id).body };
+}
+
+function textNotFound(project: string, text: string): CitegeistError {
+  return new CitegeistError({
+    code: "TEXT_NOT_FOUND",
+    message: `project '${project}' has no text '${text}'`,
+    fix: "Call texts.list for the texts of the project.",
+    recovery: "fix-and-retry",
+    sideEffects: "none",
+    context: { project, text },
+  });
+}
+
+/** Citekeys cited in a text of a project. */
+function citedIn(lib: Library, project: string, text: string): string[] {
+  const path = lib.paths.abs(`projects/${project}/texts/${text}.md`);
+  if (!existsSync(path)) throw textNotFound(project, text);
+  return citedKeys(MarkdownFile.parse(readFileSync(path, "utf8")).body);
+}
+
+/**
+ * graph.project: the semantic graph of a project, of the library or around one node, with the
+ * edges between sources (cards collapsed unless their source is in `expand`).
+ */
+export function projectGraph(
+  lib: Library,
+  input: {
+    project?: string | undefined;
+    text?: string | undefined;
+    around?: string | undefined;
+    depth: number;
+    expand: readonly string[];
+    proposed: boolean;
+  },
+) {
+  if (input.project) lib.getProject(input.project);
+  if (input.text && !input.project) {
+    throw new CitegeistError({
+      code: "INVALID_INPUT",
+      message: "a text filter needs the project of the text",
+      fix: "Pass project together with text.",
+      recovery: "fix-and-retry",
+      sideEffects: "none",
+      context: { text: input.text },
+    });
+  }
+  const cited = input.project && input.text ? citedIn(lib, input.project, input.text) : undefined;
+  const graph = buildSemanticGraph(graphLibrary(lib), {
+    project: input.around ? undefined : input.project,
+    cited: input.around ? undefined : cited,
+    around: input.around,
+    depth: input.depth,
+    proposed: input.proposed,
+  });
+  const { edges } = aggregateGraph(graph, { expanded: input.expand });
+  return { ...graph, edges };
 }
