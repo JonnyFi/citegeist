@@ -237,11 +237,13 @@ export function CardMenu({
   const openAgent = useOpenAgent();
 
   const toAgent = () => {
-    const page = fm.locator?.start;
+    const loc = fm.locator;
     sendCardToChat({
       citekey: fm.item,
       text: body.quote.slice(0, 8000),
-      ...(page ? { page } : {}),
+      ...(loc
+        ? { page: loc.start, locator: { label: loc.label, start: loc.start, end: loc.end } }
+        : {}),
       card: fm.id,
     });
     openAgent();

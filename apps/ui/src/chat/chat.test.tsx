@@ -137,6 +137,50 @@ describe("chat panel", () => {
     expect(sent.context).not.toHaveProperty("item");
   });
 
+  it("names the paragraph of a web card in the context chip and keeps it from the page field", async () => {
+    const user = userEvent.setup();
+    const { calls, data } = renderApp("/items/luhmann1984soziale", createReflowFixtures());
+    const panel = await openPanel(user);
+    const card = data.cards[0]?.frontmatter.id ?? "";
+    act(() =>
+      publishChatSelection({
+        citekey: "luhmann1984soziale",
+        text: "Kommunikation ...",
+        page: "8",
+        card,
+        locator: { label: "paragraph", start: "8" },
+      }),
+    );
+    expect(await within(panel).findByTestId("chat-chip-selection")).toHaveTextContent(
+      "Karte, Abs. 8",
+    );
+
+    await user.type(composer(), "Erkläre die Karte");
+    await user.click(within(panel).getByRole("button", { name: "Senden" }));
+    await waitFor(() => expect(calls.find((c) => c.name === "chat.send")).toBeDefined());
+    const sent = calls.find((c) => c.name === "chat.send")?.input as {
+      context: { selection: object };
+    };
+    expect(sent.context.selection).toMatchObject({ card });
+    expect(sent.context.selection).not.toHaveProperty("page");
+    expect(sent.context.selection).not.toHaveProperty("locator");
+  });
+
+  it("labels a card reference of a web page with its paragraph, not with a page", async () => {
+    const user = userEvent.setup();
+    const { data } = renderApp("/items/luhmann1984soziale", createReflowFixtures());
+    const first = data.cards[0];
+    if (!first) throw new Error("fixture without a card");
+    first.frontmatter.locator = { label: "paragraph", start: "8", confirmed: true };
+    const panel = await openPanel(user);
+    await user.type(composer(), "Fass das zusammen");
+    await user.click(within(panel).getByRole("button", { name: "Senden" }));
+
+    expect(
+      await within(panel).findByRole("link", { name: "Luhmann 1984, Abs. 8 öffnen" }),
+    ).toHaveTextContent("Luhmann 1984, Abs. 8");
+  });
+
   it("stops a running turn", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/", undefined, { aiDelayMs: 3000 });
