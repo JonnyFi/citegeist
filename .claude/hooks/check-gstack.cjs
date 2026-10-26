@@ -1,8 +1,5 @@
 "use strict";
-// Advise about gstack when it is not installed globally.
-//
-// gstack is a recommendation for contributors. The maintainers treat it as required: with
-// CITEGEIST_REQUIRE_GSTACK=1 in the environment the hook denies skill usage instead of advising.
+// Block skill usage when gstack is not installed globally.
 //
 // Resolve the install root the way gstack skill preambles do: the GSTACK_ROOT
 // env var first, then every host's global install location, then the migrated
@@ -38,20 +35,18 @@ const gstackRoot = roots.find((root) => {
   }
 });
 
-const install = `Install it:
+if (gstackRoot) {
+  process.stdout.write("{}\n");
+} else {
+  process.stderr.write(`BLOCKED: gstack is not installed globally.
+
+gstack is required for AI-assisted work in this repo.
+
+Install it:
   git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
   cd ~/.claude/skills/gstack && ./setup --team
 
-Then restart your AI coding tool.`;
-
-if (gstackRoot) {
-  process.stdout.write("{}\n");
-} else if (process.env.CITEGEIST_REQUIRE_GSTACK === "1") {
-  process.stderr.write(`BLOCKED: gstack is not installed globally.
-
-gstack is required for maintainers (CITEGEIST_REQUIRE_GSTACK=1).
-
-${install}
+Then restart your AI coding tool.
 `);
   // Exit 2 denies on Claude Code (#2413) and on Copilot CLI, which treats a
   // preToolUse exit 2 as deny (#2229).
@@ -66,11 +61,4 @@ ${install}
     }) + "\n",
   );
   process.exitCode = 2;
-} else {
-  // Advice only: the skill call goes ahead.
-  process.stdout.write(
-    JSON.stringify({
-      systemMessage: `gstack is not installed. It is recommended for work in this repo, but optional.\n\n${install}`,
-    }) + "\n",
-  );
 }

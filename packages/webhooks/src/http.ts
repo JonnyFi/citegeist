@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { FailureLimiter } from "./limit.js";
 import { HOOKS_PREFIX, type WebhookService } from "./service.js";
 
 /** Largest body a webhook may carry. */
@@ -26,10 +27,28 @@ function readBody(req: IncomingMessage, max: number): Promise<Buffer> {
   });
 }
 
-function reply(res: ServerResponse, status: number, body: unknown): void {
+function reply(res: ServerResponse, status: number, body: unknown, headers: object = {}): void {
   if (res.headersSent) return;
-  res.writeHead(status, { "content-type": "application/json" });
+  res.writeHead(status, { "content-type": "application/json", ...headers });
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Where a request comes from. A tunnel appends the address it saw to `x-forwarded-for`, so the last
+ * entry is the one the tunnel vouches for; the entries before it are whatever the sender wrote. A
+ * request without the header comes straight from the socket.
+ */
+export function clientAddress(req: IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const joined = Array.isArray(forwarded) ? forwarded.join(",") : forwarded;
+  const last = joined?.split(",").at(-1)?.trim();
+  return last || req.socket.remoteAddress || "unknown";
+}
+
+export interface HooksHandlerOptions {
+  /** Counts failed logins per source. Default: its own limiter with the defaults of FailureLimiter. */
+  limiter?: FailureLimiter;
+  now?: () => number;
 }
 
 /**
@@ -41,10 +60,26 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
  */
 export function createHooksHandler(
   service: WebhookService,
+  opts: HooksHandlerOptions = {},
 ): (req: IncomingMessage, res: ServerResponse) => Promise<boolean> {
+  const limiter = opts.limiter ?? new FailureLimiter();
+  const now = opts.now ?? Date.now;
   return async (req, res) => {
     const path = new URL(req.url ?? "/", "http://localhost").pathname;
     if (!path.startsWith(HOOKS_PREFIX)) return false;
+    // A source that keeps failing authentication is turned away before its body is read.
+    const source = clientAddress(req);
+    const wait = limiter.retryAfter(source, now());
+    if (wait > 0) {
+      req.resume();
+      reply(
+        res,
+        429,
+        { error: "too many failed attempts", retryAfterSeconds: wait },
+        { "retry-after": String(wait) },
+      );
+      return true;
+    }
     try {
       const rawBody = req.method === "POST" ? await readBody(req, MAX_BODY_BYTES) : Buffer.alloc(0);
       const headers: Record<string, string | undefined> = {};
@@ -57,6 +92,7 @@ export function createHooksHandler(
         headers,
         rawBody,
       });
+      if (out?.status === 401) limiter.fail(source, now());
       reply(res, out?.status ?? 404, out?.body ?? { error: "not found" });
     } catch (err) {
       if (err instanceof TooLarge) reply(res, 413, { error: "body too large" });
