@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { createFixtureRegistry, FIXTURE_CITEKEY } from "@citegeist/mcp";
-import { CONTRACTS, Registry, webhooksCreate } from "@citegeist/ops";
+import { CONTRACTS, itemsResolve, itemsUpdate, Registry, webhooksCreate } from "@citegeist/ops";
+import { ItemFrontmatter } from "@citegeist/schema";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { describe, expect, it } from "vitest";
@@ -36,6 +37,72 @@ async function cg(
   });
   return { code, out, err };
 }
+
+describe("cg items update and resolve", () => {
+  function registry() {
+    const calls: Array<{ name: string; input: unknown }> = [];
+    const reg = new Registry();
+    reg.bind(itemsUpdate, async (_ctx, input) => {
+      calls.push({ name: "items.update", input });
+      return {
+        frontmatter: ItemFrontmatter.parse({
+          id: "01JB8Z3QK7ABCDEFGH",
+          citekey: input.citekey,
+          type: "article-journal",
+          title: "Array programming with NumPy",
+          created: { at: "2026-10-23T12:00:00.000Z", by: "human" },
+        }),
+        suggestedCitekey: "harris2020array",
+      };
+    });
+    reg.bind(itemsResolve, async (_ctx, input) => {
+      calls.push({ name: "items.resolve", input });
+      return { citekey: input.citekey, changed: ["author", "issued"] };
+    });
+    return { reg, calls };
+  }
+
+  it("repairs metadata by hand: cg items update <citekey> --patch <json>", async () => {
+    const { reg, calls } = registry();
+    const r = await cg(
+      [
+        "items",
+        "update",
+        "anonndarray",
+        "--patch",
+        '{"author":[{"family":"Harris","given":"Charles"}],"issued":2020}',
+        "--json",
+      ],
+      { registry: reg },
+    );
+    expect(r.err).toBe("");
+    expect(r.code).toBe(EXIT.ok);
+    expect(calls[0]?.input).toEqual({
+      citekey: "anonndarray",
+      patch: { author: [{ family: "Harris", given: "Charles" }], issued: 2020 },
+    });
+    expect(JSON.parse(r.out).suggestedCitekey).toBe("harris2020array");
+  });
+
+  it("adds an identifier and looks the item up: cg items resolve <citekey> --identifier <id>", async () => {
+    const { reg, calls } = registry();
+    const r = await cg(
+      ["items", "resolve", "anonndarray", "--identifier", "10.1038/s41586-020-2649-2", "--json"],
+      { registry: reg },
+    );
+    expect(r.code).toBe(EXIT.ok);
+    expect(calls[0]?.input).toEqual({
+      citekey: "anonndarray",
+      identifier: "10.1038/s41586-020-2649-2",
+    });
+    expect(JSON.parse(r.out).changed).toEqual(["author", "issued"]);
+  });
+
+  it("documents the identifier flag in the help", async () => {
+    const r = await cg(["items", "resolve", "--help"], { registry: registry().reg });
+    expect(r.out).toContain("--identifier");
+  });
+});
 
 describe("cg errors", () => {
   it("names the cg command in a fix that points to another operation", async () => {

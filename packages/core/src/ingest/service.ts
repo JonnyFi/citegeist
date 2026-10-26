@@ -26,12 +26,15 @@ import { generateCitekey, parseBibtex, resolveImportedCitekey } from "@citegeist
 import {
   arxivFromDoi,
   detectIdentifier,
+  extractPageMetadata,
   type FetchLike,
   type Identifier,
+  type PageMetadata,
   type ResolveOptions,
   type ResolveResult,
   type TitleQuery,
   type TitleResolveResult,
+  titleSimilarity,
 } from "@citegeist/metadata";
 import {
   type Actor,
@@ -47,7 +50,7 @@ import { newItemId } from "../ids.js";
 import { type JobContext, JobQueue, TransientError } from "../jobs/queue.js";
 import type { Library } from "../library.js";
 import { readDocument } from "./documents.js";
-import { findDuplicate } from "./dupes.js";
+import { findDuplicate, findEnrichable } from "./dupes.js";
 import { enrichAfterConvert, splitName } from "./enrich.js";
 import {
   acceptInbox,
@@ -64,6 +67,8 @@ import {
 } from "./items.js";
 import { lookupAddresses, MAX_REDIRECTS, refusePrivateUrl } from "./net-guard.js";
 import { extractPdfText, guessHeader, type PdfTextExtractor, pdfIdentifiers } from "./pdf-text.js";
+import { hasThinMetadata } from "./placeholder.js";
+import { type Lookup, type MergeOutcome, mergeLookup, resolveItem } from "./resolve.js";
 import type { ConvertParams, ConvertWorker } from "./worker.js";
 
 /** The part of MetadataResolver the pipeline uses. Tests pass a resolver with replayed responses. */
@@ -114,6 +119,11 @@ export interface AddInput {
   tags: string[];
   target: "inbox" | "library";
   why?: string | undefined;
+  /**
+   * Add the identifier to this existing item and look its metadata up again, instead of adding a
+   * new item. For items that arrived without authors or year.
+   */
+  citekey?: string | undefined;
 }
 
 export interface AddResult {
@@ -122,6 +132,10 @@ export interface AddResult {
   duplicateOf?: string;
   /** The matched item had no working source; the new file or download was attached to it. */
   repaired?: boolean;
+  /** Fields of the existing item that the new identifier filled or corrected. */
+  enriched?: string[];
+  /** The item has a placeholder citekey and now has what a real one needs. Nothing was renamed. */
+  suggestedCitekey?: string;
 }
 
 interface RemotePlan {
@@ -245,11 +259,22 @@ export class IngestService {
 
   async addItem(actor: Actor, input: AddInput): Promise<AddResult> {
     const raw = input.identifier.trim();
+    if (input.citekey) return this.addToItem(actor, input.citekey, raw);
     const early = this.earlyDuplicate(raw);
-    // An item whose source failed is not a finished duplicate: the new input may repair it.
-    if (early && !this.mayRepair(early)) return this.duplicate(actor, early);
+    const named = detectIdentifier(raw);
+    // An item whose source failed is not a finished duplicate: the new input may repair it. An
+    // item without author or year is not finished either: the identifier may fill them in.
+    const mayEnrich =
+      early !== undefined && named !== undefined && named.kind !== "url" && this.isThin(early);
+    if (early && !this.mayRepair(early) && !mayEnrich) return this.duplicate(actor, early);
 
-    const prepared = await this.prepare(actor, raw);
+    let prepared: Prepared;
+    try {
+      prepared = await this.prepare(actor, raw);
+    } catch (err) {
+      if (early) return this.duplicate(actor, early);
+      throw err;
+    }
     if (prepared.duplicateOf) {
       return (
         this.repairDuplicate(actor, prepared.duplicateOf, prepared) ??
@@ -260,20 +285,34 @@ export class IngestService {
     const first = (
       prepared.fields.author as { family?: string; literal?: string }[] | undefined
     )?.[0];
+    const doi = prepared.fields.DOI as string | undefined;
     const dup =
       early ??
       findDuplicate(this.lib, {
-        doi: prepared.fields.DOI as string | undefined,
+        doi,
         arxiv: prepared.ids.arxiv,
         pmid: prepared.ids.pmid,
         isbn: detectIdentifier(raw)?.kind === "isbn" ? detectIdentifier(raw)?.value : undefined,
         url: prepared.file?.url,
+        urls: [
+          ...(typeof prepared.fields.URL === "string" ? [prepared.fields.URL] : []),
+          ...(doi ? [`https://doi.org/${doi}`] : []),
+        ],
         hash: lookupHash,
         title: prepared.proposal ? undefined : (prepared.fields.title as string | undefined),
         year: prepared.fields.issued as string | number | undefined,
         firstAuthor: first?.family ?? first?.literal,
       });
-    if (dup) return this.repairDuplicate(actor, dup, prepared) ?? this.duplicate(actor, dup);
+    if (dup) return this.finishDuplicate(actor, dup, prepared);
+    // An item that came in by its page and has no author or year yet may be this very work.
+    if (this.isResolved(prepared)) {
+      const twin = findEnrichable(this.lib, {
+        title: String(prepared.fields.title),
+        year: prepared.fields.issued as string | number | undefined,
+        firstAuthor: first?.family ?? first?.literal,
+      });
+      if (twin) return this.finishDuplicate(actor, twin, prepared);
+    }
 
     const jobId = this.queue.newId();
     const citekey = this.createItem(actor, input, prepared, jobId);
@@ -286,6 +325,107 @@ export class IngestService {
       input: { citekey, remote: prepared.remote, convert: !!hasSources },
     });
     return { citekey, job: jobId };
+  }
+
+  /** True when the item names no author or no year. */
+  private isThin(citekey: string): boolean {
+    return hasThinMetadata(loadItem(this.lib, citekey).fm);
+  }
+
+  /** The input was an identifier that a metadata source answered, not a page or a file. */
+  private isResolved(p: Prepared): boolean {
+    return p.file === undefined && p.proposal === undefined && p.duplicateOf === undefined;
+  }
+
+  /**
+   * The input is a work the library has: its identifier, address or title matched `citekey`. When
+   * the input brings metadata the item lacks (authors, year, an identifier), the item takes it.
+   */
+  private finishDuplicate(actor: Actor, citekey: string, p: Prepared): AddResult {
+    let outcome: MergeOutcome | undefined;
+    if (this.isResolved(p)) {
+      const item = loadItem(this.lib, citekey);
+      const missesId =
+        (typeof p.fields.DOI === "string" && !item.fm.DOI) ||
+        (typeof p.fields.ISBN === "string" && !item.fm.ISBN);
+      if (hasThinMetadata(item.fm) || missesId) {
+        outcome = mergeLookup(
+          this.lib,
+          actor,
+          citekey,
+          { fields: p.fields, ids: p.ids, provenance: p.provenance },
+          { clearProposal: true },
+        );
+      }
+    }
+    const enriched = outcome && outcome.changed.length > 0 ? outcome : undefined;
+    let base = this.repairDuplicate(actor, citekey, p);
+    if (!base && enriched && p.remote.doi && this.needsRepair(citekey)) {
+      // The identifier is new to the item, so the full text lookup has not run for it yet.
+      const job = this.queue.enqueue({
+        kind: "ingest",
+        by: actor,
+        input: { citekey, remote: p.remote, convert: true },
+      });
+      base = { citekey, job: job.id, duplicateOf: citekey };
+    }
+    base ??= this.duplicate(actor, citekey);
+    return {
+      ...base,
+      ...(enriched ? { enriched: enriched.changed } : {}),
+      ...(enriched?.suggestedCitekey ? { suggestedCitekey: enriched.suggestedCitekey } : {}),
+    };
+  }
+
+  /** items.add with a citekey: the identifier goes into that item and its metadata is looked up. */
+  private async addToItem(actor: Actor, citekey: string, identifier: string): Promise<AddResult> {
+    const out = await this.resolveItem(actor, citekey, identifier);
+    let job: string;
+    const doi = loadItem(this.lib, citekey).fm.DOI;
+    const remote: RemotePlan = { ...(typeof doi === "string" ? { doi } : {}) };
+    if (remote.doi && this.needsRepair(citekey)) {
+      job = this.queue.enqueue({
+        kind: "ingest",
+        by: actor,
+        input: { citekey, remote, convert: true },
+      }).id;
+    } else {
+      job = this.queue.enqueueFinished({
+        kind: "ingest",
+        by: actor,
+        input: { citekey, identifier },
+        result: { citekey, changed: out.changed },
+        message:
+          out.changed.length > 0
+            ? `updated ${out.changed.join(", ")} of ${citekey}`
+            : `nothing new for ${citekey}`,
+      }).id;
+    }
+    return {
+      citekey,
+      job,
+      enriched: out.changed,
+      ...(out.suggestedCitekey ? { suggestedCitekey: out.suggestedCitekey } : {}),
+    };
+  }
+
+  /** items.resolve: look the item up again, optionally with a new identifier (see resolveItem). */
+  resolveItem = (actor: Actor, citekey: string, identifier?: string) =>
+    resolveItem(
+      {
+        lib: this.lib,
+        resolver: this.deps.resolver,
+        fromUrl: (a, url) => this.lookupUrl(a, url),
+      },
+      actor,
+      citekey,
+      identifier,
+    );
+
+  /** What a web page says about its work, in the shape of a metadata lookup. */
+  private async lookupUrl(actor: Actor, url: string): Promise<Lookup> {
+    const p = await this.prepareUrl(actor, url);
+    return { fields: p.fields, ids: p.ids, provenance: p.provenance };
   }
 
   /** True when a source exists that was converted: the item can be read. */
@@ -413,8 +553,19 @@ export class IngestService {
       );
     }
     if (id.kind === "url") return this.prepareUrl(actor, id.value);
-    const res = await this.deps.resolver.resolve(id);
-    return this.fromResolved(res, id);
+    try {
+      const res = await this.deps.resolver.resolve(id);
+      return this.fromResolved(res, id);
+    } catch (err) {
+      // An identifier guessed from the address (SSRN number, DOI in the path) may be wrong or
+      // unknown to the sources; the page itself can still say what the work is.
+      if (id.via !== "url" || !(err instanceof CitegeistError)) throw err;
+      try {
+        return await this.prepareUrl(actor, id.raw);
+      } catch {
+        throw err;
+      }
+    }
   }
 
   /**
@@ -541,7 +692,7 @@ export class IngestService {
       throw problem(
         "URL_UNREACHABLE",
         `${url} did not return a page (the server answered 401, 403, 404 or 410)`,
-        "Open the URL in a browser to check it. If it needs a login, download the file there and add it by its local path with items.add, or add the article by DOI.",
+        "Open the URL in a browser to check it. Some sites turn away programs (SSRN does); add the article by its DOI, ISBN or arXiv id instead. If it needs a login, download the file there and add it by its local path with items.add.",
         { url },
       );
     }
@@ -565,30 +716,75 @@ export class IngestService {
       );
     }
     const html = res.buf.toString("utf8");
-    const found = pageTitle(html);
-    const title = found ?? titleFromUrl(url);
+    const page = extractPageMetadata(html, res.url || url);
+    if (page.challenge) {
+      throw problem(
+        "URL_BOT_CHALLENGE",
+        `${url} answered with a bot check page ("Just a moment...", a captcha or an access wall), not with the page`,
+        "Add the work by its DOI, ISBN or arXiv id instead. If it has none, open the page in a browser, save it or download the PDF, and add the file by its local path with items.add.",
+        { url },
+      );
+    }
+    const resolved = await this.resolvePageIdentifiers(page);
+    if (resolved) return resolved;
+
     const today = this.lib.stamp("system").at.slice(0, 10);
     const host = new URL(url).hostname.replace(/^www\./, "");
+    const title = page.fields.title ?? titleFromUrl(url);
+    const fields: Record<string, unknown> = {
+      ...page.fields,
+      type: page.fields.type ?? "webpage",
+      title,
+      URL: url,
+      "container-title": page.fields["container-title"] ?? host,
+    };
+    // A DOI or ISBN the page names stays on the item even when no source answered for it now,
+    // so that a lookup later (items.resolve) has something to start from.
+    const ids: Record<string, string> = {};
+    for (const id of page.identifiers) {
+      if (id.kind === "doi" && fields.DOI === undefined) fields.DOI = id.value;
+      if (id.kind === "isbn" && fields.ISBN === undefined) fields.ISBN = id.value;
+      if (id.kind === "arxiv" && ids.arxiv === undefined) ids.arxiv = id.value;
+      if (id.kind === "pmid" && ids.pmid === undefined) ids.pmid = id.value;
+    }
+    const provenance: Record<string, string> = {};
+    for (const key of Object.keys(fields)) provenance[key] = `web@${today}`;
+    const reasons: string[] = [];
+    if (page.fields.title === undefined)
+      reasons.push("the page has no title, the title was taken from the address");
+    else if (!page.fields.author) reasons.push("the page names no author");
+    if (page.fields.title !== undefined && !page.fields.issued)
+      reasons.push("the page names no date");
     return {
-      fields: { type: "webpage", title, URL: url, "container-title": host },
-      provenance: {
-        title: `web@${today}`,
-        URL: `web@${today}`,
-        "container-title": `web@${today}`,
-      },
-      ids: {},
+      fields,
+      provenance,
+      ids,
       remote: {},
       file: { buf: res.buf, kind: "web", ext: "html", filename: `${slugFile(title)}.html`, url },
-      ...(found
-        ? {}
-        : {
-            proposal: {
-              status: "needs-review",
-              source: "url",
-              reason: "the page has no title, the title was taken from the address",
-            },
-          }),
+      ...(reasons.length > 0
+        ? { proposal: { status: "needs-review", source: "url", reason: reasons.join("; ") } }
+        : {}),
     };
+  }
+
+  /**
+   * The identifiers a page names for itself (DOI, ISBN, arXiv id, PMID) go through the normal
+   * resolvers, because those know more than the page does. A source whose record has nothing
+   * to do with the page's own title is not trusted: pages name the DOI of a work they cite, too.
+   */
+  private async resolvePageIdentifiers(page: PageMetadata): Promise<Prepared | undefined> {
+    for (const id of page.identifiers.slice(0, 3)) {
+      try {
+        const res = await this.deps.resolver.resolve(id);
+        if (res.status !== "resolved" || !res.fields.title) continue;
+        const own = page.fields.title;
+        if (own && titleSimilarity(own, res.fields.title) < 0.45) continue;
+        return this.fromResolved(res, id);
+      } catch {
+        // the next identifier, then the page itself
+      }
+    }
+    return undefined;
   }
 
   /** A PDF that came from a URL: handled like a local PDF, with the URL as its origin. */

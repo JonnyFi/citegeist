@@ -18,6 +18,7 @@ import {
   type PdfTextExtractor,
   pdfIdentifiers,
 } from "./pdf-text.js";
+import { hasCreators, isPlaceholderKey, keySource } from "./placeholder.js";
 import type { MetadataLookup } from "./service.js";
 
 export interface EnrichDeps {
@@ -78,6 +79,8 @@ export function readGrobidHeader(
   }
 }
 
+export { isPlaceholderKey };
+
 export function splitName(name: string): { family: string; given?: string } {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return { family: parts[0] ?? name };
@@ -95,10 +98,6 @@ function overwritable(fm: Fm, key: string): boolean {
   return WEAK_PROVENANCE.test(prov);
 }
 
-function hasCreators(fm: Fm): boolean {
-  return (fm.author?.length ?? 0) > 0 || (fm.editor?.length ?? 0) > 0;
-}
-
 /**
  * True when the metadata of an item is a guess that a first-page read can improve: the item
  * failed before, or it carries a review marker from somewhere other than the first page, or it
@@ -112,22 +111,6 @@ export function isWeakMetadata(fm: Fm, wasIncomplete: boolean): boolean {
   if (proposal?.source === "pdf-first-page") return false;
   if (proposal) return true;
   return !hasCreators(fm) && (fm.type === "webpage" || fm.type === "document");
-}
-
-/** A citekey that was made from missing data: no author or no year when it was generated. */
-export function isPlaceholderKey(fm: Fm, formula: string): boolean {
-  if (hasCreators(fm) && fm.issued !== undefined) return false;
-  const base = generateCitekey(keySource(fm), new Set(), formula);
-  return fm.citekey.startsWith(base);
-}
-
-function keySource(fm: Record<string, unknown>) {
-  return {
-    title: String(fm.title),
-    ...(fm.author ? { author: fm.author as never } : {}),
-    ...(fm.editor ? { editor: fm.editor as never } : {}),
-    ...(fm.issued !== undefined ? { issued: fm.issued as never } : {}),
-  };
 }
 
 async function headerFromAi(
