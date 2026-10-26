@@ -289,11 +289,11 @@ describe("PDF anhängen", () => {
   });
 });
 
-describe("Metadaten neu auflösen", () => {
+describe("Metadaten neu abrufen", () => {
   it("looks the metadata up again and names the fields that changed", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/items/bowker1999sorting");
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("Aktualisiert: abstract")).toBeVisible();
     expect(calls.find((c) => c.name === "items.resolve")?.input).toEqual({
       citekey: "bowker1999sorting",
@@ -303,7 +303,7 @@ describe("Metadaten neu auflösen", () => {
   it("says so when nothing changed", async () => {
     const user = userEvent.setup();
     renderApp("/items/luhmann1984soziale");
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("Nichts Neues gefunden")).toBeVisible();
   });
 
@@ -315,7 +315,7 @@ describe("Metadaten neu auflösen", () => {
       contract.name === "items.resolve"
         ? Promise.reject(new Error("RESOLVE_FAILED: Crossref did not answer"))
         : original(contract, input)) as typeof view.core.call;
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("RESOLVE_FAILED: Crossref did not answer")).toBeVisible();
   });
 });

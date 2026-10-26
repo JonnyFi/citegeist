@@ -9,6 +9,7 @@ import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
 import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
+import { metadataEn } from "./metadata";
 import { relatedEn } from "./related";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -455,6 +456,7 @@ export const en: Record<MessageKey, string> = {
   ...importEn,
   ...manageEn,
   ...relatedEn,
+  ...metadataEn,
   ...matrixEn,
   ...conceptsEn,
   ...litsearchEn,

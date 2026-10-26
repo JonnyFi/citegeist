@@ -96,6 +96,11 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
                       <Stamp tone="danger">{t("item.incomplete")}</Stamp>
                     </span>
                   ) : null}
+                  {!item.authors || !item.year ? (
+                    <span title={t("item.metadataMissing.hint")}>
+                      <Stamp>{t("item.metadataMissing")}</Stamp>
+                    </span>
+                  ) : null}
                   {!item.incomplete && item.fulltext === "missing" ? (
                     <span className="text-[12px] text-muted">{t("item.noFulltext")}</span>
                   ) : null}

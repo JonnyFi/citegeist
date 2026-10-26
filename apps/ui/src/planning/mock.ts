@@ -15,6 +15,8 @@ import {
 } from "@citegeist/ops";
 import type { NodeStatus, OutlineNode, PlanTemplate } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
+import { classifyIdentifier } from "../lib/identifier";
+import { suggestMockCitekey } from "../mock/citekey";
 import type { MockData } from "../mock/fixtures";
 import { linkTargets, parseInsights } from "./insights";
 import { childrenOf, normalizeOrder, numberNodes, slugify, subtreeIds } from "./outline";
@@ -724,6 +726,37 @@ export function bindPlanningMock(
       const item = data.items.get(input.citekey);
       if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
       const changedFields: string[] = [];
+      let suggestedCitekey: string | undefined;
+      if (input.identifier) {
+        const { kind, value } = classifyIdentifier(input.identifier);
+        if (!["doi", "arxiv", "isbn", "pmid", "url"].includes(kind)) {
+          throw new Error(
+            `INVALID_IDENTIFIER: '${input.identifier}' is not a DOI, arXiv id, ISBN, PMID or URL`,
+          );
+        }
+        const before = item.frontmatter;
+        const next: Record<string, unknown> = { ...before };
+        if (kind === "doi") next.DOI = value.replace(/^.*?(10\.)/i, "$1").toLowerCase();
+        if (kind === "isbn") next.ISBN = value.replace(/^isbn:?\s*/i, "");
+        if (kind === "url") next.URL = value;
+        if (kind === "doi" || kind === "isbn") changedFields.push(kind === "doi" ? "DOI" : "ISBN");
+        if (!before.author?.length) {
+          next.author = [{ family: "Muster", given: "Maria" }];
+          changedFields.push("author");
+        }
+        if (before.issued === undefined) {
+          next.issued = 2020;
+          changedFields.push("issued");
+        }
+        item.frontmatter = next as typeof before;
+        suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
+        changed(`items/${input.citekey}/${input.citekey}.md`);
+        return {
+          citekey: input.citekey,
+          changed: changedFields,
+          ...(suggestedCitekey ? { suggestedCitekey } : {}),
+        };
+      }
       const fm = item.frontmatter;
       if (!fm.publisher && fm.type === "book") {
         item.frontmatter = { ...fm, publisher: "Suhrkamp" };
