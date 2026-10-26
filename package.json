@@ -20,7 +20,8 @@
     "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest && uv run --directory workers/research pytest",
     "prepare": "git config core.hooksPath .githooks || true",
     "app:update": "sh scripts/update-app.sh",
-    "release": "sh scripts/release.sh"
+    "release": "sh scripts/release.sh",
+    "secrets": "sh scripts/secrets.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
