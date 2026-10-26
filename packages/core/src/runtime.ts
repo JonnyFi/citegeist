@@ -1,6 +1,11 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AiRouter, type AiRoutingSettings, type InferenceBackend } from "@citegeist/ai";
+import {
+  AiRouter,
+  type AiRoutingSettings,
+  BackendHealth,
+  type InferenceBackend,
+} from "@citegeist/ai";
 import {
   type AlertLookup,
   createResolver,
@@ -257,8 +262,13 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const workerSource = opts.settings?.workerSource ?? join(repoRoot(), "workers", "convert");
 
   const fixed = opts.ai?.backends;
+  // Which backends the router skips after a limit. It outlives the routers, which are rebuilt on
+  // every settings change, and the settings screen reads it.
+  const health = new BackendHealth();
   const fixedRouter = fixed
-    ? new AiRouter(fixed, opts.ai?.routing ?? { routing: { "*": fixed[0]?.id ?? "mock" } })
+    ? new AiRouter(fixed, opts.ai?.routing ?? { routing: { "*": fixed[0]?.id ?? "mock" } }, {
+        health,
+      })
     : undefined;
 
   // The router is rebuilt lazily after a settings change, because API keys add and remove backends.
@@ -268,7 +278,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const currentRouter = (): Promise<AiRouter> => {
     router ??= (async () => {
       if (!service || !provider) throw new Error("the runtime is not ready");
-      return new AiRouter(await provider.build(), service.routing());
+      return new AiRouter(await provider.build(), service.routing(), { health });
     })();
     return router;
   };
@@ -317,6 +327,7 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   const deps = createSettingsDeps({
     localBase,
     queue: ingest.queue,
+    health,
     recordUsage: (r) => recordTask(usage, r, "human"),
     worker,
     workerSource,

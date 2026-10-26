@@ -719,6 +719,14 @@ const BackendStatus = z.object({
   label: z.string(),
   available: z.boolean(),
   detail: z.string().optional(),
+  /** Set while the router skips this backend after a limit, an overload or a login problem. */
+  paused: z
+    .object({
+      kind: z.enum(["limit", "overloaded", "auth"]),
+      /** ISO time at which the router tries the backend again. */
+      until: z.string(),
+    })
+    .optional(),
   /** A missing or logged-out CLI: the agent-ready error whose `fix` names the install and login commands. */
   error: z
     .object({
@@ -754,7 +762,14 @@ const ResearchLimits = z.object({
 
 export const Settings = z.object({
   ai: z.object({
+    /** Task id or `"*"` to a backend id. The `"*"` entry is the default for every AI task. */
     routing: z.record(z.string(), z.string()),
+    /**
+     * Backend ids the router tries, in this order, when the routed backend hits its usage limit,
+     * is overloaded or is logged out. Unset means the default order: the subscription CLIs, then
+     * the API-key backends, never Ollama. An empty list switches the fallback off.
+     */
+    fallback: z.array(z.string()).optional(),
     apiKeys: z.record(z.string(), z.boolean()).default({}),
   }),
   mailto: z.string().optional(),
@@ -845,7 +860,8 @@ export const settingsUpdate = defineContract({
     patch: z.object({
       ai: z
         .object({
-          routing: z.record(z.string(), z.string()),
+          routing: z.record(z.string(), z.string()).optional(),
+          fallback: z.array(z.string()).optional(),
           apiKeys: z.record(z.string(), z.boolean()).optional(),
         })
         .optional(),

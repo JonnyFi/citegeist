@@ -4,24 +4,19 @@ import { AlertsSection } from "../alerts";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
-import { Select } from "../components/ui/select";
 import { ErrorState, Loading } from "../components/ui/states";
 import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { BackendRow, pollConfig, useBackendTests, WorkerPanel } from "../onboarding/parts";
 import { Section } from "../settings/parts";
+import { RoutingPanel } from "../settings/routing-panel";
 import { ResearchLimitsPanel, UsagePanel } from "../settings/run-control";
 import { SourcesPanel } from "../settings/sources-panel";
 import { SyncPanel } from "../settings/sync-panel";
 import { TroubleshootingPanel } from "../settings/troubleshooting";
 import { WebhooksPanel } from "../settings/webhooks-panel";
 import { ChatPanel, ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
-
-/** Tasks the routing can name besides the default. Mirrors TASKS of @citegeist/ai. */
-export const ROUTED_TASKS = ["card.paraphrase", "card.verify", "metadata.fromFirstPage"] as const;
-
-const INHERIT = "__inherit__";
 
 function ContactForm({ current }: { current: string }) {
   const { t } = useI18n();
@@ -161,12 +156,6 @@ export function SettingsScreen({
   const hasQuickInsert = typeof window !== "undefined" && Boolean(window.citegeist?.quickInsert);
   const routing = settings.ai.routing;
 
-  const setRouting = (next: Record<string, string>) =>
-    update.mutateAsync({ patch: { ai: { routing: next } } });
-
-  const backendOptions = backends.map((b) => ({ value: b.id, label: b.label }));
-  const taskOptions = [{ value: INHERIT, label: t("settings.routing.inherit") }, ...backendOptions];
-
   return (
     <SettingsFrame section={section} onSection={pick}>
       <Section
@@ -188,6 +177,14 @@ export function SettingsScreen({
             }}
           />
         </div>
+      </Section>
+
+      <Section
+        id="settings-routing"
+        title={t("settings.routing.title")}
+        description={t("settings.routing.desc")}
+      >
+        <RoutingPanel data={query.data} />
       </Section>
 
       <Section
@@ -218,43 +215,6 @@ export function SettingsScreen({
           <Button variant="ghost" size="sm" onClick={() => void query.refetch()}>
             {t("backend.recheck")}
           </Button>
-        </div>
-      </Section>
-
-      <Section
-        id="settings-routing"
-        title={t("settings.routing.title")}
-        description={t("settings.routing.desc")}
-      >
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-4">
-            <span>{t("settings.routing.default")}</span>
-            <Select
-              label={t("settings.routing.default")}
-              value={routing["*"] ?? ""}
-              options={backendOptions}
-              onChange={(id) => void setRouting({ ...routing, "*": id })}
-            />
-          </div>
-          {ROUTED_TASKS.map((task) => {
-            const label = t(`task.${task}` as MessageKey);
-            return (
-              <div key={task} className="flex items-center justify-between gap-4">
-                <span>{label}</span>
-                <Select
-                  label={label}
-                  value={routing[task] ?? INHERIT}
-                  options={taskOptions}
-                  onChange={(id) => {
-                    const next = { ...routing };
-                    if (id === INHERIT) delete next[task];
-                    else next[task] = id;
-                    void setRouting(next);
-                  }}
-                />
-              </div>
-            );
-          })}
         </div>
       </Section>
 

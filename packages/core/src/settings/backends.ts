@@ -20,6 +20,8 @@ export interface BackendStatus {
   label: string;
   available: boolean;
   detail?: string;
+  /** Set while the AI router skips the backend after a limit, an overload or a login problem. */
+  paused?: { kind: "limit" | "overloaded" | "auth"; until: string };
   /** For a missing or logged-out CLI: the agent-ready error with the install or login command. */
   error?: { code: string; message: string; fix: string; recovery: string };
 }
@@ -58,6 +60,15 @@ export const BACKEND_CATALOG: readonly CatalogEntry[] = [
 ];
 
 export const BACKEND_IDS: readonly string[] = BACKEND_CATALOG.map((b) => b.id);
+
+/**
+ * Order in which the router moves on when a backend hits a limit and the user has not set `ai.fallback`:
+ * the subscription CLIs in catalog order. API-key backends and Ollama only join when the user adds
+ * them, because a fallback to a key would turn a reached subscription limit into a bill.
+ */
+export const DEFAULT_FALLBACK: readonly string[] = BACKEND_CATALOG.filter(
+  (b) => b.kind === "subscription-cli",
+).map((b) => b.id);
 /** Key slot of the free NCBI E-utilities key (PubMed). It raises the rate limit of PMID lookups. */
 export const NCBI_KEY_PROVIDER = "ncbi";
 /** Key slot of the free OpenAlex key. It raises the daily limit of the literature search. */

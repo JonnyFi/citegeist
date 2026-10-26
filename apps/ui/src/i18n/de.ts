@@ -11,6 +11,7 @@ import { conceptsDe } from "./concepts";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
 import { metadataDe } from "./metadata";
+import { modelsDe } from "./models";
 import { relatedDe } from "./related";
 
 /**
@@ -240,9 +241,10 @@ export const de = {
   "settings.language.desc": "Sprache der Oberfläche.",
   "settings.backends.title": "AI-Backends",
   "settings.backends.desc": "API-Schlüssel liegen in der macOS-Keychain.",
-  "settings.routing.title": "Zuordnung der Aufgaben",
-  "settings.routing.desc": "Welches Backend welche Aufgabe übernimmt.",
-  "settings.routing.default": "Alle anderen Aufgaben",
+  "settings.routing.title": "Modell",
+  "settings.routing.desc":
+    "Welches Backend die KI-Aufgaben übernimmt und wohin sie ausweichen, wenn es nicht weitergeht.",
+  "settings.routing.default": "Standard für KI-Aufgaben",
   "settings.routing.inherit": "Standard",
   "settings.contact.title": "Kontaktadresse",
   "settings.contact.desc":
@@ -471,6 +473,7 @@ export const de = {
   ...metadataDe,
   ...matrixDe,
   ...conceptsDe,
+  ...modelsDe,
   ...cardsDe,
   ...litsearchDe,
   ...onboardingDe,

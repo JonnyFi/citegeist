@@ -1,12 +1,19 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MockBackend, type ProcessRunner, type RunResult, type RunSpec } from "@citegeist/ai";
+import {
+  aiErrors,
+  BackendHealth,
+  MockBackend,
+  type ProcessRunner,
+  type RunResult,
+  type RunSpec,
+} from "@citegeist/ai";
 import { Registry } from "@citegeist/ops";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ConvertWorker } from "../ingest/worker.js";
 import { JobQueue } from "../jobs/queue.js";
 import { cleanTmpDirs, tmpDir } from "../test-helpers.js";
-import { type BackendProvider, BackendRegistry } from "./backends.js";
+import { type BackendProvider, BackendRegistry, DEFAULT_FALLBACK } from "./backends.js";
 import { InMemoryKeychain, MacKeychain } from "./keychain.js";
 import { bindSettingsOperations, type SettingsDeps } from "./service.js";
 import { SettingsStore } from "./store.js";
@@ -410,6 +417,7 @@ describe("settings operations", () => {
     });
     expect(t.svc.routing()).toEqual({
       routing: { "*": "claude-code-cli", "card.paraphrase": "ollama" },
+      fallback: [...DEFAULT_FALLBACK],
     });
     await t.queue.close();
   });
@@ -605,6 +613,111 @@ describe("worker.setup", () => {
     });
     const { job } = (await t.registry.call("worker.setup", human, {})) as { job: string };
     expect((await t.queue.waitFor(job)).error?.code).toBe("WORKER_SOURCE_MISSING");
+    await t.queue.close();
+  });
+});
+
+describe("AI fallback settings", () => {
+  const readFallback = async (t: ReturnType<typeof setup>) =>
+    (
+      (await t.registry.call("settings.get", human, {})) as {
+        settings: { ai: { fallback?: string[] } };
+      }
+    ).settings.ai.fallback;
+
+  it("defaults to the subscription CLIs only, so a limit hit never becomes an API bill", async () => {
+    const t = setup();
+    expect(DEFAULT_FALLBACK).toEqual(["claude-code-cli", "codex-exec", "cursor-cli"]);
+    expect(await readFallback(t)).toEqual([...DEFAULT_FALLBACK]);
+    expect(t.deps.store.load().ai.fallback).toBeUndefined();
+    await t.queue.close();
+  });
+
+  it("stores the order the user picks, an empty list and Ollama when added", async () => {
+    const t = setup();
+    const call = (input: unknown) => t.registry.call("settings.update", human, input);
+    await call({ patch: { ai: { fallback: ["cursor-cli", "ollama", "cursor-cli"] } } });
+    expect(await readFallback(t)).toEqual(["cursor-cli", "ollama"]);
+    expect(t.svc.routing().fallback).toEqual(["cursor-cli", "ollama"]);
+    // A patch without a fallback keeps it; routing alone does not need the fallback.
+    await call({ patch: { ai: { routing: { "*": "cursor-cli" } } } });
+    expect(await readFallback(t)).toEqual(["cursor-cli", "ollama"]);
+    await call({ patch: { ai: { fallback: [] } } });
+    expect(await readFallback(t)).toEqual([]);
+    expect(t.svc.routing().routing).toEqual({ "*": "cursor-cli" });
+    await expect(call({ patch: { ai: { fallback: ["gpt-nine"] } } })).rejects.toMatchObject({
+      detail: { code: "SETTINGS_INVALID" },
+    });
+    await t.queue.close();
+  });
+
+  it("shows a paused backend with its end time in settings.get", async () => {
+    const clock = { now: Date.parse("2026-10-27T12:00:00Z") };
+    const health = new BackendHealth(() => clock.now);
+    const t = setup({
+      health,
+      backends: {
+        get: async () => {
+          throw new Error("unused");
+        },
+        status: async () => [
+          { id: "claude-code-cli", kind: "subscription-cli", label: "Claude", available: true },
+          { id: "cursor-cli", kind: "subscription-cli", label: "Cursor", available: true },
+        ],
+        build: async () => [],
+      },
+    });
+    health.pause("claude-code-cli", "limit", new Date("2026-10-27T13:30:00Z"));
+    const out = (await t.registry.call("settings.get", human, {})) as {
+      backends: Array<{ id: string; paused?: { kind: string; until: string } }>;
+    };
+    expect(out.backends[0]?.paused).toEqual({ kind: "limit", until: "2026-10-27T13:30:00.000Z" });
+    expect(out.backends[1]?.paused).toBeUndefined();
+    clock.now += 2 * 3_600_000;
+    const later = (await t.registry.call("settings.get", human, {})) as typeof out;
+    expect(later.backends[0]?.paused).toBeUndefined();
+    await t.queue.close();
+  });
+
+  it("a successful test ends the pause, a limit during a test starts one", async () => {
+    const health = new BackendHealth();
+    const t = setup({ health });
+    health.pause("claude-code-cli", "limit");
+    await t.registry.call("ai.testBackend", human, { backend: "claude-code-cli" });
+    expect(health.get("claude-code-cli")).toBeUndefined();
+
+    const limited = new MockBackend(
+      {
+        "card.paraphrase": () => {
+          throw aiErrors.backendFailed("claude-code-cli", "card.paraphrase", "usage limit reached");
+        },
+      },
+      "claude-code-cli",
+    );
+    const t2 = setup({
+      health,
+      backends: { get: async () => limited, status: async () => [], build: async () => [] },
+    });
+    const r = (await t2.registry.call("ai.testBackend", human, {
+      backend: "claude-code-cli",
+    })) as { ok: boolean };
+    expect(r.ok).toBe(false);
+    expect(health.get("claude-code-cli")?.kind).toBe("limit");
+    await t.queue.close();
+    await t2.queue.close();
+  });
+
+  it("a changed key or routing ends the pauses that wait for a login", async () => {
+    const health = new BackendHealth();
+    const t = setup({ health });
+    health.pause("openai", "auth");
+    health.pause("claude-code-cli", "limit");
+    await t.registry.call("settings.update", human, {
+      patch: {},
+      apiKey: { provider: "openai", key: "sk-live-abcdefgh" },
+    });
+    expect(health.get("openai")).toBeUndefined();
+    expect(health.get("claude-code-cli")).toBeDefined();
     await t.queue.close();
   });
 });

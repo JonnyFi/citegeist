@@ -32,3 +32,4 @@ This folder holds the decisions that shape citegeist, one short record per decis
 | 0026 | [Retrieval benchmark](0026-retrieval-benchmark.md) | accepted |
 | 0027 | [Paragraph locators for unpaginated sources](0027-paragraph-locators.md) | accepted |
 | 0028 | [Connections from cards](0028-connections-from-cards.md) | accepted |
+| 0029 | [AI backend switch and fallback](0029-ai-backend-fallback.md) | accepted |

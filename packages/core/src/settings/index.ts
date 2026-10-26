@@ -6,6 +6,7 @@ export {
   BackendRegistry,
   type BackendRegistryOptions,
   type BackendStatus,
+  DEFAULT_FALLBACK,
   KEY_PROVIDERS,
   NCBI_KEY_PROVIDER,
   OPENALEX_KEY_PROVIDER,

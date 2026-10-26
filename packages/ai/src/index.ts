@@ -22,7 +22,16 @@ export {
 } from "./backends/openai-http.js";
 export { aiErrors } from "./errors.js";
 export {
+  classifyFailure,
+  FAILURE_CODES,
+  type Failure,
+  type FailureKind,
+  parseResetTime,
+} from "./failure.js";
+export { BackendHealth, type BackendPause, DEFAULT_PAUSE_MS } from "./health.js";
+export {
   AiRouter,
+  type AiRouterOptions,
   type AiRoutingSettings,
   resolveBackendId,
   resolveLanguage,
@@ -83,6 +92,7 @@ export {
   sanitizeProposals,
 } from "./tasks/note-propose-links/index.js";
 export {
+  type FallbackInfo,
   getTask,
   type RunTaskOptions,
   runTask,

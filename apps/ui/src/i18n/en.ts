@@ -12,6 +12,7 @@ import type { MessageKey } from "./de";
 import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
 import { metadataEn } from "./metadata";
+import { modelsEn } from "./models";
 import { relatedEn } from "./related";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -236,9 +237,10 @@ export const en: Record<MessageKey, string> = {
   "settings.language.desc": "Language of the interface.",
   "settings.backends.title": "AI backends",
   "settings.backends.desc": "API keys are stored in the macOS Keychain.",
-  "settings.routing.title": "Task routing",
-  "settings.routing.desc": "Which backend serves which task.",
-  "settings.routing.default": "All other tasks",
+  "settings.routing.title": "Model",
+  "settings.routing.desc":
+    "Which backend serves the AI tasks and where they go when it cannot continue.",
+  "settings.routing.default": "Default for AI tasks",
   "settings.routing.inherit": "Default",
   "settings.contact.title": "Contact address",
   "settings.contact.desc":
@@ -463,6 +465,7 @@ export const en: Record<MessageKey, string> = {
   ...metadataEn,
   ...matrixEn,
   ...conceptsEn,
+  ...modelsEn,
   ...cardsEn,
   ...litsearchEn,
   ...onboardingEn,

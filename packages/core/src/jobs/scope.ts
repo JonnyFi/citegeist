@@ -10,6 +10,8 @@ export interface JobScope {
   job: string;
   actor: Actor;
   signal: AbortSignal;
+  /** Puts a short note on the job, shown next to it in the job list. */
+  note?: (message: string) => void;
 }
 
 const store = new AsyncLocalStorage<JobScope>();
