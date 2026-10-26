@@ -16,12 +16,15 @@ import { Button } from "../components/ui/button";
 import { Select } from "../components/ui/select";
 import { EmptyState, ErrorState, Loading } from "../components/ui/states";
 import { useI18n } from "../i18n";
+import { locatorText } from "../lib/format";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { type PlanContext, planContextLabel, usePlanContext } from "../planning/context";
 import { type ActiveText, useOpenText } from "../texts/active";
 import {
   clearChatFocusRequest,
+  type MarkedPassage,
+  selectionForCore,
   useChatFocusRequest,
   useChatSelection,
   useScreenContext,
@@ -32,18 +35,27 @@ type Chip = "project" | "plan" | "text" | "item" | "selection";
 
 function ContextChips({
   context,
+  marked,
   plan,
   text,
   onRemove,
 }: {
   context: ChatContext;
+  /** The marked passage with its locator label, which the core context does not carry. */
+  marked: MarkedPassage | null;
   /** The plan open in the project view, given to the agent next to the project. */
   plan: PlanContext | null;
   /** The text open in the Texte tab. */
   text: ActiveText | null;
   onRemove: (chip: Chip) => void;
 }) {
-  const { t } = useI18n();
+  const tr = useI18n();
+  const { t } = tr;
+  const cardWhere = marked?.locator
+    ? locatorText(tr, marked.locator)
+    : context.selection?.page
+      ? locatorText(tr, { label: "page", start: context.selection.page })
+      : undefined;
   const chips: Array<{ id: Chip; label: string }> = [
     ...(context.project
       ? [{ id: "project" as const, label: t("chat.context.project", { slug: context.project }) }]
@@ -62,8 +74,8 @@ function ContextChips({
           {
             id: "selection" as const,
             label: context.selection.card
-              ? context.selection.page
-                ? t("chat.context.cardPage", { page: context.selection.page })
+              ? cardWhere
+                ? t("chat.context.cardAt", { where: cardWhere })
                 : t("chat.context.card")
               : context.selection.page
                 ? t("chat.context.selectionPage", { page: context.selection.page })
@@ -168,7 +180,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
   const context: ChatContext = {
     ...(screen.project && !removed.has("project") ? { project: screen.project } : {}),
     ...(screen.item && !removed.has("item") ? { item: screen.item } : {}),
-    ...(marked && !removed.has("selection") ? { selection: marked } : {}),
+    ...(marked && !removed.has("selection") ? { selection: selectionForCore(marked) } : {}),
   };
 
   // Streaming: the core announces `chat/<session>` and only this query refetches. A slow poll
@@ -329,6 +341,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
 
       <ContextChips
         context={context}
+        marked={marked && !removed.has("selection") ? marked : null}
         plan={plan}
         text={text}
         onRemove={(chip) => setRemoved((r) => new Set([...r, chip]))}

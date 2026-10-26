@@ -2,6 +2,7 @@ import { cardsList, itemsList } from "@citegeist/ops";
 import { Link } from "@tanstack/react-router";
 import { Fragment, type ReactNode } from "react";
 import { useI18n } from "../i18n";
+import { withCardLocator } from "../lib/format";
 import { useOp } from "../lib/hooks";
 
 const CITE = /\[\[([^\]|#]+)(?:#(\^?[^\]|]+))?(?:\|([^\]]+))?\]\]/g;
@@ -33,7 +34,14 @@ export function splitCitations(text: string): TextPart[] {
 /** What the library knows, to tell a real citation from an invented one. */
 interface Known {
   items: ReadonlySet<string>;
-  cards: ReadonlyMap<string, { item: string; kind: string | undefined }>;
+  cards: ReadonlyMap<
+    string,
+    {
+      item: string;
+      kind: string | undefined;
+      locator: { label: string; start: string; end?: string | undefined } | undefined;
+    }
+  >;
 }
 
 /** Card kinds keep their colors from the design system; the word stays in the label. */
@@ -56,7 +64,8 @@ function Citation({
   part: Extract<TextPart, { type: "cite" }>;
   known: Known | null;
 }) {
-  const { t } = useI18n();
+  const tr = useI18n();
+  const { t } = tr;
   const { target, anchor, label } = part;
   const shown = label ?? (target.startsWith("c_") ? t("chat.citation.card") : target);
   // Until the library answers, a citation shows as a plain label instead of flashing as unknown.
@@ -66,19 +75,21 @@ function Citation({
     const card = known.cards.get(target);
     if (!card) return <Unknown label={shown} />;
     const citekey = card.item;
+    // the agent labels a card as it knows it; the locator term comes from the card itself
+    const cardLabel = label ? withCardLocator(tr, label, card.locator) : shown;
     return (
       <Link
         to="/items/$citekey"
         params={{ citekey }}
         search={{ tab: "read", card: target }}
-        aria-label={t("chat.citation.open", { label: shown })}
+        aria-label={t("chat.citation.open", { label: cardLabel })}
         className={`${CHIP} hover:bg-sunken`}
       >
         <span
           aria-hidden="true"
           className={`size-1.5 ${(card.kind && KIND_COLOR[card.kind]) || "bg-card-none"}`}
         />
-        {shown}
+        {cardLabel}
       </Link>
     );
   }
@@ -147,7 +158,11 @@ export function AssistantText({ text }: { text: string }) {
     cards: new Map(
       (cards.data?.cards ?? []).map((c) => [
         c.frontmatter.id,
-        { item: c.frontmatter.item, kind: c.frontmatter.kind },
+        {
+          item: c.frontmatter.item,
+          kind: c.frontmatter.kind,
+          locator: c.frontmatter.locator,
+        },
       ]),
     ),
   };

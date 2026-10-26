@@ -32,7 +32,7 @@ export const cardsDe = {
   "cardLink.dismiss": "Verwerfen",
   "cardLink.decideFailed": "Die Entscheidung wurde nicht gespeichert.",
   "chat.context.card": "Karte",
-  "chat.context.cardPage": "Karte, S. {page}",
+  "chat.context.cardAt": "Karte, {where}",
   "connections.fromCards": "Aus Karten",
   "connections.cardLinkProposed": "Vorschlag",
 } as const;
@@ -67,7 +67,7 @@ export const cardsEn = {
   "cardLink.dismiss": "Dismiss",
   "cardLink.decideFailed": "The decision was not saved.",
   "chat.context.card": "Card",
-  "chat.context.cardPage": "Card, p. {page}",
+  "chat.context.cardAt": "Card, {where}",
   "connections.fromCards": "From cards",
   "connections.cardLinkProposed": "Suggestion",
 } as const;

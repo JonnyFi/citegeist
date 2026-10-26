@@ -3,18 +3,36 @@ import { useRouterState } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 
 /**
+ * The marked passage as the UI holds it. `locator` names where a card sits in its source, with
+ * the label the chip needs ("page", "paragraph"); the core only receives `page`.
+ */
+export type MarkedPassage = ChatSelection & {
+  locator?: { label: string; start: string; end?: string | undefined };
+};
+
+/** The selection as the core takes it: no locator, and `page` only for a real printed page. */
+export function selectionForCore(marked: MarkedPassage): ChatSelection {
+  const { locator, ...rest } = marked;
+  if (locator && locator.label !== "page") {
+    const { page: _page, ...withoutPage } = rest;
+    return withoutPage;
+  }
+  return rest;
+}
+
+/**
  * The passage the user marked in the reader. The reader publishes it, the chat shows it as a chip.
  * It lives outside React state so the reader and the chat panel need no shared parent.
  */
-let current: ChatSelection | null = null;
+let current: MarkedPassage | null = null;
 const listeners = new Set<() => void>();
 
-export function publishChatSelection(selection: ChatSelection | null): void {
+export function publishChatSelection(selection: MarkedPassage | null): void {
   current = selection;
   for (const l of listeners) l();
 }
 
-export function useChatSelection(): ChatSelection | null {
+export function useChatSelection(): MarkedPassage | null {
   return useSyncExternalStore(
     (cb) => {
       listeners.add(cb);
@@ -47,7 +65,7 @@ export function useScreenContext(): Pick<ChatContext, "project" | "item"> {
 let focusRequested = false;
 const focusListeners = new Set<() => void>();
 
-export function sendCardToChat(selection: ChatSelection & { card: string }): void {
+export function sendCardToChat(selection: MarkedPassage & { card: string }): void {
   focusRequested = true;
   publishChatSelection(selection);
   for (const l of focusListeners) l();
