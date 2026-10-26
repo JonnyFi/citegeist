@@ -52,6 +52,7 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
   const log = opts.log ?? (() => {});
   const now = opts.now ?? Date.now;
   const limiter = new FailureLimiter();
+  const lastBlockLog = new Map<string, number>();
   const service = opts.hooks.service;
   let server: Server | undefined;
   let boundFor: number | undefined;
@@ -65,6 +66,12 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
     const source = clientAddress(req);
     const wait = limiter.retryAfter(source, now());
     if (wait > 0) {
+      // One line per source and minute, so a client that keeps trying does not fill the log.
+      if (now() - (lastBlockLog.get(source) ?? -Infinity) >= 60_000) {
+        if (lastBlockLog.size > 1000) lastBlockLog.clear();
+        lastBlockLog.set(source, now());
+        log(`mcp: request from ${source} refused with 429 for ${wait} s after failed logins`);
+      }
       return send(
         res,
         429,
@@ -75,6 +82,7 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
     const auth = await service.authenticateMcp(req.headers.authorization);
     if (!auth) {
       limiter.fail(source, now());
+      log(`mcp: request from ${source} refused with 401 (missing or wrong bearer token)`);
       return replyMcpError(res, 401, "UNAUTHORIZED", "Missing or wrong bearer token.");
     }
     // The agent is on the internet: it may never make the core read a local file.

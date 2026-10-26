@@ -241,6 +241,16 @@ A cloud agent cannot reach a local MCP server on your Mac. If it supports remote
 - **No access, no endpoint.** If no connector has MCP access, `/mcp` answers `404`. With access, a wrong token is followed by `401`. After ten failed attempts within a minute from the same source (behind a tunnel, the forwarded address, `x-forwarded-for`), the listener answers `429` with `retry-after`; in total, 100 failed attempts per minute are allowed.
 - **Revoking.** `cg webhooks set-mcp-access grok --no-enabled` invalidates the token immediately; deleting the connector does the same.
 
+### Sessions and restarts
+
+Clients that speak the 2025 protocol get a session (`Mcp-Session-Id`) on `initialize`. The core keeps sessions in memory only and loses them on every restart, for example after an app update. No tool depends on a session, so `/mcp` also accepts an unknown session id: the core opens a new session for the same connector and returns it in the `Mcp-Session-Id` header of the response. The protocol expects `404` here, and some clients (Grok Bot) do not recover from it. Further rules:
+
+- The core closes a session that nobody used for 24 hours. The next call with its id opens a new one.
+- Open SSE streams (`GET /mcp`) get a comment (`: keepalive`) every 15 seconds, so Funnel or Cloudflare do not drop a quiet stream.
+- A restart of the core interrupts calls in flight. This includes the seconds in which the tunnel answers `502` because the hooks port is not listening yet.
+
+For troubleshooting, the core writes lines prefixed with `mcp:` to its log: `session ... opened`, `unknown session ... replaced by ...` (a session from before a restart was replaced), `closed ... idle`, and the source of the request on `401` or `429`. Tokens and full session ids never appear. The core runs as a child process of the app and writes to its standard error; there is no log file. To see the lines, quit citegeist and start it from Terminal with `/Applications/citegeist.app/Contents/MacOS/citegeist`. A start from the Dock or Finder discards the output.
+
 ## Grok Bot (xAI and Cursor)
 
 Grok Bot runs in the cloud on its own machine (browser, file system, terminal). It cannot reach local MCP servers but supports remote MCP servers over HTTP. Routines have a webhook trigger: `POST https://api2.cursor.sh/automations/webhook/<routine-id>` with `Authorization: Bearer crsr_...`. The body becomes the input of the run. The call answers immediately with `200 {"success":true,"runUuid":"..."}`, with `400` for a switched-off routine (the request is then not queued) and with `401` for a wrong key.

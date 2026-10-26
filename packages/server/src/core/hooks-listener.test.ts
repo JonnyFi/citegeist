@@ -29,7 +29,10 @@ let tmp: string;
 let server: CoreServer | undefined;
 const cleanups: Array<() => Promise<void> | void> = [];
 
-async function start(webhooks: Exclude<WebhookOptions, false> = {}) {
+async function start(
+  webhooks: Exclude<WebhookOptions, false> = {},
+  log?: (message: string) => void,
+) {
   const resolver = createResolver({
     fetch: createReplayFetch(METADATA_HTTP_DIR),
     now: () => Date.parse("2026-10-23T12:00:00Z"),
@@ -39,6 +42,7 @@ async function start(webhooks: Exclude<WebhookOptions, false> = {}) {
     library: join(tmp, "library"),
     localBase: join(tmp, "local"),
     watch: false,
+    ...(log ? { log } : {}),
     connector: false,
     chat: false,
     runtime: {
@@ -381,6 +385,32 @@ describe("MCP endpoint for connectors", () => {
     );
     cleanups.push(() => other.close());
     expect((await other.listTools()).tools.length).toBeGreaterThan(0);
+  });
+
+  it("serves a session id from before a restart of the core on a new session", async () => {
+    const lines: string[] = [];
+    const { server: s, client } = await start({ hooksPort: 0 }, (m) => lines.push(m));
+    const made = await call(client, "webhooks.create", {
+      name: "grok",
+      kind: "inbound",
+      mcp: "write",
+    });
+    const res = await fetch(`http://127.0.0.1:${s.hooksPort()}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${made.mcpToken}`,
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-session-id": "44444444-2222-4333-8444-555555555555",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("mcp-session-id")).toBeTruthy();
+    expect(res.headers.get("mcp-session-id")).not.toBe("44444444-2222-4333-8444-555555555555");
+    expect(await res.text()).toContain('"tools"');
+    expect(lines.some((l) => l.includes("44444444") && l.includes("replaced"))).toBe(true);
+    expect(lines.join("\n")).not.toContain(made.mcpToken);
   });
 
   it("lists the tools of a local MCP agent over HTTP, without admin tools", async () => {
