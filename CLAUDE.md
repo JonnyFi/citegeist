@@ -1,8 +1,11 @@
 @AGENTS.md
 
-## gstack (REQUIRED: global install)
+## gstack (recommended: global install)
 
-**Before doing ANY work, verify gstack is installed:**
+gstack is the workflow this repo is built with. It is a recommendation for contributors and
+required for the maintainers.
+
+**Before starting work, check whether gstack is installed:**
 
 ```bash
 _GS=""
@@ -12,9 +15,10 @@ done
 [ -n "$_GS" ] && echo "GSTACK_OK: $_GS" || echo "GSTACK_MISSING"
 ```
 
-If GSTACK_MISSING: STOP. Do not proceed. Tell the user:
+If GSTACK_MISSING, tell the user once that gstack is recommended and how to install it, then
+continue with the task without gstack skills:
 
-> gstack is required for all AI-assisted work in this repo.
+> gstack is recommended for work in this repo.
 > Install it:
 > ```bash
 > git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
@@ -22,7 +26,8 @@ If GSTACK_MISSING: STOP. Do not proceed. Tell the user:
 > ```
 > Then restart your AI coding tool.
 
-Do not skip skills, ignore gstack errors, or work around missing gstack.
+If the user is a maintainer (they will say so, or set `CITEGEIST_REQUIRE_GSTACK=1`), gstack is
+required: stop until it is installed.
 
 Using gstack skills: After install, skills like /qa, /ship, /review, /investigate,
 and /browse are available. Use /browse for all web browsing (Aside first, the bundled gstack browser as fallback).
