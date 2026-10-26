@@ -460,6 +460,7 @@ export const en: Record<MessageKey, string> = {
   ...litsearchEn,
   ...textsEn,
   "agent.tab": "Agent",
+  "aside.resize": "Width of the right column",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",
   "rail.expand": "Expand sidebar",
