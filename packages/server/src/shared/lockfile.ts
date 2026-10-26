@@ -95,7 +95,10 @@ function writeAtomic(path: string, content: string, mode: number): void {
  * pid is dead is stale and gets replaced.
  */
 export function acquireLock(dir: string, pid = process.pid): void {
-  mkdirSync(dir, { recursive: true });
+  // The folder holds the token of the core, so no other user of the Mac may list or enter it. An
+  // existing folder from an older version gets the same mode.
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  chmodSync(dir, 0o700);
   const info: LockInfo = { pid, port: 0, started: new Date().toISOString() };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
