@@ -17,7 +17,7 @@ export function system(_language: string): string {
 }
 
 /**
- * v2 (W5.1): passage and summary are datamarked. The term is read from the marked text and
+ * v2: passage and summary are datamarked. The term is read from the marked text and
  * written with ordinary spaces.
  */
 export function prompt(input: ConceptNameInput): string {

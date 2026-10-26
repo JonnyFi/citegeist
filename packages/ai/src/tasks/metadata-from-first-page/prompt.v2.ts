@@ -22,7 +22,7 @@ export function system(_language: string): string {
 }
 
 /**
- * v2 (W5.1): page text and file name are datamarked. "Evidence" is copied with ordinary spaces in
+ * v2: page text and file name are datamarked. "Evidence" is copied with ordinary spaces in
  * place of the marker. The rules for the fields are unchanged from v1.
  */
 export function prompt(input: MetadataFromFirstPageInput): string {

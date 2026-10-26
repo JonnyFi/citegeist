@@ -487,3 +487,69 @@ describe("MCP endpoint for connectors", () => {
     expect(tools.map((t) => t.name)).not.toContain("add_item");
   });
 });
+
+describe("abuse limits on the hooks listener", () => {
+  const post = (port: number, headers: Record<string, string>) =>
+    new Promise<number>((resolve, reject) => {
+      const req = request(
+        { host: "127.0.0.1", port, path: "/hooks/grok", method: "POST", headers },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on("error", reject);
+      req.end("{}");
+    });
+
+  it("turns a source away after repeated failed signatures, whatever else it writes into x-forwarded-for", async () => {
+    const { server: s, client } = await start({ hooksPort: 0 });
+    const { secret } = await call(client, "webhooks.create", { name: "grok", kind: "inbound" });
+    const port = s.hooksPort() as number;
+    // The tunnel appends 203.0.113.7; the entry before it is the sender's own invention.
+    const attacker = (i: number) => ({ "x-forwarded-for": `198.51.100.${i}, 203.0.113.7` });
+    for (let i = 0; i < 10; i += 1) expect(await post(port, attacker(i))).toBe(401);
+    expect(await post(port, attacker(99))).toBe(429);
+    // Another source is not affected and still gets through with a valid signature.
+    const body = JSON.stringify({ event: "ping" });
+    const ok = await fetch(`http://127.0.0.1:${port}/hooks/grok`, {
+      method: "POST",
+      headers: { ...signRequest(secret, body), "x-forwarded-for": "203.0.113.8" },
+      body,
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it("closes a request whose body never arrives", async () => {
+    const { manageHooksListener } = await import("./hooks-listener.js");
+    const listener = manageHooksListener({
+      hooks: {
+        service: { hasConnectors: () => true, hasMcpAccess: () => false },
+        // Like the real handler, wait for the body.
+        handle: (req: IncomingMessage) =>
+          new Promise<boolean>((resolve) => req.on("close", () => resolve(true))),
+      } as never,
+      mcp: { handle: async () => {} } as never,
+      port: () => 0,
+      portOverride: 0,
+      requestTimeoutMs: 300,
+    });
+    await listener.reconcile();
+    cleanups.push(() => listener.stop());
+    const status = listener.status();
+    if (status.state !== "listening") throw new Error("listener did not start");
+    const { connect } = await import("node:net");
+    const socket = connect(status.port as number, "127.0.0.1");
+    cleanups.push(() => void socket.destroy());
+    const closedAfter = await new Promise<string>((resolve) => {
+      let received = "";
+      socket.on("data", (d) => {
+        received += d.toString();
+      });
+      socket.on("close", () => resolve(received));
+      // Headers promise 1000 bytes; none follow.
+      socket.write("POST /hooks/grok HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n");
+    });
+    expect(closedAfter).toMatch(/^HTTP\/1\.1 408/);
+  }, 10_000);
+});

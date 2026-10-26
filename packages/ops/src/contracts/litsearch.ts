@@ -3,10 +3,10 @@ import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 import { CandidateResult, WorkStatus } from "./graph.js";
 
-// Literature search (issue #50, from research-pipeline). A run searches OpenAlex, arXiv and
+// Literature search (from research-pipeline). A run searches OpenAlex, arXiv and
 // Semantic Scholar, ranks every paper with a 0 to 100 score and verifies each DOI. Runs live in
-// <library>/research/runs/<id>/; selected papers go to the inbox (D7), never straight into the
-// library. A search that repeats is an alert of the kind `pipeline` (alerts.*, D19). None of
+// <library>/research/runs/<id>/; selected papers go to the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md), never straight into the
+// library. A search that repeats is an alert of the kind `pipeline` (alerts.*, docs/decisions/0022-literature-search.md). None of
 // these is an MCP tool: the tool budget is full and a search is run in the app.
 
 const Ok = z.object({ ok: z.literal(true) });

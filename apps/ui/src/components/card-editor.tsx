@@ -182,7 +182,7 @@ export function QuoteCard({
     setCopy(null);
     try {
       if (insertTarget) {
-        // a text is open: the quotation goes into it, with the citation in Pandoc syntax (D20)
+        // a text is open: the quotation goes into it, with the citation in Pandoc syntax (docs/decisions/0002-writing-in-markdown-with-pandoc.md)
         const out = await core.call(cardsExport, {
           ids: [fm.id],
           mode,

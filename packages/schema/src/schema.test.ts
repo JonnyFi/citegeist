@@ -111,7 +111,7 @@ describe("schemas", () => {
     expect(card.locator?.label).toBe("page");
   });
 
-  describe("card kind migration (D16)", () => {
+  describe("card kind migration", () => {
     const base = {
       id: "c_01JB8Z3QK7ABCDEFGH",
       item: "luhmann1984soziale",

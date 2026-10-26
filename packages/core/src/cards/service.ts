@@ -224,7 +224,7 @@ export class CardService {
 
   // AI texts -------------------------------------------------------------------------------------
 
-  /** D9: item (reader dropdown), then project, then library default; an explicit value wins. */
+  /** Item (reader dropdown), then project, then library default; an explicit value wins. */
   private languageFor(
     item: ItemFrontmatter,
     cardProjects: readonly string[],
@@ -305,7 +305,7 @@ export class CardService {
     if (fillOnly && body.paraphrase !== undefined) return;
     body.paraphrase = ai.paraphrase;
     const stamp: ModelStamp = { by: ai.stamp.by, at: ai.stamp.at, language: ai.stamp.language };
-    // The reader's choice wins: the AI only sets a kind that is still unset (D16). A retired kind
+    // The reader's choice wins: the AI only sets a kind that is still unset. A retired kind
     // ("quote", "comment") counts as unset.
     const kindIsSet = CardKind.safeParse(file.data?.kind).success;
     file.patch({

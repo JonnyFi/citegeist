@@ -32,7 +32,7 @@ export function system(language: string): string {
 }
 
 /**
- * v2 (W5.1): note, target descriptions and card texts are datamarked. The refs ("[[citekey]]",
+ * v2: note, target descriptions and card texts are datamarked. The refs ("[[citekey]]",
  * card ids) are identifiers that citegeist generates and stay plain, so "to" and "evidence" can be
  * copied exactly. The closing reminder in the user turn keeps the language of the reasons: with
  * a marked German note, the first live eval of v2 on Claude Sonnet wrote them in German although

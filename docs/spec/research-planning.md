@@ -1,27 +1,27 @@
-# Spec: Forschungsplanung
+# Spec: Research planning
 
-Stand: 2026-10-24, Version 2. Sie ersetzt den ersten Entwurf und setzt D11 bis D14 um.
+Version 2, 2026-10-24. It replaces the first draft and implements the decisions on [outline and section files](../decisions/0017-outline-and-section-files.md), [direct agent edits with undo](../decisions/0018-direct-agent-edits-with-undo.md) and [multiple plans and templates](../decisions/0019-multiple-plans-and-templates.md).
 
-## 1. Kernidee
+## 1. Core idea
 
-Alex liest Quelle X, markiert Stellen, schreibt Notizen, und der Agent fasst sie zusammen. Später liest er Text Y und sieht plötzlich eine Verbindung zu X. Diese Einsicht gehört keiner der beiden Literaturnotizen allein. Sie gehört an einen gemeinsamen Ort: in das Kapitel, das sie betrifft, in das Planungsdokument oder in die Einsichten-Datei des Projekts.
+Alex reads source X, highlights passages, writes notes, and the agent summarizes them. Later he reads text Y and suddenly sees a connection to X. This insight belongs to neither of the two literature notes alone. It belongs in a shared place: in the chapter it concerns, in the planning document or in the insights file of the project.
 
-Die Spec dreht sich um zwei Momente. Alex sagt dem Agent im Chat, was er sieht, und der Agent schreibt es an den richtigen Ort. Später holt der Agent die Einsicht zurück, sobald Alex ein Kapitel plant oder umbaut. Gedanken bleiben Fließtext. Feste Felder gibt es nur für das Gerüst, also für die Gliederung aus Kapiteln und Abschnitten.
+The spec revolves around two moments. Alex tells the agent in the chat what he sees, and the agent writes it to the right place. Later the agent brings the insight back as soon as Alex plans or restructures a chapter. Thoughts stay running text. Fixed fields exist only for the scaffold, that is the outline of chapters and sections.
 
-## 2. Festhalten im Chat
+## 2. Capturing in the chat
 
-Alex öffnet die Chat-Seitenleiste rechts und schreibt etwa: „Ich sehe eine Verbindung zwischen Paper A und B, bitte einmal notieren.“
+Alex opens the chat sidebar on the right and writes something like: "I see a connection between paper A and B, please note it."
 
-1. Der Agent klärt, was gemeint ist. Die gerade gelesene Quelle, eine Markierung und das offene Projekt stehen als Kontext in der Sitzung. Andere Quellen, Karten und Notizen findet er über `search` und `list_cards`. Bleibt eine Angabe mehrdeutig, stellt er genau eine Rückfrage.
-2. Er formuliert die Einsicht als Absatz und setzt Wiki-Links auf die gemeinten Citekeys, Karten und Gliederungsknoten.
-3. Er wählt den Ort. Betrifft die Einsicht ein Kapitel oder einen Abschnitt, kommt sie in dessen Dokument. Reicht sie über Kapitel hinweg, kommt sie ins Planungsdokument. Gibt es keinen passenden Ort, landet sie in der Einsichten-Datei des Projekts.
-4. Er schreibt den Absatz mit `note_insight` und antwortet mit einer Zeile: „Notiert in 3, Luhmanns Kommunikationsbegriff.“ Die Zeile verlinkt den Absatz und trägt den Knopf „Rückgängig“.
+1. The agent clarifies what is meant. The source being read, a highlight and the open project are part of the session context. It finds other sources, cards and notes through `search` and `list_cards`. If a detail stays ambiguous, it asks exactly one question.
+2. It phrases the insight as a paragraph and sets wiki links to the citekeys, cards and outline nodes it refers to.
+3. It chooses the place. If the insight concerns a chapter or a section, it goes into that document. If it spans several chapters, it goes into the planning document. If no place fits, it lands in the insights file of the project.
+4. It writes the paragraph with `note_insight` and answers with one line: "Noted in 3, Luhmann's concept of communication." The line links to the paragraph and carries the "Undo" button.
 
-Das Festhalten ist eine erbetene Änderung und wird direkt geschrieben (D12). Ohne AI schreibt Alex denselben Absatz von Hand in dieselbe Datei (Grundsatz 6).
+Capturing is a requested change and is written directly ([ADR 0018](../decisions/0018-direct-agent-edits-with-undo.md)). Without AI, Alex writes the same paragraph by hand into the same file.
 
-### Form einer Einsicht
+### Form of an insight
 
-Eine Einsicht ist ein Absatz im Markdown-Text. Sie beginnt mit dem Datum und endet mit einer Block-ID, die der Kern beim Schreiben setzt:
+An insight is a paragraph in the Markdown text. It starts with the date and ends with a block id that the core sets when writing:
 
 ```markdown
 2026-11-12: Gillespies Feedbackschleife bei Rankings ist ein Fall von Anschlusskommunikation
@@ -29,32 +29,32 @@ im Sinne von [[luhmann1984soziale]] ([[c_01JB8Z3Q]]), und [[gillespie2018custodi
 dafür den empirischen Fall. Das trägt den Übergang zu [[k_01JC7D4E2F]]. ^i-01JC5Q2M8T
 ```
 
-Die Struktur ergibt sich aus dem Text selbst. Die Wiki-Links nennen Quellen, Karten und Knoten, die Datei nennt den Ort, und das Datum nennt den Zeitpunkt. Die Herkunft steht im Verlauf der Datei. Die Block-ID macht den Absatz zitierbar, etwa als `[[kommunikationsbegriff#^i-01JC5Q2M8T]]`.
+The structure follows from the text itself. The wiki links name sources, cards and nodes, the file names the place, and the date names the time. The origin is recorded in the history of the file. The block id makes the paragraph citable, for example as `[[kommunikationsbegriff#^i-01JC5Q2M8T]]`.
 
-## 3. Zurückholen beim Planen
+## 3. Bringing insights back while planning
 
-Plant Alex im Chat ein Kapitel, ruft der Kern vor der Antwort `find_insights` für dessen Knoten auf. Die Suche arbeitet in zwei Stufen.
+When Alex plans a chapter in the chat, the core calls `find_insights` for its node before the answer. The search works in two stages.
 
-- **Links zuerst.** Treffer sind Absätze im Dokument des Knotens und seiner Unterknoten, Absätze anderswo im Projekt mit einem Link auf den Knoten und Absätze mit einem Link auf eine Quelle oder Karte, die das Dokument des Knotens verlinkt. Diese Treffer sortiert der Kern nach Zahl der gemeinsamen Links und dann nach Datum.
-- **Semantische Suche danach.** Bleiben Plätze frei, sucht der Kern über alle Absätze des Projekts mit lokalen Embeddings, bis dahin mit FTS5.
+- **Links first.** Hits are paragraphs in the document of the node and its child nodes, paragraphs elsewhere in the project that link to the node, and paragraphs that link to a source or card that the document of the node links to. The core sorts these hits by the number of shared links and then by date.
+- **Semantic search second.** If places remain free, the core searches all paragraphs of the project with local embeddings, and with FTS5 until those exist.
 
-Die besten fünf kommen mit Datum, Datei, Text und Grund des Treffers in den Kontext des Zugs. Die Sitzungsanweisung verlangt, eine Einsicht zu nennen, sobald sie die Antwort berührt, und sie per Block-Link zu zitieren: „Zu Kapitel 3 hast du am 12.11. notiert, dass A und B denselben Mechanismus beschreiben.“ Die Oberfläche zeigt das Zitat als Chip. Ein Verweis auf einen Absatz, den es nicht gibt, wird markiert wie ein unbelegtes Zitat (Grundsatz 3).
+The best five enter the context of the turn with date, file, text and the reason for the hit. The session instruction requires the agent to mention an insight as soon as it touches the answer and to cite it with a block link: "For chapter 3 you noted on 12 November that A and B describe the same mechanism." The interface shows the citation as a chip. A reference to a paragraph that does not exist is marked like an unsupported citation.
 
-Der Index zerlegt dafür jede Plandatei und die Einsichten-Datei in Absätze und hält Block-ID, Datei, Datum, ausgehende Links und Vektor pro Absatz. Die Links landen in der vorhandenen Kantentabelle des Graphen.
+For this purpose the index splits every plan file and the insights file into paragraphs and keeps block id, file, date, outgoing links and a vector per paragraph. The links go into the existing edge table of the graph.
 
-## 4. Gliederung
+## 4. Outline
 
-Die Gliederung ist das einzige Objekt mit festen Feldern. Sie liegt pro Plan in `outline.yaml`. Jeder Knoten hat diese Felder:
+The outline is the only object with fixed fields. It lives per plan in `outline.yaml`. Every node has these fields:
 
-| Feld | Bedeutung |
+| Field | Meaning |
 |---|---|
-| `id` | `k_<ULID>`, stabil |
-| `title` | Titel |
-| `parent` | ID des Elternknotens, `null` für Kapitel |
-| `order` | Position unter Geschwistern, ganze Zahl |
-| `purpose` | optional, ein Satz zum Zweck |
-| `status` | `idea`, `draft`, `solid` oder `done` |
-| `questions` | IDs der Forschungsfragen aus `project.md` |
+| `id` | `k_<ULID>`, stable |
+| `title` | Title |
+| `parent` | ID of the parent node, `null` for chapters |
+| `order` | Position among siblings, integer |
+| `purpose` | optional, one sentence on the purpose |
+| `status` | `idea`, `draft`, `solid` or `done` |
+| `questions` | IDs of the research questions from `project.md` |
 
 ```yaml
 nodes:
@@ -63,73 +63,75 @@ nodes:
   - { id: k_01JC6A1B2C, title: Anschlusskommunikation, parent: k_01JC2C9KQ4, order: 1, status: idea }
 ```
 
-Nummern wie „4.4“ berechnet citegeist aus `parent` und `order` und speichert sie nie. Text verweist auf Knoten per ID, etwa `[[k_01JC6A1B2C]]`, und citegeist zeigt den Link als „3.1 Anschlusskommunikation“ an. Ein Umordnen nummeriert deshalb neu, und alle Links bleiben gültig.
+citegeist computes numbers like "4.4" from `parent` and `order` and never stores them. Text refers to nodes by ID, for example `[[k_01JC6A1B2C]]`, and citegeist displays the link as "3.1 Anschlusskommunikation". Reordering therefore renumbers, and all links stay valid.
 
-Ein Kapitel hat immer ein eigenes Dokument. Ein Abschnitt bekommt erst eines, wenn er Behauptungen oder Quellen trägt (D11), bis dahin stehen seine Einsichten im Dokument des Kapitels. Ein Dokument trägt im Frontmatter nur `node` und denselben Wert unter `aliases`, damit Obsidian Links auf den Knoten zur Datei auflöst. Links auf Abschnitte ohne Dokument löst nur citegeist auf.
+A chapter always has its own document. A section gets one only when it carries claims or sources ([ADR 0017](../decisions/0017-outline-and-section-files.md)); until then its insights live in the document of the chapter. In its frontmatter, a document carries only `node` and the same value under `aliases`, so that Obsidian resolves links to the node to the file. Only citegeist resolves links to sections without a document.
 
-Sagt Alex „füge Kapitel 4 einen Unterabschnitt 4.4 hinzu“, liest der Agent die berechneten Nummern aus `get_project` und legt den Knoten über `edit_outline` an. Alex kann jedes Feld in der Planansicht oder direkt in der YAML-Datei ändern und muss keines selbst ausfüllen.
+When Alex says "add a subsection 4.4 to chapter 4", the agent reads the computed numbers from `get_project` and creates the node through `edit_outline`. Alex can change every field in the plan view or directly in the YAML file, and he does not have to fill in any of them himself.
 
-### Ordner
+### Folders
 
 ```
 projects/phd-proposal/
-  project.md                      Projektbrief
-  insights.md                     Einsichten ohne festen Ort
+  project.md                      Project brief
+  insights.md                     Insights without a fixed place
   plans/
     proposal/
-      plan.md                     Planungsdokument
-      outline.yaml                Gliederung
+      plan.md                     Planning document
+      outline.yaml                Outline
       nodes/kommunikationsbegriff.md
-      nodes/autopoiesis.md        Abschnitt mit Quellen, deshalb eigenes Dokument
+      nodes/autopoiesis.md        Section with sources, hence its own document
     paper-plattformen/
       plan.md
       outline.yaml
-  proposals/p_01JC4M7R2X.json     Vorschläge ungefragter Agent-Änderungen
+  proposals/p_01JC4M7R2X.json     Proposals for unrequested agent changes
 ```
 
-Ein Projekt kann mehrere Pläne haben (D13). Beim Anlegen stehen die Vorlagen „Exposé“ und „IMRaD“ bereit, die `outline.yaml` mit Knoten und Zweck füllen (D14).
+A project can have several plans ([ADR 0019](../decisions/0019-multiple-plans-and-templates.md)). On creation, the templates "Exposé" and "IMRaD" are available, which fill `outline.yaml` with nodes and purposes.
 
-## 5. Änderungen durch den Agent
+## 5. Changes by the agent
 
-- **Im Chat erbetene Änderungen schreibt der Agent direkt.** Sagt Alex „so will ich das, formuliere das mal aus“, steht der Text sofort im Dokument.
-- **Jede Änderung lässt sich zurücknehmen.** Der Kern legt vor jedem Schreiben die vorige Fassung im Verlauf der Datei ab, mit Akteur und Agent-Zug. „Rückgängig“ stellt alle Dateien eines Zugs wieder her. Hat Alex dazwischen selbst geändert, führt der Kern beide Stände per Drei-Wege-Merge zusammen und zeigt Konflikte an. Der Verlauf liegt rechnerlokal unter Application Support, geräteübergreifend hilft git (A9).
-- **Der Prüfmodus ist wählbar.** Pro Projekt (`agent_edits: review`) oder pro Chat kommen Änderungen als Vorschlag mit Diff.
-- **Ungefragte Änderungen kommen als Vorschlag.** Das gilt für Hintergrundjobs und für externe Agents außerhalb eines citegeist-Chats.
+- **The agent writes changes requested in the chat directly.** If Alex says "that's how I want it, put it into words", the text appears in the document immediately.
+- **Every change can be undone.** Before every write, the core stores the previous version in the history of the file, with actor and agent turn. "Undo" restores all files of a turn. If Alex made changes in between, the core merges both states with a three-way merge and shows conflicts. The history lives machine-locally under Application Support; across devices, git helps ([ADR 0005](../decisions/0005-sync-and-versioning.md)).
+- **The review mode is selectable.** Per project (`agent_edits: review`) or per chat, changes arrive as a proposal with a diff.
+- **Unrequested changes arrive as a proposal.** This applies to background jobs and to external agents outside a citegeist chat.
 
-## 6. Verträge
+## 6. Contracts
 
-- `insights.note` (write, MCP `note_insight`): `project`, `plan?`, `target` (Knoten-ID, `plan` oder `project`), `text`. Der Kern setzt Datum und Block-ID. Ausgabe `path`, `block`, `number` des Knotens.
-- `insights.find` (read, MCP `find_insights`): `project`, `plan?`, `node?`, `refs?`, `query?`, `limit = 5`. Ausgabe Absätze mit `path`, `block`, `date`, `text`, `stage` (`links` oder `semantic`) und `why`.
+- `insights.note` (write, MCP `note_insight`): `project`, `plan?`, `target` (node ID, `plan` or `project`), `text`. The core sets date and block id. Output `path`, `block`, `number` of the node.
+- `insights.find` (read, MCP `find_insights`): `project`, `plan?`, `node?`, `refs?`, `query?`, `limit = 5`. Output paragraphs with `path`, `block`, `date`, `text`, `stage` (`links` or `semantic`) and `why`.
 - `plans.create` (write): `project`, `slug`, `title`, `template?: "expose" | "imrad"`. `plans.list` (read): `project`.
-- `outline.get` (read, MCP über `get_project`, das Projekt, Pläne und Gliederung in einem Aufruf liefert): `project`, `plan`. Ausgabe Knoten mit Feldern, berechneter Nummer und Pfad des Dokuments.
-- `outline.apply` (write, MCP `edit_outline`): `project`, `plan`, `ops` aus `add` (`parent`, `position`, `title`, `purpose?`), `update` (`id`, Felder), `move` (`id`, `parent`, `position`) und `remove` (`id`). Ein Aufruf ist atomar und ein Schritt im Verlauf. `remove` eines Knotens mit Dokument oder eingehenden Links meldet diese und verlangt `force`.
-- `plan.docs.update` (write, MCP `edit_plan_doc`): `project`, `plan`, `doc`, `baseHash`, `body`. Legt bei Bedarf das Dokument eines Knotens an.
-- `history.list`, `history.restore`, `history.revertTurn` (write): Verlauf einer Datei, eine Fassung wiederherstellen, einen Agent-Zug zurücknehmen.
-- `proposals.list`, `proposals.decide` (write): Vorschläge einsehen, annehmen oder verwerfen.
+- `outline.get` (read, MCP through `get_project`, which returns project, plans and outline in one call): `project`, `plan`. Output nodes with fields, computed number and path of the document.
+- `outline.apply` (write, MCP `edit_outline`): `project`, `plan`, `ops` made of `add` (`parent`, `position`, `title`, `purpose?`), `update` (`id`, fields), `move` (`id`, `parent`, `position`) and `remove` (`id`). One call is atomic and one step in the history. `remove` of a node with a document or incoming links reports them and requires `force`.
+- `plan.docs.update` (write, MCP `edit_plan_doc`): `project`, `plan`, `doc`, `baseHash`, `body`. Creates the document of a node when needed.
+- `history.list`, `history.restore`, `history.revertTurn` (write): history of a file, restore a version, undo an agent turn.
+- `proposals.list`, `proposals.decide` (write): view proposals, accept or reject them.
 
-Akteur, Chat-Zug und Prüfmodus entscheiden bei jeder schreibenden Operation, ob sie direkt schreibt oder einen Vorschlag anlegt.
+Actor, chat turn and review mode decide for every writing operation whether it writes directly or creates a proposal.
 
-Schema in `packages/schema/src/plan.ts`: `PlanSlug`, `OutlineNodeId`, `OutlineNode`, `Outline`, `PlanFrontmatter` (`title`, `template?`, `created`), `NodeDocFrontmatter` (`node`, `aliases`), `Proposal`, `HistoryEntry`. `ProjectFrontmatter` bekommt `agent_edits` mit Standard `direct`. `library-format.md` bekommt Zeilen für `insights.md`, `plans/` und `proposals/` sowie die Regel für Einsicht-Absätze.
+Schema in `packages/schema/src/planning.ts`: `PlanSlug`, `OutlineNodeId`, `OutlineNode`, `Outline`, `PlanFrontmatter` (`title`, `template?`, `created`), `NodeDocFrontmatter` (`node`, `aliases`). The planned `Proposal` and `HistoryEntry` schemas and `agent_edits` in `ProjectFrontmatter` (default `direct`) are not implemented yet. [library-format.md](library-format.md) lists `insights.md` and `plans/`.
 
-## 7. Oberfläche
+Implementation status: `insights.note`, `insights.find`, `plans.create`, `plans.list`, `outline.get`, `outline.apply` and `plan.docs.update` exist. Undoing an agent turn is implemented as `chat.revertTurn`, backed by the turn journal of the chat package. The per-file history operations (`history.*`), proposals (`proposals.*`) and the review mode are not implemented yet.
 
-- **Chat-Seitenleiste:** Bestätigungszeile nach dem Festhalten, zitierte Einsichten als Chips mit Datum, „Rückgängig“ an jedem Agent-Zug mit Änderungen.
-- **Planansicht:** ein Tab pro Plan. Links steht die Gliederung mit berechneten Nummern, darüber „Planungsdokument“ und darunter „Einsichten des Projekts“. In der Mitte steht das Dokument des gewählten Knotens im Editor, darüber ein kleines Formular für Titel, Zweck, Status und Forschungsfragen.
-- **Verlauf:** pro Datei eine Liste der Fassungen mit Herkunft.
+## 7. Interface
 
-Die Literaturmatrix filtert auf die Quellen, die das Dokument eines Knotens verlinkt. Der spätere Schreibtisch übernimmt die Gliederung.
+- **Chat sidebar:** confirmation line after capturing, cited insights as chips with date, "Undo" on every agent turn with changes.
+- **Plan view:** one tab per plan. On the left is the outline with computed numbers, with "Planning document" above it and "Project insights" below it. In the middle is the document of the selected node in the editor, with a small form above it for title, purpose, status and research questions.
+- **History:** per file a list of versions with their origin.
 
-## 8. Vorbilder
+The literature matrix filters to the sources that the document of a node links to. The later writing desk takes over the outline.
 
-- **Obsidian Longform:** Die Reihenfolge steht in einer Indexdatei getrennt von den Texten. citegeist übernimmt die Trennung mit `outline.yaml` ([Scene Subtree Mover](https://community.obsidian.md/plugins/scene-subtree-mover)).
-- **STORM:** Die Gliederung entsteht aus Fragen, bevor Text entsteht. Der Planungs-Agent fragt ebenso zuerst nach ([Stanford](https://storm-project.stanford.edu/research/storm/)).
-- **Jenni AI:** Es setzt Zitate aus einer fremden Datenbank ein. citegeist belegt mit eigenen Karten und Einsichten (Grundsatz 3) ([eesel](https://www.eesel.ai/blog/jenni-ai-writing-tool)).
+## 8. Prior art
 
-## 9. Einordnung
+- **Obsidian Longform:** The order lives in an index file, separate from the texts. citegeist adopts the separation with `outline.yaml` ([Scene Subtree Mover](https://community.obsidian.md/plugins/scene-subtree-mover)).
+- **STORM:** The outline emerges from questions before text exists. The planning agent likewise asks first ([Stanford](https://storm-project.stanford.edu/research/storm/)).
+- **Jenni AI:** It inserts citations from a third-party database. citegeist backs claims with the user's own cards and insights ([eesel](https://www.eesel.ai/blog/jenni-ai-writing-tool)).
 
-Der erste Schnitt umfasst die Pläne und Einsichten sowie das Festhalten: `note_insight` mit den drei Orten, die Absatzzerlegung im Index, `find_insights` mit der Link-Stufe und Verlauf mit „Rückgängig“. Bis die Seitenleiste steht, läuft derselbe Ablauf mit Claude Code über MCP. Danach folgen die Gliederung, das Zurückholen im Planungs-Chat und die Planansicht.
+## 9. Delivery order
 
-## 10. Offene Fragen
+The first cut covers plans and insights as well as capturing: `note_insight` with the three places, the paragraph split in the index, `find_insights` with the link stage, and history with "Undo". Until the sidebar exists, the same flow runs with Claude Code over MCP. The outline, the retrieval in the planning chat and the plan view follow.
 
-1. **Wie lange bewahrt der Verlauf Fassungen auf?** Empfehlung: 90 Tage für alle Fassungen, danach eine pro Tag.
-2. **Soll der Agent Einsichten auch beim Lesen zurückholen, etwa beim Öffnen von Quelle B?** Empfehlung: zuerst nur im Planungs-Chat, später als leiser Hinweis im Reader.
+## 10. Open questions
+
+1. **How long does the history keep versions?** Recommendation: 90 days for all versions, then one per day.
+2. **Should the agent also bring insights back while reading, for example when opening source B?** Recommendation: only in the planning chat at first, later as a quiet hint in the reader.

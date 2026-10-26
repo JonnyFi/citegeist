@@ -43,7 +43,7 @@ import {
   writeAlertsFile,
 } from "./store.js";
 
-/** The why of an inbox item an alert added (D7). */
+/** The why of an inbox item an alert added (docs/decisions/0014-agent-content-goes-to-inbox.md). */
 export function alertWhy(name: string): string {
   return `Alert: ${name}`;
 }
@@ -507,7 +507,7 @@ export class AlertService {
 
   /**
    * One check of a `pipeline` alert: the literature search runs as a job of its own, and the papers
-   * the previous run of the alert lacked go into the inbox, best score first (D7, why "Alert: <name>"
+   * the previous run of the alert lacked go into the inbox, best score first (docs/decisions/0014-agent-content-goes-to-inbox.md; why "Alert: <name>"
    * with the score and the run).
    */
   private async runPipeline(
@@ -589,7 +589,7 @@ export class AlertService {
   /**
    * One run: fetch the works since the last successful run, remove what is already known, rank
    * the rest against the brief when a local embedder is ready, and put the top N into the inbox
-   * as "system" with the why "Alert: <name>" (D7).
+   * as "system" with the why "Alert: <name>" (docs/decisions/0014-agent-content-goes-to-inbox.md).
    */
   async run(
     id: string,

@@ -100,7 +100,8 @@
   /* macOS: the collapsed rail holds the three window buttons (x 16 to 68) with 16px on both sides */
   --spacing-rail-mac: 84px;
   --spacing-rail-open: 240px;
-  --spacing-aside: 360px;
+  /* default 360px; the drag handle of the right column overrides --aside-width on the root */
+  --spacing-aside: var(--aside-width, 360px);
   --spacing-topbar: 48px;
   --spacing-subbar: 44px;
   --spacing-row: 40px;

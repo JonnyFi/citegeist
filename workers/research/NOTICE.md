@@ -1,6 +1,6 @@
 # Herkunft
 
-`workers/research` stammt aus der research-pipeline (`nofreeWyfy/research-pipeline`, Commit `f94047a`), mit Zustimmung des Teams nach citegeist übernommen (Issue #50).
+`workers/research` stammt aus der research-pipeline (`nofreeWyfy/research-pipeline`, Commit `f94047a`), mit Zustimmung des Teams nach citegeist übernommen.
 
 Geändert gegenüber dem Original:
 

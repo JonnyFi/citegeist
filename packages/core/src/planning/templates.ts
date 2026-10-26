@@ -6,7 +6,7 @@ export interface TemplateNode {
   children?: TemplateNode[];
 }
 
-/** Starting outlines (D14). More text types arrive later as further entries. */
+/** Starting outlines (docs/decisions/0019-multiple-plans-and-templates.md). More text types arrive later as further entries. */
 export const TEMPLATES: Record<PlanTemplate, { title: string; nodes: TemplateNode[] }> = {
   expose: {
     title: "Exposé",

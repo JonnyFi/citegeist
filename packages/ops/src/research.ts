@@ -1,5 +1,5 @@
 /**
- * What an unattended research job may send out (W5.1, finding L9 in the internal security audit).
+ * What an unattended research job may send out (docs/decisions/0024-untrusted-text-and-rule-of-two.md).
  *
  * A research job reads untrusted web pages and has access to the library. By the Agents Rule of
  * Two (Meta, "Practical AI agent security") it must then not also be able to act outward on its

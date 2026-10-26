@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanTmpDirs } from "../test-helpers.js";
 import { createTestEnv, type TestEnv } from "./testing.js";
 
-// W5.1, L9 (Agents Rule of Two): a research job reads untrusted web pages, so the core refuses
+// Agents Rule of Two: a research job reads untrusted web pages, so the core refuses
 // to open an address that the model composed. It also lands every paper in the inbox.
 
 let envs: TestEnv[] = [];

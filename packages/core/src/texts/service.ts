@@ -75,7 +75,7 @@ export interface TextFile {
   body: string;
 }
 
-/** Texts of a project: Markdown files with Pandoc citations (D20), exported through Pandoc. */
+/** Texts of a project: Markdown files with Pandoc citations (docs/decisions/0002-writing-in-markdown-with-pandoc.md), exported through Pandoc. */
 export class TextsService {
   private readonly runner: ProcessRunner;
   private readonly now: () => Date;
@@ -142,7 +142,7 @@ export class TextsService {
     const p = this.lib.getProject(project).frontmatter;
     return {
       style: file.style ?? p.style ?? this.lib.manifest.defaults.style,
-      // The language of the text, else the language of the project (D9), else its citation locale.
+      // The language of the text, else the language of the project (docs/decisions/0016-ai-text-language.md), else its citation locale.
       lang: file.lang ?? p.ai_language ?? p.locale ?? this.lib.manifest.defaults.locale,
     };
   }

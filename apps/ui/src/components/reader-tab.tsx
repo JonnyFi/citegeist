@@ -183,7 +183,7 @@ function ReaderLoaded({
     [statuses],
   );
 
-  // D9: the dropdown shows what the core will use for this source and writes the item's own setting
+  // The dropdown shows what the core will use for this source and writes the item's own setting
   const projects = useOp(projectsList, {});
   const projectLanguages = useMemo(
     () => new Map((projects.data?.projects ?? []).map((p) => [p.slug, p.ai_language])),

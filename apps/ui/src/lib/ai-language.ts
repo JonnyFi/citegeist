@@ -14,7 +14,7 @@ export interface EffectiveLanguage {
 }
 
 /**
- * D9: the language of AI texts for one source is the item's own setting, else the first of its
+ * The language of AI texts for one source is the item's own setting, else the first of its
  * projects that sets one, else the library default.
  */
 export function effectiveAiLanguage(

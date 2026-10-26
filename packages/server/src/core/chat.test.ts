@@ -205,7 +205,7 @@ describe("chat in the core server", () => {
     expect(await status()).toBe(401);
   });
 
-  it("gives a research session the research scope: reads and the inbox, no other change (L9)", async () => {
+  it("gives a research session the research scope: reads and the inbox, no other change", async () => {
     const { server } = await start();
     const chat = server.chat;
     if (!chat) throw new Error("no chat");

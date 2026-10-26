@@ -40,10 +40,10 @@ export interface DriverRequest {
   cwd: string;
   libraryRoot: string;
   mcpServers: McpServer[];
-  /** Let the agent edit text files in the library directly (D12). */
+  /** Let the agent edit text files in the library directly (docs/decisions/0018-direct-agent-edits-with-undo.md). */
   directEdits: boolean;
   /**
-   * A11: false gives the agent the user's own environment (shell, the user's MCP servers and
+   * False gives the agent the user's own environment (shell, the user's MCP servers and
    * settings). True is the sandbox: no shell, no user settings, only the citegeist tools.
    * Research jobs always run isolated.
    */

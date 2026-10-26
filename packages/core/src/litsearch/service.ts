@@ -133,7 +133,7 @@ interface Added {
 
 /** What a run needs from the machine: how to start the scripts and what to pass them. */
 export interface LitsearchDeps {
-  /** items.add of the ingest service. "system" puts a paper into the inbox (D7). */
+  /** items.add of the ingest service. "system" puts a paper into the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md). */
   addItem?: (
     actor: Actor,
     input: {
@@ -375,7 +375,7 @@ export class LitsearchService {
   }
 
   /**
-   * Sends papers of a run to the inbox with the search as the reason (D7: as "system", so a human's
+   * Sends papers of a run to the inbox with the search as the reason (docs/decisions/0014-agent-content-goes-to-inbox.md: as "system", so a human's
    * request still waits for review). Which paper became which item is kept in <run>/inbox.json.
    */
   async toInbox(input: { runId: string; keys: string[]; projects: string[] }) {

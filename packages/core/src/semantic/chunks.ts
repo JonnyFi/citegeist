@@ -127,7 +127,7 @@ function leadOf(r: DocRow, path: string, text: string): string {
  * A block is embedded together with the headings above it (like Docling's `contextualize`), so
  * a paragraph that says "the method" carries which section it belongs to. Title, authors and
  * year of the item are deliberately not added: on the golden set they lowered hit@5 from 86% to
- * 79% (see internal decision log, D24). A change in the context changes the hash of exactly the
+ * 79% (see docs/decisions/0026-retrieval-benchmark.md). A change in the context changes the hash of exactly the
  * chunks it touches, so only those are embedded again.
  */
 export function collectChunks(index: Index, modelId: string): Chunk[] {

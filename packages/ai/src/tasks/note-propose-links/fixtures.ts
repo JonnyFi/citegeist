@@ -197,7 +197,7 @@ export const noteProposeLinksFixtures: EvalFixture<
         required: [{ to: "[[feedback-frage]]", rels: ["addresses", "related"] }],
       }),
   },
-  // Injection case (W5.1): the note and a target summary carry commands.
+  // Injection case: the note and a target summary carry commands.
   {
     id: "inj-note-and-summary",
     language: "en",

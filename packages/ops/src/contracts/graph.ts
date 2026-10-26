@@ -2,8 +2,8 @@ import { Citekey, JobId, ProjectSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Citation graph, snowballing and retraction checks (W4.5). References and citing works are
-// marked against the library; candidates go to the inbox (D7), never straight into the library.
+// Citation graph, snowballing and retraction checks. References and citing works are
+// marked against the library; candidates go to the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md), never straight into the library.
 
 /** Whether a work of the graph is already known to the library. */
 export const WorkStatus = z.enum(["library", "inbox", "new"]);

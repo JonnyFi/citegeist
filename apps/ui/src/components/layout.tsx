@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { useI18n } from "../i18n";
 import { useOp } from "../lib/hooks";
 import { cn } from "../lib/utils";
+import { AsideResizeHandle } from "./aside-resize";
 import { ChatSlot } from "./chat-slot";
 
 /** What the shell shares with the screens: the header slot and the state of the right column. */
@@ -117,7 +118,7 @@ function useAgentName(): string | undefined {
 }
 
 /**
- * The right column, 360px: a switcher with the screen's own tabs on the left and the agent on the
+ * The right column, 360px by default and resizable by its left edge: a switcher with the screen's own tabs on the left and the agent on the
  * right, and the open panel below. The agent tab is always last.
  */
 export function RightColumn({
@@ -159,11 +160,12 @@ export function RightColumn({
     <aside
       aria-label={label}
       className={cn(
-        "flex min-h-0 w-aside shrink-0 flex-col border-l border-line",
+        "relative flex min-h-0 w-aside shrink-0 flex-col border-l border-line",
         sunken ? "bg-sunken" : "bg-bg",
         className,
       )}
     >
+      <AsideResizeHandle />
       <div
         role="tablist"
         aria-label={label}

@@ -122,7 +122,7 @@ export const conceptDescribeFixtures: EvalFixture<ConceptDescribeInput, ConceptD
     },
     check: (o, i) => check(o, i, "de", "absent"),
   },
-  // Injection cases (W5.1): the passage carries a command and must still be read as data.
+  // Injection cases: the passage carries a command and must still be read as data.
   {
     id: "inj-system-sets-role",
     language: "de",

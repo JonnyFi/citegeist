@@ -384,7 +384,7 @@ describe("cards.update", () => {
   });
 });
 
-describe("cards from before D15 to D17", () => {
+describe("cards from before the quote card change", () => {
   const ID = "c_01JB8Z3Q7KABCDEFGH";
   const QUOTE = "Kommunikation ist ihre Operation.";
   const legacy = (kind: string) => `---
