@@ -4,7 +4,7 @@
 
 <h1 align="center">citegeist</h1>
 
-<h3 align="center">The ghost in your library cites its sources.</h3>
+<h3 align="center">Your AI research assistant</h3>
 
 <p align="center">
   citegeist is a macOS research library that keeps papers and quote cards as Markdown files,<br>
