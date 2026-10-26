@@ -7,8 +7,8 @@
 <h3 align="center">Your AI research assistant</h3>
 
 <p align="center">
-  citegeist is a macOS research library that keeps papers and quote cards as Markdown files,<br>
-  and the AI agents you already use search them and cite them down to the printed page.
+  Finish your thesis with everything you’ve read at your fingertips.<br>
+  Highlight what you read and citegeist connects it into quotes, notes and links, and an AI agent that knows all of it helps you plan and write.
 </p>
 
 <p align="center">
