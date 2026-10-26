@@ -185,7 +185,11 @@ export class OpenAiCompatBackend implements InferenceBackend {
           );
         }
         if (!res.ok) {
-          throw aiErrors.backendFailed(this.id, req.task, text, { status: res.status });
+          const retryAfter = Number(res.headers.get("retry-after"));
+          throw aiErrors.backendFailed(this.id, req.task, text, {
+            status: res.status,
+            ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterSec: retryAfter } : {}),
+          });
         }
         let data: ChatCompletion;
         try {

@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import {
   type AiRoutingSettings,
+  type BackendHealth,
+  classifyFailure,
   type ProcessRunner,
   runTask,
   TASK_NAMES,
@@ -20,7 +22,13 @@ import { CitegeistError } from "@citegeist/schema";
 import type { z } from "zod";
 import type { ConvertWorker } from "../ingest/worker.js";
 import type { JobQueue } from "../jobs/queue.js";
-import { BACKEND_IDS, type BackendProvider, KEY_PROVIDERS } from "./backends.js";
+import {
+  BACKEND_IDS,
+  type BackendProvider,
+  type BackendStatus,
+  DEFAULT_FALLBACK,
+  KEY_PROVIDERS,
+} from "./backends.js";
 import type { Keychain } from "./keychain.js";
 import type { SettingsStore } from "./store.js";
 import { runWorkerSetup, type WorkerEnvConfig } from "./worker-setup.js";
@@ -39,6 +47,8 @@ export interface SettingsDeps {
   worker: ConvertWorker;
   workerConfig: WorkerEnvConfig;
   runner?: ProcessRunner;
+  /** Which backends the AI router skips right now. Shown in `settings.get`, reset by a successful test. */
+  health?: BackendHealth;
   /** Called after every successful `settings.update`, so the runtime can retarget the AiRouter. */
   onChange?: (settings: MachineSettings) => void;
   /** Receives the usage of the test call of `ai.testBackend`. */
@@ -162,7 +172,7 @@ export class SettingsService {
     for (const provider of KEY_PROVIDERS)
       apiKeys[provider] = await this.deps.keychain.has(provider);
     return {
-      ai: { routing: stored.ai.routing, apiKeys },
+      ai: { routing: stored.ai.routing, fallback: this.fallback(stored), apiKeys },
       ...(stored.mailto ? { mailto: stored.mailto } : {}),
       ...(stored.unpaywallEmail ? { unpaywallEmail: stored.unpaywallEmail } : {}),
       ...(stored.ncbiTool ? { ncbiTool: stored.ncbiTool } : {}),
@@ -190,14 +200,46 @@ export class SettingsService {
     return { ...this.deps.store.load().research };
   }
 
+  /** The fallback order in effect: the stored list, or the default order while none is stored. */
+  private fallback(stored: ReturnType<SettingsStore["load"]>): string[] {
+    return [...(stored.ai.fallback ?? DEFAULT_FALLBACK)];
+  }
+
   /** Routing in the shape the AiRouter takes. */
   routing(): AiRoutingSettings {
-    return { routing: { ...this.deps.store.load().ai.routing } };
+    const stored = this.deps.store.load();
+    return { routing: { ...stored.ai.routing }, fallback: this.fallback(stored) };
+  }
+
+  /** Backend states with the pauses of the router added. */
+  async backendStatus(): Promise<BackendStatus[]> {
+    const list = await this.deps.backends.status();
+    const health = this.deps.health;
+    if (!health) return list;
+    return list.map((b) => {
+      const pause = health.get(b.id);
+      return pause
+        ? { ...b, paused: { kind: pause.kind, until: new Date(pause.until).toISOString() } }
+        : b;
+    });
   }
 
   async update(input: z.output<typeof settingsUpdate.input>): Promise<MachineSettings> {
     const stored = this.deps.store.load();
     const { patch } = input;
+
+    if (patch.ai || input.apiKey) this.deps.health?.clearAuth();
+
+    if (patch.ai?.fallback) {
+      const unknown = patch.ai.fallback.find((id) => !BACKEND_IDS.includes(id));
+      if (unknown) {
+        throw invalid(
+          `Unknown backend ${unknown} in the fallback list.`,
+          `Use ids of: ${BACKEND_IDS.join(", ")}.`,
+        );
+      }
+      stored.ai.fallback = [...new Set(patch.ai.fallback)];
+    }
 
     if (patch.ai?.routing) {
       const routing = patch.ai.routing;
@@ -388,8 +430,11 @@ export class SettingsService {
           ...(this.deps.recordUsage ? { record: this.deps.recordUsage } : {}),
         },
       );
+      this.deps.health?.clear(id);
       return { ok: true, latencyMs: result.ms };
     } catch (err) {
+      const failure = classifyFailure(err);
+      if (failure.kind !== "other") this.deps.health?.pause(id, failure.kind, failure.resetAt);
       return { ok: false, error: errorOf(err) };
     }
   }
@@ -405,7 +450,7 @@ export function bindSettingsOperations(registry: Registry, deps: SettingsDeps): 
   registry
     .bind(settingsGet, async () => ({
       settings: await svc.settings(),
-      backends: await deps.backends.status(),
+      backends: await svc.backendStatus(),
       worker: await svc.workerStatus(),
       ...(svc.status.semantic ? { semantic: svc.status.semantic() } : {}),
       ...(svc.status.connector ? { connector: svc.status.connector() } : {}),

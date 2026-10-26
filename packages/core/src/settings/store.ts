@@ -10,7 +10,7 @@ import { writeFileAtomic } from "../fsutil.js";
 
 /** What is stored on disk. `ai.apiKeys` is derived from the Keychain, so it is never persisted. */
 export interface StoredSettings {
-  ai: { routing: Record<string, string> };
+  ai: { routing: Record<string, string>; fallback?: string[] };
   mailto?: string;
   /** Address for Unpaywall; the contact address when unset. */
   unpaywallEmail?: string;
@@ -60,7 +60,7 @@ function isModelKey(value: unknown): value is EmbeddingModelKey {
 
 function sanitize(raw: unknown): StoredSettings {
   const v = (raw ?? {}) as {
-    ai?: { routing?: unknown };
+    ai?: { routing?: unknown; fallback?: unknown };
     mailto?: unknown;
     unpaywallEmail?: unknown;
     ncbiTool?: unknown;
@@ -77,8 +77,14 @@ function sanitize(raw: unknown): StoredSettings {
       if (typeof id === "string" && id) routing[task] = id;
     }
   }
+  const fallback = Array.isArray(v.ai?.fallback)
+    ? [...new Set(v.ai.fallback.filter((id): id is string => typeof id === "string" && id !== ""))]
+    : undefined;
   return {
-    ai: { routing: Object.keys(routing).length > 0 ? routing : { ...DEFAULT_SETTINGS.ai.routing } },
+    ai: {
+      routing: Object.keys(routing).length > 0 ? routing : { ...DEFAULT_SETTINGS.ai.routing },
+      ...(fallback ? { fallback } : {}),
+    },
     ...(typeof v.mailto === "string" && v.mailto ? { mailto: v.mailto } : {}),
     ...(typeof v.unpaywallEmail === "string" && v.unpaywallEmail
       ? { unpaywallEmail: v.unpaywallEmail }

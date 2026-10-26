@@ -48,6 +48,24 @@ export interface RunTaskOptions {
    * when the input is invalid, because nothing was sent.
    */
   record?: ((record: UsageRecord) => void) | undefined;
+  /**
+   * Called by the router before it moves a task to another backend, either because the one it
+   * tried failed with a limit, overload or login problem, or because that backend is paused.
+   */
+  onFallback?: ((info: FallbackInfo) => void) | undefined;
+}
+
+/** The router moves a task from one backend to the next. */
+export interface FallbackInfo {
+  task: string;
+  /** The backend that failed or is paused. */
+  from: string;
+  /** The backend that takes over. */
+  to: string;
+  /** Why `from` is out: `limit`, `overloaded` or `auth`. */
+  kind: "limit" | "overloaded" | "auth";
+  /** When `from` is expected to work again, if it said so. */
+  resetAt?: Date | undefined;
 }
 
 /** One finished AI call, for the usage ledger. */
@@ -73,6 +91,8 @@ export interface TaskResult<O> {
   ms: number;
   /** Tokens and list price of the call, when the backend reports them. */
   usage?: AiUsage;
+  /** Set when the router ran the task on another backend than the one the routing names. */
+  via?: { from: string; kind: FallbackInfo["kind"] };
 }
 
 /** Validates the input, builds the versioned prompt and runs it on the backend. */

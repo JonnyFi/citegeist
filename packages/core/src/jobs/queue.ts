@@ -369,7 +369,14 @@ export class JobQueue extends EventEmitter {
     const task: Promise<void> = (async () => {
       try {
         const result = await runInJobScope(
-          { job: id, actor: job.by, signal: controller.signal },
+          {
+            job: id,
+            actor: job.by,
+            signal: controller.signal,
+            note: (message) => {
+              if (this.get(id)?.status === "running") this.update(id, { message });
+            },
+          },
           () =>
             cfg.handler({
               job,

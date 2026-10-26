@@ -1,4 +1,5 @@
 import type { AiRouter, RunTaskOptions, TaskName, UsageRecord } from "@citegeist/ai";
+import { formatFallbackNote } from "@citegeist/ops";
 import { currentJobScope } from "../jobs/scope.js";
 import type { UsageLedger } from "./ledger.js";
 
@@ -43,6 +44,11 @@ export function meteredAi(
         ...opts,
         signal: opts.signal ?? scope?.signal,
         actor: opts.actor ?? scope?.actor,
+        // A job shows that its task moved to another backend, next to its progress.
+        onFallback: (info) => {
+          scope?.note?.(formatFallbackNote({ from: info.from, to: info.to, reason: info.kind }));
+          opts.onFallback?.(info);
+        },
         record: (r) => {
           recordTask(ledger, r, "human");
           opts.record?.(r);
