@@ -5,6 +5,7 @@ import {
   type TitleResolveResult,
 } from "@citegeist/metadata";
 import type { Actor } from "@citegeist/schema";
+import { CitegeistError } from "@citegeist/schema";
 import type { Library } from "../library.js";
 import { findDuplicate } from "./dupes.js";
 import { loadItem, problem, saveItem } from "./items.js";
@@ -257,7 +258,7 @@ async function lookupFromAddress(
   actor: Actor,
   citekey: string,
   fm: Fields,
-): Promise<{ found: Lookup; byIdentifier: boolean } | undefined> {
+): Promise<{ found: Lookup; byIdentifier: boolean } | { unreachable: CitegeistError } | undefined> {
   const url = typeof fm.URL === "string" ? fm.URL.trim() : "";
   if (!url || !deps.refetchUrl || identifierOf(fm)) return undefined;
   const id = detectIdentifier(url);
@@ -272,7 +273,16 @@ async function lookupFromAddress(
       // the page itself may still say what the work is
     }
   }
-  const page = await deps.refetchUrl(actor, url);
+  let page: Awaited<ReturnType<NonNullable<ResolveDeps["refetchUrl"]>>>;
+  try {
+    page = await deps.refetchUrl(actor, url);
+  } catch (err) {
+    // A dead address must not block the title match that resolved such items before.
+    if (err instanceof CitegeistError && err.detail.code === "URL_UNREACHABLE") {
+      return { unreachable: err };
+    }
+    throw err;
+  }
   return page ? { found: page.lookup, byIdentifier: page.viaIdentifier } : undefined;
 }
 
@@ -361,12 +371,19 @@ export async function resolveItem(
   } else {
     given = undefined;
     const web = await lookupFromAddress(deps, actor, citekey, old);
-    if (web) {
+    if (web && "found" in web) {
       refuseTwin(lib, citekey, web.found);
       found = web.found;
       byIdentifier = web.byIdentifier;
     } else {
-      const looked = await lookup(deps.resolver, citekey, old);
+      let looked: Awaited<ReturnType<typeof lookup>>;
+      try {
+        looked = await lookup(deps.resolver, citekey, old);
+      } catch (err) {
+        // The title match failed too; the dead address is the more useful message.
+        if (web && "unreachable" in web) throw web.unreachable;
+        throw err;
+      }
       found = lookupFrom(looked.result, citekey, looked.id);
       byIdentifier = looked.id !== undefined;
     }
