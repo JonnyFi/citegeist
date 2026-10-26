@@ -145,7 +145,7 @@ export interface LitsearchMockState {
 }
 
 /** A finished run and one that failed at snowballing, so the list has something to show. */
-export function createLitsearchMockState(): LitsearchMockState {
+export function createLitsearchMockState(lang: "de" | "en" = "de"): LitsearchMockState {
   const runs = new Map<string, MockRun>();
   runs.set("2026-10-20-agent-communication-protocols", {
     step: MOCK_STAGES.length,
@@ -207,7 +207,9 @@ export function createLitsearchMockState(): LitsearchMockState {
       droppedQueries: [],
       attempts: 1,
       error:
-        "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h. Mit einem kostenlosen OpenAlex-API-Key ist das Limit viel höher.",
+        lang === "en"
+          ? "RateLimited: Daily limit of api.openalex.org reached, free again in about 12 h. With a free OpenAlex API key the limit is much higher."
+          : "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h. Mit einem kostenlosen OpenAlex-API-Key ist das Limit viel höher.",
     },
   });
   const preprints = new Map<string, LitsearchPreprint>([
@@ -308,7 +310,10 @@ export function bindLitsearchMock(
           ...run.meta,
           status: "failed",
           finished: new Date().toISOString().slice(0, 19),
-          error: "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h.",
+          error:
+            data?.lang === "en"
+              ? "RateLimited: Daily limit of api.openalex.org reached, free again in about 12 h."
+              : "RateLimited: Tageslimit von api.openalex.org erreicht, wieder frei in etwa 12 h.",
         };
       } else {
         run.step += 1;

@@ -29,7 +29,7 @@ import {
   type Paragraph,
   splitParagraphs,
 } from "./paragraphs.js";
-import { TEMPLATES, type TemplateNode } from "./templates.js";
+import { TEMPLATES, type TemplateNode, templateLanguage } from "./templates.js";
 
 /**
  * Scores texts against a query for the semantic stage of find_insights. Returns one similarity
@@ -203,7 +203,11 @@ export class PlanningService {
     actor: Actor,
     input: { project: string; slug: string; title: string; template?: PlanTemplate | undefined },
   ) {
-    this.lib.getProject(input.project);
+    const project = this.lib.getProject(input.project).frontmatter;
+    // The template follows the AI language: the project's, else the library's default.
+    const language = templateLanguage(
+      project.ai_language ?? this.lib.manifest.defaults.ai_language,
+    );
     const dir = this.planDir(input.project, input.slug);
     if (existsSync(this.lib.paths.abs(dir))) {
       throw fail(
@@ -239,7 +243,7 @@ export class PlanningService {
         add(t.children ?? [], id);
       });
     };
-    if (input.template) add(TEMPLATES[input.template].nodes, null);
+    if (input.template) add(TEMPLATES[language][input.template].nodes, null);
     const outlineFile = `${dir}/outline.yaml`;
     this.lib.writeFile(outlineFile, serializeOutline({ nodes }));
     for (const d of docs) this.createNodeDoc(input.project, input.slug, d.id, d.title);

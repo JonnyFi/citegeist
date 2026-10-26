@@ -9,6 +9,7 @@ import {
 } from "@citegeist/ops";
 import { CitegeistError, type Job } from "@citegeist/schema";
 import type { z } from "zod";
+import type { Lang } from "../i18n";
 import type { CoreEvent } from "../lib/core";
 
 type Input = z.output<typeof importPreview.input>;
@@ -16,6 +17,8 @@ type Report = z.input<typeof ImportReport>;
 type Result = z.input<typeof ImportResult>;
 
 export interface ImportMockState {
+  /** Language of the titles and project names the reports show. */
+  lang: Lang;
   /** Port the "running Zotero" listens on. Any other port is refused. */
   zoteroPort: number;
   /** Reads of `jobs.get` before the import job succeeds. */
@@ -27,7 +30,7 @@ export interface ImportMockState {
 }
 
 export function createImportMockState(over: Partial<ImportMockState> = {}): ImportMockState {
-  return { zoteroPort: DEFAULT_ZOTERO_PORT, runPolls: 3, runs: [], ...over };
+  return { lang: "de", zoteroPort: DEFAULT_ZOTERO_PORT, runPolls: 3, runs: [], ...over };
 }
 
 const TITLES: ReadonlyArray<readonly [string, string, string]> = [
@@ -41,8 +44,21 @@ const TITLES: ReadonlyArray<readonly [string, string, string]> = [
   ["Understanding Media", "mcluhan1964understanding", ""],
 ];
 
+const TITLES_EN: ReadonlyArray<readonly [string, string, string]> = [
+  ["Social Systems", "luhmann1984soziale", "doi"],
+  ["Autopoiesis and Cognition", "maturana1980autopoiesis", ""],
+  ["The Relevance of Algorithms", "gillespie2014relevance", ""],
+  ["Theory of Society", "luhmann1997gesellschaft", "title-year-author"],
+  ["The Human as Medium", "krämer2008medium", ""],
+  ["Platforms and Cultural Production", "poell2021platforms", ""],
+  ["Media Theory: An Introduction", "hartmann2003medientheorie", "isbn"],
+  ["Understanding Media", "mcluhan1964understanding", ""],
+];
+
+const titlesOf = (lang: Lang) => (lang === "en" ? TITLES_EN : TITLES);
+
 /** Counts and problems that follow from the input; the same input always gives the same report. */
-function reportFor(input: Input): Report {
+function reportFor(input: Input, lang: Lang): Report {
   const zotero = input.source.kind === "zotero-sqlite" || input.source.kind === "zotero-api";
   const total = zotero ? 132 : 41;
   const duplicates = zotero ? 6 : 2;
@@ -50,7 +66,7 @@ function reportFor(input: Input): Report {
   const create = total - duplicates;
   const attachments = input.attachments ? (zotero ? 97 : 18) : 0;
   const missing = input.attachments ? (zotero ? 4 : 1) : 0;
-  const items: Report["items"] = TITLES.map(([title, citekey, reason], i) => {
+  const items: Report["items"] = titlesOf(lang).map(([title, citekey, reason], i) => {
     const duplicate = reason !== "" && i < duplicates;
     return {
       ref: zotero ? `ZK${String(i + 1).padStart(6, "0")}` : `entry-${i + 1}`,
@@ -112,17 +128,24 @@ function refuse(code: string, message: string, fix: string): never {
   throw new CitegeistError({ code, message, fix, recovery: "fix-and-retry" });
 }
 
-function resultFor(input: Input): Result {
-  const report = reportFor(input);
+function resultFor(input: Input, lang: Lang): Result {
+  const report = reportFor(input, lang);
   return {
     provenance: report.provenance,
-    created: TITLES.slice(2).map(([, citekey]) => citekey),
+    created: titlesOf(lang)
+      .slice(2)
+      .map(([, citekey]) => citekey),
     merged: input.onDuplicate === "merge" ? ["luhmann1984soziale"] : [],
     skipped: report.counts.skip,
     attachments: report.counts.attachments - report.counts.attachmentsMissing,
     notes: report.counts.notes,
     cards: report.counts.annotations,
-    projects: input.collections === "projects" ? ["psychologie", "systemtheorie"] : [],
+    projects:
+      input.collections === "projects"
+        ? lang === "en"
+          ? ["psychology", "systems-theory"]
+          : ["psychologie", "systemtheorie"]
+        : [],
     problems: report.problems,
     problemCount: report.problemCount,
   };
@@ -187,13 +210,18 @@ export function bindImportMock(
     if (state.runError) {
       return { ...base, status: "failed", progress: 0.6, error: state.runError };
     }
-    return { ...base, status: "succeeded", progress: 1, result: resultFor(entry.input) };
+    return {
+      ...base,
+      status: "succeeded",
+      progress: 1,
+      result: resultFor(entry.input, state.lang),
+    };
   };
 
   registry
     .bind(importPreview, async (_ctx, input) => {
       check(input);
-      return reportFor(input);
+      return reportFor(input, state.lang);
     })
     .bind(importRun, async (_ctx, input) => {
       check(input);

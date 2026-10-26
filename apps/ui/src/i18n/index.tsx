@@ -100,6 +100,11 @@ function storedLang(): Lang | undefined {
   }
 }
 
+/** The language the UI starts in: a stored choice, else the system language. */
+export function initialLang(): Lang {
+  return storedLang() ?? systemLang();
+}
+
 const I18nContext = createContext<I18n | null>(null);
 
 /**

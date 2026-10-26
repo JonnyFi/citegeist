@@ -2,8 +2,10 @@
 // mirror a design board can also be compared with the board files when DESIGN_BOARDS_DIR points
 // at a folder of them (the boards are not part of this repository).
 //
-//   pnpm --filter @citegeist/ui design-check            screenshots of the app (German)
 //   pnpm --filter @citegeist/ui design-check --lang=en  English screenshots with English file names
+//                                                      (the ones committed to docs/design/screens)
+//   pnpm --filter @citegeist/ui design-check            German screenshots with German file names
+//                                                      (not committed; the mock library is German too)
 //   DESIGN_BOARDS_DIR=<dir> pnpm --filter @citegeist/ui design-check --boards
 //                                                      also screenshots of the board files
 //
@@ -54,6 +56,15 @@ const TEXT = {
   citing: ["Zitiert von", "Cited by"],
   retracted: ["Zurückgezogen", "Retracted"],
   composer: ["Nachricht an den Agent", "Message to the agent"],
+  agentMessage: [
+    "Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte notieren",
+    "I see a connection between Luhmann and Gillespie, please note this",
+  ],
+  agentNoted: [
+    "Notiert in 2, Luhmanns Kommunikationsbegriff.",
+    "Noted in 2, Luhmann's concept of communication.",
+  ],
+  bibFile: ["/Users/alex/Zotero/export/bibliothek.bib", "/Users/alex/Zotero/export/library.bib"],
 };
 const tx = (key) => TEXT[key][lang === "en" ? 1 : 0];
 
@@ -185,11 +196,9 @@ const screens = [
       await page.getByTestId("insight").first().waitFor();
       await page.getByRole("tab", { name: /^Agent/ }).click();
       const composer = page.getByRole("textbox", { name: tx("composer") });
-      await composer.fill(
-        "Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte notieren",
-      );
+      await composer.fill(tx("agentMessage"));
       await composer.press("Enter");
-      await page.getByText("Notiert in 2, Luhmanns Kommunikationsbegriff.").waitFor();
+      await page.getByText(tx("agentNoted")).waitFor();
     },
   },
   {
@@ -247,7 +256,7 @@ const screens = [
     board: false,
     async setup(page) {
       await page.getByRole("button", { name: "BibTeX" }).click();
-      await page.getByLabel(tx("pathFile")).fill("/Users/alex/Zotero/export/bibliothek.bib");
+      await page.getByLabel(tx("pathFile")).fill(tx("bibFile"));
       await page.getByRole("button", { name: tx("preview") }).click();
       await page.getByTestId("import-report").waitFor();
     },
