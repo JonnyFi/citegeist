@@ -625,17 +625,9 @@ describe("AI fallback settings", () => {
       }
     ).settings.ai.fallback;
 
-  it("defaults to the subscription CLIs, then the API-key backends, never Ollama", async () => {
+  it("defaults to the subscription CLIs only, so a limit hit never becomes an API bill", async () => {
     const t = setup();
-    expect(DEFAULT_FALLBACK).toEqual([
-      "claude-code-cli",
-      "codex-exec",
-      "cursor-cli",
-      "openai",
-      "anthropic",
-      "openrouter",
-      "xai",
-    ]);
+    expect(DEFAULT_FALLBACK).toEqual(["claude-code-cli", "codex-exec", "cursor-cli"]);
     expect(await readFallback(t)).toEqual([...DEFAULT_FALLBACK]);
     expect(t.deps.store.load().ai.fallback).toBeUndefined();
     await t.queue.close();

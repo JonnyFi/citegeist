@@ -63,10 +63,11 @@ export const BACKEND_IDS: readonly string[] = BACKEND_CATALOG.map((b) => b.id);
 
 /**
  * Order in which the router moves on when a backend hits a limit and the user has not set `ai.fallback`:
- * the subscription CLIs, then the API-key backends, in catalog order. Ollama only joins when the user adds it.
+ * the subscription CLIs in catalog order. API-key backends and Ollama only join when the user adds
+ * them, because a fallback to a key would turn a reached subscription limit into a bill.
  */
 export const DEFAULT_FALLBACK: readonly string[] = BACKEND_CATALOG.filter(
-  (b) => b.kind !== "local",
+  (b) => b.kind === "subscription-cli",
 ).map((b) => b.id);
 /** Key slot of the free NCBI E-utilities key (PubMed). It raises the rate limit of PMID lookups. */
 export const NCBI_KEY_PROVIDER = "ncbi";
