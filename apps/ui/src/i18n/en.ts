@@ -1,6 +1,7 @@
 import { alertsEn } from "../alerts/strings";
 import { cardsEn } from "../cards/strings";
 import { chatEn } from "../chat/strings";
+import { graphEn } from "../graph/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
 import { onboardingEn } from "../onboarding/strings";
@@ -438,25 +439,6 @@ export const en: Record<MessageKey, string> = {
   "connections.rejectLabel": "Reject connection to {target}",
   "connections.decideFailed": "The decision could not be saved.",
   "connections.openGraph": "Show in graph",
-  "graph.title": "Graph",
-  "graph.loading": "Loading graph",
-  "graph.emptyTitle": "Nothing to show yet",
-  "graph.emptyDescription": "Write notes or add sources and their connections appear here.",
-  "graph.isolatedTitle": "No connections",
-  "graph.isolatedDescription": "With the chosen filters this node has no connections.",
-  "graph.center": "Centre",
-  "graph.depth": "Depth",
-  "graph.depthN": "{n}",
-  "graph.counts": "{nodes} nodes, {edges} connections",
-  "graph.sidebar": "Filters and nodes",
-  "graph.relations": "Connection type",
-  "graph.kinds": "Node kind",
-  "graph.showProposed": "Show proposals",
-  "graph.nodes": "Nodes",
-  "graph.open": "Open {label}",
-  "graph.canvasLabel": "Graph of connections",
-  "graph.noWebgl":
-    "The graph needs WebGL and is not available here. The node list next to it still works.",
   ...chatEn,
   ...alertsEn,
   ...planningEn,
@@ -473,6 +455,7 @@ export const en: Record<MessageKey, string> = {
   ...litsearchEn,
   ...onboardingEn,
   ...textsEn,
+  ...graphEn,
   "agent.tab": "Agent",
   "aside.resize": "Width of the right column",
   "agent.soon": "The agent chat is coming.",

@@ -13,7 +13,7 @@ import { ProjectsScreen, ProjectView, parseProjectSearch } from "./components/pr
 import { SearchScreen } from "./components/search-screen";
 import { Shell } from "./components/shell";
 import { ConceptsIndex, ConceptsLayout, ConceptView } from "./concepts";
-import { type GraphDepth, GraphScreen } from "./graph";
+import { type GraphLocation, GraphScreen } from "./graph";
 import { ImportScreen } from "./import";
 import {
   LitsearchCompareScreen,
@@ -169,27 +169,25 @@ const conceptRoute = createRoute({
 const graphRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/graph",
-  validateSearch: (search: Record<string, unknown>): { node?: string; depth?: GraphDepth } => ({
-    ...(typeof search.node === "string" && search.node ? { node: search.node } : {}),
-    ...(search.depth === 2 || search.depth === 3 ? { depth: search.depth } : {}),
-  }),
+  validateSearch: (search: Record<string, unknown>): GraphLocation => {
+    const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+    const project = str(search.project);
+    const text = str(search.text);
+    const node = str(search.node);
+    return {
+      ...(project ? { project } : {}),
+      ...(search.library === true || search.library === "true" ? { library: true } : {}),
+      ...(text ? { text } : {}),
+      ...(node ? { node } : {}),
+    };
+  },
   component: function GraphRoute() {
-    const { node, depth } = graphRoute.useSearch();
+    const location = graphRoute.useSearch();
     const navigate = useNavigate();
     return (
       <GraphScreen
-        node={node}
-        depth={depth ?? 1}
-        onChange={(next) =>
-          void navigate({
-            to: "/graph",
-            search: {
-              ...(next.node ? { node: next.node } : {}),
-              ...(next.depth > 1 ? { depth: next.depth } : {}),
-            },
-            replace: true,
-          })
-        }
+        location={location}
+        onChange={(next) => void navigate({ to: "/graph", search: next, replace: true })}
       />
     );
   },

@@ -1,6 +1,7 @@
 import { alertsDe } from "../alerts/strings";
 import { cardsDe } from "../cards/strings";
 import { chatDe } from "../chat/strings";
+import { graphDe } from "../graph/strings";
 import { importDe } from "../import/strings";
 import { litsearchDe } from "../litsearch/strings";
 import { onboardingDe } from "../onboarding/strings";
@@ -445,26 +446,6 @@ export const de = {
   "connections.rejectLabel": "Verbindung zu {target} verwerfen",
   "connections.decideFailed": "Die Entscheidung konnte nicht gespeichert werden.",
   "connections.openGraph": "Im Graph zeigen",
-  "graph.title": "Graph",
-  "graph.loading": "Graph wird geladen",
-  "graph.emptyTitle": "Noch nichts zu zeigen",
-  "graph.emptyDescription":
-    "Lege Notizen an oder füge Quellen hinzu, dann erscheinen hier ihre Verbindungen.",
-  "graph.isolatedTitle": "Keine Verbindungen",
-  "graph.isolatedDescription": "Mit den gewählten Filtern hat dieser Knoten keine Verbindungen.",
-  "graph.center": "Mittelpunkt",
-  "graph.depth": "Tiefe",
-  "graph.depthN": "{n}",
-  "graph.counts": "{nodes} Knoten, {edges} Verbindungen",
-  "graph.sidebar": "Filter und Knoten",
-  "graph.relations": "Verbindungstyp",
-  "graph.kinds": "Knotenart",
-  "graph.showProposed": "Vorschläge zeigen",
-  "graph.nodes": "Knoten",
-  "graph.open": "{label} öffnen",
-  "graph.canvasLabel": "Graph der Verbindungen",
-  "graph.noWebgl":
-    "Der Graph braucht WebGL und ist hier nicht verfügbar. Die Knotenliste daneben funktioniert weiter.",
   ...chatDe,
   ...alertsDe,
   ...planningDe,
@@ -481,6 +462,7 @@ export const de = {
   ...litsearchDe,
   ...onboardingDe,
   ...textsDe,
+  ...graphDe,
   "agent.tab": "Agent",
   "aside.resize": "Breite der rechten Spalte",
   "agent.soon": "Der Agent-Chat folgt.",

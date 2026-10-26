@@ -1,9 +1,2 @@
-export { type GraphDepth, GraphScreen } from "./graph-screen";
-export {
-  buildGraph,
-  filterGraph,
-  type GraphFilters,
-  kindCounts,
-  NO_FILTERS,
-  relationCounts,
-} from "./model";
+export { type GraphLocation, GraphScreen } from "./graph-screen";
+export { buildGraph, type GraphFilters, layout, NO_FILTERS } from "./model";
