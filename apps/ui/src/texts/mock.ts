@@ -45,13 +45,27 @@ Luhmann setzt Kommunikation und nicht Handlung als Grundelement sozialer Systeme
 Plattformen lassen sich dann als Orte beschreiben, an denen Anschlusskommunikation organisiert wird. Das Argument ist noch nicht belegt [@gillespie2018custodians].
 `;
 
+const CHAPTER_EN = `# Social systems as a starting point
+
+Luhmann takes communication, not action, as the basic element of social systems [@luhmann1984soziale, p. 31]. This sets his approach apart from the theory of action that Habermas develops [cf. @habermas1981theorie].
+
+Platforms can then be described as places where connecting communication is organized. The argument is not yet substantiated [@gillespie2018custodians].
+`;
+
 /** The texts of the mock library, one per project at most, and the state of Pandoc. */
 export function textsStoreFor(data: MockData): TextsStore {
   let store = STORES.get(data);
   if (!store) {
     store = {
       texts: new Map([
-        ["phd-proposal", new Map([["kapitel-2", { title: "Kapitel 2", body: KAPITEL }]])],
+        [
+          "phd-proposal",
+          new Map([
+            data.lang === "en"
+              ? ["chapter-2", { title: "Chapter 2", body: CHAPTER_EN }]
+              : ["kapitel-2", { title: "Kapitel 2", body: KAPITEL }],
+          ]),
+        ],
       ]),
       pandoc: { found: true, version: "3.12.1", installable: true },
       pdfEngine: undefined,
@@ -123,7 +137,7 @@ export function bindTextsMock(
     const p = data.projects.get(project)?.frontmatter;
     return {
       style: t.style ?? p?.style ?? "apa",
-      lang: t.lang ?? p?.ai_language ?? p?.locale ?? "de-DE",
+      lang: t.lang ?? p?.ai_language ?? p?.locale ?? (data.lang === "en" ? "en-US" : "de-DE"),
     };
   };
 

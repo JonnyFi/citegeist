@@ -30,9 +30,8 @@ curl -fsSL https://raw.githubusercontent.com/JonnyFi/citegeist/main/install.sh |
 
 The script installs `citegeist.app`, links the `cg` command to `~/.local/bin/cg` and updates an existing installation. citegeist needs macOS on Apple Silicon and [uv](https://docs.astral.sh/uv/) (`brew install uv`) for the PDF conversion. The chat runs on the Claude Code, Codex or Cursor command line tool you are logged in to, and the AI tasks can also use an API key or a local Ollama. [Getting started](docs/getting-started.md) walks through the first run.
 
-<!-- Screenshot slot "hero": a paper in the reader with the agent chat open. Replace with the English capture. -->
 <p align="center">
-  <img src="docs/design/screens/lesen-agent-chat.png" alt="A paper in the reader, with the agent chat open in the right column" width="900">
+  <img src="docs/design/screens/reading-agent-chat.png" alt="citegeist showing the text of a book chapter with two highlighted passages. The Agent tab is open in the right column with the chat composer and the open source as context." width="900">
 </p>
 
 ## Reading and quote cards
@@ -41,9 +40,8 @@ Select a passage in the PDF or text view and choose "Quote". citegeist saves a q
 
 One click copies a card as a verbatim or an indirect citation. Quick insert opens a card search with a global hotkey and pastes the citation into the app you are writing in.
 
-<!-- Screenshot slot "cards": the reader with the card column. Replace with the English capture. -->
 <p align="center">
-  <img src="docs/design/screens/lesen-hell.png" alt="The reader with highlighted passages and their quote cards in the right column" width="900">
+  <img src="docs/design/screens/reading-light.png" alt="The reader with two highlighted passages. The right column lists their quote cards with page number, verbatim quote, AI paraphrase, note and a Quote verbatim and Quote indirectly button." width="900">
 </p>
 
 ## Library and import
@@ -53,6 +51,10 @@ Paste a DOI, arXiv link, ISBN or URL, or drop a PDF into the window. citegeist l
 ## The agent chat
 
 The "Agent" tab in the right column runs Claude Code, Codex or Cursor on your own subscription. The agent answers from your cards and cites them. When you ask for a change, it writes into your notes and texts directly, and "Undo" takes back the whole turn.
+
+<p align="center">
+  <img src="docs/design/screens/project-plan-agent.png" alt="A project plan with the insights view next to the agent chat. The agent has noted an insight in chapter 2.1, cited a card with its page number, and shows an Undo button under the changed file." width="900">
+</p>
 
 ## Agents outside the app
 
@@ -75,9 +77,8 @@ Notes are Markdown files with wiki links, and the library folder opens as an Obs
 
 A project holds research questions, a reading list, cards and research plans with an outline. The literature matrix compares sources against your questions. The AI fills each cell from passages of that source and names the card or passage it rests on, and citegeist checks every evidence quote against the stored text.
 
-<!-- Screenshot slot "matrix": the literature matrix of a project. Replace with the English capture. -->
 <p align="center">
-  <img src="docs/design/screens/projekt-matrix.png" alt="A literature matrix with sources as rows and research questions as columns" width="900">
+  <img src="docs/design/screens/project-matrix.png" alt="A literature matrix with three sources as rows and the columns Research question, Method and Result. Each filled cell names the card or passage it rests on, and a source without converted text shows failed cells with a Try again button." width="900">
 </p>
 
 ## Writing and export

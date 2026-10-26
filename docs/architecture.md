@@ -42,7 +42,7 @@ Decisions are recorded as ADRs in `docs/decisions/`. This page links to the rele
 
 Three rules shape the architecture. The core is a process of its own and belongs to no client exclusively: the app, the CLI and MCP clients are peers ([core process and operations](decisions/0007-core-process-and-operations.md)). Files in the library folder are the truth, and SQLite is an index that can be rebuilt at any time ([files as source of truth](decisions/0008-files-as-source-of-truth.md)). Every capability is defined once as an operation and appears on all three access paths.
 
-The UI is available in German (default) and English.
+The UI is available in English (default) and German and follows the system language.
 
 ## Processes
 

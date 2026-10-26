@@ -105,7 +105,10 @@ function seed(data: MockData): Map<string, MockConcept> {
             {
               item: "lewis2020retrieval",
               role: "defines",
-              text: "Lewis et al. fassen RAG als Modell, in dem ein vortrainierter Generator mit einem dichten Index von Wikipedia als nicht-parametrischem Speicher zusammenarbeitet.",
+              text:
+                data.lang === "en"
+                  ? "Lewis et al. define RAG as a model in which a pretrained generator works together with a dense index of Wikipedia as its non-parametric memory."
+                  : "Lewis et al. fassen RAG als Modell, in dem ein vortrainierter Generator mit einem dichten Index von Wikipedia als nicht-parametrischem Speicher zusammenarbeitet.",
               evidence: [
                 {
                   card: first.frontmatter.id,
@@ -114,7 +117,11 @@ function seed(data: MockData): Map<string, MockConcept> {
                 },
               ],
               basis: rag.map((c) => c.frontmatter.id),
-              stamp: { by: "claude-code:sonnet", at: "2026-10-20T09:00:00.000Z", language: "de" },
+              stamp: {
+                by: "claude-code:sonnet",
+                at: "2026-10-20T09:00:00.000Z",
+                language: data.lang,
+              },
               promptVersion: 1,
             },
           ]
@@ -137,7 +144,7 @@ function storeOf(data: MockData): Map<string, MockConcept> {
 
 /** Mock stand-in for the model: the term after "Begriff der", else the first long word. */
 function mockTerm(quote: string): string {
-  const named = /Begriff (?:der|des|von) ([\p{L}-]+)/u.exec(quote);
+  const named = /(?:Begriff (?:der|des|von)|concept of(?: the)?) ([\p{L}-]+)/u.exec(quote);
   if (named?.[1]) return named[1];
   const long = quote.match(/[\p{L}-]{8,}/gu)?.[0];
   return long ?? quote.split(/\s+/)[0] ?? quote;
@@ -413,9 +420,11 @@ export function bindConceptsMock(
               const usage: ConceptUsage = {
                 item,
                 role: kind.includes("definition") ? "defines" : "uses",
-                text: `Die Quelle verwendet „${c.title}“ im Zusammenhang mit: ${
-                  first.body.paraphrase ?? first.body.quote.slice(0, 80)
-                }`,
+                text: `${
+                  data.lang === "en"
+                    ? `The source uses \u201c${c.title}\u201d in connection with:`
+                    : `Die Quelle verwendet \u201e${c.title}\u201c im Zusammenhang mit:`
+                } ${first.body.paraphrase ?? first.body.quote.slice(0, 80)}`,
                 evidence: [
                   {
                     card: first.frontmatter.id,
@@ -424,7 +433,7 @@ export function bindConceptsMock(
                   },
                 ],
                 basis: ids,
-                stamp: { by: "mock:sonnet", at: new Date().toISOString(), language: "de" },
+                stamp: { by: "mock:sonnet", at: new Date().toISOString(), language: data.lang },
                 promptVersion: 1,
               };
               c.usages = [...c.usages.filter((u) => u.item !== item), usage];

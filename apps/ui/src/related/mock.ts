@@ -9,6 +9,7 @@ import {
   type Registry,
 } from "@citegeist/ops";
 import { ItemFrontmatter } from "@citegeist/schema";
+import type { Lang } from "../i18n";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
 import { markerOf } from "./retraction";
@@ -208,21 +209,27 @@ const GRAPH: Record<string, { references: MockWork[]; citing: MockWork[] }> = {
 };
 
 /** Two generic references for items the mock graph does not know. */
-function fallback(citekey: string): { references: MockWork[]; citing: MockWork[] } {
+function fallback(citekey: string, lang: Lang): { references: MockWork[]; citing: MockWork[] } {
   return {
     references: [
       {
         doi: `10.9999/mock.${citekey}.a`,
-        title: "Eine frühere Arbeit zum selben Thema",
-        authors: "Beispiel",
+        title:
+          lang === "en"
+            ? "An earlier work on the same topic"
+            : "Eine frühere Arbeit zum selben Thema",
+        authors: lang === "en" ? "Example" : "Beispiel",
         year: 2001,
         citedBy: 120,
       },
       {
-        title: "Ein Werk ohne Kennung",
-        authors: "Beispiel",
+        title: lang === "en" ? "A work without an identifier" : "Ein Werk ohne Kennung",
+        authors: lang === "en" ? "Example" : "Beispiel",
         year: 1990,
-        raw: "Beispiel (1990). Ein Werk ohne Kennung.",
+        raw:
+          lang === "en"
+            ? "Example (1990). A work without an identifier."
+            : "Beispiel (1990). Ein Werk ohne Kennung.",
       },
     ],
     citing: [],
@@ -278,8 +285,13 @@ export function bindRelatedMock(
     if (!data.items.has(citekey)) {
       throw new Error(`ITEM_NOT_FOUND: no item with citekey '${citekey}'`);
     }
-    const graph = GRAPH[citekey] ?? fallback(citekey);
+    const graph = GRAPH[citekey] ?? fallback(citekey, data.lang);
     const all = [...graph[direction]]
+      .map((w) =>
+        data.lang === "en" && w.libraryKey === "habermas1981theorie"
+          ? { ...w, title: "The Theory of Communicative Action" }
+          : w,
+      )
       .sort((a, b) => (direction === "citing" ? (b.citedBy ?? 0) - (a.citedBy ?? 0) : 0))
       .map(mark);
     const counts = {
@@ -359,8 +371,12 @@ export function bindRelatedMock(
         const now = new Date().toISOString();
         const why =
           input.via === "citing"
-            ? `Zitiert ${input.from ?? "eine Quelle"}`
-            : `Zitiert von ${input.from ?? "einer Quelle"}`;
+            ? data.lang === "en"
+              ? `Cites ${input.from ?? "a source"}`
+              : `Zitiert ${input.from ?? "eine Quelle"}`
+            : data.lang === "en"
+              ? `Cited by ${input.from ?? "a source"}`
+              : `Zitiert von ${input.from ?? "einer Quelle"}`;
         data.items.set(citekey, {
           note: "",
           frontmatter: ItemFrontmatter.parse({

@@ -109,8 +109,12 @@ export function bindConnectionsMock(
         rel,
         why:
           rel === "supports"
-            ? `Die Notiz stützt sich auf ${node.label}.`
-            : `Die Notiz verweist auf ${node.label}, ohne die Beziehung zu benennen.`,
+            ? data.lang === "en"
+              ? `The note relies on ${node.label}.`
+              : `Die Notiz stützt sich auf ${node.label}.`
+            : data.lang === "en"
+              ? `The note refers to ${node.label} without naming the relationship.`
+              : `Die Notiz verweist auf ${node.label}, ohne die Beziehung zu benennen.`,
         ...(evidence ? { evidence: `[[${evidence.frontmatter.id}]]` } : {}),
         by: "agent:mock",
         status: "proposed",

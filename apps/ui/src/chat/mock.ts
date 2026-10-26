@@ -52,7 +52,7 @@ interface MockChat {
 }
 
 const STORES = new WeakMap<MockData, MockChat>();
-const WRITES = /(notier|festhalt|schreib|formulier|ausformulier|write|note down|draft)/i;
+const WRITES = /(notier|festhalt|schreib|formulier|ausformulier|write|note down|note this|draft)/i;
 
 /**
  * The agent chat and research jobs against fixture data. A scripted agent answers after short
@@ -116,14 +116,21 @@ export function bindChatMock(
       const call = s.entries.find((e) => e.type === "tool" && e.callId === `call-${turn.turn}-1`);
       if (call?.type === "tool") call.status = "done";
       changed(chatChangePath(s.summary.id));
-      const chunks = [
-        `Zu „${topic}“ finde ich in `,
-        `[[${citekey}|Luhmann 1984]] eine passende Stelle`,
-        card
-          ? ` ([[${card.frontmatter.id}|Luhmann 1984, S. ${card.frontmatter.locator?.start ?? "31"}]]).`
-          : ".",
-        " Eine zweite Quelle, [[erfunden2020|Erfunden 2020]], kann ich in deiner Bibliothek nicht belegen.",
-      ];
+      const en = data.lang === "en";
+      const page = card?.frontmatter.locator?.start ?? "31";
+      const chunks = en
+        ? [
+            `For \u201c${topic}\u201d I find a fitting passage in `,
+            `[[${citekey}|Luhmann 1984]]`,
+            card ? ` ([[${card.frontmatter.id}|Luhmann 1984, p. ${page}]]).` : ".",
+            " A second source, [[invented2020|Invented 2020]], I cannot back up from your library.",
+          ]
+        : [
+            `Zu \u201e${topic}\u201c finde ich in `,
+            `[[${citekey}|Luhmann 1984]] eine passende Stelle`,
+            card ? ` ([[${card.frontmatter.id}|Luhmann 1984, S. ${page}]]).` : ".",
+            " Eine zweite Quelle, [[erfunden2020|Erfunden 2020]], kann ich in deiner Bibliothek nicht belegen.",
+          ];
       let at = 0;
       const next = () => {
         const text = chunks[at];
@@ -143,7 +150,7 @@ export function bindChatMock(
       if (writes && plan && s.context.project === plan.project) {
         // a plan is open: the agent files the insight there with note_insight, like the core does
         const target = plan.node?.id ?? "plan";
-        const text = `${message.trim().replace(/[.!]+$/, "")}, siehe [[${citekey}]].`;
+        const text = `${message.trim().replace(/[.!]+$/, "")}, ${data.lang === "en" ? "see" : "siehe"} [[${citekey}]].`;
         const noted = noteInsightIn(planStoreFor(data), plan.project, plan.plan, target, text);
         push({
           type: "tool",

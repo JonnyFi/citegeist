@@ -4,7 +4,7 @@ import type { z } from "zod";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
-import { type MessageKey, useI18n } from "../i18n";
+import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { FieldLabel } from "./parts";
@@ -15,18 +15,19 @@ type SettingsData = z.output<typeof settingsGet.output>;
 const PERIODS = ["7", "30"] as const;
 type Period = (typeof PERIODS)[number];
 
-function tokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} Mio.`;
-  if (n >= 10_000) return `${Math.round(n / 1000)} Tsd.`;
+function tokens(n: number, lang: Lang): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} ${lang === "en" ? "M" : "Mio."}`;
+  if (n >= 10_000) return `${Math.round(n / 1000)} ${lang === "en" ? "K" : "Tsd."}`;
   return String(n);
 }
 
-function dollars(n: number): string {
-  if (n === 0) return "0 $";
-  return `${n < 0.01 ? n.toFixed(4) : n.toFixed(2)} $`;
+function dollars(n: number, lang: Lang): string {
+  const amount = n === 0 ? "0" : n < 0.01 ? n.toFixed(4) : n.toFixed(2);
+  return lang === "en" ? `$${amount}` : `${amount} $`;
 }
 
 function Row({ name, totals, strong }: { name: string; totals: Totals; strong?: boolean }) {
+  const { lang } = useI18n();
   const cell = "px-2 py-1 text-right tabular-nums";
   return (
     <tr className={strong ? "border-t border-line font-semibold" : undefined}>
@@ -34,10 +35,10 @@ function Row({ name, totals, strong }: { name: string; totals: Totals; strong?: 
         {strong ? <span className="font-semibold">{name}</span> : name}
       </th>
       <td className={cell}>{totals.calls}</td>
-      <td className={cell}>{tokens(totals.inputTokens)}</td>
-      <td className={cell}>{tokens(totals.outputTokens)}</td>
-      <td className={cell}>{tokens(totals.cacheReadTokens)}</td>
-      <td className={cell}>{totals.pricedCalls > 0 ? dollars(totals.costUsd) : "-"}</td>
+      <td className={cell}>{tokens(totals.inputTokens, lang)}</td>
+      <td className={cell}>{tokens(totals.outputTokens, lang)}</td>
+      <td className={cell}>{tokens(totals.cacheReadTokens, lang)}</td>
+      <td className={cell}>{totals.pricedCalls > 0 ? dollars(totals.costUsd, lang) : "-"}</td>
     </tr>
   );
 }
