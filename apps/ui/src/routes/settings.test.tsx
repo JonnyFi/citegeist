@@ -138,7 +138,11 @@ describe("settings screen", () => {
     });
     const panel = await screen.findByTestId("worker-panel");
     await user.click(within(panel).getByRole("button", { name: "Installieren" }));
-    expect(await within(panel).findByRole("alert")).toHaveTextContent("uv fehlt");
+    expect(await within(panel).findByTestId("uv-help")).toBeVisible();
+    expect(within(panel).getByText("brew install uv")).toBeVisible();
+    expect(within(panel).getByRole("button", { name: "Installieren" })).toBeDisabled();
+    await user.click(within(panel).getByRole("button", { name: "Erneut prüfen" }));
+    await waitFor(() => expect(within(panel).queryByTestId("uv-help")).toBeNull());
     expect(within(panel).getByRole("button", { name: "Installieren" })).toBeEnabled();
   });
   it("turns on semantic search, shows the download and then the ready state", async () => {

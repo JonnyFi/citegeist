@@ -529,6 +529,19 @@ describe("worker.setup", () => {
     await t.queue.close();
   });
 
+  it("reports uv-missing in the worker status until uv is installed", async () => {
+    const t = setup();
+    let installed = false;
+    (t.deps as { uvAvailable?: () => boolean }).uvAvailable = () => installed;
+    const detail = async () =>
+      ((await t.registry.call("settings.get", human, {})) as { worker: { detail?: string } }).worker
+        .detail;
+    expect(await detail()).toBe("uv-missing");
+    installed = true;
+    expect(await detail()).toBe("not-installed");
+    await t.queue.close();
+  });
+
   it("fails with an agent-ready error when uv is missing", async () => {
     const t = setup();
     (t.deps as { runner?: ProcessRunner }).runner = fakeRunner(() => ({

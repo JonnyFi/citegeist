@@ -2,6 +2,7 @@ import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
+import { onboardingEn } from "../onboarding/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import { textsEn } from "../texts/strings";
@@ -70,9 +71,6 @@ export const en: Record<MessageKey, string> = {
   "items.loading": "Loading items",
   "items.noMatch": "No items match these filters",
   "items.clearFilters": "Clear filters",
-  "items.emptyTitle": "Your library is empty",
-  "items.emptyDescription":
-    "Drop a PDF into the window, paste a DOI or share an arXiv link to add the first paper.",
   "items.loadMore": "Load more",
   "items.count.one": "{n} item",
   "items.count.other": "{n} items",
@@ -460,6 +458,7 @@ export const en: Record<MessageKey, string> = {
   ...matrixEn,
   ...conceptsEn,
   ...litsearchEn,
+  ...onboardingEn,
   ...textsEn,
   "agent.tab": "Agent",
   "aside.resize": "Width of the right column",

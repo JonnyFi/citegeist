@@ -45,6 +45,8 @@ export interface SettingsDeps {
   recordUsage?: (record: UsageRecord) => void;
   /** Job kind for `worker.setup`. Default `worker-setup`. */
   jobKind?: JobKind;
+  /** False when the `uv` command cannot be found; the status then reads `uv-missing`. Default: assume it is there. */
+  uvAvailable?: () => boolean;
   /** How long a worker health answer is reused, in ms. Default 15000. */
   healthCacheMs?: number;
   /** Time limit of one worker health call, in ms. Default 8000. */
@@ -326,6 +328,9 @@ export class SettingsService {
   async workerStatus(): Promise<WorkerStatus> {
     const running = this.setupJob();
     if (running) return { ready: false, engines: {}, detail: "installing" };
+    if (this.deps.uvAvailable && !this.deps.uvAvailable()) {
+      return { ready: false, engines: {}, detail: "uv-missing" };
+    }
     if (!existsSync(this.deps.workerConfig.envDir)) {
       return { ready: false, engines: {}, detail: "not-installed" };
     }
