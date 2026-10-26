@@ -201,7 +201,12 @@ export function ItemView({
   const metaLine = [
     typeLabel(i18n, fm.type),
     [fm.publisher, year].filter(Boolean).join(" "),
-    pageCount ? t("item.pageCount", { n: pageCount }) : undefined,
+    // A web page converts to one "page"; that count says nothing, so only documents show it.
+    pageCount && pageCount > 1
+      ? t("item.pageCount", { n: pageCount })
+      : pageCount === 1 && fm.type !== "webpage"
+        ? t("item.pageCountOne")
+        : undefined,
     fm.language,
   ].filter(Boolean);
 

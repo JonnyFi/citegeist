@@ -130,6 +130,7 @@ export const en: Record<MessageKey, string> = {
   "item.noCardsTitle": "No cards yet",
   "item.noCardsDescription": "Highlight a passage while reading to save it as a quote card.",
   "item.pageCount": "{n} pages",
+  "item.pageCountOne": "1 page",
   "meta.type": "Type",
   "meta.publishedIn": "Published in",
   "meta.publisher": "Publisher",
