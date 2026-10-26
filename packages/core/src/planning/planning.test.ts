@@ -10,7 +10,7 @@ import { bindPlanningOperations } from "./ops.js";
 import { applyOps, numbered, parseOutline, serializeOutline } from "./outline.js";
 import { splitParagraphs } from "./paragraphs.js";
 import { PlanningService } from "./service.js";
-import { TEMPLATES } from "./templates.js";
+import { TEMPLATES, templateLanguage } from "./templates.js";
 
 const open: Library[] = [];
 afterEach(async () => {
@@ -139,7 +139,7 @@ describe("templates", () => {
     for (const template of ["expose", "imrad"] as const) {
       const { lib, call } = await setup(template);
       const out = await call<{ nodes: Node[] }>("outline.get", { project: "phd" });
-      const chapters = TEMPLATES[template].nodes.length;
+      const chapters = TEMPLATES.de[template].nodes.length;
       expect(out.nodes.filter((n) => n.parent === null)).toHaveLength(chapters);
       expect(out.nodes.filter((n) => n.parent === null).every((n) => n.doc)).toBe(true);
       expect(out.nodes[0]?.number).toBe("1");
@@ -147,6 +147,47 @@ describe("templates", () => {
       expect(doc).toContain(`node: ${out.nodes[0]?.id}`);
       expect(doc).toContain(`aliases:`);
       expect(read(lib, "projects/phd/plans/proposal/plan.md")).toContain(`template: ${template}`);
+    }
+  });
+
+  it("follow the AI language of the project, else of the library", async () => {
+    const { lib, call } = await setup("expose");
+    const titles = async (plan: string) =>
+      (await call<{ nodes: Node[] }>("outline.get", { project: "phd", plan })).nodes.map(
+        (n) => n.title,
+      );
+    // the library default is German
+    expect(await titles("proposal")).toContain("Forschungsfragen");
+    lib.updateProject({ slug: "phd", patch: { ai_language: "en" } });
+    await call("plans.create", {
+      project: "phd",
+      slug: "en",
+      title: "Proposal",
+      template: "expose",
+    });
+    await call("plans.create", {
+      project: "phd",
+      slug: "en-paper",
+      title: "Paper",
+      template: "imrad",
+    });
+    expect(await titles("en")).toContain("Research questions");
+    expect(await titles("en")).not.toContain("Forschungsfragen");
+    expect(await titles("en-paper")).toContain("Methods");
+    // an unknown language gets English, a German variant gets German
+    lib.updateProject({ slug: "phd", patch: { ai_language: "de-AT" } });
+    await call("plans.create", { project: "phd", slug: "at", title: "Exposé", template: "expose" });
+    expect(await titles("at")).toContain("Forschungsfragen");
+    expect(templateLanguage("fr")).toBe("en");
+    expect(templateLanguage(undefined)).toBe("en");
+    expect(templateLanguage("DE_de")).toBe("de");
+  });
+
+  it("have the same shape in both languages", () => {
+    const shape = (nodes: (typeof TEMPLATES.de.expose)["nodes"]): number[] =>
+      nodes.flatMap((n) => [n.children?.length ?? 0, ...shape(n.children ?? [])]);
+    for (const template of ["expose", "imrad"] as const) {
+      expect(shape(TEMPLATES.en[template].nodes)).toEqual(shape(TEMPLATES.de[template].nodes));
     }
   });
 
@@ -167,7 +208,7 @@ describe("templates", () => {
     ]);
     await expect(call("outline.get", { project: "phd" })).rejects.toThrow(/several plans/);
     const paper = await call<{ nodes: Node[] }>("outline.get", { project: "phd", plan: "paper" });
-    expect(paper.nodes.map((n) => n.title)).toContain("Methods");
+    expect(paper.nodes.map((n) => n.title)).toContain("Methoden");
   });
 });
 
@@ -360,7 +401,7 @@ describe("find_insights", () => {
     await call("insights.note", {
       project: "phd",
       plan: "paper",
-      target: byTitle(nodes, "Methods").id,
+      target: byTitle(nodes, "Methoden").id,
       text: "Methodisch zählt [[luhmann1984soziale]].",
     });
     const hits = (

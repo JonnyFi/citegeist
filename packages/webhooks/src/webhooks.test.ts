@@ -370,7 +370,7 @@ describe("inbound payloads", () => {
     expect(new Set(h.calls.actors)).toEqual(new Set(["agent:grok"]));
   });
 
-  it("passes target library, projects and tags through (D7)", async () => {
+  it("passes target library, projects and tags through", async () => {
     const { h, secret } = await connected();
     await deliver(h, "grok", secret, {
       event: "papers.add",
@@ -565,7 +565,7 @@ describe("outbound tasks", () => {
     const rec = recordingFetch(status);
     const h = makeService({
       fetch: rec.fetch,
-      publicBaseUrl: "https://mac.tail1234.ts.net/",
+      publicBaseUrl: "https://mac.example.ts.net/",
       dir: join(tmp, dir),
     });
     const { secret } = await h.service.create({
@@ -601,7 +601,7 @@ describe("outbound tasks", () => {
       event: "task.request",
       task: job,
       prompt: "Find recent work on autopoiesis in sociology",
-      callback: { url: "https://mac.tail1234.ts.net/hooks/grok", event: "task.result" },
+      callback: { url: "https://mac.example.ts.net/hooks/grok", event: "task.result" },
       project: { slug: "systems-theory", title: "Systems theory" },
     });
     expect(payload.project.briefExcerpt.length).toBeLessThanOrEqual(100);

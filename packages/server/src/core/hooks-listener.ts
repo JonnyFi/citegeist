@@ -2,10 +2,18 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import { type McpRequestHandler, replyMcpError } from "@citegeist/mcp";
 import type { HooksListenerStatus } from "@citegeist/ops";
-import { FailureLimiter, HOOKS_PREFIX, type WebhooksHandle } from "@citegeist/webhooks";
+import {
+  clientAddress,
+  FailureLimiter,
+  HOOKS_PREFIX,
+  type WebhooksHandle,
+} from "@citegeist/webhooks";
 
 /** Path of the MCP endpoint on the hooks port. */
 export const MCP_PATH = "/mcp";
+
+/** Longest a request may take from first byte to last. A webhook body is at most 1 MiB. */
+export const HOOKS_REQUEST_TIMEOUT_MS = 30_000;
 
 export interface HooksListenerOptions {
   hooks: WebhooksHandle;
@@ -16,6 +24,8 @@ export interface HooksListenerOptions {
   portOverride?: number | undefined;
   log?: (message: string) => void;
   now?: () => number;
+  /** Replaces HOOKS_REQUEST_TIMEOUT_MS (tests). */
+  requestTimeoutMs?: number;
 }
 
 export interface HooksListener {
@@ -31,13 +41,6 @@ function send(res: ServerResponse, status: number, body: unknown, headers: objec
   res.end(JSON.stringify(body));
 }
 
-/** Where a request comes from: the tunnel's forwarded address if there is one, else the socket. */
-function sourceOf(req: IncomingMessage): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
-  return first || req.socket.remoteAddress || "unknown";
-}
-
 /**
  * A second HTTP listener on 127.0.0.1 and a fixed port. It serves /hooks/<name> and, for
  * connectors that were given MCP access, /mcp, and nothing else of the core, so a tunnel
@@ -49,6 +52,7 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
   const log = opts.log ?? (() => {});
   const now = opts.now ?? Date.now;
   const limiter = new FailureLimiter();
+  const lastBlockLog = new Map<string, number>();
   const service = opts.hooks.service;
   let server: Server | undefined;
   let boundFor: number | undefined;
@@ -59,9 +63,15 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
   const serveMcp = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     // Without a connector that has MCP access, the endpoint does not exist.
     if (!service.hasMcpAccess()) return send(res, 404, { error: "not found" });
-    const source = sourceOf(req);
+    const source = clientAddress(req);
     const wait = limiter.retryAfter(source, now());
     if (wait > 0) {
+      // One line per source and minute, so a client that keeps trying does not fill the log.
+      if (now() - (lastBlockLog.get(source) ?? -Infinity) >= 60_000) {
+        if (lastBlockLog.size > 1000) lastBlockLog.clear();
+        lastBlockLog.set(source, now());
+        log(`mcp: request from ${source} refused with 429 for ${wait} s after failed logins`);
+      }
       return send(
         res,
         429,
@@ -72,6 +82,7 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
     const auth = await service.authenticateMcp(req.headers.authorization);
     if (!auth) {
       limiter.fail(source, now());
+      log(`mcp: request from ${source} refused with 401 (missing or wrong bearer token)`);
       return replyMcpError(res, 401, "UNAUTHORIZED", "Missing or wrong bearer token.");
     }
     // The agent is on the internet: it may never make the core read a local file.
@@ -112,7 +123,15 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
     }
     if (server && boundFor === wanted) return;
     await close();
-    const next = createServer(onRequest);
+    // The listener may face the internet: a client that sends its body one byte a minute must not
+    // hold a connection for the default five minutes. Node checks the timeouts on an interval of
+    // its own (30 seconds by default), so the interval shrinks with the timeout.
+    const timeout = opts.requestTimeoutMs ?? HOOKS_REQUEST_TIMEOUT_MS;
+    const next = createServer(
+      { connectionsCheckingInterval: Math.min(5_000, timeout), requestTimeout: timeout },
+      onRequest,
+    );
+    next.headersTimeout = Math.min(next.headersTimeout, timeout);
     try {
       await new Promise<void>((resolve, reject) => {
         next.once("error", reject);

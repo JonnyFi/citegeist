@@ -1,5 +1,5 @@
 /**
- * Citation graph sources (docs/research/metadata-sources.md section 11): the reference list
+ * Citation graph sources (internal metadata-sources research section 11): the reference list
  * Crossref holds for a DOI, and OpenAlex for `referenced_works` and `cited_by`. All requests go
  * through the shared client, so the per-source limits and the response cache apply.
  */

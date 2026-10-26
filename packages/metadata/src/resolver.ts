@@ -1,5 +1,5 @@
 /**
- * The resolver cascade from docs/research/metadata-sources.md section 12, per input kind.
+ * The resolver cascade from internal metadata-sources research section 12, per input kind.
  * Agents and the MCP server call this, never the remote APIs directly.
  */
 

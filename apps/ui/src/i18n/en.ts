@@ -2,6 +2,7 @@ import { alertsEn } from "../alerts/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
+import { onboardingEn } from "../onboarding/strings";
 import { planningEn } from "../planning/strings";
 import { settingsEn } from "../settings/strings";
 import { textsEn } from "../texts/strings";
@@ -9,6 +10,7 @@ import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
 import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
+import { metadataEn } from "./metadata";
 import { relatedEn } from "./related";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -69,9 +71,6 @@ export const en: Record<MessageKey, string> = {
   "items.loading": "Loading items",
   "items.noMatch": "No items match these filters",
   "items.clearFilters": "Clear filters",
-  "items.emptyTitle": "Your library is empty",
-  "items.emptyDescription":
-    "Drop a PDF into the window, paste a DOI or share an arXiv link to add the first paper.",
   "items.loadMore": "Load more",
   "items.count.one": "{n} item",
   "items.count.other": "{n} items",
@@ -459,11 +458,14 @@ export const en: Record<MessageKey, string> = {
   ...importEn,
   ...manageEn,
   ...relatedEn,
+  ...metadataEn,
   ...matrixEn,
   ...conceptsEn,
   ...litsearchEn,
+  ...onboardingEn,
   ...textsEn,
   "agent.tab": "Agent",
+  "aside.resize": "Width of the right column",
   "agent.soon": "The agent chat is coming.",
   "rail.collapse": "Collapse sidebar",
   "rail.expand": "Expand sidebar",

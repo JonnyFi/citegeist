@@ -1,11 +1,21 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { defaultLocalBase } from "@citegeist/server/lockfile";
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } from "electron";
 import { type QuickInsertHandle, registerQuickInsert } from "../quick-insert/electron.js";
 import { deepLinkToPath, findDeepLink, PROTOCOL } from "../shared/deeplink.js";
+import {
+  languageFromPreferred,
+  type MainLang,
+  mainLanguage,
+  mt,
+  setMainLanguage,
+} from "../shared/text.js";
 import { isTrustedSender, ownRendererUrl } from "../shared/trusted-sender.js";
+import { aboutInfo, aboutLines, noticePath, REPOSITORY_URL } from "./about.js";
 import { ensureCore, type RunningCore, stopCore } from "./core-process.js";
+import { RotatingLog } from "./log.js";
 import { buildMenu } from "./menu.js";
 import { openDialogOptions, type PickPathsRequest } from "./pick-paths.js";
 import { loadSettings, saveSettings } from "./settings.js";
@@ -24,6 +34,35 @@ import {
 //   ELECTRON_RENDERER_URL  Vite dev server of apps/ui instead of the built files
 if (process.env.CITEGEIST_USER_DATA) app.setPath("userData", process.env.CITEGEIST_USER_DATA);
 app.setName("citegeist");
+
+// Log file ----------------------------------------------------------------------------------------
+// A packaged app started from the Dock has no terminal, so what the core and the main process say
+// goes to ~/Library/Logs/citegeist/core.log (5 MB, three files). The test switch keeps the log
+// next to the isolated userData directory.
+const LOG_DIR = process.env.CITEGEIST_USER_DATA
+  ? join(process.env.CITEGEIST_USER_DATA, "logs")
+  : app.getPath("logs");
+const log = new RotatingLog(join(LOG_DIR, "core.log"));
+
+function logLine(source: string, message: string): void {
+  log.write(source, message);
+  if (!app.isPackaged) process.stderr.write(`[${source}] ${message}\n`);
+}
+
+for (const level of ["log", "info", "warn", "error"] as const) {
+  const original = console[level].bind(console);
+  console[level] = (...args: unknown[]) => {
+    original(...args);
+    log.write(
+      "main",
+      args.map((a) => (a instanceof Error ? (a.stack ?? a.message) : String(a))).join(" "),
+    );
+  };
+}
+process.on("uncaughtExceptionMonitor", (err) => log.write("main", `uncaught: ${err.stack ?? err}`));
+process.on("unhandledRejection", (reason) =>
+  log.write("main", `unhandled rejection: ${String(reason)}`),
+);
 
 const CORE_ENTRY = join(import.meta.dirname, "core.js");
 const PRELOAD = join(import.meta.dirname, "../preload/index.cjs");
@@ -88,6 +127,7 @@ app.on("second-instance", (_event, argv) => {
 // Libraries -------------------------------------------------------------------------------------------
 
 function fail(title: string, err: unknown): void {
+  logLine("main", `${title}: ${err instanceof Error ? err.message : String(err)}`);
   dialog.showErrorBox(title, err instanceof Error ? err.message : String(err));
 }
 
@@ -104,10 +144,12 @@ async function useLibrary(path: string, init = false): Promise<boolean> {
       init,
       entry: CORE_ENTRY,
       origins: rendererOrigins(),
+      onOutput: (line) => log.write("core", line),
+      packaged: app.isPackaged,
       ...(process.env.CITEGEIST_LOCAL_BASE ? { localBase: process.env.CITEGEIST_LOCAL_BASE } : {}),
     });
   } catch (err) {
-    fail("Could not open the library", err);
+    fail(mt("library.open.error"), err);
     return false;
   }
   const previous = core;
@@ -121,8 +163,8 @@ async function useLibrary(path: string, init = false): Promise<boolean> {
 
 async function chooseLibrary(create: boolean): Promise<boolean> {
   const options = {
-    title: create ? "Choose a folder for the new library" : "Open a library folder",
-    buttonLabel: create ? "Create Library" : "Open",
+    title: create ? mt("library.create.title") : mt("library.open.title"),
+    buttonLabel: create ? mt("library.create.button") : mt("library.open.button"),
     properties: create
       ? (["openDirectory", "createDirectory"] as const)
       : (["openDirectory"] as const),
@@ -136,9 +178,9 @@ async function chooseLibrary(create: boolean): Promise<boolean> {
   if (existsSync(join(path, "citegeist.json"))) return useLibrary(path);
   const answer = await dialog.showMessageBox({
     type: "question",
-    message: create ? "Create a library here?" : "This folder is not a citegeist library.",
-    detail: `${path}\n\nA new library adds citegeist.json, AGENTS.md and the folders items, notes and projects.`,
-    buttons: ["Create Library", "Cancel"],
+    message: create ? mt("library.create.ask") : mt("library.notALibrary"),
+    detail: `${path}\n\n${mt("library.create.detail")}`,
+    buttons: [mt("library.create.button"), mt("library.cancel")],
     defaultId: 0,
     cancelId: 1,
   });
@@ -159,6 +201,66 @@ function startupLibrary(): string | undefined {
   return candidates.find(
     (c): c is string => Boolean(c) && existsSync(join(c as string, "citegeist.json")),
   );
+}
+
+// Language, menu and About ---------------------------------------------------------------------------
+
+function applyMenu(): void {
+  Menu.setApplicationMenu(
+    buildMenu({
+      openLibrary: () => void chooseLibrary(false),
+      createLibrary: () => void chooseLibrary(true),
+      navigate,
+      about: () => void showAbout(),
+    }),
+  );
+}
+
+function currentAbout() {
+  return aboutInfo({
+    library: core?.connection.library,
+    dataDir: process.env.CITEGEIST_LOCAL_BASE ?? defaultLocalBase(),
+    logFile: log.file,
+  });
+}
+
+/** Native About window: version, license and paths, with buttons for the log, NOTICE and the repository. */
+async function showAbout(): Promise<void> {
+  const info = currentAbout();
+  const options: Electron.MessageBoxOptions = {
+    type: "info",
+    title: mt("about.title"),
+    message: `citegeist`,
+    detail: aboutLines(info).join("\n"),
+    buttons: [
+      mt("about.close"),
+      mt("about.openLog"),
+      mt("about.openNotice"),
+      mt("about.openRepository"),
+    ],
+    defaultId: 0,
+    cancelId: 0,
+  };
+  const answer = window
+    ? await dialog.showMessageBox(window, options)
+    : await dialog.showMessageBox(options);
+  if (answer.response === 1) await openLog();
+  else if (answer.response === 2) await openNotice();
+  else if (answer.response === 3) await shell.openExternal(REPOSITORY_URL);
+}
+
+async function openLog(): Promise<void> {
+  const error = await shell.openPath(log.file);
+  if (error) logLine("main", `could not open the log: ${error}`);
+}
+
+async function openNotice(): Promise<void> {
+  const path = noticePath();
+  if (!path) {
+    dialog.showErrorBox(mt("about.title"), mt("about.noticeMissing"));
+    return;
+  }
+  await shell.openPath(path);
 }
 
 // Window ------------------------------------------------------------------------------------------------
@@ -232,6 +334,25 @@ ipcMain.handle("citegeist:pick-paths", (event, request: PickPathsRequest) =>
   fromRenderer(event) ? pickPaths(request) : [],
 );
 
+ipcMain.on("citegeist:set-language", (event, lang: unknown) => {
+  if (!fromRenderer(event) || (lang !== "de" && lang !== "en")) return;
+  const next: MainLang = lang;
+  if (next === loadSettings().language && next === mainLanguage()) return;
+  setMainLanguage(next);
+  void saveSettings({ language: next });
+  if (app.isReady()) applyMenu();
+});
+ipcMain.handle("citegeist:about-get", (event) => (fromRenderer(event) ? currentAbout() : null));
+ipcMain.handle("citegeist:about-open-log", (event) =>
+  fromRenderer(event) ? openLog() : undefined,
+);
+ipcMain.handle("citegeist:about-open-notice", (event) =>
+  fromRenderer(event) ? openNotice() : undefined,
+);
+ipcMain.handle("citegeist:about-reveal-logs", (event) => {
+  if (fromRenderer(event)) shell.showItemInFolder(log.file);
+});
+
 // Updates ----------------------------------------------------------------------------------------------
 
 let availableUpdate: UpdateInfo | null = loadSettings().update?.available ?? null;
@@ -261,7 +382,7 @@ async function refreshUpdate(): Promise<void> {
 function installUpdate(): void {
   const script = writeInstallCommand(app.getPath("userData"));
   execFile("open", ["-a", "Terminal", script], (err) => {
-    if (err) fail("Could not open Terminal for the update", err);
+    if (err) fail(mt("update.terminalError"), err);
   });
 }
 
@@ -301,13 +422,11 @@ async function start(): Promise<void> {
     callback(allowed(permission)),
   );
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed(permission));
-  Menu.setApplicationMenu(
-    buildMenu({
-      openLibrary: () => void chooseLibrary(false),
-      createLibrary: () => void chooseLibrary(true),
-      navigate,
-    }),
+  setMainLanguage(
+    loadSettings().language ?? languageFromPreferred(app.getPreferredSystemLanguages()),
   );
+  applyMenu();
+  logLine("main", `citegeist ${app.getVersion()} started (${process.platform} ${process.arch})`);
 
   const initial = startupLibrary();
   if (initial) {
@@ -316,12 +435,14 @@ async function start(): Promise<void> {
         library: initial,
         entry: CORE_ENTRY,
         origins: rendererOrigins(),
+        onOutput: (line) => log.write("core", line),
+        packaged: app.isPackaged,
         ...(process.env.CITEGEIST_LOCAL_BASE
           ? { localBase: process.env.CITEGEIST_LOCAL_BASE }
           : {}),
       });
     } catch (err) {
-      fail("Could not open the library", err);
+      fail(mt("library.open.error"), err);
     }
   }
   createWindow();
@@ -334,7 +455,7 @@ async function start(): Promise<void> {
         ? w.loadURL(`${RENDERER_URL}#/quick-insert`)
         : w.loadFile(UI_INDEX, { hash: "/quick-insert" }),
     isOwnUrl,
-    onHotkeyError: (message) => dialog.showErrorBox("Quick-insert hotkey", message),
+    onHotkeyError: (message) => dialog.showErrorBox(mt("quickInsert.hotkeyError"), message),
   });
   const link = findDeepLink(process.argv);
   if (link) handleDeepLink(link);

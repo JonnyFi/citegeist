@@ -1,6 +1,6 @@
 /**
- * Strings of the planning screens (W3.8) and of the library elements that came with them: the add
- * field, "Metadaten neu auflösen", "Weiterlesen", the card export and the project's card tab. They
+ * Strings of the planning screens and of the library elements that came with them: the add
+ * field, "Metadaten neu abrufen", "Weiterlesen", the card export and the project's card tab. They
  * are spread into the catalogs in `i18n/de.ts` and `i18n/en.ts`.
  */
 export const planningDe = {
@@ -125,8 +125,8 @@ export const planningDe = {
   "add.kind.bibtex": "BibTeX",
   "add.kind.path": "Datei",
 
-  "resolve.button": "Metadaten neu auflösen",
-  "resolve.running": "Löst auf",
+  "resolve.button": "Metadaten neu abrufen",
+  "resolve.running": "Ruft ab",
   "resolve.changed": "Aktualisiert: {fields}",
   "resolve.unchanged": "Nichts Neues gefunden",
   "reading.resume": "Weiterlesen, S. {page}",
@@ -268,8 +268,8 @@ export const planningEn: Record<keyof typeof planningDe, string> = {
   "add.kind.bibtex": "BibTeX",
   "add.kind.path": "File",
 
-  "resolve.button": "Resolve metadata again",
-  "resolve.running": "Resolving",
+  "resolve.button": "Fetch metadata again",
+  "resolve.running": "Fetching",
   "resolve.changed": "Updated: {fields}",
   "resolve.unchanged": "Nothing new found",
   "reading.resume": "Continue reading, p. {page}",

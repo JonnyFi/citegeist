@@ -172,7 +172,7 @@ describe("export", () => {
     await user.click(screen.getByRole("button", { name: "Word" }));
     const result = await screen.findByTestId("export-result");
     expect(result).toHaveTextContent(
-      "Exportiert nach /Users/jonny/Citegeist/projects/phd-proposal/exports/kapitel-2.docx",
+      "Exportiert nach /Users/alex/Citegeist/projects/phd-proposal/exports/kapitel-2.docx",
     );
     expect(calls.find((c) => c.name === "texts.export")?.input).toEqual({
       project: "phd-proposal",

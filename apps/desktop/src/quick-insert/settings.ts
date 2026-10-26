@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { mt } from "../shared/text.js";
 
 export interface QuickInsertSettings {
   enabled: boolean;
@@ -77,20 +78,19 @@ export function checkAccelerator(input: string): AcceleratorCheck {
     .filter((p) => p !== "");
   const parts = plus ? [...named, "Plus"] : named;
   if (parts.length < 2) {
-    return {
-      ok: false,
-      error: "A hotkey needs at least one modifier and a key, such as Cmd+Shift+K.",
-    };
+    return { ok: false, error: mt("quickInsert.needsModifier") };
   }
   const key = canonicalKey(parts[parts.length - 1] as string);
   if (!key) {
-    return { ok: false, error: `"${parts[parts.length - 1]}" is not a key Electron accepts.` };
+    return {
+      ok: false,
+      error: mt("quickInsert.badKey", { key: parts[parts.length - 1] as string }),
+    };
   }
   const mods: string[] = [];
   for (const p of parts.slice(0, -1)) {
     const mod = MODIFIERS.get(p.toLowerCase());
-    if (!mod)
-      return { ok: false, error: `"${p}" is not a modifier. Use Cmd, Ctrl, Alt, Shift or Super.` };
+    if (!mod) return { ok: false, error: mt("quickInsert.badModifier", { key: p }) };
     if (!mods.includes(mod)) mods.push(mod);
   }
   return { ok: true, accelerator: [...mods, key].join("+") };

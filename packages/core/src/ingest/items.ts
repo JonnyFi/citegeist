@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { normalizeDoi, normalizeIsbn } from "@citegeist/metadata";
 import {
   type Actor,
   CitegeistError,
@@ -17,6 +18,7 @@ import {
 } from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
 import type { ChangeEvent, Library } from "../library.js";
+import { suggestCitekey } from "./placeholder.js";
 
 export function problem(
   code: string,
@@ -76,14 +78,76 @@ const PROTECTED = new Set([
 /** Keys that are not bibliographic data, so a change does not become field provenance. */
 const NO_PROVENANCE = new Set(["tags", "projects", "status", "ai_language"]);
 
+const REVIEWS_PROPOSAL = ["title", "author", "editor", "issued", "DOI", "ISBN"];
+
+/**
+ * Checks the identifier fields of a patch and returns them in their stored form: a DOI without
+ * its prefix in lower case, an ISBN list with every entry valid, a URL that is http or https.
+ */
+function checkedPatch(citekey: string, patch: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...patch };
+  const bad = (field: string, what: string, fix: string): never => {
+    throw problem("INVALID_PATCH", `${field} of item ${citekey} is not valid: ${what}`, fix, {
+      citekey,
+      field,
+    });
+  };
+  const doi = out.DOI;
+  if (typeof doi === "string") {
+    const normal = normalizeDoi(doi);
+    if (!normal) {
+      bad(
+        "DOI",
+        `'${doi.slice(0, 80)}' is not a DOI`,
+        "Pass a DOI such as 10.1038/s41586-020-2649-2 (it starts with 10. and has a slash), or null to remove it.",
+      );
+    }
+    out.DOI = normal;
+  }
+  const isbn = out.ISBN;
+  if (typeof isbn === "string") {
+    const tokens = isbn
+      .split(/[,;]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const wrong = tokens.find((t) => normalizeIsbn(t) === undefined);
+    if (tokens.length === 0 || wrong !== undefined) {
+      bad(
+        "ISBN",
+        `'${(wrong ?? isbn).slice(0, 40)}' is not a valid ISBN (wrong length or check digit)`,
+        "Pass an ISBN-10 or ISBN-13 such as 978-3-518-58706-5. Separate several ISBNs with a comma. Pass null to remove it.",
+      );
+    }
+    out.ISBN = tokens.join(", ");
+  }
+  const url = out.URL;
+  if (typeof url === "string") {
+    let ok = false;
+    try {
+      ok = /^https?:$/.test(new URL(url).protocol);
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      bad(
+        "URL",
+        `'${url.slice(0, 80)}' is not an http or https address`,
+        "Pass a full address such as https://example.org/paper, or null to remove it.",
+      );
+    }
+  }
+  return out;
+}
+
 /** `patch` replaces top-level keys; a value of null removes the key. */
 export function updateItem(
   lib: Library,
   actor: Actor,
   citekey: string,
-  patch: Record<string, unknown>,
-): { frontmatter: ItemFrontmatter } {
+  rawPatch: Record<string, unknown>,
+): { frontmatter: ItemFrontmatter; suggestedCitekey?: string } {
   const item = loadItem(lib, citekey);
+  const patch = checkedPatch(citekey, rawPatch);
   for (const k of Object.keys(patch)) {
     if (PROTECTED.has(k)) {
       throw problem(
@@ -111,6 +175,11 @@ export function updateItem(
       else provenance[k] = `${actor}@${today}`;
     }
   }
+  // A person or an agent who sets the title, the creators or the date has reviewed the guess.
+  if (item.fm.proposal !== undefined && REVIEWS_PROPOSAL.some((k) => k in patch)) {
+    delete merged.proposal;
+    filePatch.proposal = undefined;
+  }
   merged.provenance = provenance;
   merged.modified = lib.stamp(actor);
   const check = ItemFrontmatter.safeParse(merged);
@@ -127,7 +196,9 @@ export function updateItem(
   }
   filePatch.provenance = provenance;
   saveItem(lib, actor, item, filePatch);
-  return { frontmatter: lib.getItem(citekey).frontmatter };
+  const frontmatter = lib.getItem(citekey).frontmatter;
+  const suggestedCitekey = suggestCitekey(lib, item.fm, frontmatter);
+  return { frontmatter, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
 }
 
 // items.trash, inbox.* --------------------------------------------------------------------------
@@ -148,7 +219,7 @@ export function isCited(lib: Library, citekey: string): boolean {
 }
 
 /**
- * D7 for deletion: a person may trash anything. An agent may trash an item that is in the inbox,
+ * The inbox rule for deletion: a person may trash anything. An agent may trash an item that is in the inbox,
  * that an agent added or that is incomplete, and only while no card or link refers to it.
  * Everything else is the user's to remove.
  */

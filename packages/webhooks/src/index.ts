@@ -4,7 +4,12 @@ export {
   type WebhooksHandle,
   type WebhooksHost,
 } from "./attach.js";
-export { createHooksHandler, MAX_BODY_BYTES } from "./http.js";
+export {
+  clientAddress,
+  createHooksHandler,
+  type HooksHandlerOptions,
+  MAX_BODY_BYTES,
+} from "./http.js";
 export { FailureLimiter } from "./limit.js";
 export * from "./payload.js";
 export {

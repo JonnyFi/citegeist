@@ -33,7 +33,7 @@ const SELECT = [
 /**
  * OpenAlex work by DOI (singleton lookups are free). Used for enrichment only: the record carries
  * ORCIDs, topics, references and abstracts. DOI, year and type are deliberately not mapped
- * because OpenAlex merges can corrupt them (see docs/research/metadata-sources.md section 4).
+ * because OpenAlex merges can corrupt them (see internal metadata-sources research section 4).
  */
 export async function fetchOpenAlexWork(
   ctx: SourceContext,

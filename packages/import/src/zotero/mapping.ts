@@ -1,6 +1,6 @@
 // Zotero to CSL mapping tables. The facts come from zotero-schema (item types, base fields,
 // creator types, csl map); the tables here are citegeist's own rendering of them, see
-// docs/research/zotero-parity.md section 1.1.
+// internal Zotero-parity research section 1.1.
 
 /** Zotero item type to CSL type. */
 export const ZOTERO_TO_CSL_TYPE: Record<string, string> = {

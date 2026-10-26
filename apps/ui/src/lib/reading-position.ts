@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * Where Jonny stopped reading an item. Kept in localStorage per item until the core stores it
- * with the item (a contract of its own, see the W3.8 PR).
+ * Where the user stopped reading an item. Kept in localStorage per item until the core stores it
+ * with the item (a contract of its own).
  */
 export interface ReadingPosition {
   /** Zero-based index of the first page in view. */

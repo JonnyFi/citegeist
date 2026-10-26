@@ -15,7 +15,7 @@ import type { Issue } from "./parse.js";
 import { stemmedText } from "./text.js";
 import { extractWikiLinks, wikiTarget } from "./wikilinks.js";
 
-/** 2: cards table has a nullable kind and a note column instead of core, own_words and comment (D15 to D17). */
+/** 2: cards table has a nullable kind and a note column instead of core, own_words and comment. */
 export const INDEX_SCHEMA_VERSION = 2;
 
 const TABLES = [
@@ -408,7 +408,7 @@ export class Index {
       `INSERT INTO links(path, src_kind, src_ref, dst, rel, status, actor, origin)
        VALUES (?, 'card', ?, ?, 'excerpt-of', 'accepted', 'system', 'auto')`,
     ).run(path, fm.id, citekey);
-    // The legacy core statement is shown nowhere (D15), so it is not searched either.
+    // The legacy core statement is shown nowhere, so it is not searched either.
     const free = [body.paraphrase, body.note, ...extraTexts(body)];
     this.putWikiLinks(path, "card", fm.id, free.filter(Boolean).join("\n"));
     this.addDoc({

@@ -66,6 +66,31 @@ export function translator(lang: Lang): Translator {
   };
 }
 
+/**
+ * The first language of a preference list that the UI offers: "de", "de-AT" and "de_DE" give
+ * German, "en-GB" English. Other languages are skipped, so ["fr", "de"] gives German. Without a
+ * match the UI is English.
+ */
+export function pickLang(preferred: readonly string[]): Lang {
+  for (const tag of preferred) {
+    const base = tag.toLowerCase().split(/[-_]/)[0];
+    if (base === "de") return "de";
+    if (base === "en") return "en";
+  }
+  return "en";
+}
+
+/** The language of the system, as the browser engine reports it (Electron follows macOS). */
+export function systemLang(): Lang {
+  const languages = typeof navigator === "undefined" ? [] : navigator.languages;
+  const list = languages?.length
+    ? languages
+    : typeof navigator === "undefined"
+      ? []
+      : [navigator.language];
+  return pickLang(list.filter((l): l is string => typeof l === "string"));
+}
+
 function storedLang(): Lang | undefined {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
@@ -75,17 +100,27 @@ function storedLang(): Lang | undefined {
   }
 }
 
+/** The language the UI starts in: a stored choice, else the system language. */
+export function initialLang(): Lang {
+  return storedLang() ?? systemLang();
+}
+
 const I18nContext = createContext<I18n | null>(null);
 
-/** German is the default. A language passed in or stored from an earlier choice wins over it. */
+/**
+ * The system language is the default, English when the system speaks neither German nor English.
+ * A language passed in or stored from an earlier choice wins over it.
+ */
 export function I18nProvider({ lang: initial, children }: { lang?: Lang; children: ReactNode }) {
   const [state, setState] = useState<{ lang: Lang; explicit: boolean }>(() => {
     const chosen = initial ?? storedLang();
-    return { lang: chosen ?? "de", explicit: chosen !== undefined };
+    return { lang: chosen ?? systemLang(), explicit: chosen !== undefined };
   });
 
   useEffect(() => {
     document.documentElement.lang = state.lang;
+    // The desktop app's menus and dialogs follow the language the window shows.
+    window.citegeist?.setLanguage?.(state.lang);
   }, [state.lang]);
 
   const setLang = useCallback((lang: Lang, options: { persist?: boolean } = {}) => {
@@ -109,10 +144,10 @@ export function I18nProvider({ lang: initial, children }: { lang?: Lang; childre
 
 /**
  * Without a provider (shared widgets rendered on their own, such as the settings and onboarding
- * screens, which bring their own language handling) the stored language applies, else German.
+ * screens, which bring their own language handling) the stored language applies, else the system's.
  */
 export function useI18n(): I18n {
   const value = useContext(I18nContext);
   if (value) return value;
-  return { ...translator(storedLang() ?? "de"), setLang: () => {}, explicit: false };
+  return { ...translator(storedLang() ?? systemLang()), setLang: () => {}, explicit: false };
 }

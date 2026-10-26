@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/JonnyFi/citegeist/tree/main/docs
+    about: The handbook covers installation, the user guide, agents and development.
+  - name: Report a security vulnerability
+    url: https://github.com/JonnyFi/citegeist/security/policy
+    about: Report security problems privately as described in the security policy. Do not open a public issue.

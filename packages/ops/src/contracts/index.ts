@@ -56,7 +56,7 @@ const ItemSummary = z.object({
   type: z.string(),
   status: z.string(),
   inbox: z.boolean(),
-  /** Who added an inbox item and why (D7). */
+  /** Who added an inbox item and why (docs/decisions/0014-agent-content-goes-to-inbox.md). */
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
@@ -110,13 +110,20 @@ export const libraryReindex = defineContract({
 // Items ---------------------------------------------------------------------------------------------
 export const itemsAdd = defineContract({
   name: "items.add",
-  summary: "Add an item by DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path",
+  summary:
+    "Add an item by DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path. A work the library has already (same DOI, ISBN, address or a confident title match with an item that lacks author or year) is not added twice: the existing item is returned as duplicateOf and takes over the metadata it lacked. To repair an item that arrived without authors or year, pass its citekey together with a DOI, ISBN, arXiv ID, PMID or URL: the identifier is added to that item and its metadata is looked up again (the fields that changed are in enriched)",
   access: "write",
   input: z.object({
     identifier: z.string().min(1),
+    /**
+     * Repair an existing item: the identifier is added to it and the metadata is looked up again,
+     * instead of a new item. Use it for items that arrived without authors or year. Fields a
+     * person or an agent edited are kept.
+     */
+    citekey: Citekey.optional(),
     projects: z.array(ProjectSlug).default([]),
     tags: z.array(z.string()).default([]),
-    /** D7: agents land in the inbox unless they pass "library". Humans always land in the library. */
+    /** Agents land in the inbox unless they pass "library". Humans always land in the library. */
     target: z.enum(["inbox", "library"]).default("inbox"),
     why: z.string().optional(),
   }),
@@ -133,6 +140,13 @@ export const itemsAdd = defineContract({
     duplicateOf: Citekey.optional(),
     /** True when the matched item had no working source and the new file or download repairs it. */
     repaired: z.boolean().optional(),
+    /** Fields of the existing item that the identifier filled or corrected. */
+    enriched: z.array(z.string()).optional(),
+    /**
+     * The item had a placeholder citekey (such as anonnd...) and now has author and year. This is
+     * the key the citekey formula would give it. Nothing was renamed; items.rename does it.
+     */
+    suggestedCitekey: Citekey.optional(),
   }),
   mcp: { tool: "add_item", readOnly: false },
 });
@@ -185,15 +199,30 @@ export const itemsUpdate = defineContract({
   summary: "Update metadata fields, tags, projects, status or AI language of an item",
   access: "write",
   input: ItemRef.extend({ patch: z.record(z.string(), z.unknown()) }),
-  output: z.object({ frontmatter: ItemFrontmatter }),
+  output: z.object({
+    frontmatter: ItemFrontmatter,
+    /**
+     * Set when the item's citekey was a placeholder (such as anonnd...) and the patch gave it an
+     * author and a year. The key the citekey formula would give it now; items.rename applies it.
+     */
+    suggestedCitekey: Citekey.optional(),
+  }),
 });
 export const itemsResolve = defineContract({
   name: "items.resolve",
   summary:
-    "Look the metadata of an item up again from its DOI, arXiv id, ISBN, PMID or URL (title as a last resort) and merge the answer into the item. Fields that a person or an agent edited are kept; fields from earlier lookups or guesses are replaced. Returns the names of the fields that changed.",
+    "Look the metadata of an item up again from its DOI, arXiv id, ISBN, PMID or URL (title as a last resort) and merge the answer into the item. With identifier, the item first gets that DOI, ISBN, arXiv id, PMID or URL and is looked up with it; nothing is stored when the lookup fails. Fields that a person or an agent edited are kept; fields from earlier lookups or guesses are replaced. Returns the names of the fields that changed.",
   access: "write",
-  input: ItemRef,
-  output: z.object({ citekey: Citekey, changed: z.array(z.string()) }),
+  input: ItemRef.extend({
+    /** A DOI, arXiv id, ISBN, PMID or a URL (also one that contains a DOI) to add to the item. */
+    identifier: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    citekey: Citekey,
+    changed: z.array(z.string()),
+    /** The citekey was a placeholder and the item now has author and year. See items.update. */
+    suggestedCitekey: Citekey.optional(),
+  }),
 });
 export const itemsRename = defineContract({
   name: "items.rename",
@@ -645,7 +674,7 @@ export const EMBEDDING_MODEL_KEYS = ["embeddinggemma-300m", "qwen3-embedding-0.6
 export const EmbeddingModelKey = z.enum(EMBEDDING_MODEL_KEYS);
 export type EmbeddingModelKey = z.infer<typeof EmbeddingModelKey>;
 
-/** Limits of a research job (W5.2). Zero switches a limit off. */
+/** Limits of a research job. Zero switches a limit off. */
 export const DEFAULT_RESEARCH_LIMITS = {
   maxMinutes: 20,
   maxTokens: 2_000_000,
@@ -670,11 +699,12 @@ export const Settings = z.object({
   unpaywallEmail: z.string().optional(),
   /** `tool` parameter of NCBI E-utilities calls. Default "citegeist". The NCBI key is the API key slot "ncbi". */
   ncbiTool: z.string().optional(),
-  uiLanguage: z.enum(["de", "en"]).default("de"),
+  /** Chosen by the user. Unset until then, and the UI follows the system language. */
+  uiLanguage: z.enum(["de", "en"]).optional(),
   /**
    * Semantic search with a local embedding model. Off until the user turns it on. `rerank` adds a
    * local cross-encoder that re-sorts the best hits: slower (about a second per search) and a
-   * download of about 570 MB, so it is off by default (numbers in docs/decisions.md).
+   * download of about 570 MB, so it is off by default (numbers in docs/decisions/0026-retrieval-benchmark.md).
    */
   semantic: z
     .object({
@@ -702,7 +732,7 @@ export const Settings = z.object({
     })
     .default({ port: DEFAULT_HOOKS_PORT }),
   /**
-   * A11: chat agents run in the user's own environment (shell, the user's MCP servers and
+   * Chat agents run in the user's own environment (shell, the user's MCP servers and
    * settings) unless this is on. "Isolierter Agent" restores the sandbox: no shell, no user
    * settings, only the citegeist tools.
    */

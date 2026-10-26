@@ -236,6 +236,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   const workerSource = resolveWorkerSource({
     override: process.env.CITEGEIST_WORKER_DIR,
     resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+    packaged: process.env.CITEGEIST_PACKAGED === "1",
   });
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   const runtime = createRuntime(library, {
@@ -244,6 +245,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       sourceDir: resolveResearchSource({
         override: process.env.CITEGEIST_RESEARCH_DIR,
         resourcesPath,
+        packaged: process.env.CITEGEIST_PACKAGED === "1",
       }),
     },
     ...(process.env.CITEGEIST_WORKER_CMD
@@ -454,7 +456,13 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
 
   // The tunnel points at this listener, not at the core: it serves /hooks/ and /mcp only, on a
   // port that does not change between starts.
-  const mcpHandler = hooks ? createMcpRequestHandler(registry) : undefined;
+  const mcpHandler = hooks
+    ? createMcpRequestHandler(registry, {
+        ...(opts.log
+          ? { log: opts.log, onerror: (err: Error) => opts.log?.(`mcp: ${err.message}`) }
+          : {}),
+      })
+    : undefined;
   let unsubscribeHooks: (() => void) | undefined;
   if (hooks && mcpHandler) {
     hooksListener = manageHooksListener({

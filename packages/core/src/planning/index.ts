@@ -23,4 +23,10 @@ export {
   PlanningService,
   type SemanticRank,
 } from "./service.js";
-export { TEMPLATES, type TemplateNode } from "./templates.js";
+export {
+  TEMPLATES,
+  type Template,
+  type TemplateLanguage,
+  type TemplateNode,
+  templateLanguage,
+} from "./templates.js";

@@ -156,7 +156,7 @@ export function SemanticPanel({ data }: { data: SettingsData }) {
   );
 }
 
-/** A11: chat agents run in the user's environment unless "Isolierter Agent" is on. */
+/** Chat agents run in the user's environment unless "Isolierter Agent" is on. */
 export function ChatPanel({ data }: { data: SettingsData }) {
   const { t } = useI18n();
   const update = useOpMutation(settingsUpdate);

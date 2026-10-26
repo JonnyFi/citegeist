@@ -207,10 +207,10 @@ export const ItemFrontmatter = z
     tags: z.array(z.string()).default([]),
     projects: z.array(ProjectSlug).default([]),
     status: ItemStatus.default("unread"),
-    /** D9: language for AI texts on this item, overrides the project setting. */
+    /** Language for AI texts on this item, overrides the project setting. */
     ai_language: Language.optional(),
     /**
-     * D7: content added by agents lands in the inbox first and carries this marker until a human
+     * Content added by agents lands in the inbox first and carries this marker until a human
      * accepts it. Agents can skip the inbox explicitly (MCP add_item with target "library").
      */
     inbox: z

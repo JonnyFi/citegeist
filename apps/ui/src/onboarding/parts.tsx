@@ -14,6 +14,7 @@ import { Input } from "../components/ui/input";
 import { lookup, type MessageKey, type Translator, useI18n } from "../i18n";
 import { useCore } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
+import { UvHelp } from "./help";
 
 type SettingsData = z.output<typeof settingsGet.output>;
 export type BackendInfo = SettingsData["backends"][number];
@@ -214,6 +215,7 @@ export function useWorkerSetup() {
   const core = useCore();
   const queryClient = useQueryClient();
   const [state, setState] = useState<SetupState>({ phase: "idle", progress: 0 });
+  const reset = useCallback(() => setState({ phase: "idle", progress: 0 }), []);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -263,14 +265,14 @@ export function useWorkerSetup() {
     },
     [core, queryClient],
   );
-  return { state, start };
+  return { state, start, reset };
 }
 
 export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
   const tr = useI18n();
   const { t } = tr;
   const queryClient = useQueryClient();
-  const { state, start } = useWorkerSetup();
+  const { state, start, reset } = useWorkerSetup();
   const running = state.phase === "running" || (worker.detail === "installing" && !worker.ready);
 
   // A setup started before a reload still runs in the core; follow it by refetching the status.
@@ -284,9 +286,18 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
   }, [state.phase, worker.detail, queryClient]);
 
   const { code } = splitDetail(worker.detail);
+  // uv is checked before the install starts; the setup job reports the same gap if uv vanishes later
+  const uvMissing =
+    !worker.ready && (code === "uv-missing" || state.errorCode === "WORKER_UV_MISSING");
+  const recheck = () => {
+    reset();
+    void queryClient.invalidateQueries({ queryKey: ["op"] });
+  };
   const label = worker.ready
     ? t("worker.status.ready")
-    : (lookup(tr, `worker.status.${code}`) ?? t("worker.status.not-ready"));
+    : uvMissing
+      ? t("worker.status.uv-missing")
+      : (lookup(tr, `worker.status.${code}`) ?? t("worker.status.not-ready"));
   const engines = Object.entries(worker.engines)
     .map(([name, version]) => `${name} ${version}`)
     .join(", ");
@@ -298,6 +309,8 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
       ? (lookup(tr, `worker.error.${state.errorCode}`) ??
         (state.errorMessage || t("worker.failed")))
       : undefined;
+  // the uv help below says what to do, so the failure line would only repeat it
+  const shownError = uvMissing ? undefined : errorText;
 
   return (
     <div data-testid="worker-panel" className="border border-line bg-surface p-3">
@@ -318,7 +331,7 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
         </div>
         <Button
           variant={worker.ready ? "outline" : "primary"}
-          disabled={running}
+          disabled={running || uvMissing}
           onClick={() => void start(worker.ready)}
         >
           {worker.ready ? t("worker.reinstall") : t("worker.install")}
@@ -342,11 +355,12 @@ export function WorkerPanel({ worker }: { worker: WorkerInfo }) {
           {progressMessage ? <p className="mt-1 text-sm text-muted">{progressMessage}</p> : null}
         </div>
       ) : null}
-      {errorText ? (
+      {shownError ? (
         <p role="alert" className="mt-2 text-sm text-danger">
-          {errorText}
+          {shownError}
         </p>
       ) : null}
+      {uvMissing ? <UvHelp onRecheck={recheck} /> : null}
     </div>
   );
 }

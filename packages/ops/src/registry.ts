@@ -14,7 +14,7 @@ export interface OpContext {
    */
   localFiles?: boolean;
   /**
-   * "scholarly" when the caller is an unattended research job (W5.1): `items.add` then refuses
+   * "scholarly" when the caller is an unattended research job: `items.add` then refuses
    * an address that the model composed, which is every URL outside the scholarly hosts of
    * `SCHOLARLY_HOSTS`. Unset means no limit.
    */

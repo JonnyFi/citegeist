@@ -16,6 +16,12 @@ export interface WorkerSourceOptions {
   override?: string | undefined;
   /** `process.resourcesPath` in the packaged app, where electron-builder puts `workers/convert`. */
   resourcesPath?: string | undefined;
+  /**
+   * True in the packaged app (CITEGEIST_PACKAGED, set by the main process). The sources then come
+   * from the app's resources only: a build that lacks them fails with a path inside the app
+   * instead of quietly reading some repository checkout on the machine.
+   */
+  packaged?: boolean | undefined;
   exists?: (path: string) => boolean;
 }
 
@@ -26,7 +32,7 @@ function repoRoot(): string {
 
 /**
  * Directory with the worker's pyproject.toml and uv.lock. Order: explicit override, the packaged
- * resources, then the repository checkout (development).
+ * resources, then the repository checkout (development, never in the packaged app).
  */
 export function resolveWorkerSource(opts: WorkerSourceOptions = {}): string {
   const exists = opts.exists ?? existsSync;
@@ -35,6 +41,7 @@ export function resolveWorkerSource(opts: WorkerSourceOptions = {}): string {
     opts.resourcesPath ? join(opts.resourcesPath, "workers", "convert") : undefined,
   ].filter((c): c is string => Boolean(c));
   for (const dir of candidates) if (exists(join(dir, "pyproject.toml"))) return dir;
+  if (opts.packaged && opts.resourcesPath) return join(opts.resourcesPath, "workers", "convert");
   return join(repoRoot(), "workers", "convert");
 }
 
@@ -49,6 +56,7 @@ export function resolveResearchSource(opts: WorkerSourceOptions = {}): string {
     opts.resourcesPath ? join(opts.resourcesPath, "workers", "research") : undefined,
   ].filter((c): c is string => Boolean(c));
   for (const dir of candidates) if (exists(join(dir, "scripts", "pipeline.py"))) return dir;
+  if (opts.packaged && opts.resourcesPath) return join(opts.resourcesPath, "workers", "research");
   return join(repoRoot(), "workers", "research");
 }
 
@@ -75,6 +83,7 @@ export function createDesktopSettingsDeps(opts: DesktopSetupOptions): SettingsDe
     resolveWorkerSource({
       override: process.env.CITEGEIST_WORKER_DIR,
       resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+      packaged: process.env.CITEGEIST_PACKAGED === "1",
     });
   return createSettingsDeps({
     ...opts,

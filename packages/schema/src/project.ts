@@ -18,7 +18,7 @@ export const ProjectFrontmatter = z.object({
   /** CSL style id, e.g. "apa", "chicago-author-date", "deutsche-gesellschaft-fur-psychologie". */
   style: z.string().default("apa"),
   locale: z.string().default("de-DE"),
-  /** D9: language of AI texts in this project; items may override it. */
+  /** Language of AI texts in this project; items may override it. */
   ai_language: Language.optional(),
   export: ExportPolicy.default({ paraphrase: "own-else-ai", labelAi: false }),
   created: Stamp,

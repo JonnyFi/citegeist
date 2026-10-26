@@ -80,7 +80,7 @@ async function start(chat = false): Promise<{ server: CoreServer; client: Client
     },
     webhooks: {
       secrets: new InMemoryKeychain(),
-      publicBaseUrl: "https://mac.tail1234.ts.net",
+      publicBaseUrl: "https://mac.example.ts.net",
       hooksPort: 0,
       retryDelaysMs: [],
     },
@@ -221,7 +221,7 @@ describe("webhooks in the core server", () => {
             method: "POST",
             headers: {
               ...headers,
-              host: "mac.tail1234.ts.net",
+              host: "mac.example.ts.net",
               "content-type": "application/json",
               "content-length": Buffer.byteLength(body),
             },
@@ -294,7 +294,7 @@ describe("webhooks in the core server", () => {
       event: "task.request",
       task: job,
       prompt: "Find recent work on array programming",
-      callback: { url: "https://mac.tail1234.ts.net/hooks/grok", event: "task.result" },
+      callback: { url: "https://mac.example.ts.net/hooks/grok", event: "task.result" },
     });
 
     // until the callback, the job is a research job that waits

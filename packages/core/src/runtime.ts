@@ -99,7 +99,7 @@ export interface Runtime {
   settings: SettingsService;
   /** Tokens, cache hits and list-price cost of AI calls and agent turns (machine-local). */
   usage: UsageLedger;
-  /** Versioning and sync of the library folder (D5, A9). */
+  /** Versioning and sync of the library folder (docs/decisions/0005-sync-and-versioning.md). */
   sync: SyncService;
   /** Citation graph, snowballing and retraction checks. */
   graph: GraphService;

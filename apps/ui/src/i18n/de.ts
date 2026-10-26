@@ -2,16 +2,18 @@ import { alertsDe } from "../alerts/strings";
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { litsearchDe } from "../litsearch/strings";
+import { onboardingDe } from "../onboarding/strings";
 import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
+import { metadataDe } from "./metadata";
 import { relatedDe } from "./related";
 
 /**
- * German strings, the default language of the UI. `en.ts` must define the same keys. Keys with a
+ * German strings. `en.ts` must define the same keys. Keys with a
  * `.one` and a `.other` variant are plurals, used through `tn(base, count)`.
  */
 export const de = {
@@ -72,9 +74,6 @@ export const de = {
   "items.loading": "Quellen werden geladen",
   "items.noMatch": "Keine Quelle passt zu diesen Filtern",
   "items.clearFilters": "Filter zurücksetzen",
-  "items.emptyTitle": "Deine Bibliothek ist leer",
-  "items.emptyDescription":
-    "Ziehe ein PDF ins Fenster, füge eine DOI ein oder teile einen arXiv-Link, um das erste Paper hinzuzufügen.",
   "items.loadMore": "Mehr laden",
   "items.count.one": "{n} Quelle",
   "items.count.other": "{n} Quellen",
@@ -467,11 +466,14 @@ export const de = {
   ...importDe,
   ...manageDe,
   ...relatedDe,
+  ...metadataDe,
   ...matrixDe,
   ...conceptsDe,
   ...litsearchDe,
+  ...onboardingDe,
   ...textsDe,
   "agent.tab": "Agent",
+  "aside.resize": "Breite der rechten Spalte",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",
   "rail.expand": "Leiste ausklappen",

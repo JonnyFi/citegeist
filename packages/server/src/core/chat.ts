@@ -44,7 +44,7 @@ export function chatBackendFromRouting(
  * for another and nothing outside a session knows it. A token lives as long as the agent it was
  * handed to: the chat service revokes it when that agent is closed, replaced or has crashed, and a
  * research job ends its session when it is done. Research tokens never allow local files (M4), change nothing but the inbox (`add_item`) and
- * open no address outside the scholarly hosts (W5.1).
+ * open no address outside the scholarly hosts.
  *
  * Research jobs run on `research`, a port of the shared job kind "research" (webhook tasks use the
  * same kind). Without one, the chat registers the kind on the runtime's queue itself.
@@ -66,7 +66,7 @@ export async function startChat(
       token = generateToken();
       bySession.set(session, token);
       // A research job reads untrusted web pages: its token is the research scope (the read tools
-      // and add_item, no local files, no addresses outside the scholarly hosts; W5.1, L9).
+      // and add_item, no local files, no addresses outside the scholarly hosts).
       tokens.push(
         mode === "research"
           ? { token, scope: "research", localFiles: false }

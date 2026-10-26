@@ -5,7 +5,7 @@ import { Library, TextsService } from "@citegeist/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { diffSnapshots, revertEdits, SnapshotCache } from "./journal.js";
 
-/** Texts are Markdown under projects/<slug>/texts/, so the turn journal covers them (D12, D20). */
+/** Texts are Markdown under projects/<slug>/texts/, so the turn journal covers them. */
 
 const dirs: string[] = [];
 const libs: Library[] = [];

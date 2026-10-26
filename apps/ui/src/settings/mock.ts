@@ -54,7 +54,11 @@ export function createSyncMockState(over: Partial<SyncMockState> = {}): SyncMock
 }
 
 /** A conflict between two versions of one note, for the mock and for tests. */
-export function mockConflict(path: string, over: Partial<Conflict> = {}): Conflict {
+export function mockConflict(
+  path: string,
+  over: Partial<Conflict> = {},
+  lang: "de" | "en" = "de",
+): Conflict {
   const stem = path.replace(/\.md$/, "");
   return {
     path,
@@ -62,7 +66,10 @@ export function mockConflict(path: string, over: Partial<Conflict> = {}): Confli
     a: { path, size: 1204, modified: "2026-10-23T18:02:00.000Z" },
     b: { path: `${stem} 2.md`, size: 1311, modified: "2026-10-24T08:41:00.000Z" },
     identical: false,
-    diff: "@@ -3,2 +3,3 @@\n Autopoiesis meint Selbsterzeugung.\n-Luhmann übernimmt den Begriff von Maturana.\n+Luhmann übernimmt den Begriff von Maturana und Varela.\n+Er löst ihn von der Biologie.",
+    diff:
+      lang === "en"
+        ? "@@ -3,2 +3,3 @@\n Autopoiesis means self-production.\n-Luhmann takes the concept from Maturana.\n+Luhmann takes the concept from Maturana and Varela.\n+He detaches it from biology."
+        : "@@ -3,2 +3,3 @@\n Autopoiesis meint Selbsterzeugung.\n-Luhmann übernimmt den Begriff von Maturana.\n+Luhmann übernimmt den Begriff von Maturana und Varela.\n+Er löst ihn von der Biologie.",
     ...over,
   };
 }

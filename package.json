@@ -16,11 +16,13 @@
     "test": "turbo run test",
     "eval:retrieval": "pnpm --filter @citegeist/core --silent eval:retrieval",
     "test:convert": "uv run --directory workers/convert pytest",
+    "check:licenses": "node scripts/check-licenses.mjs",
     "test:research": "uv run --directory workers/research pytest",
-    "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest && uv run --directory workers/research pytest",
+    "verify": "biome check . && turbo run typecheck test && uv run --directory workers/convert pytest && uv run --directory workers/research pytest && node scripts/check-licenses.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "app:update": "sh scripts/update-app.sh",
-    "release": "sh scripts/release.sh"
+    "release": "sh scripts/release.sh",
+    "secrets": "sh scripts/secrets.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

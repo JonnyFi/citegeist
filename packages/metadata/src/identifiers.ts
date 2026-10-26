@@ -257,6 +257,18 @@ function detectUrl(raw: string): Identifier | undefined {
     if (m?.[1]) return { kind: "doi", value: `10.1038/${m[1].toLowerCase()}`, raw, via: "url" };
   }
 
+  // SSRN serves a bot challenge to unknown clients, but its DOI follows from the paper number.
+  if (host === "ssrn.com" || host.endsWith(".ssrn.com")) {
+    const number =
+      url.searchParams.get("abstract_id") ??
+      url.searchParams.get("abstractid") ??
+      /\/abstract=(\d+)/i.exec(path)?.[1] ??
+      /SSRN_ID(\d+)/i.exec(path)?.[1];
+    if (number && /^\d{3,9}$/.test(number)) {
+      return { kind: "doi", value: `10.2139/ssrn.${Number(number)}`, raw, via: "url" };
+    }
+  }
+
   const embedded = /10\.\d{4,9}\/[^\s"'<>?#&]+/i.exec(path + url.search);
   if (embedded) {
     const doi = normalizeDoi(embedded[0].replace(/\.pdf$/i, ""));

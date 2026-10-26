@@ -2,7 +2,7 @@ import { JobId, ProjectSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Importers (W4.1 Zotero, W4.2 BibTeX, RIS, CSL-JSON). Both operations take the same input. The
+// Importers (Zotero, BibTeX, RIS, CSL-JSON; docs/decisions/0003-importers.md). Both operations take the same input. The
 // preview reads the source and reports what a run would do, without writing anything.
 
 /** Port of the Zotero local API unless the user picks another one. */

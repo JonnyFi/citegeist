@@ -9,7 +9,7 @@ import {
 const BASE: AgentMessageInput = {
   name: "phd-bot",
   kind: "both",
-  publicUrl: "https://mac.tailnet.ts.net",
+  publicUrl: "https://mac.example.ts.net",
   hasInboundToken: false,
 };
 
@@ -32,7 +32,7 @@ describe("buildAgentMessage", () => {
     const out = text({ kind: "outbound", mcpScope: "write", mcpToken: "whmcp_abc" });
     expect(out).toContain("custom MCP server");
     expect(out).toContain("Name: citegeist");
-    expect(out).toContain("URL: https://mac.tailnet.ts.net/mcp");
+    expect(out).toContain("URL: https://mac.example.ts.net/mcp");
     expect(out).toContain("Header-Name: Authorization");
     expect(out).toContain("Header-Wert: Bearer whmcp_abc");
     expect(out).toContain("Einträge anlegen");
@@ -46,9 +46,9 @@ describe("buildAgentMessage", () => {
   });
 
   it("strips a trailing slash from the public address", () => {
-    expect(text({ kind: "outbound", mcpScope: "read", publicUrl: "https://x.ts.net/" })).toContain(
-      "URL: https://x.ts.net/mcp\n",
-    );
+    expect(
+      text({ kind: "outbound", mcpScope: "read", publicUrl: "https://mac.example.ts.net/" }),
+    ).toContain("URL: https://mac.example.ts.net/mcp\n");
   });
 
   it("uses a placeholder for a token that is not known any more", () => {
@@ -94,7 +94,7 @@ describe("buildAgentMessage", () => {
     expect(out).toContain('"status":"failed","error"');
     expect(out).toContain("papers.add");
     expect(out).toContain("note.add");
-    expect(out).toContain("https://mac.tailnet.ts.net/hooks/phd-bot");
+    expect(out).toContain("https://mac.example.ts.net/hooks/phd-bot");
     expect(out).toContain("denselben Headern wie oben");
   });
 
@@ -102,7 +102,7 @@ describe("buildAgentMessage", () => {
     const out = text({ kind: "inbound", hasInboundToken: true, inboundToken: "whtok_9" });
     expect(out).not.toContain("task.request");
     expect(out).not.toContain("task.result");
-    expect(out).toContain("POST an https://mac.tailnet.ts.net/hooks/phd-bot.");
+    expect(out).toContain("POST an https://mac.example.ts.net/hooks/phd-bot.");
     expect(out).toContain("Authorization: Bearer whtok_9");
     expect(out).toContain("papers.add");
   });
@@ -126,5 +126,14 @@ describe("buildAgentMessage", () => {
   it("contains no em dash", () => {
     const out = text({ mcpScope: "write", hasInboundToken: true });
     expect(out).not.toContain(String.fromCharCode(0x2014));
+  });
+
+  it("writes the message in English when asked to", () => {
+    const out = text({ kind: "both", mcpScope: "write", mcpToken: "whmcp_abc", lang: "en" });
+    expect(out).toContain("Header value: Bearer whmcp_abc");
+    expect(out).toContain("You can search the library, read it and create entries.");
+    expect(out).toContain("Answer every task with a POST");
+    expect(out).not.toContain("Header-Wert");
+    expect(out).not.toContain("Auftrag");
   });
 });

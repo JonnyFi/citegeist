@@ -16,6 +16,28 @@ describe("item view", () => {
     expect(screen.getByText("Advances in Neural Information Processing Systems 33")).toBeVisible();
   });
 
+  it("links an http address and shows any other address as plain text", async () => {
+    const data = createFixtures();
+    const item = data.items.get("latour2005reassembling");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      URL: "javascript:alert(document.domain)",
+    });
+    const { unmount } = renderApp("/items/latour2005reassembling", data);
+    const text = await screen.findByText("javascript:alert(document.domain)");
+    expect(text.closest("a")).toBeNull();
+    unmount();
+
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      URL: "https://example.org/reassembling",
+    });
+    renderApp("/items/latour2005reassembling", data);
+    const link = await screen.findByRole("link", { name: /example\.org\/reassembling/ });
+    expect(link).toHaveAttribute("href", "https://example.org/reassembling");
+  });
+
   it("tells the reader that an import did not finish and why", async () => {
     const data = createFixtures();
     const item = data.items.get("latour2005reassembling");

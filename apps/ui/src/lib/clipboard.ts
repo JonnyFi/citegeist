@@ -1,6 +1,6 @@
 /**
  * Puts a citation on the clipboard as HTML and plain text together, so a word processor pastes the
- * formatted version and a code editor the plain one (D2). Falls back to plain text alone.
+ * formatted version and a code editor the plain one. Falls back to plain text alone.
  */
 export async function copyRich(payload: {
   html?: string | undefined;

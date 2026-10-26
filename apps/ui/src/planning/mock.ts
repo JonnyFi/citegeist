@@ -14,7 +14,10 @@ import {
   type Registry,
 } from "@citegeist/ops";
 import type { NodeStatus, OutlineNode, PlanTemplate } from "@citegeist/schema";
+import type { Lang } from "../i18n";
 import type { CoreEvent } from "../lib/core";
+import { classifyIdentifier } from "../lib/identifier";
+import { suggestMockCitekey } from "../mock/citekey";
 import type { MockData } from "../mock/fixtures";
 import { linkTargets, parseInsights } from "./insights";
 import { childrenOf, normalizeOrder, numberNodes, slugify, subtreeIds } from "./outline";
@@ -33,6 +36,8 @@ export interface MockPlan {
 }
 
 export interface PlanStore {
+  /** Language of the texts the mock writes: summaries, reasons and the templates. */
+  lang: Lang;
   /** Plans by project slug, in creation order. */
   plans: Map<string, MockPlan[]>;
   /** Text of `projects/<project>/insights.md`. */
@@ -70,6 +75,59 @@ interface TemplateNode {
   children?: Array<{ title: string; purpose: string }>;
 }
 
+const TEMPLATES_EN: Record<PlanTemplate, TemplateNode[]> = {
+  expose: [
+    {
+      title: "Introduction",
+      purpose: "Presents the problem and its relevance.",
+      children: [
+        { title: "Problem statement", purpose: "Names the gap the project responds to." },
+        { title: "Research questions", purpose: "States the questions that guide the project." },
+      ],
+    },
+    { title: "State of research", purpose: "Places the project in the existing literature." },
+    { title: "Theoretical framework", purpose: "Fixes the concepts the work uses." },
+    { title: "Method", purpose: "Describes material, procedure and analysis." },
+    { title: "Timeline", purpose: "Spreads the work steps over the available time." },
+  ],
+  imrad: [
+    { title: "Introduction", purpose: "Presents background, gap and research question." },
+    { title: "Methods", purpose: "Describes data and procedure so that others can repeat it." },
+    { title: "Results", purpose: "Reports what was found, without interpreting it." },
+    { title: "Discussion", purpose: "Interprets the results and names their limits." },
+  ],
+};
+
+/** Texts the mock writes itself, by language. */
+const TX = {
+  de: {
+    insightsHeading: "# Einsichten\n",
+    notedProject: "Notiert in den Einsichten des Projekts",
+    notedPlan: (title: string) => `Notiert im Planungsdokument ${title}`,
+    notedNode: (number: string, title: string) => `Notiert in ${number}, ${title}`,
+    whyInNode: (number: string | undefined) => `Im Dokument von ${number} oder mit Link darauf`,
+    whyShared: (n: number) => `${n} gemeinsame Links`,
+    whyQuery: "Text ähnlich der Suche",
+    whyProject: "Einsicht des Projekts",
+    planDoc: "Planungsdokument",
+    projectInsights: "Einsichten des Projekts",
+    abstractOf: (title: string) => `Zusammenfassung von ${title}.`,
+  },
+  en: {
+    insightsHeading: "# Insights\n",
+    notedProject: "Noted in the project's insights",
+    notedPlan: (title: string) => `Noted in the planning document ${title}`,
+    notedNode: (number: string, title: string) => `Noted in ${number}, ${title}`,
+    whyInNode: (number: string | undefined) => `In the document of ${number} or linked to it`,
+    whyShared: (n: number) => `${n} shared links`,
+    whyQuery: "Text similar to the search",
+    whyProject: "Insight of the project",
+    planDoc: "Planning document",
+    projectInsights: "Project insights",
+    abstractOf: (title: string) => `Summary of ${title}.`,
+  },
+} as const;
+
 const TEMPLATES: Record<PlanTemplate, TemplateNode[]> = {
   expose: [
     {
@@ -99,13 +157,16 @@ const TEMPLATES: Record<PlanTemplate, TemplateNode[]> = {
   ],
 };
 
-function fromTemplate(template: PlanTemplate): {
+function fromTemplate(
+  template: PlanTemplate,
+  lang: Lang,
+): {
   nodes: OutlineNode[];
   files: Map<string, string>;
 } {
   const nodes: OutlineNode[] = [];
   const files = new Map<string, string>();
-  TEMPLATES[template].forEach((chapter, i) => {
+  (lang === "en" ? TEMPLATES_EN : TEMPLATES)[template].forEach((chapter, i) => {
     const id = `k_${random(10)}`;
     nodes.push({
       id,
@@ -144,7 +205,7 @@ export function docPath(project: string, plan: MockPlan, key: string): string {
 }
 
 function seed(data: MockData): PlanStore {
-  const store: PlanStore = { plans: new Map(), insights: new Map() };
+  const store: PlanStore = { lang: data.lang, plans: new Map(), insights: new Map() };
   if (!data.projects.has("phd-proposal")) return store;
 
   const k = {
@@ -176,98 +237,205 @@ function seed(data: MockData): PlanStore {
   });
   const card = data.cards[0]?.frontmatter.id ?? "c_01JB8Z3Q00";
 
-  const proposal: MockPlan = {
-    slug: "expose",
-    title: "Exposé",
-    template: "expose",
-    created: "2026-10-12T09:00:00.000Z",
-    nodes: [
-      node(k.intro, "Einleitung", null, 1, "solid", "Stellt Problem und Relevanz vor.", ["q1"]),
-      node(k.problem, "Problemstellung", k.intro, 1, "draft"),
-      node(k.questions, "Forschungsfragen", k.intro, 2, "draft", undefined, ["q1", "q2"]),
-      node(
-        k.luhmann,
-        "Luhmanns Kommunikationsbegriff",
-        null,
-        2,
-        "draft",
-        "Führt den Begriff ein, auf dem Kapitel 3 aufbaut.",
-        ["q1"],
-      ),
-      node(k.anschluss, "Anschlusskommunikation", k.luhmann, 1, "idea"),
-      node(
-        k.autopoiesis,
-        "Autopoiesis",
-        k.luhmann,
-        2,
-        "draft",
-        "Klärt, was Selbstreferenz hier meint.",
-        ["q2"],
-      ),
-      node(
-        k.platforms,
-        "Plattformen als soziale Systeme",
-        null,
-        3,
-        "idea",
-        "Wendet den Begriff auf Plattformen an.",
-        ["q1"],
-      ),
-      node(k.method, "Methodik", null, 4, "idea"),
-    ],
-    files: new Map([
-      [k.intro, "einleitung"],
-      [k.luhmann, "kommunikationsbegriff"],
-      [k.autopoiesis, "autopoiesis"],
-      [k.platforms, "plattformen"],
-      [k.method, "methodik"],
-    ]),
-    docs: new Map([
-      [
-        "plan",
-        "# Exposé\n\nDas Exposé führt von Luhmanns Kommunikationsbegriff zu Plattformen.\n\n2026-10-20: Kapitel 2 und 3 teilen sich die Frage, ob Rankings Anschlusskommunikation sind. ^i-01JC5Q2M8T",
+  const seedGerman = (): { plans: MockPlan[]; insights: string } => {
+    const proposal: MockPlan = {
+      slug: "expose",
+      title: "Exposé",
+      template: "expose",
+      created: "2026-10-12T09:00:00.000Z",
+      nodes: [
+        node(k.intro, "Einleitung", null, 1, "solid", "Stellt Problem und Relevanz vor.", ["q1"]),
+        node(k.problem, "Problemstellung", k.intro, 1, "draft"),
+        node(k.questions, "Forschungsfragen", k.intro, 2, "draft", undefined, ["q1", "q2"]),
+        node(
+          k.luhmann,
+          "Luhmanns Kommunikationsbegriff",
+          null,
+          2,
+          "draft",
+          "Führt den Begriff ein, auf dem Kapitel 3 aufbaut.",
+          ["q1"],
+        ),
+        node(k.anschluss, "Anschlusskommunikation", k.luhmann, 1, "idea"),
+        node(
+          k.autopoiesis,
+          "Autopoiesis",
+          k.luhmann,
+          2,
+          "draft",
+          "Klärt, was Selbstreferenz hier meint.",
+          ["q2"],
+        ),
+        node(
+          k.platforms,
+          "Plattformen als soziale Systeme",
+          null,
+          3,
+          "idea",
+          "Wendet den Begriff auf Plattformen an.",
+          ["q1"],
+        ),
+        node(k.method, "Methodik", null, 4, "idea"),
       ],
-      [k.intro, "Die Einleitung stellt die Frage vor, siehe [[habermas1981theorie]].\n"],
-      [
-        k.luhmann,
-        `Kommunikation ist das Element sozialer Systeme, siehe [[luhmann1984soziale]] und die Karte [[${card}]].\n\n2026-10-18: Die Anschlussfähigkeit ist das, was [[${k.anschluss}]] von bloßer Mitteilung trennt. ^i-01JC5Q2M9A\n\n2026-10-21: Selbstreferenz in [[luhmann1984soziale]] und [[latour2005reassembling]] meint nicht dasselbe. ^i-01JC5Q2MAB`,
-      ],
-      [
-        k.autopoiesis,
-        "Autopoiesis stammt aus der Biologie, [[luhmann1984soziale]] überträgt sie auf Kommunikation.\n",
-      ],
-      [k.platforms, ""],
-      [k.method, ""],
-    ]),
-  };
+      files: new Map([
+        [k.intro, "einleitung"],
+        [k.luhmann, "kommunikationsbegriff"],
+        [k.autopoiesis, "autopoiesis"],
+        [k.platforms, "plattformen"],
+        [k.method, "methodik"],
+      ]),
+      docs: new Map([
+        [
+          "plan",
+          "# Exposé\n\nDas Exposé führt von Luhmanns Kommunikationsbegriff zu Plattformen.\n\n2026-10-20: Kapitel 2 und 3 teilen sich die Frage, ob Rankings Anschlusskommunikation sind. ^i-01JC5Q2M8T",
+        ],
+        [k.intro, "Die Einleitung stellt die Frage vor, siehe [[habermas1981theorie]].\n"],
+        [
+          k.luhmann,
+          `Kommunikation ist das Element sozialer Systeme, siehe [[luhmann1984soziale]] und die Karte [[${card}]].\n\n2026-10-18: Die Anschlussfähigkeit ist das, was [[${k.anschluss}]] von bloßer Mitteilung trennt. ^i-01JC5Q2M9A\n\n2026-10-21: Selbstreferenz in [[luhmann1984soziale]] und [[latour2005reassembling]] meint nicht dasselbe. ^i-01JC5Q2MAB`,
+        ],
+        [
+          k.autopoiesis,
+          "Autopoiesis stammt aus der Biologie, [[luhmann1984soziale]] überträgt sie auf Kommunikation.\n",
+        ],
+        [k.platforms, ""],
+        [k.method, ""],
+      ]),
+    };
 
-  const m = (id: string, title: string, parent: string | null, order: number): OutlineNode =>
-    node(id, title, parent, order, "idea");
-  const paper: MockPlan = {
-    slug: "paper-plattformen",
-    title: "Paper Plattformen",
-    template: "imrad",
-    created: "2026-10-15T09:00:00.000Z",
-    nodes: [
-      m("k_01JC9PAPER1", "Einleitung", null, 1),
-      m("k_01JC9PAPER2", "Methoden", null, 2),
-      m("k_01JC9PAPER3", "Ergebnisse", null, 3),
-      m("k_01JC9PAPER4", "Diskussion", null, 4),
-    ],
-    files: new Map([
-      ["k_01JC9PAPER1", "einleitung"],
-      ["k_01JC9PAPER2", "methoden"],
-      ["k_01JC9PAPER3", "ergebnisse"],
-      ["k_01JC9PAPER4", "diskussion"],
-    ]),
-    docs: new Map([["plan", "# Paper Plattformen\n"]]),
-  };
+    const m = (id: string, title: string, parent: string | null, order: number): OutlineNode =>
+      node(id, title, parent, order, "idea");
+    const paper: MockPlan = {
+      slug: "paper-plattformen",
+      title: "Paper Plattformen",
+      template: "imrad",
+      created: "2026-10-15T09:00:00.000Z",
+      nodes: [
+        m("k_01JC9PAPER1", "Einleitung", null, 1),
+        m("k_01JC9PAPER2", "Methoden", null, 2),
+        m("k_01JC9PAPER3", "Ergebnisse", null, 3),
+        m("k_01JC9PAPER4", "Diskussion", null, 4),
+      ],
+      files: new Map([
+        ["k_01JC9PAPER1", "einleitung"],
+        ["k_01JC9PAPER2", "methoden"],
+        ["k_01JC9PAPER3", "ergebnisse"],
+        ["k_01JC9PAPER4", "diskussion"],
+      ]),
+      docs: new Map([["plan", "# Paper Plattformen\n"]]),
+    };
 
-  store.plans.set("phd-proposal", [proposal, paper]);
-  store.insights.set(
-    "phd-proposal",
-    "# Einsichten\n\n2026-10-22: Gillespies Feedbackschleife bei Rankings ist ein Fall von Anschlusskommunikation im Sinne von [[luhmann1984soziale]]. ^i-01JC5Q2MBC\n",
-  );
+    return {
+      plans: [proposal, paper],
+      insights:
+        "# Einsichten\n\n2026-10-22: Gillespies Feedbackschleife bei Rankings ist ein Fall von Anschlusskommunikation im Sinne von [[luhmann1984soziale]]. ^i-01JC5Q2MBC\n",
+    };
+  };
+  const seedEnglish = (): { plans: MockPlan[]; insights: string } => {
+    const proposal: MockPlan = {
+      slug: "expose",
+      title: "Proposal",
+      template: "expose",
+      created: "2026-10-12T09:00:00.000Z",
+      nodes: [
+        node(
+          k.intro,
+          "Introduction",
+          null,
+          1,
+          "solid",
+          "Introduces the problem and its relevance.",
+          ["q1"],
+        ),
+        node(k.problem, "Problem statement", k.intro, 1, "draft"),
+        node(k.questions, "Research questions", k.intro, 2, "draft", undefined, ["q1", "q2"]),
+        node(
+          k.luhmann,
+          "Luhmann's concept of communication",
+          null,
+          2,
+          "draft",
+          "Introduces the concept that chapter 3 builds on.",
+          ["q1"],
+        ),
+        node(k.anschluss, "Connecting communication", k.luhmann, 1, "idea"),
+        node(
+          k.autopoiesis,
+          "Autopoiesis",
+          k.luhmann,
+          2,
+          "draft",
+          "Clarifies what self-reference means here.",
+          ["q2"],
+        ),
+        node(
+          k.platforms,
+          "Platforms as social systems",
+          null,
+          3,
+          "idea",
+          "Applies the concept to platforms.",
+          ["q1"],
+        ),
+        node(k.method, "Method", null, 4, "idea"),
+      ],
+      files: new Map([
+        [k.intro, "introduction"],
+        [k.luhmann, "communication-concept"],
+        [k.autopoiesis, "autopoiesis"],
+        [k.platforms, "platforms"],
+        [k.method, "method"],
+      ]),
+      docs: new Map([
+        [
+          "plan",
+          "# Proposal\n\nThe proposal leads from Luhmann's concept of communication to platforms.\n\n2026-10-20: Chapters 2 and 3 share the question of whether rankings are connecting communication. ^i-01JC5Q2M8T",
+        ],
+        [k.intro, "The introduction presents the question, see [[habermas1981theorie]].\n"],
+        [
+          k.luhmann,
+          `Communication is the element of social systems, see [[luhmann1984soziale]] and the card [[${card}]].\n\n2026-10-18: Connectivity is what separates [[${k.anschluss}]] from a mere utterance. ^i-01JC5Q2M9A\n\n2026-10-21: Self-reference in [[luhmann1984soziale]] and [[latour2005reassembling]] does not mean the same thing. ^i-01JC5Q2MAB`,
+        ],
+        [
+          k.autopoiesis,
+          "Autopoiesis comes from biology, and [[luhmann1984soziale]] transfers it to communication.\n",
+        ],
+        [k.platforms, ""],
+        [k.method, ""],
+      ]),
+    };
+
+    const m = (id: string, title: string, parent: string | null, order: number): OutlineNode =>
+      node(id, title, parent, order, "idea");
+    const paper: MockPlan = {
+      slug: "paper-platforms",
+      title: "Platforms paper",
+      template: "imrad",
+      created: "2026-10-15T09:00:00.000Z",
+      nodes: [
+        m("k_01JC9PAPER1", "Introduction", null, 1),
+        m("k_01JC9PAPER2", "Methods", null, 2),
+        m("k_01JC9PAPER3", "Results", null, 3),
+        m("k_01JC9PAPER4", "Discussion", null, 4),
+      ],
+      files: new Map([
+        ["k_01JC9PAPER1", "introduction"],
+        ["k_01JC9PAPER2", "methods"],
+        ["k_01JC9PAPER3", "results"],
+        ["k_01JC9PAPER4", "discussion"],
+      ]),
+      docs: new Map([["plan", "# Platforms paper\n"]]),
+    };
+
+    return {
+      plans: [proposal, paper],
+      insights:
+        "# Insights\n\n2026-10-22: Gillespie's feedback loop in rankings is a case of connecting communication in the sense of [[luhmann1984soziale]]. ^i-01JC5Q2MBC\n",
+    };
+  };
+  const seeded = data.lang === "en" ? seedEnglish() : seedGerman();
+  store.plans.set("phd-proposal", seeded.plans);
+  store.insights.set("phd-proposal", seeded.insights);
   return store;
 }
 
@@ -357,12 +525,15 @@ export function noteInsightIn(
     body.trim() ? `${body.trimEnd()}\n\n${paragraph}\n` : `${paragraph}\n`;
 
   if (target === "project") {
-    store.insights.set(project, append(store.insights.get(project) ?? "# Einsichten\n"));
+    store.insights.set(
+      project,
+      append(store.insights.get(project) ?? TX[store.lang].insightsHeading),
+    );
     return {
       path: `projects/${project}/insights.md`,
       block,
       place: "project",
-      summary: "Notiert in den Einsichten des Projekts",
+      summary: TX[store.lang].notedProject,
     };
   }
   const plan = pickPlan(store, project, planSlug);
@@ -372,7 +543,7 @@ export function noteInsightIn(
       path: docPath(project, plan, "plan"),
       block,
       place: "plan",
-      summary: `Notiert im Planungsdokument ${plan.title}`,
+      summary: TX[store.lang].notedPlan(plan.title),
     };
   }
   const numbers = numberNodes(plan.nodes);
@@ -390,7 +561,7 @@ export function noteInsightIn(
     node: home.id,
     number: home.number,
     title: home.title,
-    summary: `Notiert in ${home.number}, ${home.title}`,
+    summary: TX[store.lang].notedNode(home.number, home.title),
   };
 }
 
@@ -479,7 +650,9 @@ export function bindPlanningMock(
           `PLAN_EXISTS: project '${input.project}' already has a plan '${input.slug}'`,
         );
       }
-      const built = input.template ? fromTemplate(input.template) : { nodes: [], files: new Map() };
+      const built = input.template
+        ? fromTemplate(input.template, store.lang)
+        : { nodes: [], files: new Map() };
       const plan: MockPlan = {
         slug: input.slug,
         title: input.title,
@@ -680,15 +853,15 @@ export function bindPlanningMock(
             ...base,
             stage: "links",
             why: inNode
-              ? `Im Dokument von ${wanted?.number} oder mit Link darauf`
-              : `${shared} gemeinsame Links`,
+              ? TX[store.lang].whyInNode(wanted?.number)
+              : TX[store.lang].whyShared(shared),
             score: (inNode ? 2 : 0) + shared,
           });
         } else if (query ? p.text.toLowerCase().includes(query) : !wanted && refs.size === 0) {
           hits.push({
             ...base,
             stage: "semantic",
-            why: query ? "Text ähnlich der Suche" : "Einsicht des Projekts",
+            why: query ? TX[store.lang].whyQuery : TX[store.lang].whyProject,
             score: 0.5,
           });
         }
@@ -712,8 +885,8 @@ export function bindPlanningMock(
           why: home
             ? `${home.number} ${home.title}`
             : p.path.endsWith("/plan.md")
-              ? "Planungsdokument"
-              : "Einsichten des Projekts",
+              ? TX[store.lang].planDoc
+              : TX[store.lang].projectInsights,
           score: 0,
         };
       });
@@ -724,13 +897,44 @@ export function bindPlanningMock(
       const item = data.items.get(input.citekey);
       if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
       const changedFields: string[] = [];
+      let suggestedCitekey: string | undefined;
+      if (input.identifier) {
+        const { kind, value } = classifyIdentifier(input.identifier);
+        if (!["doi", "arxiv", "isbn", "pmid", "url"].includes(kind)) {
+          throw new Error(
+            `INVALID_IDENTIFIER: '${input.identifier}' is not a DOI, arXiv id, ISBN, PMID or URL`,
+          );
+        }
+        const before = item.frontmatter;
+        const next: Record<string, unknown> = { ...before };
+        if (kind === "doi") next.DOI = value.replace(/^.*?(10\.)/i, "$1").toLowerCase();
+        if (kind === "isbn") next.ISBN = value.replace(/^isbn:?\s*/i, "");
+        if (kind === "url") next.URL = value;
+        if (kind === "doi" || kind === "isbn") changedFields.push(kind === "doi" ? "DOI" : "ISBN");
+        if (!before.author?.length) {
+          next.author = [{ family: "Muster", given: "Maria" }];
+          changedFields.push("author");
+        }
+        if (before.issued === undefined) {
+          next.issued = 2020;
+          changedFields.push("issued");
+        }
+        item.frontmatter = next as typeof before;
+        suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
+        changed(`items/${input.citekey}/${input.citekey}.md`);
+        return {
+          citekey: input.citekey,
+          changed: changedFields,
+          ...(suggestedCitekey ? { suggestedCitekey } : {}),
+        };
+      }
       const fm = item.frontmatter;
       if (!fm.publisher && fm.type === "book") {
         item.frontmatter = { ...fm, publisher: "Suhrkamp" };
         changedFields.push("publisher");
       }
       if (!fm.abstract) {
-        item.frontmatter = { ...item.frontmatter, abstract: `Zusammenfassung von ${fm.title}.` };
+        item.frontmatter = { ...item.frontmatter, abstract: TX[store.lang].abstractOf(fm.title) };
         changedFields.push("abstract");
       }
       if (changedFields.length > 0) changed(`items/${input.citekey}/${input.citekey}.md`);

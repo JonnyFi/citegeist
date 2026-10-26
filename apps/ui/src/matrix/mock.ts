@@ -65,7 +65,7 @@ function generate(
     by: "agent:claude-code",
     at,
     model: "claude-code:sonnet",
-    language: "de" as const,
+    language: data.lang,
     promptVersion: 1,
   };
   const doc = data.docs.get(citekey);
@@ -109,6 +109,7 @@ function generate(
   const fm = data.items.get(citekey)?.frontmatter;
   const source = fm?.sources[0]?.hash;
   if (fm?.abstract && source) {
+    const sentences = fm.abstract.split(/(?<=[.!?])\s+/);
     // the abstract stands in for a converted document in the mock
     const evidence: CellEvidence = {
       type: "block",
@@ -119,7 +120,7 @@ function generate(
     };
     return {
       status: "filled",
-      answer: firstSentence(fm.abstract),
+      answer: sentences[columnIndex % sentences.length] ?? firstSentence(fm.abstract),
       evidence: [evidence],
       provenance,
     };
@@ -142,7 +143,7 @@ function labelOf(data: MockData, citekey: string): string {
 
 function citationOf(data: MockData, citekey: string, cell: MatrixCell): string {
   const page = cell.evidence.find((e) => e.page)?.page;
-  return `${labelOf(data, citekey)}${page ? `, S. ${page}` : ""}`;
+  return `${labelOf(data, citekey)}${page ? `, ${data.lang === "en" ? "p." : "S."} ${page}` : ""}`;
 }
 
 const mdCell = (text: string) => text.replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ");
@@ -157,14 +158,15 @@ export function exportMatrix(data: MockData, m: Matrix, format: "markdown" | "cs
     });
     return { head: labelOf(data, citekey), cells };
   });
+  const sourceHead = data.lang === "en" ? "Source" : "Quelle";
   if (format === "csv") {
     const lines = [
-      ["Quelle", ...m.columns.map((c) => c.name)],
+      [sourceHead, ...m.columns.map((c) => c.name)],
       ...rows.map((r) => [r.head, ...r.cells]),
     ];
     return `${lines.map((l) => l.map(csvCell).join(",")).join("\n")}\n`;
   }
-  const head = `| Quelle | ${m.columns.map((c) => mdCell(c.name)).join(" | ")} |`;
+  const head = `| ${sourceHead} | ${m.columns.map((c) => mdCell(c.name)).join(" | ")} |`;
   const rule = `| --- | ${m.columns.map(() => "---").join(" | ")} |`;
   const body = rows.map((r) => `| ${mdCell(r.head)} | ${r.cells.map(mdCell).join(" | ")} |`);
   return `${[head, rule, ...body].join("\n")}\n`;

@@ -1,12 +1,13 @@
 import { settingsGet, settingsUpdate } from "@citegeist/ops";
 import { Library } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { CitegeistBridge } from "../bridge";
 import { Button } from "../components/ui/button";
 import { Segmented } from "../components/ui/segmented";
 import { ErrorState, Loading } from "../components/ui/states";
 import { type Lang, useI18n } from "../i18n";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
+import { BackendHelp } from "./help";
 import { BackendRow, useBackendTests, WorkerPanel } from "./parts";
 
 const DONE_KEY = "citegeist.onboarding";
@@ -61,7 +62,7 @@ function Frame({
               {t("onb.step", { n: STEPS.indexOf(step) + 1, total: STEPS.length })}
             </p>
           </div>
-          <Segmented<Lang> label="Language" value={lang} options={LANGS} onChange={onLang} />
+          <Segmented<Lang> label={t("lang.label")} value={lang} options={LANGS} onChange={onLang} />
         </div>
         <h2 className="font-serif text-lg font-semibold">{t(`onb.step.${step}`)}</h2>
         {children}
@@ -122,7 +123,10 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const query = useOp(settingsGet, {});
   const update = useOpMutation(settingsUpdate);
   const { tests, run } = useBackendTests();
-  const [step, setStep] = useState<Step>("backend");
+  // The step is picked once, from the first answer: the backend, or the worker when the chosen
+  // backend works already. Choosing a backend later must not move the person on by itself.
+  const [step, setStep] = useState<Step | undefined>(undefined);
+  const firstStep = useRef<Step | undefined>(undefined);
 
   const onLang = (next: Lang) => {
     setLang(next);
@@ -134,10 +138,14 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const { settings, backends, worker } = query.data;
   const selected = settings.ai.routing["*"];
   const selectedOk = selected !== undefined && tests[selected]?.status === "ok";
+  const anyBackend = backends.some((b) => b.available);
+  const routedOk = backends.some((b) => b.id === selected && b.available);
+  firstStep.current ??= routedOk ? "worker" : "backend";
+  const current: Step = step ?? firstStep.current;
 
   return (
-    <Frame onLang={onLang} step={step}>
-      {step === "backend" ? (
+    <Frame onLang={onLang} step={current}>
+      {current === "backend" ? (
         <>
           <p>{t("onb.backend.desc")}</p>
           <ul className="flex flex-col gap-2">
@@ -148,6 +156,15 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
                 test={tests[b.id]}
                 onTest={() => void run(b.id)}
                 selected={selected === b.id}
+                keyStored={settings.ai.apiKeys[b.id] === true}
+                onSaveKey={(key) =>
+                  update.mutateAsync({ patch: {}, apiKey: { provider: b.id, key } })
+                }
+                onRemoveKey={() =>
+                  update.mutateAsync({
+                    patch: { ai: { routing: settings.ai.routing, apiKeys: { [b.id]: false } } },
+                  })
+                }
                 onSelect={() =>
                   void update.mutateAsync({
                     patch: { ai: { routing: { ...settings.ai.routing, "*": b.id } } },
@@ -156,6 +173,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
               />
             ))}
           </ul>
+          {anyBackend ? null : <BackendHelp />}
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => void query.refetch()}>
               {t("backend.recheck")}
@@ -189,8 +207,8 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
 }
 
 /**
- * Wraps the routed app. The backend and worker steps show while no AI backend works and the setup
- * was not finished or skipped before. The decision is made once per start, from the first answer
+ * Wraps the routed app. The backend and worker steps show while no AI backend works or the worker
+ * is not ready, and the setup was not finished or skipped before. The decision is made once per start, from the first answer
  * of `settings.get`, so the flow does not vanish when the user's own test makes a backend work.
  * The mock core (browser preview) skips the setup unless `force` is set.
  */
@@ -209,8 +227,9 @@ export function OnboardingGate({
 
   useEffect(() => {
     if (skip || needed !== undefined) return;
-    if (settings.data) setNeeded(!settings.data.backends.some((b) => b.available));
-    else if (settings.isError) setNeeded(false);
+    if (settings.data) {
+      setNeeded(!settings.data.backends.some((b) => b.available) || !settings.data.worker.ready);
+    } else if (settings.isError) setNeeded(false);
   }, [skip, needed, settings.data, settings.isError]);
 
   if (skip) return children;

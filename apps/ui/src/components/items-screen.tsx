@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
 import { AddField } from "./add-field";
+import { FirstSteps } from "./first-steps";
 import { ItemsTable } from "./items-table";
 import { HeaderSlot, SubBar } from "./layout";
 import { Button } from "./ui/button";
@@ -124,11 +125,7 @@ export function ItemsScreen({
               }
             />
           ) : (
-            <EmptyState
-              icon={<BookOpen />}
-              title={t("items.emptyTitle")}
-              description={t("items.emptyDescription")}
-            />
+            <FirstSteps />
           )
         ) : (
           <>

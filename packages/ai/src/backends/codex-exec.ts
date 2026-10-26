@@ -56,7 +56,7 @@ export function codexUsage(stdout: string): AiUsage | undefined {
 
 /**
  * `codex exec --output-schema --ephemeral`, fresh process per call. Flags are the ones written in
- * spikes/s2/codex.mjs; that script was never run against a logged-in Codex, so this backend is
+ * the internal S2 spike script; that script was never run against a logged-in Codex, so this backend is
  * covered by recorded-output tests only.
  */
 export class CodexExecBackend implements InferenceBackend {

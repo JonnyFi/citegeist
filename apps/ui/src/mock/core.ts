@@ -13,6 +13,7 @@ import {
   itemsAttach,
   itemsGet,
   itemsList,
+  itemsRename,
   itemsRestore,
   itemsTrash,
   itemsUpdate,
@@ -30,6 +31,7 @@ import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
 import { bindChatMock } from "../chat/mock";
 import { bindConceptsMock } from "../concepts/mock";
 import { bindConnectionsMock } from "../connections/mock";
+import type { Lang } from "../i18n";
 import { bindImportMock, createImportMockState, type ImportMockJobs } from "../import/mock";
 import { type Core, type CoreEvent, coreFromLink } from "../lib/core";
 import { classifyIdentifier } from "../lib/identifier";
@@ -47,6 +49,7 @@ import {
   mockConflict,
 } from "../settings/mock";
 import { bindTextsMock } from "../texts/mock";
+import { suggestMockCitekey } from "./citekey";
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
@@ -117,9 +120,13 @@ function surname(fm: ItemFrontmatter): string {
   return "family" in first ? first.family : first.literal;
 }
 
-function citationLabel(fm: ItemFrontmatter, locator: string | undefined): string {
+function citationLabel(
+  fm: ItemFrontmatter,
+  locator: string | undefined,
+  lang: Lang = "de",
+): string {
   const year = fm.issued !== undefined ? ` ${String(fm.issued).slice(0, 4)}` : "";
-  return `${surname(fm)}${year}${locator ? `, S. ${locator}` : ""}`;
+  return `${surname(fm)}${year}${locator ? `, ${lang === "en" ? "p." : "S."} ${locator}` : ""}`;
 }
 
 function firstSentence(text: string): string {
@@ -253,7 +260,11 @@ export function createMockRegistry(
       cards: data.cards.length,
       notes: 0,
       problems: [],
-      defaults: { ai_language: "de", style: "apa", locale: "de-DE" },
+      defaults: {
+        ai_language: data.lang,
+        style: "apa",
+        locale: data.lang === "en" ? "en-US" : "de-DE",
+      },
     }))
     .bind(itemsList, async (_ctx, input) => {
       const all = [...data.items.values()]
@@ -316,7 +327,10 @@ export function createMockRegistry(
           id: randomId(""),
           citekey,
           type: kind === "isbn" ? "book" : "article",
-          title: kind === "path" ? (stem ?? value) : `Quelle ${value}`,
+          title:
+            kind === "path"
+              ? (stem ?? value)
+              : `${data.lang === "en" ? "Source" : "Quelle"} ${value}`,
           ...(doi ? { DOI: doi } : {}),
           ...(kind === "url" ? { URL: value } : {}),
           tags: input.tags,
@@ -352,9 +366,35 @@ export function createMockRegistry(
     .bind(itemsUpdate, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
       if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
-      item.frontmatter = { ...item.frontmatter, ...input.patch } as ItemFrontmatter;
+      const before = item.frontmatter;
+      const next: Record<string, unknown> = { ...before };
+      const today = new Date().toISOString().slice(0, 10);
+      const provenance = { ...before.provenance };
+      for (const [key, value] of Object.entries(input.patch)) {
+        if (value === null) delete next[key];
+        else next[key] = value;
+        provenance[key] = `human@${today}`;
+      }
+      next.provenance = provenance;
+      item.frontmatter = next as ItemFrontmatter;
       changed(`items/${input.citekey}/${input.citekey}.md`);
-      return { frontmatter: item.frontmatter };
+      const suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
+      return { frontmatter: item.frontmatter, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
+    })
+    .bind(itemsRename, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      if (data.items.has(input.to)) {
+        throw new Error(`CITEKEY_TAKEN: an item with citekey '${input.to}' exists already`);
+      }
+      data.items.delete(input.citekey);
+      data.items.set(input.to, {
+        ...item,
+        frontmatter: { ...item.frontmatter, citekey: input.to } as ItemFrontmatter,
+      });
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      changed(`items/${input.to}/${input.to}.md`);
+      return { rewritten: 0 };
     })
     .bind(itemsTrash, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
@@ -567,7 +607,7 @@ export function createMockRegistry(
         [...input.projects, ...item.frontmatter.projects]
           .map((slug) => data.projects.get(slug)?.frontmatter.ai_language)
           .find((l) => l !== undefined) ??
-        "de";
+        data.lang;
       return { card, job: scheduleAi(frontmatter.id, language) };
     })
     .bind(cardsUpdate, async (_ctx, input) => {
@@ -609,7 +649,7 @@ export function createMockRegistry(
         input.language ??
         card.frontmatter.paraphrase?.language ??
         item?.frontmatter.ai_language ??
-        "de";
+        data.lang;
       return { job: scheduleAi(input.id, language) };
     })
     .bind(cardsExport, async (_ctx, input) => {
@@ -621,19 +661,22 @@ export function createMockRegistry(
         if (!item) continue;
         const loc = card.frontmatter.locator?.start;
         const quote = card.body.quote;
+        const en = data.lang === "en";
+        const [open, close] = en ? ["\u201c", "\u201d"] : ["\u201e", "\u201c"];
+        const cf = en ? "cf." : "vgl.";
         const own = card.body.note || card.body.paraphrase || quote;
         if (input.format === "pandoc") {
-          const at = `@${item.frontmatter.citekey}${loc ? `, S. ${loc}` : ""}`;
-          lines.push(input.mode === "direct" ? `"${quote}" [${at}]` : `${own} [vgl. ${at}]`);
+          const at = `@${item.frontmatter.citekey}${loc ? `, ${en ? "p." : "S."} ${loc}` : ""}`;
+          lines.push(input.mode === "direct" ? `"${quote}" [${at}]` : `${own} [${cf} ${at}]`);
           continue;
         }
-        const label = citationLabel(item.frontmatter, loc);
+        const label = citationLabel(item.frontmatter, loc, data.lang);
         if (input.mode === "direct") {
-          lines.push(`„${quote}“ (${label})`);
-          htmls.push(`<blockquote>„${quote}“</blockquote><p>(${label})</p>`);
+          lines.push(`${open}${quote}${close} (${label})`);
+          htmls.push(`<blockquote>${open}${quote}${close}</blockquote><p>(${label})</p>`);
         } else {
-          lines.push(`${own} (vgl. ${label})`);
-          htmls.push(`<p>${own} (vgl. ${label})</p>`);
+          lines.push(`${own} (${cf} ${label})`);
+          htmls.push(`<p>${own} (${cf} ${label})</p>`);
         }
       }
       return {
@@ -663,12 +706,14 @@ export function createMockRegistry(
           text: items
             .map(
               (i) =>
-                `${surname(i.fm)} (${String(i.fm.issued ?? "o. J.").slice(0, 4)}). ${i.fm.title}.`,
+                `${surname(i.fm)} (${String(i.fm.issued ?? (data.lang === "en" ? "n.d." : "o. J.")).slice(0, 4)}). ${i.fm.title}.`,
             )
             .join("\n"),
         };
       }
-      return { text: `(${items.map((i) => citationLabel(i.fm, i.locator)).join("; ")})` };
+      return {
+        text: `(${items.map((i) => citationLabel(i.fm, i.locator, data.lang)).join("; ")})`,
+      };
     })
     .bind(jobsGet, async (_ctx, input) => {
       const imported = importJobs?.get(input.job);
@@ -745,7 +790,7 @@ export function createMockRegistry(
   bindConceptsMock(registry, data, emit, jobs, aiDelayMs);
   bindLitsearchMock(
     registry,
-    createLitsearchMockState(),
+    createLitsearchMockState(data.lang),
     emit,
     Math.max(5, Math.round(aiDelayMs / 10)),
     data,
@@ -755,20 +800,20 @@ export function createMockRegistry(
     stepMs: Math.max(5, Math.round(aiDelayMs / 5)),
     extraJobs: () => listJobs(),
   });
-  importJobs = bindImportMock(registry, createImportMockState(), emit).jobs;
+  importJobs = bindImportMock(registry, createImportMockState({ lang: data.lang }), emit).jobs;
   bindSyncMock(
     registry,
     createSyncMockState({
       transport: "git",
       versioning: true,
-      remote: "git@github.com:jonny/library.git",
+      remote: "git@github.com:alex/library.git",
       uncommitted: 3,
       lastSync: {
         at: "2026-10-24T07:55:00.000Z",
         ok: true,
         message: "Pulled with rebase and pushed.",
       },
-      conflicts: [mockConflict("notes/autopoiesis.md")],
+      conflicts: [mockConflict("notes/autopoiesis.md", {}, data.lang)],
     }),
     emit,
   );
@@ -796,7 +841,10 @@ export function createMockRegistry(
       alerts: [
         {
           id: "rag-papers",
-          name: "RAG-Paper aus der Informatik",
+          name:
+            data.lang === "en"
+              ? "RAG papers from computer science"
+              : "RAG-Paper aus der Informatik",
           project: "rag-evaluation",
           source: { kind: "arxiv-query", value: "retrieval augmented generation evaluation" },
           intervalHours: 24,
@@ -815,7 +863,7 @@ export function createMockRegistry(
         },
         {
           id: "neue-nlp-themen",
-          name: "Neue Arbeiten zu NLP",
+          name: data.lang === "en" ? "New work on NLP" : "Neue Arbeiten zu NLP",
           source: { kind: "openalex-topic", value: "T10181" },
           intervalHours: 168,
           limit: 10,

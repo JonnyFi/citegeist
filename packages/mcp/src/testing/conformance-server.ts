@@ -12,12 +12,13 @@ export interface ConformanceServer {
 /**
  * The request handling of the HTTP server (Host and Origin checks, both protocol eras, the same
  * tools) on a free loopback port. The bearer token check is left out because the conformance CLI
- * cannot send headers; it sits in front of the handler and is covered by mcp.test.ts.
+ * cannot send headers; it sits in front of the handler and is covered by mcp.test.ts. Unknown
+ * session ids get the 404 of the specification, which the suite checks; production replaces them.
  */
 export async function startConformanceServer(registry: Registry): Promise<ConformanceServer> {
   const validateHost = localhostHostValidation();
   const validateOrigin = localhostOriginValidation();
-  const handler = createMcpRequestHandler(registry);
+  const handler = createMcpRequestHandler(registry, { staleSessions: "reject" });
   const server: Server = createServer((req, res) => {
     if (!validateHost(req, res) || !validateOrigin(req, res)) return;
     void handler.handle(req, res, { scope: "write", localFiles: false });

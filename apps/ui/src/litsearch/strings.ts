@@ -1,5 +1,5 @@
 /**
- * Strings of the literature search tab (issue #50). They are spread into the catalogs in `de.ts`
+ * Strings of the literature search tab. They are spread into the catalogs in `de.ts`
  * and `en.ts`.
  */
 export const litsearchDe = {

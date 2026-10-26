@@ -4,6 +4,13 @@ import { afterEach } from "vitest";
 
 afterEach(() => cleanup());
 
+// The UI follows the system language and falls back to English. The tests were written against
+// German, so jsdom's system speaks German unless a test sets another list.
+Object.defineProperty(window.navigator, "languages", {
+  configurable: true,
+  get: () => ["de-DE", "de", "en-US"],
+});
+
 // jsdom lacks these; Base UI popups and the router use them.
 class ResizeObserverStub {
   observe() {}

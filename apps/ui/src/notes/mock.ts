@@ -71,6 +71,31 @@ function seed(data: MockData): Map<string, MockNote> {
         modified: { ...stamp, at },
       },
     });
+  if (data.lang === "en") {
+    add(
+      "n_0000000000000001",
+      "autopoiesis-and-communication",
+      "Autopoiesis and communication",
+      `# Autopoiesis and communication\n\nLuhmann borrows the concept from biology, see [[luhmann1984soziale]]. The key passage:\n\n![[${card}]]\n\nContinued in [[zettelkasten-principle]].\n`,
+      "2026-10-05T09:00:00.000Z",
+    );
+    add(
+      "n_0000000000000002",
+      "zettelkasten-principle",
+      "The Zettelkasten principle",
+      "One note, one thought. Connections arise through **wiki links**, not through folders.\n\n- [ ] Check the connection to [[autopoiesis-and-communication]]\n- [x] Clarify the concept\n",
+      "2026-10-04T09:00:00.000Z",
+    );
+    add(
+      "n_0000000000000003",
+      "question-platforms",
+      "How do platforms affect communication?",
+      "",
+      "2026-10-03T09:00:00.000Z",
+      "question",
+    );
+    return notes;
+  }
   add(
     "n_0000000000000001",
     "autopoiesis-und-kommunikation",

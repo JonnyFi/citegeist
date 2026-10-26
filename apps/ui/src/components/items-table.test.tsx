@@ -72,6 +72,7 @@ describe("library table", () => {
     data.items.clear();
     renderApp("/", data);
     expect(await screen.findByText("Deine Bibliothek ist leer")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Beispielquelle hinzufügen" })).toBeVisible();
   });
 
   it("loads further pages on demand", async () => {

@@ -47,7 +47,7 @@ describe("a chat turn with the fake ACP agent", () => {
       text: "Fertig, siehe [[paper1|Granovetter 1973]].",
     });
 
-    // The agent wrote through the citegeist MCP server, so the item carries the agent's name (D7).
+    // The agent wrote through the citegeist MCP server, so the item carries the agent's name (docs/decisions/0014-agent-content-goes-to-inbox.md).
     expect(h.inbox).toEqual([
       expect.objectContaining({
         citekey: "paper1",
@@ -93,7 +93,7 @@ describe("a chat turn with the fake ACP agent", () => {
     expect(JSON.parse((second as { text: string }).text).promptHasInstructions).toBe(false);
   });
 
-  it("gives the agent the user's own environment by default and the sandbox on request (A11)", async () => {
+  it("gives the agent the user's own environment by default and the sandbox on request", async () => {
     let isolated = false;
     const h = await harness({ host: { isolated: () => isolated } });
     const reports = (session: string) =>
@@ -209,7 +209,7 @@ describe("edits of an agent turn", () => {
     await expect(h.service.revertTurn(session, turn)).rejects.toThrow(/already undone/);
   });
 
-  it("merges a change Jonny made after the turn and keeps conflicts untouched", async () => {
+  it("merges a change Alex made after the turn and keeps conflicts untouched", async () => {
     const h = await harness();
     const merged = join(h.root, "notes", "merge.md");
     const clash = join(h.root, "notes", "clash.md");
@@ -222,22 +222,22 @@ describe("edits of an agent turn", () => {
         `@fake write ${clash} x\\nagent\\nz\\n`,
       ].join("\n"),
     );
-    // Jonny edits both files afterwards: one far from the agent's change, one on the same line.
-    writeFileSync(merged, "a\nB-agent\nc\nd\nE-jonny\n");
-    writeFileSync(clash, "x\njonny\nz\n");
+    // Alex edits both files afterwards: one far from the agent's change, one on the same line.
+    writeFileSync(merged, "a\nB-agent\nc\nd\nE-alex\n");
+    writeFileSync(clash, "x\nalex\nz\n");
 
     const result = await h.service.revertTurn(session, turn);
     expect(result.restored).toEqual(["notes/merge.md"]);
     expect(result.conflicts).toEqual([
       { path: "notes/clash.md", reason: expect.stringContaining("same lines") },
     ]);
-    expect(readFileSync(merged, "utf8")).toBe("a\nb\nc\nd\nE-jonny\n");
-    expect(readFileSync(clash, "utf8")).toBe("x\njonny\nz\n");
+    expect(readFileSync(merged, "utf8")).toBe("a\nb\nc\nd\nE-alex\n");
+    expect(readFileSync(clash, "utf8")).toBe("x\nalex\nz\n");
     // With conflicts left the turn counts as not fully undone and can be retried.
     expect(h.view(session).turns[0]?.reverted).toMatchObject({ restored: 1, conflicts: 1 });
   });
 
-  it("does not count Jonny's own edits between turns as agent edits", async () => {
+  it("does not count Alex's own edits between turns as agent edits", async () => {
     const h = await harness();
     const mine = join(h.root, "notes", "mine.md");
     const s = h.service.create({ backend: "fake" });

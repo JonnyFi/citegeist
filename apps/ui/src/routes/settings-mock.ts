@@ -20,7 +20,7 @@ export interface SettingsMockState {
   mailto?: string;
   unpaywallEmail?: string;
   ncbiTool?: string;
-  uiLanguage: "de" | "en";
+  uiLanguage?: "de" | "en";
   backends: Backend[];
   worker: { ready: boolean; engines: Record<string, string>; detail?: string };
   semantic: {
@@ -60,7 +60,6 @@ export function createSettingsMockState(over: Partial<SettingsMockState> = {}): 
       ncbi: false,
       openalex: false,
     },
-    uiLanguage: "de",
     backends: [
       {
         id: "claude-code-cli",
@@ -136,7 +135,7 @@ export function bindSettingsMock(
     ...(state.mailto ? { mailto: state.mailto } : {}),
     ...(state.unpaywallEmail ? { unpaywallEmail: state.unpaywallEmail } : {}),
     ...(state.ncbiTool ? { ncbiTool: state.ncbiTool } : {}),
-    uiLanguage: state.uiLanguage,
+    ...(state.uiLanguage ? { uiLanguage: state.uiLanguage } : {}),
     semantic: {
       enabled: state.semantic.enabled,
       model: state.semantic.model ?? "embeddinggemma-300m",

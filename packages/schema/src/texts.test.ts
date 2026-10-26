@@ -46,7 +46,7 @@ describe("scanCitations", () => {
   });
 
   it("ignores e-mail addresses and escaped at signs", () => {
-    expect(keys("Schreib an jonny@example.com oder \\@nobody.")).toEqual([]);
+    expect(keys("Schreib an alex@example.com oder \\@nobody.")).toEqual([]);
   });
 
   it("ignores the frontmatter, code, comments, links and wiki links", () => {

@@ -37,7 +37,7 @@ export interface ResearchResult {
   /** Chat session that holds the transcript of the job. */
   session: string;
   added: Array<{ citekey: string; why?: string }>;
-  /** Calls that broke the rules of D7: a paper added straight to the library, or without a reason. */
+  /** Calls that broke the inbox rules (docs/decisions/0014-agent-content-goes-to-inbox.md): a paper added straight to the library, or without a reason. */
   violations: string[];
   stopReason?: string | undefined;
   /** What the run used, against the limits it had. */

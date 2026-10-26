@@ -66,6 +66,57 @@ export const LUHMANN_PAGES: MockPage[] = [
   },
 ];
 
+/** The English edition of the same pages, served when the mock library runs in English. */
+export const LUHMANN_PAGES_EN: MockPage[] = [
+  {
+    label: "31",
+    paras: [
+      { id: "bhead0001", type: "heading", text: "Chapter 2: Social Systems and Communication" },
+      {
+        id: "bpara0001",
+        type: "paragraph",
+        text: "Social systems consist of communications and only of communications. Human beings are in their environment. This distinction is the starting point of the considerations that follow and does not devalue human beings.",
+      },
+      {
+        id: "bpara0002",
+        type: "paragraph",
+        text: "Whoever observes communication always observes an operation that orients itself toward earlier operations and expects further connections.",
+      },
+    ],
+  },
+  {
+    label: "58",
+    paras: [
+      {
+        id: "bpara0003",
+        type: "paragraph",
+        text: "There are self-referential systems. The concept of self-reference designates the unity that an element, a process, or a system is for itself. It refers not to a property but to an operation.",
+      },
+      {
+        id: "bpara0004",
+        type: "paragraph",
+        text: "The self-description of a system always remains a part of the system that it describes.",
+      },
+    ],
+  },
+  {
+    label: "148",
+    paras: [
+      { id: "bhead0002", type: "heading", text: "Double contingency" },
+      {
+        id: "bpara0005",
+        type: "paragraph",
+        text: "Double contingency is the starting point for the formation of social systems. Two observers cannot see through each other, and still they have to act in a way that allows further connection.",
+      },
+      {
+        id: "bpara0006",
+        type: "paragraph",
+        text: "Out of this problem arise expectations that condense in the course of communication and pre-structure the next behavior.",
+      },
+    ],
+  },
+];
+
 export function mockBlocks(pages: readonly MockPage[]): Block[] {
   return pages.flatMap((page, index) =>
     page.paras.map(

@@ -11,10 +11,7 @@
       "!**/.venv",
       "!pnpm-lock.yaml",
       "!**/*.md",
-      "!spikes",
       "!.claude",
-      "!docs/design/boards",
-      "!docs/pitch",
       "!workers/research/vendor",
       "!workers/research/*.yaml"
     ]

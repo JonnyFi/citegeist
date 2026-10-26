@@ -14,6 +14,7 @@ import { Section } from "../settings/parts";
 import { ResearchLimitsPanel, UsagePanel } from "../settings/run-control";
 import { SourcesPanel } from "../settings/sources-panel";
 import { SyncPanel } from "../settings/sync-panel";
+import { TroubleshootingPanel } from "../settings/troubleshooting";
 import { WebhooksPanel } from "../settings/webhooks-panel";
 import { ChatPanel, ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
 
@@ -119,7 +120,7 @@ export function SettingsScreen({
   section?: SettingsSection;
   onSection?: (section: SettingsSection) => void;
 } = {}) {
-  const { t, setLang } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [local, setLocal] = useState<SettingsSection>("general");
   const section = shown ?? local;
   const pick = (next: SettingsSection) => {
@@ -176,7 +177,7 @@ export function SettingsScreen({
         <div>
           <Segmented<Lang>
             label={t("settings.language.title")}
-            value={settings.uiLanguage}
+            value={settings.uiLanguage ?? lang}
             options={[
               { value: "de", label: "Deutsch" },
               { value: "en", label: "English" },
@@ -330,6 +331,16 @@ export function SettingsScreen({
       >
         <WorkerPanel worker={worker} />
       </Section>
+
+      {window.citegeist?.about ? (
+        <Section
+          id="settings-about"
+          title={t("settings.about.title")}
+          description={t("settings.about.desc")}
+        >
+          <TroubleshootingPanel />
+        </Section>
+      ) : null}
     </SettingsFrame>
   );
 }

@@ -1,122 +1,122 @@
-# Webhooks für externe Agents
+# Webhooks for external agents
 
-Mit Webhooks schickt ein externer Agent wie Jonnys Grok-Bot Paper und Notizen an citegeist, und citegeist schickt dem Agent Rechercheaufträge. Das Paket heißt `@citegeist/webhooks`. Die Entscheidungen dahinter stehen in D7 (Inbox als Standard) und D8 (allgemeine Webhooks, nicht nur Grok). Wie du einen Agent Schritt für Schritt anbindest, steht in [agents.md](agents.md). Dort und in Einstellungen > Webhooks > „An deinen Agent schicken“ findest du den fertigen Text zum Einfügen.
+With webhooks, an external agent such as a Grok bot sends papers and notes to citegeist, and citegeist sends research tasks to the agent. The package is called `@citegeist/webhooks`. The decisions behind it are [agent content goes to the inbox](decisions/0014-agent-content-goes-to-inbox.md) and [general webhooks for any external agent](decisions/0015-webhooks.md). [agents.md](agents.md) explains step by step how to connect an agent. There and under Settings > Webhooks > "Send to your agent" you find the finished text to paste. The threat model for content from the internet is in the [security model](security-model.md).
 
-## Aufbau
+## Structure
 
-Jeder Agent ist ein **Connector** mit einem Namen, zum Beispiel `grok`. Der Connector hat
+Every agent is a **connector** with a name, for example `grok`. The connector has
 
-- eine Adresse auf deinem Mac: `<Basis-URL>/hooks/grok`,
-- ein Secret im macOS-Schlüsselbund (Konto `webhook-grok`, Dienst `citegeist`),
-- den Akteur `agent:grok`. Alles, was er schreibt, trägt diese Herkunftsmarke,
-- auf Wunsch einen Auth-Header für ausgehende Aufträge, einen Bearer-Token für eingehende Anfragen und einen MCP-Zugang (alle drei weiter unten). Ihre Werte liegen ebenfalls im Schlüsselbund, nie in einer Einstellungsdatei, und `webhooks.list` gibt sie nie zurück.
+- an address on your Mac: `<base URL>/hooks/grok`,
+- a secret in the macOS Keychain (account `webhook-grok`, service `citegeist`),
+- the actor `agent:grok`. Everything it writes carries this provenance mark,
+- optionally an auth header for outbound tasks, a bearer token for inbound requests and MCP access (all three are described below). Their values also live in the Keychain and never in a settings file, and `webhooks.list` never returns them.
 
-Es gibt drei Arten: `inbound` (der Agent schickt an citegeist), `outbound` (citegeist schickt dem Agent Aufträge, der Agent antwortet per Rückruf) und `both`.
+There are three kinds: `inbound` (the agent sends to citegeist), `outbound` (citegeist sends tasks to the agent, and the agent answers with a callback) and `both`.
 
-Die Operationen `webhooks.list`, `webhooks.create`, `webhooks.rotateSecret`, `webhooks.setAuth`, `webhooks.setInboundToken`, `webhooks.setMcpAccess`, `webhooks.delete`, `webhooks.test` und `webhooks.send` laufen über denselben Kern wie alles andere (RPC und `cg`). Anlegen, Rotieren, Löschen, Testen und alle Zugangsdaten sind `admin`-Operationen und damit für Agents gesperrt. Die Verwaltung der Webhooks ist über MCP nicht erreichbar. Der MCP-Zugang eines Connectors (siehe unten) gibt dem Agent nur die Werkzeuge der Bibliothek.
+The operations `webhooks.list`, `webhooks.create`, `webhooks.rotateSecret`, `webhooks.setAuth`, `webhooks.setInboundToken`, `webhooks.setMcpAccess`, `webhooks.delete`, `webhooks.test` and `webhooks.send` run through the same core as everything else (RPC and `cg`). Creating, rotating, deleting, testing and all credentials are `admin` operations and therefore closed to agents. The management of webhooks is not reachable over MCP. The MCP access of a connector (see below) gives the agent only the tools of the library.
 
 ```
 cg webhooks create grok --kind both --url https://grok-bot.example.com/citegeist
 ```
 
-Die Antwort enthält das Secret genau einmal. Danach liest es nur noch der Kern aus dem Schlüsselbund.
+The response contains the secret exactly once. After that, only the core reads it from the Keychain.
 
-## Signatur
+## Signature
 
-Jede Anfrage in beide Richtungen trägt drei Header:
+Every request in both directions carries three headers:
 
-| Header | Inhalt |
+| Header | Content |
 |---|---|
-| `x-citegeist-id` | eindeutige Id der Zustellung, etwa eine UUID |
-| `x-citegeist-timestamp` | Unix-Zeit in Sekunden |
-| `x-citegeist-signature` | `v1=` plus Hex von HMAC-SHA256 über `<id>.<timestamp>.<Body>` mit dem Secret als Schlüssel |
+| `x-citegeist-id` | unique id of the delivery, for example a UUID |
+| `x-citegeist-timestamp` | Unix time in seconds |
+| `x-citegeist-signature` | `v1=` plus the hex of HMAC-SHA256 over `<id>.<timestamp>.<body>` with the secret as key |
 
-Der Body ist JSON und wird byte-genau so signiert, wie er gesendet wird. Der Empfänger
+The body is JSON and is signed byte for byte as it is sent. The receiver
 
-1. verwirft Zeitstempel, die mehr als fünf Minuten von seiner Uhr abweichen,
-2. vergleicht die Signatur in konstanter Zeit,
-3. merkt sich die Id und weist dieselbe Id ein zweites Mal mit `409` ab (Replay).
+1. rejects timestamps that deviate by more than five minutes from its clock,
+2. compares the signature in constant time,
+3. remembers the id and rejects the same id a second time with `409` (replay).
 
-Eine Anfrage mit falscher Signatur, unbekanntem Connector oder abgelaufenem Zeitstempel bekommt `401`. Die Antwort verrät nicht, ob der Connector existiert. Bodys über 1 MiB beantwortet der Kern mit `413`.
+A request with a wrong signature, an unknown connector or an expired timestamp gets `401`. The response does not reveal whether the connector exists. The core answers bodies over 1 MiB with `413`.
 
-Nach `webhooks.rotateSecret` gilt das alte Secret noch `graceMinutes` Minuten (Standard 60), damit der Agent umstellen kann. Mit `graceMinutes: 0` ist es sofort ungültig. Mehrere Signaturen in einem Header, durch Leerzeichen getrennt, sind erlaubt.
+After `webhooks.rotateSecret`, the old secret stays valid for `graceMinutes` minutes (default 60) so that the agent can switch over. With `graceMinutes: 0` it is invalid immediately. Several signatures in one header, separated by spaces, are allowed.
 
-### Bearer-Token statt Signatur
+### Bearer token instead of signature
 
-Manche Agents können keine HMAC-Signatur berechnen. Für sie lässt sich pro Connector ein Bearer-Token einschalten (Einstellungen > Webhooks > Bearer-Token, oder `cg webhooks set-inbound-token grok --enabled`, oder `--inbound-token` beim Anlegen). citegeist zeigt den Token genau einmal. Der Agent schickt dann statt der Signatur
+Some agents cannot compute an HMAC signature. For them, a bearer token can be switched on per connector (Settings > Webhooks > Bearer token, or `cg webhooks set-inbound-token grok --enabled`, or `--inbound-token` on creation). citegeist shows the token exactly once. Instead of the signature, the agent then sends
 
 ```
 Authorization: Bearer whtok_...
-x-citegeist-id: <eindeutige Id>
+x-citegeist-id: <unique id>
 ```
 
-Statt des Headers `x-citegeist-id` darf der Body ein Feld `"id"` tragen. Eine Anfrage ohne Id beantwortet citegeist mit `400`, eine wiederverwendete Id mit `409`. Den Token vergleicht der Kern in konstanter Zeit. Ist für den Connector kein Token eingeschaltet, beantwortet er jede Anfrage mit Token wie eine falsche Signatur mit `401`. Trägt eine Anfrage einen Signatur-Header, gilt nur die Signatur.
+Instead of the `x-citegeist-id` header, the body may carry a field `"id"`. citegeist answers a request without an id with `400` and a reused id with `409`. The core compares the token in constant time. If no token is switched on for the connector, it answers every request with a token like a wrong signature, with `401`. If a request carries a signature header, only the signature counts.
 
-Der Preis: Wer den Token kennt, kann Anfragen senden, und es gibt keinen Zeitstempel, der einen mitgeschnittenen Aufruf nach einigen Minuten entwertet. Die Id schützt nur vor doppelter Zustellung (der Kern merkt sich Ids etwa elf Minuten und bis zum nächsten Start). Das Secret mit HMAC bleibt deshalb die stärkere Wahl, und der Token ist für Plattformen gedacht, die nichts anderes können. Mit `cg webhooks set-inbound-token grok --no-enabled` ist er sofort ungültig, ein neuer Aufruf mit `--enabled` erzeugt einen neuen Token.
+The trade-off: anyone who knows the token can send requests, and there is no timestamp that invalidates an intercepted call after a few minutes. The id only protects against duplicate delivery (the core remembers ids for about eleven minutes and until the next start). The HMAC secret therefore remains the stronger choice, and the token is meant for platforms that cannot do anything else. With `cg webhooks set-inbound-token grok --no-enabled` it is invalid immediately, and a new call with `--enabled` creates a new token.
 
-## Eingehend: Paper und Notizen
+## Inbound: papers and notes
 
-`POST <Basis-URL>/hooks/<name>` mit einem JSON-Body, der ein Feld `event` hat.
+`POST <base URL>/hooks/<name>` with a JSON body that has a field `event`.
 
-**Paper hinzufügen** (`papers.add`). Ohne `target` landen die Paper in der Inbox (D7), mit `"target": "library"` direkt in der Bibliothek.
+**Add papers** (`papers.add`). Without `target`, the papers land in the inbox ([ADR 0014](decisions/0014-agent-content-goes-to-inbox.md)), with `"target": "library"` directly in the library.
 
 ```json
 {
   "event": "papers.add",
   "papers": [
     "10.1007/978-3-322-97010-7",
-    { "url": "https://arxiv.org/abs/2401.00001", "why": "Diskussion im X-Thread von heute" }
+    { "url": "https://arxiv.org/abs/2401.00001", "why": "Discussed in today's X thread" }
   ],
-  "why": "Grok-Suche nach Autopoiesis",
+  "why": "Grok search for autopoiesis",
   "target": "inbox",
   "projects": ["systemtheorie"],
   "tags": ["x-thread"]
 }
 ```
 
-Ein Paper ist eine Kennung (DOI, arXiv-Id, ISBN, PMID, URL) oder ein Objekt mit `identifier` oder `url` und eigenem `why`. Bis zu 50 pro Anfrage. Die Antwort listet pro Paper `citekey`, `job` und gegebenenfalls `duplicateOf` oder einen Fehler. Ein fehlgeschlagenes Paper hindert die anderen nicht. Lokale Dateipfade (`/Users/...`, `~/...`, `file://`, `*.pdf` ohne DOI-Präfix) und Adressen dieses Macs oder privater Netze (`localhost`, `127.0.0.1`, `192.168.x.x`, `169.254.x.x`, `*.local`) lehnt der Empfänger mit `WEBHOOK_INPUT_REFUSED` ab, denn der Absender sitzt im Internet.
+A paper is an identifier (DOI, arXiv id, ISBN, PMID, URL) or an object with `identifier` or `url` and its own `why`. Up to 50 per request. The response lists per paper `citekey`, `job` and, where applicable, `duplicateOf` or an error. A failed paper does not stop the others. Local file paths (`/Users/...`, `~/...`, `file://`, `*.pdf` without a DOI prefix) and addresses of this Mac or of private networks (`localhost`, `127.0.0.1`, `192.168.x.x`, `169.254.x.x`, `*.local`) are refused by the receiver with `WEBHOOK_INPUT_REFUSED`, because the sender sits on the internet.
 
-**Notiz oder Einsicht hinzufügen** (`note.add`):
+**Add a note or insight** (`note.add`):
 
 ```json
 {
   "event": "note.add",
-  "title": "Luhmann zu Autopoiesis",
-  "text": "Autopoiesis beschreibt bei Luhmann die Selbsterzeugung sozialer Systeme ...",
+  "title": "Luhmann on autopoiesis",
+  "text": "In Luhmann, autopoiesis describes the self-production of social systems ...",
   "type": "claim",
   "sources": [
     { "citekey": "luhmann1984soziale" },
     "10.1007/978-3-322-97010-7",
-    "https://x.com/jemand/status/1",
-    { "url": "https://example.org/post", "title": "Ein Blogbeitrag" }
+    "https://x.com/someone/status/1",
+    { "url": "https://example.org/post", "title": "A blog post" }
   ],
   "projects": ["systemtheorie"]
 }
 ```
 
-Die Notiz entsteht mit dem Akteur `agent:<name>`. Die Quellen stehen am Ende als Abschnitt `## Sources`: ein Citekey wird zum Wiki-Link, eine Kennung landet als Paper in der Inbox und wird verlinkt, eine URL wird ein Markdown-Link. `type` ist einer der Notiztypen (Standard `permanent`).
+The note is created with the actor `agent:<name>`. The sources appear at the end as a section `## Sources`: a citekey becomes a wiki link, an identifier lands in the inbox as a paper and is linked, and a URL becomes a Markdown link. `type` is one of the note types (default `permanent`).
 
-**Ping** (`ping`) antwortet `200` mit `{"ok":true,"pong":true}` und prüft nur die Signatur.
+**Ping** (`ping`) answers `200` with `{"ok":true,"pong":true,"connector":"<name>"}` and checks only the signature.
 
-## Ausgehend: Rechercheauftrag
+## Outbound: research task
 
-`webhooks.send` schickt einem `outbound`- oder `both`-Connector einen Auftrag an seine URL:
+`webhooks.send` sends a task to the URL of an `outbound` or `both` connector:
 
 ```json
 {
   "event": "task.request",
   "task": "j_01JB8Z3QK7ABCDEFGH",
-  "prompt": "Finde neue soziologische Arbeiten zu Autopoiesis",
-  "project": { "slug": "systemtheorie", "title": "Systemtheorie", "briefExcerpt": "Der Anfang des Projekt-Briefs ..." },
-  "callback": { "url": "https://mac.beispiel.ts.net/hooks/grok", "event": "task.result" }
+  "prompt": "Find new sociological work on autopoiesis",
+  "project": { "slug": "systemtheorie", "title": "Systemtheorie", "briefExcerpt": "The beginning of the project brief ..." },
+  "callback": { "url": "https://mac.example.ts.net/hooks/grok", "event": "task.result" }
 }
 ```
 
-Der Auftrag ist signiert wie oben, mit demselben Secret, und trägt zusätzlich den Auth-Header des Connectors, falls einer gesetzt ist. `task` ist zugleich die Id des Jobs in citegeist (`jobs.get`). `briefChars` begrenzt den Brief-Auszug (Standard 2000 Zeichen, 0 sendet keinen). Antwortet der Agent nicht mit 2xx, versucht citegeist es nach 1 und nach 5 Sekunden noch einmal (drei Versuche). Das gilt für Netzfehler, `5xx`, `429` und `400`, denn eine abgeschaltete Routine nimmt die Anfrage nicht in eine Warteschlange auf. Bei `401`, `403`, `404`, `405` und `410` hilft ein Wiederholen nicht, dort bricht der Versuch sofort ab. Danach schlägt der Job mit `WEBHOOK_DELIVERY_FAILED` fehl.
+The task is signed as above, with the same secret, and additionally carries the auth header of the connector if one is set. `task` is also the id of the job in citegeist (`jobs.get`). `briefChars` limits the brief excerpt (default 2000 characters, 0 sends none). If the agent does not answer with 2xx, citegeist tries again after 1 and after 5 seconds (three attempts). This applies to network errors, `5xx`, `429` and `400`, because a switched-off routine does not queue the request. For `401`, `403`, `404`, `405` and `410`, repeating does not help, and the attempt stops at once. After that, the job fails with `WEBHOOK_DELIVERY_FAILED`.
 
-### Auth-Header für die Plattform des Agents
+### Auth header for the agent's platform
 
-Viele Plattformen prüfen am Trigger ihren eigenen Schlüssel und können `x-citegeist-signature` nicht prüfen, zum Beispiel `Authorization: Bearer <Token>` oder `x-api-key: <Schlüssel>`. Pro Connector lässt sich ein solcher Header setzen. citegeist sendet ihn bei jedem ausgehenden Auftrag und bei jedem Test zusätzlich zu den drei Signatur-Headern.
+Many platforms check their own key at the trigger and cannot verify `x-citegeist-signature`, for example `Authorization: Bearer <token>` or `x-api-key: <key>`. Such a header can be set per connector. citegeist sends it with every outbound task and every test, in addition to the three signature headers.
 
 ```
 printf '%s' 'Bearer crsr_...' | cg webhooks create grok --kind both \
@@ -124,43 +124,43 @@ printf '%s' 'Bearer crsr_...' | cg webhooks create grok --kind both \
   --auth-header Authorization --auth-value-stdin
 ```
 
-`--auth-value-stdin` liest den Wert von der Standardeingabe, damit er weder in der Prozessliste noch im Shell-Verlauf steht. Für einen bestehenden Connector gibt es `cg webhooks set-auth grok --auth-header x-api-key --auth-value-stdin`, und `cg webhooks set-auth grok` ohne Header entfernt ihn. In den Einstellungen sitzt der Wert in einem maskierten Feld. Der Name des Headers steht in `webhooks.json`, der Wert im Schlüsselbund (Konto `webhook-grok-auth`). Die Header `content-type`, `content-length`, `host`, `connection`, `transfer-encoding`, `user-agent` und alle mit `x-citegeist-` setzt citegeist selbst, sie sind als Name gesperrt.
+`--auth-value-stdin` reads the value from standard input so that it appears in neither the process list nor the shell history. For an existing connector there is `cg webhooks set-auth grok --auth-header x-api-key --auth-value-stdin`, and `cg webhooks set-auth grok` without a header removes it. In the settings, the value sits in a masked field. The name of the header is stored in `webhooks.json`, the value in the Keychain (account `webhook-grok-auth`). The headers `content-type`, `content-length`, `host`, `connection`, `transfer-encoding`, `user-agent` and all that start with `x-citegeist-` are set by citegeist itself, and their names are blocked.
 
-Der Agent meldet das Ergebnis mit einem Rückruf an dieselbe Adresse, die auch für eingehende Anfragen gilt, und nennt die `task`-Id:
+The agent reports the result with a callback to the same address that applies to inbound requests, and names the `task` id:
 
 ```json
 {
   "event": "task.result",
   "task": "j_01JB8Z3QK7ABCDEFGH",
   "status": "succeeded",
-  "summary": "Drei passende Arbeiten, eine davon ein Überblick.",
+  "summary": "Three matching papers, one of them an overview.",
   "papers": ["10.1000/p1", "10.1000/p2"]
 }
 ```
 
-Die Paper landen in der Inbox des Projekts, die Zusammenfassung wird eine Notiz, und der Job wird mit dem Ergebnis abgeschlossen. `"status": "failed"` mit `error` lässt den Job fehlschlagen. Ein Connector kann nur Aufträge beantworten, die er selbst bekommen hat; ein zweiter Rückruf zur selben Id wird mit `409` abgewiesen. Ein Job wartet 24 Stunden auf den Rückruf.
+The papers land in the inbox of the project, the summary becomes a note, and the job is completed with the result. `"status": "failed"` with `error` makes the job fail. A connector can only answer tasks that it received itself; a second callback for the same id is rejected with `409`. A job waits 24 hours for the callback.
 
-## Erreichbarkeit aus dem Internet
+## Reachability from the internet
 
-### Der Hooks-Port
+### The hooks port
 
-Der Kern lauscht auf einem zufälligen Port, der sich bei jedem Start ändert. Ein Tunnel kann darauf nicht zeigen. Deshalb öffnet citegeist einen zweiten Listener, solange mindestens ein Connector existiert:
+The core listens on a random port that changes at every start. A tunnel cannot point at it. That is why citegeist opens a second listener as long as at least one connector exists:
 
-- Er bindet nur `127.0.0.1` und lauscht auf einem festen Port, standardmäßig **47321**.
-- Er beantwortet `/hooks/<name>` und, für Connectors mit MCP-Zugang, `/mcp`. Jeder andere Pfad (`/rpc`, `/health`, `/files`, `/events`) ergibt `404`, auch mit dem Token des Kerns.
-- Der Port des Kerns bleibt privat. `/hooks/` antwortet dort aus Gründen der Abwärtskompatibilität noch, der Tunnel soll aber auf den Hooks-Port zeigen.
+- It binds only `127.0.0.1` and listens on a fixed port, by default **47321**.
+- It serves `/hooks/<name>` and, for connectors with MCP access, `/mcp`. Every other path (`/rpc`, `/health`, `/files`, `/events`) results in `404`, even with the token of the core.
+- The port of the core stays private. `/hooks/` still answers there for backward compatibility, but the tunnel should point at the hooks port.
 
-Den Port stellst du unter Einstellungen > Webhooks ein (oder `cg settings update --input '{"patch":{"webhooks":{"port":47400}}}'`). Eine Änderung gilt sofort, ohne Neustart. Ist der Port belegt, bleibt citegeist stabil, Einstellungen > Webhooks zeigt „Port 47321 ist schon belegt“ mit der Aufforderung, einen anderen zu wählen, und `webhooks.list` meldet `listener: { state: "error", code: "HOOKS_PORT_IN_USE" }`. Die Adressen der Connectors zeigen in dieser Zeit auf den Port des Kerns.
+You set the port under Settings > Webhooks (or `cg settings update --input '{"patch":{"webhooks":{"port":47400}}}'`). A change takes effect immediately. If the port is taken, citegeist stays stable, Settings > Webhooks shows "Port 47321 is already in use" with the prompt to pick another one, and `webhooks.list` reports `listener: { state: "error", code: "HOOKS_PORT_IN_USE" }`. During this time, the addresses of the connectors point at the port of the core.
 
-### Die öffentliche Adresse
+### The public address
 
-Die Adresse deines Tunnels trägst du unter Einstellungen > Webhooks > Öffentliche Adresse ein (zum Beispiel `https://mac.tailnet-name.ts.net`). Sie liegt in den Einstellungen und überlebt damit den Start aus dem Dock oder dem Finder, der keine Umgebungsvariablen weitergibt. Die Umgebungsvariable `CITEGEIST_PUBLIC_URL` überschreibt die Einstellung, wenn sie gesetzt ist. Alles, was Adressen baut (`inboundUrl` in `webhooks.list`, die Rückruf-Adresse jedes Auftrags, die MCP-Adresse), nimmt den aufgelösten Wert. Gibt es einen ausgehenden Connector und keine öffentliche Adresse, zeigt die Oberfläche einen Hinweis, denn der Agent kann sein Ergebnis dann nicht zurückschicken.
+You enter the address of your tunnel under Settings > Webhooks > Public address (for example `https://mac.tailnet-name.ts.net`). It is stored in the settings and therefore survives a launch from the Dock or Finder, which does not pass on environment variables. The environment variable `CITEGEIST_PUBLIC_URL` overrides the setting when it is set. Everything that builds addresses (`inboundUrl` in `webhooks.list`, the callback address of every task, the MCP address) takes the resolved value. If there is an outbound connector and no public address, the interface shows a hint, because the agent cannot send its result back in that case.
 
-Ein Tunnel funktioniert, solange der Mac wach ist und citegeist läuft. Scheitert eine Zustellung in der Zwischenzeit, sendet der Agent sie erneut. Die Replay-Sperre trifft nur Ids, die citegeist schon angenommen hat.
+A tunnel works while the Mac is awake and citegeist is running. If a delivery fails in the meantime, the agent sends it again. The replay protection only applies to ids that citegeist has already accepted.
 
 ### Tailscale Funnel
 
-Voraussetzung: Tailscale ist installiert und Funnel in deinem Tailnet freigeschaltet (Admin-Konsole, Access Controls, `funnel` für dein Gerät). Die Befehle folgen der Dokumentation von Tailscale (Stand Oktober 2026, <https://tailscale.com/kb/1311/tailscale-funnel>). Prüfe sie gegen die installierte Version.
+Prerequisite: Tailscale is installed and Funnel is enabled in your tailnet (admin console, Access Controls, `funnel` for your device). The commands follow the Tailscale documentation (as of October 2026, <https://tailscale.com/kb/1311/tailscale-funnel>). Check them against the installed version.
 
 ```
 tailscale funnel --bg --https=443 --set-path=/hooks http://127.0.0.1:47321/hooks
@@ -168,106 +168,116 @@ tailscale funnel --bg --https=443 --set-path=/mcp http://127.0.0.1:47321/mcp
 tailscale funnel status
 ```
 
-Der erste Befehl leitet `/hooks` weiter, der zweite `/mcp` (nur nötig, wenn ein Connector MCP-Zugang hat). Alles andere bleibt verborgen, und eine andere App kann auf `/` desselben Hosts weiterlaufen. Das Ziel enthält den Pfad, damit er beim Weiterleiten erhalten bleibt; prüfe das mit den Befehlen unter „Prüfen“. Funnel erlaubt nur die Ports 443, 8443 und 10000 nach außen. Nimm **443**: Agents in der Cloud erreichen nur diesen Port, auf 8443 lief bei Grok Bot ein Timeout ab. Der lokale Port ist frei. Die Adresse ist `https://<gerät>.<tailnet>.ts.net`. Mit `--bg` läuft Funnel weiter, bis du es abschaltest, auch nach einem Neustart des Macs. Beenden:
+The first command forwards `/hooks`, the second `/mcp` (only needed if a connector has MCP access). Everything else stays hidden, and another app can keep running on `/` of the same host. The target contains the path so that it is preserved when forwarding; verify this with the commands under [Verify](#verify). Funnel only allows the ports 443, 8443 and 10000 to the outside. Use **443**: agents in the cloud reach only this port, and on 8443 a request from Grok Bot timed out. The local port is free to choose. The address is `https://<device>.<tailnet>.ts.net`. With `--bg`, Funnel keeps running until you turn it off, even after a restart of the Mac. To stop it:
 
 ```
 tailscale funnel --https=443 --set-path=/hooks off
 tailscale funnel --https=443 --set-path=/mcp off
 ```
 
-### Cloudflare Tunnel
+### Cloudflare tunnel
 
-Voraussetzung: ein Cloudflare-Konto mit einer Domain und `cloudflared` (`brew install cloudflared`).
+Prerequisite: a Cloudflare account with a domain and `cloudflared` (`brew install cloudflared`).
 
 ```
 cloudflared tunnel login
 cloudflared tunnel create citegeist
-cloudflared tunnel route dns citegeist hooks.beispiel.de
+cloudflared tunnel route dns citegeist hooks.example.com
 ```
 
-Die Konfiguration `~/.cloudflared/config.yml` lässt nur `/hooks` und `/mcp` durch:
+The configuration `~/.cloudflared/config.yml` lets only `/hooks` and `/mcp` through:
 
 ```yaml
 tunnel: citegeist
-credentials-file: /Users/<du>/.cloudflared/<tunnel-id>.json
+credentials-file: /Users/<you>/.cloudflared/<tunnel-id>.json
 ingress:
-  - hostname: hooks.beispiel.de
+  - hostname: hooks.example.com
     path: ^/(hooks/|mcp$)
     service: http://127.0.0.1:47321
   - service: http_status:404
 ```
 
-Dann `cloudflared tunnel run citegeist` und die Adresse `https://hooks.beispiel.de` als öffentliche Adresse eintragen. Für einen Test ohne Domain startet `cloudflared tunnel --url http://127.0.0.1:47321` einen Wegwerf-Tunnel mit zufälliger Adresse (nur zum Ausprobieren).
+Then run `cloudflared tunnel run citegeist` and enter the address `https://hooks.example.com` as the public address. For a test without a domain, `cloudflared tunnel --url http://127.0.0.1:47321` starts a throwaway tunnel with a random address (for trying things out only).
 
-### Prüfen
+### Verify
 
 ```
-cg webhooks test --name grok
-curl -i https://hooks.beispiel.de/hooks/grok       # 405: der Weg ist offen, GET ist nicht erlaubt
-curl -i https://hooks.beispiel.de/rpc/items/list   # 404: der Rest des Kerns ist nicht erreichbar
-curl -i -X POST https://hooks.beispiel.de/mcp      # 401 mit MCP-Zugang, sonst 404
+cg webhooks test grok
+curl -i https://hooks.example.com/hooks/grok       # 405: the route is open, GET is not allowed
+curl -i https://hooks.example.com/rpc/items/list   # 404: the rest of the core is unreachable
+curl -i -X POST https://hooks.example.com/mcp      # 401 with MCP access, otherwise 404
 ```
 
-## Verbindung mit einem Agenten in der Cloud
+## Connecting a cloud agent
 
-Ein Agent im Internet erreicht deinen Mac nur durch einen Tunnel (Tailscale Funnel oder Cloudflare Tunnel), der auf den Hooks-Port zeigt. Das gilt für alles, was der Agent von sich aus an citegeist schickt: `papers.add`, `note.add`, das Ergebnis eines Auftrags (`task.result`) und den Zugriff über MCP.
+An agent on the internet reaches your Mac only through a tunnel (Tailscale Funnel or Cloudflare tunnel) that points at the hooks port. This applies to everything the agent sends to citegeist on its own: `papers.add`, `note.add`, the result of a task (`task.result`) and access over MCP.
 
-Die Richtung vom Mac zum Agent braucht keinen Tunnel. Ein ausgehender `task.request` benötigt nur die öffentliche Trigger-Adresse des Agents und dessen Auth-Header. Damit der Agent aber antworten kann, muss die Rückruf-Adresse im Auftrag (`task.result`) erreichbar sein, und das ist sie nur durch den Tunnel und die eingetragene öffentliche Adresse.
+The direction from the Mac to the agent needs no tunnel. An outbound `task.request` needs only the public trigger address of the agent and its auth header. For the agent to answer, however, the callback address in the task (`task.result`) must be reachable, and it is only reachable through the tunnel and the entered public address.
 
-| Was | Braucht einen Tunnel? |
+| What | Needs a tunnel? |
 |---|---|
-| `task.request` an den Agent senden | nein, die Trigger-Adresse und der Auth-Header des Agents genügen |
-| `task.result` des Agents zurück an citegeist | ja |
-| `papers.add` und `note.add` vom Agent | ja |
-| MCP-Zugriff des Agents auf die Bibliothek | ja |
+| Send `task.request` to the agent | no, the trigger address and auth header of the agent are enough |
+| `task.result` from the agent back to citegeist | yes |
+| `papers.add` and `note.add` from the agent | yes |
+| MCP access of the agent to the library | yes |
 
-Die Schritte:
+The steps:
 
-1. Lege einen Connector an (Einstellungen > Webhooks oder `cg webhooks create`).
-2. Richte den Tunnel auf `127.0.0.1:47321` ein (siehe oben) und trage seine Adresse als öffentliche Adresse ein.
-3. Gib dem Agent, was er für seine Richtung braucht: das Secret oder den Bearer-Token für Anfragen an `/hooks/<name>`, den MCP-Token für `/mcp`.
-4. Prüfe mit „Test senden“ und den `curl`-Befehlen oben.
+1. Create a connector (Settings > Webhooks or `cg webhooks create`).
+2. Set up the tunnel to `127.0.0.1:47321` (see above) and enter its address as the public address.
+3. Give the agent what it needs for its direction: the secret or the bearer token for requests to `/hooks/<name>`, the MCP token for `/mcp`.
+4. Verify with "Send test" and the `curl` commands above.
 
-Der Text für den Agent mit Adressen, Headern und Token entsteht in Einstellungen > Webhooks unter „An deinen Agent schicken“. [agents.md](agents.md) beschreibt den ganzen Ablauf mit Fehlersuche.
+The text for the agent with addresses, headers and token is generated under Settings > Webhooks > "Send to your agent". [agents.md](agents.md) describes the whole flow, including troubleshooting.
 
-## MCP für Agents in der Cloud
+## MCP for cloud agents
 
-Ein Agent in der Cloud erreicht keinen lokalen MCP-Server auf deinem Mac. Unterstützt er entfernte MCP-Server über HTTP, kann er dieselben Werkzeuge nutzen wie ein lokaler Agent: Der Hooks-Port bedient `/mcp` mit Streamable HTTP und dem Werkzeugsatz von `cg mcp`.
+A cloud agent cannot reach a local MCP server on your Mac. If it supports remote MCP servers over HTTP, it can use the same tools as a local agent: the hooks port serves `/mcp` with Streamable HTTP and the tool set of `cg mcp`. The design is described in [remote MCP through a tunnel](decisions/0023-remote-mcp-through-a-tunnel.md).
 
-- **Opt-in pro Connector.** Einstellungen > Webhooks > MCP-Zugang (oder `cg webhooks set-mcp-access grok --enabled`, `--scope read` für nur lesende Werkzeuge, oder `--mcp write` beim Anlegen). citegeist erzeugt einen Token (`whmcp_...`), zeigt ihn einmal und legt ihn im Schlüsselbund ab (Konto `webhook-grok-mcp`).
-- **Anmeldung.** `Authorization: Bearer <Token>`, verglichen in konstanter Zeit. Der Webhook-Secret und der eingehende Bearer-Token sind keine MCP-Tokens.
-- **Akteur.** Alle Schreibzugriffe laufen als `agent:<connector>`, unabhängig davon, wie sich der Client nennt. Neue Paper landen in der Inbox (D7), genau wie bei einem lokalen MCP-Agent.
-- **Rechte.** Wie bei lokalen MCP-Agents: Lesen und Schreiben, nie `admin`. Einstellungen, Webhooks und Löschungen jenseits von `trash_item` sind nicht erreichbar. Ein Agent im Internet darf außerdem keine Dateien dieses Macs lesen: `add_item` mit einem lokalen Pfad und `attach_file` lehnt der Kern ab.
-- **Ohne Zugang kein Endpunkt.** Hat kein Connector MCP-Zugang, antwortet `/mcp` mit `404`. Mit Zugang folgt auf einen falschen Token `401`. Nach zehn Fehlversuchen innerhalb einer Minute von derselben Quelle (bei einem Tunnel die weitergereichte Adresse, `x-forwarded-for`) antwortet der Listener mit `429` und `retry-after`; insgesamt sind es 100 Fehlversuche pro Minute.
-- **Entziehen.** `cg webhooks set-mcp-access grok --no-enabled` macht den Token sofort ungültig; das Löschen des Connectors tut dasselbe.
+- **Opt-in per connector.** Settings > Webhooks > MCP access (or `cg webhooks set-mcp-access grok --enabled`, `--scope read` for read-only tools, or `--mcp write` on creation). citegeist generates a token (`whmcp_...`), shows it once and stores it in the Keychain (account `webhook-grok-mcp`).
+- **Authentication.** `Authorization: Bearer <token>`, compared in constant time. The webhook secret and the inbound bearer token are not MCP tokens.
+- **Actor.** All writes run as `agent:<connector>`, whatever the client calls itself. New papers land in the inbox ([ADR 0014](decisions/0014-agent-content-goes-to-inbox.md)), exactly as with a local MCP agent.
+- **Permissions.** As with local MCP agents: read and write, never `admin`. Settings, webhooks and deletions beyond `trash_item` are unreachable. An agent on the internet also may not read files of this Mac: the core refuses `add_item` with a local path and `attach_file`. The [security model](security-model.md) covers how text from such agents is treated.
+- **No access, no endpoint.** If no connector has MCP access, `/mcp` answers `404`. With access, a wrong token is followed by `401`. After ten failed attempts within a minute from the same source (behind a tunnel, the forwarded address, `x-forwarded-for`), the listener answers `429` with `retry-after`; in total, 100 failed attempts per minute are allowed.
+- **Revoking.** `cg webhooks set-mcp-access grok --no-enabled` invalidates the token immediately; deleting the connector does the same.
 
-## Grok Bot (xAI und Cursor)
+### Sessions and restarts
 
-Grok Bot läuft in der Cloud mit eigenem Rechner (Browser, Dateisystem, Terminal). Er erreicht keine lokalen MCP-Server, unterstützt aber entfernte MCP-Server über HTTP. Routinen haben einen Webhook-Trigger: `POST https://api2.cursor.sh/automations/webhook/<routine-id>` mit `Authorization: Bearer crsr_...`. Der Body wird zur Eingabe des Laufs, der Aufruf antwortet sofort mit `200 {"success":true,"runUuid":"..."}`, mit `400` bei einer abgeschalteten Routine (die Anfrage wird dann nicht eingereiht) und mit `401` bei falschem Schlüssel.
+Clients that speak the 2025 protocol get a session (`Mcp-Session-Id`) on `initialize`. The core keeps sessions in memory only and loses them on every restart, for example after an app update. No tool depends on a session, so `/mcp` also accepts an unknown session id: the core opens a new session for the same connector and returns it in the `Mcp-Session-Id` header of the response. The protocol expects `404` here, and some clients (Grok Bot) do not recover from it. Further rules:
 
-**1. Tunnel.** Lege einen Connector an und richte Tailscale Funnel auf den Hooks-Port ein:
+- The core closes a session that nobody used for 24 hours. The next call with its id opens a new one.
+- Open SSE streams (`GET /mcp`) get a comment (`: keepalive`) every 15 seconds, so Funnel or Cloudflare do not drop a quiet stream.
+- A restart of the core interrupts calls in flight. This includes the seconds in which the tunnel answers `502` because the hooks port is not listening yet.
+
+For troubleshooting, the core writes lines prefixed with `mcp:` to its log: `session ... opened`, `unknown session ... replaced by ...` (a session from before a restart was replaced), `closed ... idle`, and the source of the request on `401` or `429`. Tokens and full session ids never appear. The app writes these lines, together with its own, to `~/Library/Logs/citegeist/core.log`. The file rotates at 5 MB and keeps three files (`core.log`, `core.log.1`, `core.log.2`). Secrets such as tokens and API keys are removed before a line is written. Open the file from the About window (citegeist menu, "About citegeist") or from Settings under "Troubleshooting" with "Open log".
+
+## Grok Bot (xAI and Cursor)
+
+Grok Bot runs in the cloud on its own machine (browser, file system, terminal). It cannot reach local MCP servers but supports remote MCP servers over HTTP. Routines have a webhook trigger: `POST https://api2.cursor.sh/automations/webhook/<routine-id>` with `Authorization: Bearer crsr_...`. The body becomes the input of the run. The call answers immediately with `200 {"success":true,"runUuid":"..."}`, with `400` for a switched-off routine (the request is then not queued) and with `401` for a wrong key.
+
+**1. Tunnel.** Create a connector and set up Tailscale Funnel to the hooks port:
 
 ```
 tailscale funnel --bg --https=443 --set-path=/hooks http://127.0.0.1:47321/hooks
 tailscale funnel --bg --https=443 --set-path=/mcp http://127.0.0.1:47321/mcp
 ```
 
-Trage `https://<gerät>.<tailnet>.ts.net` (ohne Port) unter Einstellungen > Webhooks > Öffentliche Adresse ein.
+Enter `https://<device>.<tailnet>.ts.net` (without a port) under Settings > Webhooks > Public address.
 
-**2. MCP.** Schalte beim Connector den MCP-Zugang ein. citegeist zeigt danach unter „An deinen Agent schicken“ einen Text, den du in den Chat von Grok Bot einfügst. Grok Bot kann einen MCP-Server nicht aus einem Geheimnisfeld speichern, sein Werkzeug braucht den Header-Wert (`Bearer whmcp_...`) als Klartext im Chat, und die Wörter „custom MCP server“ im Text verhindern die Suche im Katalog. Danach nutzt Grok `search`, `add_item`, `create_card` und die übrigen Werkzeuge und schreibt als `agent:grok`. Die Einzelheiten stehen in [agents.md](agents.md#grok-bot-xai-und-cursor).
+**2. MCP.** Switch on MCP access for the connector. Under "Send to your agent", citegeist then shows a text that you paste into the Grok Bot chat. Grok Bot cannot store an MCP server from a secret field: its tool needs the header value (`Bearer whmcp_...`) as plain text in the chat, and the words "custom MCP server" in the text prevent a search of the catalog. After that, Grok uses `search`, `add_item`, `create_card` and the other tools and writes as `agent:grok`. The details are in [agents.md](agents.md#grok-bot-xai-and-cursor).
 
-**3. Aufträge.** Lege in Grok Bot eine Routine mit Webhook-Trigger an. Trage ihre Adresse als Ziel des Connectors ein und `Authorization` mit `Bearer crsr_...` als Auth-Header (Art „Beides“). Mit `webhooks.send` oder dem Test in den Einstellungen löst citegeist die Routine aus. Das Ergebnis kommt auf einem der zwei Wege zurück: Die Routine ruft MCP-Werkzeuge auf, oder sie schickt `task.result` an die Rückruf-Adresse aus dem Auftrag, signiert mit dem Secret des Connectors (oder mit dem Bearer-Token, falls eingeschaltet).
+**3. Tasks.** Create a routine with a webhook trigger in Grok Bot. Enter its address as the target of the connector and `Authorization` with `Bearer crsr_...` as the auth header (kind "both"). With `webhooks.send` or the test in the settings, citegeist triggers the routine. The result comes back by one of two routes: the routine calls MCP tools, or it sends `task.result` to the callback address from the task, signed with the secret of the connector (or with the bearer token, if switched on).
 
-Eine abgeschaltete Routine beantwortet den Aufruf mit `400`. citegeist versucht es dreimal, danach schlägt der Job mit `WEBHOOK_DELIVERY_FAILED` fehl und nennt den Status.
+A switched-off routine answers the call with `400`. citegeist tries three times, after which the job fails with `WEBHOOK_DELIVERY_FAILED` and names the status.
 
-## Beispielclient für den Grok-Bot
+## Example client for Grok Bot
 
-Mit curl (OpenSSL und `uuidgen` sind auf dem Mac da). Der Body wird mit `--data-binary` gesendet, damit die Bytes genau die sind, die signiert wurden:
+With curl (OpenSSL and `uuidgen` are available on the Mac). The body is sent with `--data-binary` so that the bytes are exactly the ones that were signed:
 
 ```bash
-SECRET='whsec_...'                    # aus webhooks.create
-URL='https://hooks.beispiel.de/hooks/grok'
-BODY='{"event":"papers.add","papers":["10.1007/978-3-322-97010-7"],"why":"Grok-Fund aus dem X-Thread"}'
+SECRET='whsec_...'                    # from webhooks.create
+URL='https://hooks.example.com/hooks/grok'
+BODY='{"event":"papers.add","papers":["10.1007/978-3-322-97010-7"],"why":"Grok find from the X thread"}'
 
 ID=$(uuidgen)
 TS=$(date +%s)
@@ -281,13 +291,13 @@ curl -sS -X POST "$URL" \
   --data-binary "$BODY"
 ```
 
-Mit Node (ab Version 18, ohne Pakete):
+With Node (version 18 or later, no packages):
 
 ```js
 import { createHmac, randomUUID } from "node:crypto";
 
 const SECRET = process.env.CITEGEIST_WEBHOOK_SECRET;
-const URL = process.env.CITEGEIST_WEBHOOK_URL; // https://hooks.beispiel.de/hooks/grok
+const URL = process.env.CITEGEIST_WEBHOOK_URL; // https://hooks.example.com/hooks/grok
 
 export async function send(payload) {
   const body = JSON.stringify(payload);
@@ -307,19 +317,18 @@ export async function send(payload) {
   return { status: res.status, body: await res.json() };
 }
 
-console.log(await send({ event: "papers.add", papers: ["10.1007/978-3-322-97010-7"], why: "Grok-Fund" }));
+console.log(await send({ event: "papers.add", papers: ["10.1007/978-3-322-97010-7"], why: "Grok find" }));
 ```
 
-Um einen Auftrag von citegeist zu prüfen, bildet der Bot dieselbe Signatur über `<x-citegeist-id>.<x-citegeist-timestamp>.<Rohbody>` und vergleicht sie mit dem Header, bevor er etwas ausführt. Den Rohbody liest er vor jedem JSON-Parsen.
+To verify a task from citegeist, the bot computes the same signature over `<x-citegeist-id>.<x-citegeist-timestamp>.<raw body>` and compares it with the header before it executes anything. It reads the raw body before any JSON parsing.
 
-## Einbau im Kern
+## Integration in the core
 
-`packages/webhooks` exportiert `attachWebhooks(host, options)`. `startCoreServer` in `packages/server` ruft es auf, bevor der RPC-Router gebaut wird, damit `webhooks.*` im Router steht:
+`packages/webhooks` exports `attachWebhooks(host, options)`. `startCoreServer` in `packages/server` calls it before the RPC router is built, so that `webhooks.*` is part of the router:
 
-1. `dir` ist der maschinenlokale Ordner der Bibliothek, `secrets` der Keychain (`MacKeychain`, auf anderen Systemen der Arbeitsspeicher), `port` liefert den gebundenen Port, `publicBaseUrl` stammt aus `CITEGEIST_PUBLIC_URL`, sonst aus der Einstellung `webhooks.publicUrl`.
-2. Der Request-Listener fragt zuerst `hooks.handle(req, res)`. Pfade unter `/hooks/` beantwortet der Webhook-Dienst nach Signatur, alle anderen Pfade laufen weiter durch die Prüfungen von Host, Origin und Token.
-3. Aufträge an externe Agenten sind Jobs der Art `research`. Dieselbe Art nutzen die Recherche-Jobs des Chats (`research.start`). Die Warteschlange hält pro Art einen Handler, deshalb teilen sich beide Nutzer die Art über `shareKind` aus `@citegeist/core`: Jeder bekommt einen eigenen Zugang (Port) mit eigenem Handler und eigener Parallelitätsgrenze. Jobs des Webhook-Dienstes tragen `webhook` im Input, alle anderen gehören dem Chat. Die Jobliste der App zeigt beide als Recherche.
+1. `dir` is the machine-local folder of the library, `secrets` the Keychain (`MacKeychain`, in-memory on other systems), `port` supplies the bound port, and `publicBaseUrl` comes from `CITEGEIST_PUBLIC_URL`, otherwise from the setting `webhooks.publicUrl`.
+2. The request listener asks `hooks.handle(req, res)` first. Paths under `/hooks/` are answered by the webhook service according to the signature, and all other paths continue through the checks for host, origin and token.
+3. Tasks for external agents are jobs of kind `research`. The research jobs of the chat (`research.start`) use the same kind. The queue holds one handler per kind, so both users share the kind through `shareKind` from `@citegeist/core`: each gets its own port with its own handler and its own concurrency limit. Jobs of the webhook service carry `webhook` in their input, and all others belong to the chat. The job list of the app shows both as research.
+4. The hooks port belongs to `manageHooksListener` (`packages/server/src/core/hooks-listener.ts`). It starts, moves or stops the listener on every change of the settings and on every creation or deletion of a connector. The listener hands `/hooks/` to `attachWebhooks` and `/mcp` to `createMcpRequestHandler` from `@citegeist/mcp`, the same implementation as `cg mcp --http`, with the actor of the connector and without access to local files.
 
-4. Der Hooks-Port gehört `manageHooksListener` (`packages/server/src/core/hooks-listener.ts`). Er startet, verschiebt oder stoppt den Listener bei jeder Änderung der Einstellungen und bei jedem Anlegen oder Löschen eines Connectors. Der Listener reicht `/hooks/` an `attachWebhooks` weiter und `/mcp` an `createMcpRequestHandler` aus `@citegeist/mcp`, dieselbe Implementierung wie `cg mcp --http`, mit dem Akteur des Connectors und ohne Zugriff auf lokale Dateien.
-
-Mit `startCoreServer({ webhooks: false })` entfallen Empfänger und Operationen, `webhooks: { secrets, publicBaseUrl, fetch, hooksPort, retryDelaysMs }` ersetzt Keychain, Adresse, HTTP-Client, Hooks-Port (0 wählt einen freien) und die Wartezeiten zwischen Zustellversuchen (Tests).
+With `startCoreServer({ webhooks: false })`, receiver and operations are omitted. `webhooks: { secrets, publicBaseUrl, fetch, hooksPort, retryDelaysMs }` replaces the Keychain, address, HTTP client, hooks port (0 picks a free one) and the waiting times between delivery attempts (tests).

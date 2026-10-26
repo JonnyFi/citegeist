@@ -16,13 +16,14 @@ export interface StoredSettings {
   unpaywallEmail?: string;
   /** `tool` parameter for NCBI E-utilities; "citegeist" when unset. */
   ncbiTool?: string;
-  uiLanguage: "de" | "en";
+  /** Unset until the user picks one; the UI then follows the system language. */
+  uiLanguage?: "de" | "en";
   /** `model` is a key of EMBEDDING_MODEL_KEYS; unset means the default (EmbeddingGemma). */
   semantic: { enabled: boolean; model?: EmbeddingModelKey; rerank?: boolean };
   connector: { enabled: boolean; port: number };
   /** Port of the hooks listener and the address of the tunnel in front of it. */
   webhooks: { port: number; publicUrl?: string };
-  /** A11: true restores the sandbox for chat agents. */
+  /** True restores the sandbox for chat agents. */
   chat: { isolated: boolean };
   /** Limits of research jobs. Zero switches a limit off. */
   research: { maxMinutes: number; maxTokens: number; maxToolCalls: number };
@@ -30,7 +31,6 @@ export interface StoredSettings {
 
 export const DEFAULT_SETTINGS: StoredSettings = {
   ai: { routing: { "*": "claude-code-cli" } },
-  uiLanguage: "de",
   semantic: { enabled: false },
   connector: { enabled: false, port: 23119 },
   webhooks: { port: DEFAULT_HOOKS_PORT },
@@ -84,7 +84,7 @@ function sanitize(raw: unknown): StoredSettings {
       ? { unpaywallEmail: v.unpaywallEmail }
       : {}),
     ...(typeof v.ncbiTool === "string" && v.ncbiTool ? { ncbiTool: v.ncbiTool } : {}),
-    uiLanguage: v.uiLanguage === "en" ? "en" : "de",
+    ...(v.uiLanguage === "en" || v.uiLanguage === "de" ? { uiLanguage: v.uiLanguage } : {}),
     semantic: {
       enabled: v.semantic?.enabled === true,
       ...(isModelKey(v.semantic?.model) ? { model: v.semantic.model } : {}),

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createReflowFixtures, renderApp } from "../test-utils";
 import { de } from "./de";
 import { en } from "./en";
-import { translator } from "./index";
+import { pickLang, systemLang, translator } from "./index";
 
 afterEach(() => localStorage.clear());
 
@@ -30,6 +30,44 @@ describe("catalogs", () => {
     expect(de1.tn("items.count", 1)).toBe("1 Quelle");
     expect(de1.tn("items.count", 3)).toBe("3 Quellen");
     expect(translator("en").tn("items.count", 0)).toBe("0 items");
+  });
+});
+
+describe("system language", () => {
+  const setLanguages = (languages: string[]) =>
+    Object.defineProperty(window.navigator, "languages", {
+      configurable: true,
+      get: () => languages,
+    });
+  afterEach(() => setLanguages(["de-DE", "de", "en-US"]));
+
+  it("picks the first offered language of a preference list", () => {
+    expect(pickLang(["de-AT", "en"])).toBe("de");
+    expect(pickLang(["de_DE"])).toBe("de");
+    expect(pickLang(["en-GB", "de"])).toBe("en");
+    expect(pickLang(["fr-FR", "de-DE"])).toBe("de");
+  });
+
+  it("falls back to English for any other language", () => {
+    expect(pickLang(["fr-FR", "ja"])).toBe("en");
+    expect(pickLang([])).toBe("en");
+  });
+
+  it("reads the list from the browser engine", () => {
+    setLanguages(["fr-FR", "en-US"]);
+    expect(systemLang()).toBe("en");
+    setLanguages(["de-CH"]);
+    expect(systemLang()).toBe("de");
+  });
+
+  it("starts in the system language and lets a stored choice win", async () => {
+    setLanguages(["en-US"]);
+    const view = renderApp("/", undefined, { lang: "system" });
+    expect(await screen.findByRole("link", { name: "Projects" })).toBeVisible();
+    view.unmount();
+    localStorage.setItem("citegeist.lang", "de");
+    renderApp("/", undefined, { lang: "system" });
+    expect(await screen.findByRole("link", { name: "Projekte" })).toBeVisible();
   });
 });
 

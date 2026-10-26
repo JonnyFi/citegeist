@@ -29,7 +29,10 @@ let tmp: string;
 let server: CoreServer | undefined;
 const cleanups: Array<() => Promise<void> | void> = [];
 
-async function start(webhooks: Exclude<WebhookOptions, false> = {}) {
+async function start(
+  webhooks: Exclude<WebhookOptions, false> = {},
+  log?: (message: string) => void,
+) {
   const resolver = createResolver({
     fetch: createReplayFetch(METADATA_HTTP_DIR),
     now: () => Date.parse("2026-10-23T12:00:00Z"),
@@ -39,6 +42,7 @@ async function start(webhooks: Exclude<WebhookOptions, false> = {}) {
     library: join(tmp, "library"),
     localBase: join(tmp, "local"),
     watch: false,
+    ...(log ? { log } : {}),
     connector: false,
     chat: false,
     runtime: {
@@ -203,12 +207,12 @@ describe("public address", () => {
     expect((await call(client, "webhooks.list")).publicBaseUrl).toBeUndefined();
 
     await call(client, "settings.update", {
-      patch: { webhooks: { publicUrl: "https://mac.tailnet.ts.net/" } },
+      patch: { webhooks: { publicUrl: "https://mac.example.ts.net/" } },
     });
     let listed = await call(client, "webhooks.list");
-    expect(listed.publicBaseUrl).toBe("https://mac.tailnet.ts.net");
+    expect(listed.publicBaseUrl).toBe("https://mac.example.ts.net");
     expect(listed.publicBaseUrlSource).toBe("settings");
-    expect(listed.webhooks[0].inboundUrl).toBe("https://mac.tailnet.ts.net/hooks/grok");
+    expect(listed.webhooks[0].inboundUrl).toBe("https://mac.example.ts.net/hooks/grok");
 
     process.env.CITEGEIST_PUBLIC_URL = "https://env.example.com";
     listed = await call(client, "webhooks.list");
@@ -239,7 +243,7 @@ describe("public address", () => {
 
     const { client } = await start({ hooksPort: 0 });
     await call(client, "settings.update", {
-      patch: { webhooks: { publicUrl: "https://mac.tailnet.ts.net" } },
+      patch: { webhooks: { publicUrl: "https://mac.example.ts.net" } },
     });
     const created = await call(client, "webhooks.create", {
       name: "grok",
@@ -258,7 +262,7 @@ describe("public address", () => {
     expect(received[0]?.headers.authorization).toBe("Bearer crsr_test_key");
     expect(received[0]?.headers["x-citegeist-signature"]).toMatch(/^v1=/);
     expect(JSON.parse(received[0]?.body ?? "{}").callback.url).toBe(
-      "https://mac.tailnet.ts.net/hooks/grok",
+      "https://mac.example.ts.net/hooks/grok",
     );
     // Answer the task, so the job does not wait for its callback when the core closes.
     const answer = JSON.stringify({ event: "task.result", task: sent.job, status: "failed" });
@@ -383,6 +387,32 @@ describe("MCP endpoint for connectors", () => {
     expect((await other.listTools()).tools.length).toBeGreaterThan(0);
   });
 
+  it("serves a session id from before a restart of the core on a new session", async () => {
+    const lines: string[] = [];
+    const { server: s, client } = await start({ hooksPort: 0 }, (m) => lines.push(m));
+    const made = await call(client, "webhooks.create", {
+      name: "grok",
+      kind: "inbound",
+      mcp: "write",
+    });
+    const res = await fetch(`http://127.0.0.1:${s.hooksPort()}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${made.mcpToken}`,
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-session-id": "44444444-2222-4333-8444-555555555555",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("mcp-session-id")).toBeTruthy();
+    expect(res.headers.get("mcp-session-id")).not.toBe("44444444-2222-4333-8444-555555555555");
+    expect(await res.text()).toContain('"tools"');
+    expect(lines.some((l) => l.includes("44444444") && l.includes("replaced"))).toBe(true);
+    expect(lines.join("\n")).not.toContain(made.mcpToken);
+  });
+
   it("lists the tools of a local MCP agent over HTTP, without admin tools", async () => {
     const { server: s, client } = await start({ hooksPort: 0 });
     const made = await call(client, "webhooks.create", {
@@ -456,4 +486,70 @@ describe("MCP endpoint for connectors", () => {
     expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
     expect(tools.map((t) => t.name)).not.toContain("add_item");
   });
+});
+
+describe("abuse limits on the hooks listener", () => {
+  const post = (port: number, headers: Record<string, string>) =>
+    new Promise<number>((resolve, reject) => {
+      const req = request(
+        { host: "127.0.0.1", port, path: "/hooks/grok", method: "POST", headers },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on("error", reject);
+      req.end("{}");
+    });
+
+  it("turns a source away after repeated failed signatures, whatever else it writes into x-forwarded-for", async () => {
+    const { server: s, client } = await start({ hooksPort: 0 });
+    const { secret } = await call(client, "webhooks.create", { name: "grok", kind: "inbound" });
+    const port = s.hooksPort() as number;
+    // The tunnel appends 203.0.113.7; the entry before it is the sender's own invention.
+    const attacker = (i: number) => ({ "x-forwarded-for": `198.51.100.${i}, 203.0.113.7` });
+    for (let i = 0; i < 10; i += 1) expect(await post(port, attacker(i))).toBe(401);
+    expect(await post(port, attacker(99))).toBe(429);
+    // Another source is not affected and still gets through with a valid signature.
+    const body = JSON.stringify({ event: "ping" });
+    const ok = await fetch(`http://127.0.0.1:${port}/hooks/grok`, {
+      method: "POST",
+      headers: { ...signRequest(secret, body), "x-forwarded-for": "203.0.113.8" },
+      body,
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it("closes a request whose body never arrives", async () => {
+    const { manageHooksListener } = await import("./hooks-listener.js");
+    const listener = manageHooksListener({
+      hooks: {
+        service: { hasConnectors: () => true, hasMcpAccess: () => false },
+        // Like the real handler, wait for the body.
+        handle: (req: IncomingMessage) =>
+          new Promise<boolean>((resolve) => req.on("close", () => resolve(true))),
+      } as never,
+      mcp: { handle: async () => {} } as never,
+      port: () => 0,
+      portOverride: 0,
+      requestTimeoutMs: 300,
+    });
+    await listener.reconcile();
+    cleanups.push(() => listener.stop());
+    const status = listener.status();
+    if (status.state !== "listening") throw new Error("listener did not start");
+    const { connect } = await import("node:net");
+    const socket = connect(status.port as number, "127.0.0.1");
+    cleanups.push(() => void socket.destroy());
+    const closedAfter = await new Promise<string>((resolve) => {
+      let received = "";
+      socket.on("data", (d) => {
+        received += d.toString();
+      });
+      socket.on("close", () => resolve(received));
+      // Headers promise 1000 bytes; none follow.
+      socket.write("POST /hooks/grok HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n");
+    });
+    expect(closedAfter).toMatch(/^HTTP\/1\.1 408/);
+  }, 10_000);
 });

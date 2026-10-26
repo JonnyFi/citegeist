@@ -40,6 +40,13 @@ const bridge: CitegeistBridge = {
       };
     },
   },
+  setLanguage: (lang) => ipcRenderer.send("citegeist:set-language", lang),
+  about: {
+    get: () => ipcRenderer.invoke("citegeist:about-get"),
+    openLog: () => ipcRenderer.invoke("citegeist:about-open-log"),
+    openNotice: () => ipcRenderer.invoke("citegeist:about-open-notice"),
+    revealLogFolder: () => ipcRenderer.invoke("citegeist:about-reveal-logs"),
+  },
   // The path of a file dropped on the window: a File object carries no path in the renderer.
   pathForFile: (file) => webUtils.getPathForFile(file),
   platform: process.platform,

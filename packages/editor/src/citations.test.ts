@@ -94,7 +94,7 @@ describe("citation completion source", () => {
   });
 
   it("stays quiet for e-mail addresses, escaped signs and ordinary text", async () => {
-    expect(await complete("Mail an jonny@example")).toBeNull();
+    expect(await complete("Mail an alex@example")).toBeNull();
     expect(await complete("Escaped \\@gil")).toBeNull();
     expect(await complete("Kein Zeichen hier")).toBeNull();
     expect(await complete("Zeile mit @key\nnächste Zeile ohne")).toBeNull();

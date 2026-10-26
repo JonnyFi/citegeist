@@ -6,10 +6,21 @@ import {
   type Pages,
   ProjectFrontmatter,
 } from "@citegeist/schema";
-import { LUHMANN_PAGES, mockBlocks, mockHtml, mockPages, mockPdf, toDataUrl } from "./doc";
+import { initialLang, type Lang } from "../i18n";
+import {
+  LUHMANN_PAGES,
+  LUHMANN_PAGES_EN,
+  mockBlocks,
+  mockHtml,
+  mockPages,
+  mockPdf,
+  toDataUrl,
+} from "./doc";
 
 /** In-memory library the mock core serves. Shaped like what the real core returns. */
 export interface MockData {
+  /** Language of the library content: the quotes, notes, plans and agent replies the mocks serve. */
+  lang: Lang;
   items: Map<string, { frontmatter: ItemFrontmatter; note: string }>;
   cards: Array<{ frontmatter: CardFrontmatter; body: CardBody }>;
   projects: Map<string, { frontmatter: ProjectFrontmatter; brief: string }>;
@@ -52,6 +63,8 @@ interface ItemSeed {
   pages?: number;
   /** The frontmatter key `retraction`, as items.checkRetractions writes it. */
   retraction?: Record<string, unknown>;
+  /** English content only: replaces the label of the first retraction notice. */
+  retractionLabel?: string;
 }
 
 const ITEMS: ItemSeed[] = [
@@ -277,6 +290,24 @@ const ITEMS: ItemSeed[] = [
   },
 ];
 
+/** What differs when the library content is English: the German-language sources, in their English edition. */
+const ITEMS_EN: Record<string, Partial<ItemSeed>> = {
+  luhmann1984soziale: {
+    title: "Social Systems: Outline of a General Theory",
+    abstract:
+      "Luhmann sketches a general theory of social systems that takes communication, not action, as its basic element.",
+    note: "# Social Systems\n\nThe book makes communication the elementary operation of social systems.\n\n## Key concepts\n\n- Autopoiesis\n- Double contingency\n- Meaning\n\nConnected to [[habermas1981theorie]]: both work on the same problem, but with opposing means.",
+  },
+  habermas1981theorie: {
+    title: "The Theory of Communicative Action",
+    abstract:
+      "A social theory that understands mutual understanding as the basis of social integration. It separates action oriented to understanding from strategic action. The lifeworld supplies the background that makes both possible.",
+    note: "# The Theory of Communicative Action\n\nAction oriented to understanding versus strategic action.",
+  },
+  es2023ragas: { retractionLabel: "Sample notice of the mock library" },
+  thakur2021beir: { retractionLabel: "Sample notice of the mock library" },
+};
+
 const CARDS: Array<{
   item: string;
   quote: string;
@@ -339,6 +370,33 @@ const CARDS: Array<{
   },
 ];
 
+/** English quotes and paraphrases of the Luhmann cards, by position in CARDS. */
+const CARDS_EN: Array<{ quote: string; paraphrase?: string }> = [
+  {
+    quote:
+      "Social systems consist of communications and only of communications. Human beings are in their environment.",
+    paraphrase:
+      "Communication is the only building block of a social system; people sit outside it, in its environment.",
+  },
+  {
+    quote:
+      "There are self-referential systems. The concept of self-reference designates the unity that an element, a process, or a system is for itself.",
+    paraphrase: "A system is self-referential when it relates to itself through its own elements.",
+  },
+  { quote: "Double contingency is the starting point for the formation of social systems." },
+];
+
+const PROJECTS_EN: Record<string, { questions: string[]; brief: string }> = {
+  "phd-proposal": {
+    questions: [
+      "How can Luhmann's concept of communication be applied to platforms?",
+      "Where do Luhmann and Habermas contradict each other, and where do they work on the same problem?",
+    ],
+    brief:
+      "# Brief\n\nThe proposal examines platforms as social systems in Luhmann's sense. The distinction from Habermas's theory of action is the focus of chapter 2.\n\n## Scope\n\n- No platform economics in the narrow sense\n- Focus on the concept of communication\n\nAgents read this brief before every project task.",
+  },
+};
+
 const PROJECTS: Array<{
   slug: string;
   title: string;
@@ -372,10 +430,19 @@ const PROJECTS: Array<{
   },
 ];
 
-export function createFixtures(): MockData {
+/** The fixture library. `lang` picks the language of its content; it defaults to the UI language. */
+export function createFixtures(lang: Lang = initialLang()): MockData {
   counter = 0;
+  const en = lang === "en";
   const items: MockData["items"] = new Map();
-  for (const s of ITEMS) {
+  for (const seed of ITEMS) {
+    const { retractionLabel, ...s } = { ...seed, ...(en ? ITEMS_EN[seed.citekey] : {}) };
+    if (retractionLabel && s.retraction) {
+      const notices = (s.retraction.notices as Array<Record<string, unknown>>).map((n, i) =>
+        i === 0 ? { ...n, label: retractionLabel } : n,
+      );
+      s.retraction = { ...s.retraction, notices };
+    }
     const fm = ItemFrontmatter.parse({
       id: ulid(),
       citekey: s.citekey,
@@ -411,7 +478,10 @@ export function createFixtures(): MockData {
     items.set(s.citekey, { frontmatter: fm, note: s.note ?? "" });
   }
 
-  const cards = CARDS.map((c) => ({
+  const cards = CARDS.map((card, i) => {
+    const over = en ? CARDS_EN[i] : undefined;
+    return over ? { ...card, ...over } : card;
+  }).map((c) => ({
     frontmatter: CardFrontmatter.parse({
       id: `c_${ulid()}`,
       item: c.item,
@@ -434,12 +504,14 @@ export function createFixtures(): MockData {
   }));
 
   const projects: MockData["projects"] = new Map();
-  for (const p of PROJECTS) {
+  for (const project of PROJECTS) {
+    const p = { ...project, ...(en ? PROJECTS_EN[project.slug] : {}) };
     projects.set(p.slug, {
       frontmatter: ProjectFrontmatter.parse({
         slug: p.slug,
         title: p.title,
         status: p.status ?? "active",
+        ...(en ? { ai_language: "en" } : {}),
         questions: p.questions.map((text, i) => ({ id: `q${i + 1}`, text })),
         created: STAMP,
       }),
@@ -448,15 +520,16 @@ export function createFixtures(): MockData {
   }
 
   const docs: MockData["docs"] = new Map();
+  const pagesOf = en ? LUHMANN_PAGES_EN : LUHMANN_PAGES;
   const luhmann = items.get("luhmann1984soziale")?.frontmatter.sources[0];
   if (luhmann) {
     docs.set("luhmann1984soziale", {
       source: luhmann.hash,
-      pdfUrl: toDataUrl(mockPdf(LUHMANN_PAGES), "application/pdf"),
-      html: mockHtml(LUHMANN_PAGES),
-      blocks: mockBlocks(LUHMANN_PAGES),
-      pages: mockPages(LUHMANN_PAGES, luhmann.hash),
+      pdfUrl: toDataUrl(mockPdf(pagesOf), "application/pdf"),
+      html: mockHtml(pagesOf),
+      blocks: mockBlocks(pagesOf),
+      pages: mockPages(pagesOf, luhmann.hash),
     });
   }
-  return { items, cards, projects, docs };
+  return { lang, items, cards, projects, docs };
 }

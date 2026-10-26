@@ -1,44 +1,48 @@
-# Bibliotheksformat, Version 1
+# Library format, version 1
 
-Die Schemas in `packages/schema/src` sind verbindlich. Diese Seite beschreibt, wo welche Datei liegt und wer sie schreiben darf. Den Hintergrund liefert `docs/architecture.md`, Abschnitt „Bibliotheksordner“.
+The schemas in `packages/schema/src` are authoritative. This page describes where each file lives and who may write it. The background is in [the architecture document](../architecture.md), section on the library folder.
 
-| Pfad | Schema | Schreibt |
+| Path | Schema | Written by |
 |---|---|---|
-| `citegeist.json` | `LibraryManifest` | Kern |
-| `AGENTS.md`, `CLAUDE.md` | frei | Kern (generiert) |
-| `items/<citekey>/<citekey>.md` | Frontmatter `ItemFrontmatter`, Text frei (Literaturnotiz) | Kern; Agents und Menschen dürfen den Text bearbeiten |
-| `items/<citekey>/sources/<hash>.<ext>` | Originaldatei, unveränderlich | Kern |
-| `items/<citekey>/derived/<hash>/manifest.json` | `DerivedManifest` | Python-Worker |
-| `items/<citekey>/derived/<hash>/pages.json` | `Pages` (je Seite `labelConfidence` von 0 bis 1) | Worker, Bestätigung durch den Kern |
-| `items/<citekey>/derived/<hash>/blocks.jsonl` | `Block`, eine Zeile pro Block | Worker |
+| `citegeist.json` | `LibraryManifest` | Core |
+| `AGENTS.md`, `CLAUDE.md` | free | Core (generated) |
+| `items/<citekey>/<citekey>.md` | Frontmatter `ItemFrontmatter`, body free (literature note) | Core; agents and humans may edit the body |
+| `items/<citekey>/sources/<hash>.<ext>` | Original file, immutable | Core |
+| `items/<citekey>/derived/<hash>/manifest.json` | `DerivedManifest` | Python worker |
+| `items/<citekey>/derived/<hash>/pages.json` | `Pages` (per page `labelConfidence` from 0 to 1) | Worker, confirmation by the core |
+| `items/<citekey>/derived/<hash>/blocks.jsonl` | `Block`, one line per block | Worker |
 | `items/<citekey>/derived/<hash>/idmap.json` | `IdMap` | Worker |
-| `items/<citekey>/derived/<hash>/header.json` | frei, nur wenn der Worker Kopfdaten fand | Worker |
-| `items/<citekey>/derived/<hash>/refs.jsonl`, `doc.md`, `doc.html`, `assets/` | abgeleitet | Worker |
-| `items/<citekey>/cards/<id>.md` | Frontmatter `CardFrontmatter`, Text `CardBody` | Kern; der Abschnitt „Note“ darf frei bearbeitet werden |
-| `alerts.yaml` | wie `projects/<slug>/alerts.yaml`, für Alerts ohne Projekt | Kern, Agents, Menschen |
-| `notes/<slug>.md` | Frontmatter `NoteFrontmatter`, Text frei | Kern, Agents, Menschen |
-| `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, Text Projektbrief | Kern, Agents, Menschen |
-| `projects/<slug>/alerts.yaml` | `alerts:` mit einer Liste von `AlertDef` (Name, Quelle, Intervall, Limit, Ranking). Letzter Lauf und Merkliste liegen nicht hier, sondern maschinenlokal in `alerts-state.json` | Kern, Agents, Menschen |
-| `projects/<slug>/texts/<text>.md` | Frontmatter `TextFrontmatter` (Titel, Zitierstil, Sprache), Text Markdown mit Pandoc-Zitaten | Kern, Agents, Menschen |
-| `projects/<slug>/exports/*` | abgeleitet; auch die Word-, LaTeX-, PDF- und Markdown-Dateien von `texts.export` | Kern |
-| `chats/<datum>-<slug>.md` | frei | Kern |
+| `items/<citekey>/derived/<hash>/header.json` | free, only if the worker found header data | Worker |
+| `items/<citekey>/derived/<hash>/refs.jsonl`, `doc.md`, `doc.html`, `assets/` | derived | Worker |
+| `items/<citekey>/cards/<id>.md` | Frontmatter `CardFrontmatter`, body `CardBody` | Core; the "Note" section may be edited freely |
+| `alerts.yaml` | like `projects/<slug>/alerts.yaml`, for alerts without a project | Core, agents, humans |
+| `notes/<slug>.md` | Frontmatter `NoteFrontmatter`, body free | Core, agents, humans |
+| `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, body is the project brief | Core, agents, humans |
+| `projects/<slug>/alerts.yaml` | `alerts:` with a list of `AlertDef` (name, source, interval, limit, ranking). The last run and the watch list are not stored here but machine-locally in `alerts-state.json` | Core, agents, humans |
+| `projects/<slug>/insights.md` | free Markdown; every insight is a paragraph that ends with a block id `^i-<id>` (`InsightBlockId`) | Core, agents, humans |
+| `projects/<slug>/plans/<plan>/plan.md` | Frontmatter `PlanFrontmatter`, body is the planning document | Core, agents, humans |
+| `projects/<slug>/plans/<plan>/outline.yaml` | `Outline` | Core, agents, humans |
+| `projects/<slug>/plans/<plan>/nodes/<slug>.md` | Frontmatter `NodeDocFrontmatter`, body free | Core, agents, humans |
+| `projects/<slug>/texts/<text>.md` | Frontmatter `TextFrontmatter` (title, citation style, language), body is Markdown with Pandoc citations | Core, agents, humans |
+| `projects/<slug>/exports/*` | derived; includes the Word, LaTeX, PDF and Markdown files from `texts.export` | Core |
+| `chats/<date>-<slug>.md` | free | Core |
 
-## Regeln
+## Rules
 
-- Dateien sind UTF-8 mit LF. Frontmatter ist YAML zwischen `---`-Zeilen.
-- Der Kern schreibt atomar über eine temporäre Datei und `rename`.
-- Der Text einer Karte beginnt mit einem Zitatblock (`> `), der den Wortlaut enthält. Danach folgen die Abschnitte aus `CARD_SECTIONS` als Überschriften zweiter Ebene. `quote_sha256` ist der SHA-256 des Wortlauts nach Entfernen des Zitatpräfixes und Normalisieren der Zeilenumbrüche auf `\n`.
-- Seitenmarken in `doc.md`: `<!-- page <index> label=<label> -->` auf eigener Zeile, innerhalb eines Absatzes `<!-- p:<label> -->`. Jeder Block endet mit ` ^<blockid>`.
-- Seiten ohne gedruckte Seitenzahl tragen die Marken `<!-- page <index> -->` und `<!-- p:#<index> -->`. `<index>` zählt die Seiten der Datei ab 0, das `#` vor dem Index unterscheidet ihn von einer gedruckten Seitenzahl.
-- Blöcke über mehrere Zeilen (Tabellen, Code, abgesetzte Formeln) tragen ihre `^<blockid>` auf einer eigenen Zeile nach einer Leerzeile. So erkennt Obsidian den Blocklink.
-- `pages.json` gibt je Seite in `labelConfidence` an, wie sicher die gedruckte Seitenzahl ist. Liegt der Wert unter 0,5, fragt die App einmal nach. Der Worker schreibt dort zusätzlich `labelFlags`, `furniture` (Kopf- und Fußzeilen) und `pageRangeHint`; der Kern liest diese Schlüssel nicht.
-- `header.json` enthält die Kopfdaten, die der Worker in der Quelle fand: bei einem PDF das Ergebnis von GROBID, bei einer Webseite die Metadaten, die trafilatura findet, bei arXiv-HTML den Titel. Die Datei fehlt, wenn nichts gefunden wurde, und der Worker löscht sie bei einer erneuten Konvertierung ohne Fund.
-- Rechnerlokale Daten (`index.sqlite`, `state.sqlite`, Logs, Modelle) liegen unter `~/Library/Application Support/citegeist/<library-id>/`, nie im Bibliotheksordner.
-- iCloud-Konfliktkopien (`<name> 2.md`) meldet der Kern als Problem und übernimmt sie nicht still.
+- Files are UTF-8 with LF line endings. Frontmatter is YAML between `---` lines.
+- The core writes atomically through a temporary file and `rename`.
+- The body of a card starts with a quote block (`> `) that contains the verbatim wording. The sections from `CARD_SECTIONS` follow as second-level headings. `quote_sha256` is the SHA-256 of the wording after removing the quote prefix and normalizing line breaks to `\n`.
+- Page markers in `doc.md`: `<!-- page <index> label=<label> -->` on its own line, and `<!-- p:<label> -->` inside a paragraph. Every block ends with ` ^<blockid>`.
+- Pages without a printed page number carry the markers `<!-- page <index> -->` and `<!-- p:#<index> -->`. `<index>` counts the pages of the file from 0, and the `#` in front of the index distinguishes it from a printed page number.
+- Blocks that span several lines (tables, code, display formulas) carry their `^<blockid>` on a separate line after a blank line. This is how Obsidian recognizes the block link.
+- `pages.json` states per page in `labelConfidence` how reliable the printed page number is. If the value is below 0.5, the app asks once. The worker also writes `labelFlags`, `furniture` (headers and footers) and `pageRangeHint` there; the core does not read these keys.
+- `header.json` contains the header data the worker found in the source: the GROBID result for a PDF, the metadata trafilatura finds for a web page, the title for arXiv HTML. The file is absent if nothing was found, and the worker deletes it when a repeated conversion finds nothing.
+- Machine-local data (`index.sqlite`, `state.sqlite`, logs, models) lives under `~/Library/Application Support/citegeist/<library-id>/` and never in the library folder.
+- The core reports iCloud conflict copies (`<name> 2.md`) as a problem and does not adopt them silently.
 
-## Texte
+## Texts
 
-Ein Text (D20) ist eine Markdown-Datei, zum Beispiel `projects/phd-proposal/texts/kapitel-2.md`. Der Dateiname ohne `.md` ist der Slug des Texts: Kleinbuchstaben, Ziffern und Bindestriche, so wie bei Projekten. Die Datei liegt im Bibliotheksordner und wird nicht indexiert, wie die Dokumente eines Plans.
+A text ([ADR 0002](../decisions/0002-writing-in-markdown-with-pandoc.md)) is a Markdown file, for example `projects/phd-proposal/texts/kapitel-2.md`. The file name without `.md` is the slug of the text: lowercase letters, digits and hyphens, as for projects. The file lives in the library folder and is not indexed, like the documents of a plan.
 
 ```markdown
 ---
@@ -54,7 +58,7 @@ Luhmann setzt Kommunikation als Grundelement [@luhmann1984soziale, S. 31]. Bei @
 die Plattform im Mittelpunkt [vgl. @luhmann1984soziale; -@habermas1981theorie].
 ```
 
-- `title` ist Pflicht. `style` ist eine CSL-Stil-ID (`apa`, `chicago-author-date`, `deutsche-gesellschaft-fur-psychologie`) und `lang` ein BCP-47-Tag. Fehlt `style`, gilt der Stil des Projekts. Fehlt `lang`, gilt die Sprache des Projekts (D9), sonst dessen `locale`. `created` setzt der Kern beim Anlegen, andere Schlüssel bleiben erhalten.
-- Zitate folgen der Pandoc-Syntax: `[@citekey]`, `[@citekey, S. 12]`, `[vgl. @a2020x; @b2021y]`, `[-@citekey]` und `@citekey` im Fließtext. Ein Citekey muss ein Item der Bibliothek benennen. Ein unbekannter bleibt im Export unaufgelöst, und der Editor markiert ihn. Als Zitat zählt nichts in Code, Kommentaren, Links, Wiki-Links und im Frontmatter, ebenso wenig eine E-Mail-Adresse.
-- Bilder und andere Dateien, auf die der Text relativ verweist, liegen neben ihm. `texts.export` übergibt Pandoc diesen Ordner als Ressourcenpfad.
-- Der Export steht in `projects/<slug>/exports/<text>.docx`, `<text>.zip` (LaTeX: `main.tex` mit biblatex und `references.bib` mit den zitierten Quellen), `<text>.pdf` oder `<text>.md`. Pandoc läuft dafür als eigener Prozess (D20).
+- `title` is required. `style` is a CSL style id (`apa`, `chicago-author-date`, `deutsche-gesellschaft-fur-psychologie`) and `lang` a BCP 47 tag. If `style` is missing, the style of the project applies. If `lang` is missing, the language of the project applies ([AI text language](../decisions/0016-ai-text-language.md)), otherwise its `locale`. The core sets `created` on creation and keeps other keys.
+- Citations follow the Pandoc syntax: `[@citekey]`, `[@citekey, S. 12]`, `[vgl. @a2020x; @b2021y]`, `[-@citekey]` and `@citekey` in running text. A citekey has to name an item of the library. An unknown one stays unresolved in the export, and the editor marks it. Nothing in code, comments, links, wiki links or frontmatter counts as a citation, and neither does an email address.
+- Images and other files the text refers to relatively live next to it. `texts.export` passes this folder to Pandoc as the resource path.
+- The export lands in `projects/<slug>/exports/<text>.docx`, `<text>.zip` (LaTeX: `main.tex` with biblatex and `references.bib` with the cited sources), `<text>.pdf` or `<text>.md`. Pandoc runs as a separate process for this ([ADR 0002](../decisions/0002-writing-in-markdown-with-pandoc.md)).

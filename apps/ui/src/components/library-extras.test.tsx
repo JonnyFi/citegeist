@@ -122,7 +122,7 @@ describe("add field", () => {
 
   it("uses the path the desktop app reports for a dropped file", async () => {
     window.citegeist = {
-      pathForFile: () => "/Users/jonny/Papers/latour.pdf",
+      pathForFile: () => "/Users/alex/Papers/latour.pdf",
       onNavigate: () => () => {},
       platform: "test",
     } as never;
@@ -133,7 +133,7 @@ describe("add field", () => {
       fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [file] } });
       await waitFor(() =>
         expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
-          identifier: "/Users/jonny/Papers/latour.pdf",
+          identifier: "/Users/alex/Papers/latour.pdf",
         }),
       );
     } finally {
@@ -173,7 +173,7 @@ describe("add menu and native file picker", () => {
 
   it("adds the PDFs chosen in the native dialog", async () => {
     const user = userEvent.setup();
-    const pickPaths = vi.fn(async () => ["/Users/jonny/Papers/latour.pdf"]);
+    const pickPaths = vi.fn(async () => ["/Users/alex/Papers/latour.pdf"]);
     window.citegeist = { pickPaths, onNavigate: () => () => {}, platform: "test" } as never;
     try {
       const { calls } = renderApp("/");
@@ -184,7 +184,7 @@ describe("add menu and native file picker", () => {
       );
       await waitFor(() =>
         expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
-          identifier: "/Users/jonny/Papers/latour.pdf",
+          identifier: "/Users/alex/Papers/latour.pdf",
         }),
       );
     } finally {
@@ -264,7 +264,7 @@ describe("PDF anhängen", () => {
 
   it("uses the native dialog in the desktop app", async () => {
     const user = userEvent.setup();
-    const pickPaths = vi.fn(async () => ["/Users/jonny/Papers/xyz.pdf"]);
+    const pickPaths = vi.fn(async () => ["/Users/alex/Papers/xyz.pdf"]);
     window.citegeist = { pickPaths, onNavigate: () => () => {}, platform: "test" } as never;
     try {
       const { calls } = renderApp("/");
@@ -274,7 +274,7 @@ describe("PDF anhängen", () => {
       await waitFor(() =>
         expect(calls.find((c) => c.name === "items.attach")?.input).toEqual({
           citekey: "doi101000xyz123",
-          path: "/Users/jonny/Papers/xyz.pdf",
+          path: "/Users/alex/Papers/xyz.pdf",
         }),
       );
     } finally {
@@ -289,11 +289,11 @@ describe("PDF anhängen", () => {
   });
 });
 
-describe("Metadaten neu auflösen", () => {
+describe("Metadaten neu abrufen", () => {
   it("looks the metadata up again and names the fields that changed", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/items/bowker1999sorting");
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("Aktualisiert: abstract")).toBeVisible();
     expect(calls.find((c) => c.name === "items.resolve")?.input).toEqual({
       citekey: "bowker1999sorting",
@@ -303,7 +303,7 @@ describe("Metadaten neu auflösen", () => {
   it("says so when nothing changed", async () => {
     const user = userEvent.setup();
     renderApp("/items/luhmann1984soziale");
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("Nichts Neues gefunden")).toBeVisible();
   });
 
@@ -315,7 +315,7 @@ describe("Metadaten neu auflösen", () => {
       contract.name === "items.resolve"
         ? Promise.reject(new Error("RESOLVE_FAILED: Crossref did not answer"))
         : original(contract, input)) as typeof view.core.call;
-    await user.click(await screen.findByRole("button", { name: "Metadaten neu auflösen" }));
+    await user.click(await screen.findByRole("button", { name: "Metadaten neu abrufen" }));
     expect(await screen.findByText("RESOLVE_FAILED: Crossref did not answer")).toBeVisible();
   });
 });
