@@ -3,6 +3,7 @@ import {
   citeFormat,
   documentsAssets,
   graphNeighbors,
+  graphProject,
   itemsGet,
   itemsList,
   libraryStatus,
@@ -21,7 +22,7 @@ import {
 } from "@citegeist/ops";
 import { documentAssets } from "./assets.js";
 import { formatCitations } from "./cite-ops.js";
-import { neighbors } from "./graph.js";
+import { neighbors, projectGraph } from "./graph.js";
 import type { Library } from "./library.js";
 import { createLink } from "./links.js";
 import { changeProjectItems } from "./project-items.js";
@@ -56,6 +57,7 @@ export function bindCoreOperations(
     .bind(notesUpdate, async (ctx, input) => lib.updateNote(ctx.actor, input))
     .bind(linksCreate, async (ctx, input) => createLink(lib, ctx, input))
     .bind(graphNeighbors, async (_ctx, input) => neighbors(lib, input))
+    .bind(graphProject, async (_ctx, input) => projectGraph(lib, input))
     .bind(citeFormat, async (_ctx, input) => formatCitations(lib, input))
     .bind(projectsCreate, async (ctx, input) => lib.createProject(ctx.actor, input))
     .bind(projectsGet, async (_ctx, input) => lib.getProject(input.slug))

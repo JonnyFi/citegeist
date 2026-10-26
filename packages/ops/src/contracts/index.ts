@@ -13,11 +13,13 @@ import {
   Link,
   Locator,
   NoteFrontmatter,
+  NoteId,
   NoteType,
   Pages,
   ProjectFrontmatter,
   ProjectSlug,
   Relation,
+  TextSlug,
 } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
@@ -610,6 +612,99 @@ export const graphNeighbors = defineContract({
   }),
 });
 
+/**
+ * A node of the semantic graph (docs/decisions/0031-project-graph.md): a source, a card or a note
+ * with its own thought. Literature notes that hold card connections are no nodes.
+ */
+export const SemanticNode = z.object({
+  id: z.string(),
+  kind: z.enum(["item", "card", "note"]),
+  /** Item: title. Card: the quote, whitespace collapsed, at most 240 characters. Note: title. */
+  label: z.string(),
+  /** Item: author and year, such as "Williams & Srnicek 2013". */
+  short: z.string().optional(),
+  /** Card: the source it belongs to. */
+  item: Citekey.optional(),
+  cardKind: CardKind.optional(),
+  /** Card: the page or other locator start. */
+  page: z.string().optional(),
+  noteType: NoteType.optional(),
+  /** Item: number of its cards. */
+  cards: z.number().int().nonnegative().optional(),
+  /** Reached by a link but not part of the project. */
+  outside: z.boolean().optional(),
+});
+export type SemanticNode = z.infer<typeof SemanticNode>;
+
+/** One connection as it is stored: a typed link or a wiki link (rel "mentions"). */
+export const SemanticLink = z.object({
+  id: z.string(),
+  from: z.string(),
+  to: z.string(),
+  /** A relation of the vocabulary, or "mentions" for a plain wiki link. */
+  rel: z.string(),
+  status: z.enum(["accepted", "proposed"]),
+  why: z.string().optional(),
+  by: z.string().optional(),
+  /** Cards the connection rests on: the card it starts at and its `evidence`. */
+  evidence: z.array(CardId),
+  /** Notes that explain this connection (see the ADR for the rule). */
+  notes: z.array(NoteId),
+});
+export type SemanticLink = z.infer<typeof SemanticLink>;
+
+/** Links between the same two visible nodes with the same relation, counted as one edge. */
+export const SemanticEdge = z.object({
+  id: z.string(),
+  from: z.string(),
+  to: z.string(),
+  rel: z.string(),
+  /** "accepted" when one of its links is accepted. */
+  status: z.enum(["accepted", "proposed"]),
+  links: z.array(z.string()),
+  evidence: z.array(CardId),
+  notes: z.array(NoteId),
+});
+export type SemanticEdge = z.infer<typeof SemanticEdge>;
+
+/** A note that explains connections: what the edge panel shows of it. */
+export const ExplanationNote = z.object({
+  id: NoteId,
+  title: z.string(),
+  /** The start of the body as plain text, at most 280 characters. */
+  excerpt: z.string(),
+  by: z.string().optional(),
+  /** True when the note says nothing beyond these connections and so is no node of its own. */
+  absorbed: z.boolean(),
+});
+export type ExplanationNote = z.infer<typeof ExplanationNote>;
+
+export const graphProject = defineContract({
+  name: "graph.project",
+  summary:
+    "Semantic graph of a project or the library: sources, cards and notes with their typed connections. Literature notes that store card connections are no nodes; their links start at the card or the source. edges counts the links between sources (cards collapsed into their source unless listed in expand), with the evidence cards and the notes that explain them",
+  access: "read",
+  input: z.object({
+    /** Without a project the whole library. */
+    project: ProjectSlug.optional(),
+    /** Only sources cited in this text of the project (and their cards). */
+    text: TextSlug.optional(),
+    /** Ego view: only what lies within `depth` steps of this item, card or note (library-wide). */
+    around: z.string().optional(),
+    depth: z.number().int().min(1).max(3).default(2),
+    /** Sources whose cards are shown as nodes of their own in `edges`. */
+    expand: z.array(Citekey).default([]),
+    /** Include proposed links. */
+    proposed: z.boolean().default(false),
+  }),
+  output: z.object({
+    nodes: z.array(SemanticNode),
+    links: z.array(SemanticLink),
+    edges: z.array(SemanticEdge),
+    explanations: z.array(ExplanationNote),
+  }),
+});
+
 // Projects ------------------------------------------------------------------------------------------
 export const projectsCreate = defineContract({
   name: "projects.create",
@@ -988,6 +1083,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   linksPropose,
   linksDecide,
   graphNeighbors,
+  graphProject,
   projectsCreate,
   projectsGet,
   projectsUpdate,

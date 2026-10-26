@@ -11,7 +11,7 @@ import {
   notesUpdate,
   type Registry,
 } from "@citegeist/ops";
-import type { NoteFrontmatter } from "@citegeist/schema";
+import type { Link, NoteFrontmatter } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
 
@@ -56,6 +56,7 @@ function seed(data: MockData): Map<string, MockNote> {
     body: string,
     at: string,
     type: NoteFrontmatter["type"] = "permanent",
+    extra: Partial<NoteFrontmatter> = {},
   ) =>
     notes.set(id, {
       slug,
@@ -69,8 +70,76 @@ function seed(data: MockData): Map<string, MockNote> {
         projects: [],
         created: { ...stamp, at },
         modified: { ...stamp, at },
+        ...extra,
       },
     });
+  const cardOf = (item: string, n = 0) =>
+    data.cards.filter((c) => c.frontmatter.item === item)[n]?.frontmatter.id;
+  /**
+   * Connections from cards, stored in the literature notes of their sources, and a note an agent
+   * wrote to explain one of them (docs/decisions/0031-project-graph.md).
+   */
+  const connections = (texts: {
+    contingency: string;
+    platforms: string;
+    glue: string;
+    explainer: [string, string, string];
+  }) => {
+    const agent = { at: "2026-10-01T09:00:00.000Z", by: "agent:claude-code" } as const;
+    const luhmann = [cardOf("luhmann1984soziale", 0), cardOf("luhmann1984soziale", 2)];
+    const latour = cardOf("latour2005reassembling");
+    const link = (from: string, to: string, rel: Link["rel"], why: string, by: Link["by"]) => ({
+      from,
+      to: `[[${to}]]`,
+      rel,
+      why,
+      evidence: `[[${from}]]`,
+      by,
+      status: "accepted" as const,
+    });
+    if (luhmann[0] && luhmann[1]) {
+      add(
+        "n_0000000000000004",
+        "reading-notes-luhmann1984soziale",
+        "Reading notes (luhmann1984soziale)",
+        "Item: [[luhmann1984soziale]]",
+        "2026-10-01T08:00:00.000Z",
+        "literature",
+        {
+          projects: ["phd-proposal"],
+          links: [
+            link(
+              luhmann[1],
+              "habermas1981theorie",
+              "opposes",
+              texts.contingency,
+              "agent:claude-code",
+            ),
+            link(luhmann[0], "gillespie2018custodians", "related", texts.platforms, "human"),
+          ],
+        },
+      );
+    }
+    if (latour) {
+      add(
+        "n_0000000000000005",
+        "reading-notes-latour2005reassembling",
+        "Reading notes (latour2005reassembling)",
+        "Item: [[latour2005reassembling]]",
+        "2026-10-01T08:00:00.000Z",
+        "literature",
+        {
+          projects: ["phd-proposal"],
+          links: [link(latour, "luhmann1984soziale", "opposes", texts.glue, "human")],
+        },
+      );
+    }
+    const [slug, title, body] = texts.explainer;
+    add("n_0000000000000006", slug, title, body, agent.at, "permanent", {
+      created: agent,
+      modified: agent,
+    });
+  };
   if (data.lang === "en") {
     add(
       "n_0000000000000001",
@@ -94,6 +163,18 @@ function seed(data: MockData): Map<string, MockNote> {
       "2026-10-03T09:00:00.000Z",
       "question",
     );
+    if (data.connections)
+      connections({
+        contingency:
+          "Luhmann starts from double contingency where Habermas presupposes mutual understanding.",
+        platforms: "Gillespie describes platforms as places where communication is sorted.",
+        glue: "Latour denies that there is a social substance that systems could consist of.",
+        explainer: [
+          "contingency-instead-of-understanding",
+          "Contingency instead of understanding",
+          "# Contingency instead of understanding\n\nLuhmann ([[luhmann1984soziale]]) begins with double contingency: neither side knows what the other will do, and communication has to arise from that uncertainty. Habermas ([[habermas1981theorie]]) takes mutual understanding as the normal case and treats its failure as the exception. For chapter 2 this means that platforms are explained by the improbability of communication, not by its success.\n",
+        ],
+      });
     return notes;
   }
   add(
@@ -118,6 +199,19 @@ function seed(data: MockData): Map<string, MockNote> {
     "2026-10-03T09:00:00.000Z",
     "question",
   );
+  if (data.connections) {
+    connections({
+      contingency:
+        "Luhmann beginnt bei doppelter Kontingenz, wo Habermas Verständigung voraussetzt.",
+      platforms: "Gillespie beschreibt Plattformen als Orte, an denen Kommunikation sortiert wird.",
+      glue: "Latour bestreitet, dass es eine soziale Substanz gibt, aus der Systeme bestehen könnten.",
+      explainer: [
+        "kontingenz-statt-verstaendigung",
+        "Kontingenz statt Verständigung",
+        "# Kontingenz statt Verständigung\n\nLuhmann ([[luhmann1984soziale]]) beginnt bei doppelter Kontingenz: Keiner weiß, was der andere tun wird, und Kommunikation muss aus dieser Unsicherheit entstehen. Habermas ([[habermas1981theorie]]) nimmt Verständigung als Normalfall und behandelt ihr Scheitern als Ausnahme. Für Kapitel 2 heißt das, dass Plattformen über die Unwahrscheinlichkeit von Kommunikation erklärt werden und nicht über ihr Gelingen.\n",
+      ],
+    });
+  }
   return notes;
 }
 

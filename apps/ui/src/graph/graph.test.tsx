@@ -1,209 +1,266 @@
-import { linksDecide, linksPropose, notesGet } from "@citegeist/ops";
+import { aggregateGraph, type GraphView, type SemanticGraph } from "@citegeist/ops";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import type { Neighbors } from "../connections/model";
-import { createMockCore } from "../mock/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFixtures } from "../mock/fixtures";
 import { renderApp } from "../test-utils";
-import { buildGraph, filterGraph, NO_FILTERS, relationCounts } from "./model";
+import type { GraphCanvasProps } from "./graph-canvas";
+import { buildGraph, layout, readPalette } from "./model";
 
-// jsdom has no WebGL, so sigma cannot start. A stand-in canvas lists the nodes it was given.
+// jsdom has no WebGL, so sigma cannot start. A stand-in canvas lists what it was given.
 vi.mock("./graph-canvas", () => ({
-  default: ({ data, onOpen }: { data: Neighbors; onOpen: (id: string) => void }) => (
-    <ul data-testid="fake-canvas">
-      {data.nodes.map((n) => (
-        <li key={n.id}>
-          <button type="button" onClick={() => onOpen(n.id)}>{`canvas ${n.label}`}</button>
-        </li>
-      ))}
-    </ul>
+  default: ({ view, onNode, onNodeMenu, onEdge }: GraphCanvasProps) => (
+    <div data-testid="fake-canvas">
+      <ul aria-label="canvas nodes">
+        {view.nodes.map((n) => (
+          <li key={n.id}>
+            <button type="button" onClick={() => onNode(n.id, { x: 10, y: 10 })}>
+              {`canvas ${n.short ?? n.label}`}
+            </button>
+            <button type="button" onClick={() => onNodeMenu(n.id, { x: 10, y: 10 })}>
+              {`menu ${n.short ?? n.label}`}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <ul aria-label="canvas edges">
+        {view.edges.map((e) => (
+          <li key={e.id}>
+            <button type="button" onClick={() => onEdge(e.id)}>{`edge ${e.id}`}</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   ),
 }));
 
-const AUTOPOIESIS = "n_0000000000000001";
 const LUHMANN = "luhmann1984soziale";
+const HABERMAS = "habermas1981theorie";
+const LATOUR = "latour2005reassembling";
 
-const nodes: Neighbors["nodes"] = [
-  { id: "n_1", kind: "note", label: "Notiz" },
-  { id: "luhmann", kind: "item", label: "Luhmann" },
-  { id: "c_1", kind: "card", label: "Karte" },
-  { id: "n_2", kind: "note", label: "Andere Notiz" },
-];
-const edges: Neighbors["edges"] = [
-  { from: "n_1", to: "luhmann", rel: "supports", status: "accepted" },
-  { from: "n_1", to: "luhmann", rel: "qualifies", status: "accepted" },
-  { from: "c_1", to: "luhmann", rel: "excerpt-of", status: "accepted" },
-  { from: "n_1", to: "n_2", rel: "related", status: "proposed" },
-  { from: "n_2", to: "n_1", rel: "wiki", status: "accepted" },
-];
-const data: Neighbors = { nodes, edges };
+const withConnections = (lang?: "de" | "en") => createFixtures(lang, { connections: true });
+
+beforeEach(() => localStorage.removeItem("citegeist.graph.scope"));
+
+const graph: SemanticGraph = {
+  nodes: [
+    { id: "a", kind: "item", label: "A", short: "A 2001", cards: 4 },
+    { id: "b", kind: "item", label: "B", short: "B 2002", cards: 0 },
+    { id: "c", kind: "item", label: "C", short: "C 2003", cards: 0 },
+    { id: "c_1", kind: "card", label: "one", item: "a", cardKind: "critique" },
+    { id: "c_2", kind: "card", label: "two", item: "a" },
+  ],
+  links: [
+    {
+      id: "c_1>b:opposes",
+      from: "c_1",
+      to: "b",
+      rel: "opposes",
+      status: "accepted",
+      evidence: ["c_1"],
+      notes: [],
+    },
+    {
+      id: "c_2>c:supports",
+      from: "c_2",
+      to: "c",
+      rel: "supports",
+      status: "accepted",
+      evidence: ["c_2"],
+      notes: [],
+    },
+  ],
+  explanations: [],
+};
+
+const palette = readPalette();
+const build = (view: GraphView) =>
+  buildGraph(view, layout(view), {
+    palette,
+    edgeLabel: (e) => e.rel,
+    alwaysLabelled: () => true,
+  });
 
 describe("graph model", () => {
-  it("builds a sigma graph with every edge, kind colours and a larger centre", () => {
-    const graph = buildGraph(data, "n_1");
-    expect(graph.order).toBe(4);
-    expect(graph.size).toBe(5);
-    expect(graph.getNodeAttribute("n_1", "size")).toBeGreaterThan(
-      graph.getNodeAttribute("luhmann", "size"),
-    );
-    expect(graph.getNodeAttribute("luhmann", "color")).not.toBe(
-      graph.getNodeAttribute("n_1", "color"),
-    );
-    for (const id of graph.nodes()) {
-      expect(Number.isFinite(graph.getNodeAttribute(id, "x"))).toBe(true);
-      expect(Number.isFinite(graph.getNodeAttribute(id, "y"))).toBe(true);
-    }
-    const proposed = graph
-      .edges()
-      .filter((e) => graph.getEdgeAttribute(e, "status") === "proposed");
-    expect(proposed).toHaveLength(1);
-    expect(graph.getEdgeAttribute(proposed[0] as string, "color")).not.toBe(
-      graph.getEdgeAttribute(graph.edges()[0] as string, "color"),
-    );
+  it("styles each relation of its own and sizes sources by their cards", () => {
+    const g = build(aggregateGraph(graph));
+    expect(g.getNodeAttribute("a", "size")).toBeGreaterThan(g.getNodeAttribute("b", "size"));
+    const opposes = g.getEdgeAttributes("a>b:opposes");
+    const supports = g.getEdgeAttributes("a>c:supports");
+    expect(opposes.color).toBe(palette.colors["--danger"]);
+    expect(opposes.gap).toBeGreaterThan(0);
+    expect(supports.color).toBe(palette.colors["--card-definition"]);
+    expect(supports.gap).toBe(0);
+    expect(opposes.head).toBe("arrow");
   });
 
-  it("handles a graph with a single node", () => {
-    const graph = buildGraph({ nodes: [nodes[0] as Neighbors["nodes"][number]], edges: [] }, "n_1");
-    expect(graph.order).toBe(1);
-    expect(graph.size).toBe(0);
+  it("keeps the sources in place when one of them opens, and puts its cards around it", () => {
+    const closed = aggregateGraph(graph);
+    const first = layout(closed);
+    const open = aggregateGraph(graph, { expanded: ["a"] });
+    const second = layout(open, first);
+    for (const id of ["a", "b", "c"]) expect(second.get(id)).toEqual(first.get(id));
+    const a = second.get("a") ?? { x: 0, y: 0 };
+    const d1 = Math.hypot((second.get("c_1")?.x ?? 0) - a.x, (second.get("c_1")?.y ?? 0) - a.y);
+    const d2 = Math.hypot((second.get("c_2")?.x ?? 0) - a.x, (second.get("c_2")?.y ?? 0) - a.y);
+    expect(d1).toBeGreaterThan(0);
+    expect(d1).toBeCloseTo(d2);
+    const g = build(open);
+    expect(g.hasEdge("c_1>b:opposes")).toBe(true);
+    expect(g.edges().filter((e) => g.getEdgeAttribute(e, "member"))).toHaveLength(2);
   });
 
-  it("filters by relation and drops nodes that no visible edge reaches", () => {
-    const out = filterGraph(data, "n_1", {
-      ...NO_FILTERS,
-      hiddenRelations: new Set(["supports", "qualifies", "excerpt-of"]),
-    });
-    expect(out.edges.map((e) => e.rel)).toEqual(["related", "wiki"]);
-    expect(out.nodes.map((n) => n.id).sort()).toEqual(["n_1", "n_2"]);
-  });
-
-  it("filters by node kind but keeps the centre", () => {
-    const out = filterGraph(data, "n_1", { ...NO_FILTERS, hiddenKinds: new Set(["note"]) });
-    expect(out.nodes.map((n) => n.id).sort()).toEqual(["n_1", "c_1", "luhmann"].sort());
-    expect(out.edges.every((e) => e.from !== "n_2" && e.to !== "n_2")).toBe(true);
-  });
-
-  it("hides proposals on request", () => {
-    const out = filterGraph(data, "n_1", { ...NO_FILTERS, showProposed: false });
-    expect(out.edges.some((e) => e.status === "proposed")).toBe(false);
-    expect(out.edges).toHaveLength(4);
-  });
-
-  it("counts relations in vocabulary order with untyped last", () => {
-    expect(relationCounts(edges)).toEqual([
-      ["supports", 1],
-      ["qualifies", 1],
-      ["related", 1],
-      ["excerpt-of", 1],
-      ["untyped", 1],
-    ]);
+  it("lays out the same graph the same way every time", () => {
+    expect([...layout(aggregateGraph(graph))]).toEqual([...layout(aggregateGraph(graph))]);
   });
 });
 
 describe("graph screen", () => {
-  it("opens from the sidebar around the newest note", async () => {
+  it("opens on the first project with its sources as nodes and no literature note", async () => {
     const user = userEvent.setup();
-    renderApp("/");
+    renderApp("/", withConnections());
     await user.click(await screen.findByRole("link", { name: "Graph" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Graph" })).toBeVisible();
     const canvas = await screen.findByTestId("fake-canvas");
-    expect(within(canvas).getByText("canvas Autopoiesis und Kommunikation")).toBeVisible();
-    expect(within(canvas).getByText("canvas Das Zettelkasten-Prinzip")).toBeVisible();
-    expect(within(canvas).getByText(/canvas Soziale Systeme: Grundriss/)).toBeVisible();
-    expect(screen.getByTestId("graph-counts")).toHaveTextContent(/\d+ Knoten, \d+ Verbindungen/);
+    const nodes = within(canvas).getByRole("list", { name: "canvas nodes" });
+    expect(within(nodes).getByText("canvas Luhmann 1984")).toBeVisible();
+    expect(within(nodes).getByText("canvas Habermas 1981")).toBeVisible();
+    expect(within(nodes).queryByText(/Reading notes/)).toBeNull();
+    // the note that explains Luhmann against Habermas sits on the edge, not on the canvas
+    expect(within(nodes).queryByText(/Kontingenz statt Verständigung/)).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Umfang" })).toHaveTextContent("PhD proposal");
+    expect(screen.queryByRole("button", { name: "2" })).toBeNull();
   });
 
-  it("filters by relation and node kind", async () => {
+  it("shows what a connection rests on: reason, explanation note and evidence card", async () => {
     const user = userEvent.setup();
-    renderApp(`/graph?node=${AUTOPOIESIS}`);
-    const canvas = await screen.findByTestId("fake-canvas");
-    expect(within(canvas).getAllByRole("button").length).toBeGreaterThanOrEqual(4);
-
-    const sidebar = screen.getByRole("complementary", { name: "Filter und Knoten" });
-    expect(within(canvas).getByText(/canvas Soziale Systeme bestehen/)).toBeVisible();
-    await user.click(within(sidebar).getByRole("checkbox", { name: /Karte/ }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByTestId("fake-canvas")).queryByText(/canvas Soziale Systeme bestehen/),
-      ).toBeNull(),
-    );
-    expect(within(canvas).getByText(/canvas Soziale Systeme: Grundriss/)).toBeVisible();
-
-    await user.click(within(sidebar).getByRole("checkbox", { name: /Verknüpft/ }));
-    // the only edges around the note were wiki links, so only the empty state remains
-    expect(await screen.findByText("Keine Verbindungen")).toBeVisible();
-  });
-
-  it("shows typed connections by their relation and filters them", async () => {
-    const user = userEvent.setup();
-    const mockData = createFixtures();
-    const pre = createMockCore(mockData, { aiDelayMs: 0 });
-    await pre.call(linksPropose, { note: AUTOPOIESIS });
-    await waitFor(async () => {
-      expect((await pre.call(notesGet, { id: AUTOPOIESIS })).frontmatter.links).toHaveLength(2);
-    });
-    await pre.call(linksDecide, { note: AUTOPOIESIS, accept: [0], reject: [] });
-
-    renderApp(`/graph?node=${AUTOPOIESIS}`, mockData);
-    const sidebar = await screen.findByRole("complementary", { name: "Filter und Knoten" });
-    expect(await within(sidebar).findByRole("checkbox", { name: /stützt/ })).toBeChecked();
-    expect(within(sidebar).getByRole("checkbox", { name: /verwandt/ })).toBeChecked();
-    await user.click(within(sidebar).getByRole("checkbox", { name: /Vorschläge zeigen/ }));
-    await waitFor(() =>
-      expect(screen.getByTestId("graph-counts")).toHaveTextContent(/Verbindungen/),
-    );
-    const before = screen.getByTestId("graph-counts").textContent;
-    await user.click(within(sidebar).getByRole("checkbox", { name: /Vorschläge zeigen/ }));
-    expect(screen.getByTestId("graph-counts").textContent).not.toBe(before);
-  });
-
-  it("opens a node on click: items, notes and cards", async () => {
-    const user = userEvent.setup();
-    const { history } = renderApp(`/graph?node=${AUTOPOIESIS}`);
-    const canvas = await screen.findByTestId("fake-canvas");
-
+    const { history } = renderApp("/graph?project=phd-proposal", withConnections());
+    const list = await screen.findByTestId("graph-edges");
     await user.click(
-      within(canvas).getByRole("button", { name: /canvas Soziale Systeme bestehen/ }),
+      await within(list).findByRole("button", {
+        name: /Luhmann 1984 widerspricht \(1 Karte\) Habermas 1981/,
+      }),
     );
+    const panel = await screen.findByTestId("edge-panel");
+    expect(panel).toHaveTextContent("Luhmann 1984");
+    expect(panel).toHaveTextContent("widerspricht");
+    const aside = screen.getByRole("complementary", { name: "Verbindungen" });
+    expect(within(aside).getByText(/doppelter Kontingenz, wo Habermas/)).toBeVisible();
+    expect(
+      within(aside).getByRole("button", { name: "Notiz öffnen: Kontingenz statt Verständigung" }),
+    ).toBeVisible();
+    expect(within(aside).getByText(/Doppelte Kontingenz ist der Ausgangspunkt/)).toBeVisible();
+    await user.click(within(aside).getByRole("button", { name: "Karte öffnen" }));
     await waitFor(() => expect(history.location.pathname).toBe(`/items/${LUHMANN}`));
-    expect(history.location.search).toMatch(/tab=read/);
     expect(history.location.search).toMatch(/card=c_/);
   });
 
-  it("opens an item from the node list", async () => {
+  it("opens the edge panel from a click on the canvas edge", async () => {
     const user = userEvent.setup();
-    const { history } = renderApp(`/graph?node=${AUTOPOIESIS}`);
+    renderApp("/graph?project=phd-proposal", withConnections());
+    const canvas = await screen.findByTestId("fake-canvas");
     await user.click(
-      await screen.findByRole("button", { name: /Soziale Systeme: Grundriss.* öffnen/ }),
+      within(canvas).getByRole("button", { name: `edge ${LATOUR}>${LUHMANN}:opposes` }),
     );
-    await waitFor(() => expect(history.location.pathname).toBe(`/items/${LUHMANN}`));
-    expect(await screen.findByRole("heading", { level: 1, name: /Soziale Systeme/ })).toBeVisible();
+    expect(await screen.findByTestId("edge-panel")).toHaveTextContent("Latour 2005");
+    await user.click(screen.getByRole("button", { name: "Alle Verbindungen" }));
+    expect(screen.queryByTestId("edge-panel")).toBeNull();
   });
 
-  it("opens a note on click", async () => {
+  it("shows the cards of a source on click and folds them again", async () => {
     const user = userEvent.setup();
-    const { history } = renderApp(`/graph?node=${AUTOPOIESIS}`);
-    await user.click(
-      await screen.findByRole("button", { name: "Das Zettelkasten-Prinzip öffnen" }),
-    );
-    await waitFor(() => expect(history.location.pathname).toBe("/notes/n_0000000000000002"));
+    renderApp("/graph?project=phd-proposal", withConnections());
+    const canvas = await screen.findByTestId("fake-canvas");
+    const card = /canvas Doppelte Kontingenz/;
+    expect(within(canvas).queryByText(card)).toBeNull();
+    await user.click(within(canvas).getByRole("button", { name: "canvas Luhmann 1984" }));
+    expect(await within(canvas).findByText(card)).toBeVisible();
+    // the edge now starts at the card
+    const edges = within(canvas).getByRole("list", { name: "canvas edges" });
+    expect(within(edges).getByText(new RegExp(`edge c_\\w+>${HABERMAS}:opposes`))).toBeVisible();
+    await user.click(within(canvas).getByRole("button", { name: "canvas Luhmann 1984" }));
+    await waitFor(() => expect(within(canvas).queryByText(card)).toBeNull());
   });
 
-  it("widens the graph with the depth control", async () => {
+  it("filters by connection type and by card kind", async () => {
     const user = userEvent.setup();
-    const { history } = renderApp(`/graph?node=n_0000000000000002`);
-    await screen.findByTestId("fake-canvas");
-    const first = screen.getByTestId("graph-counts").textContent;
-    await user.click(screen.getByRole("button", { name: "2" }));
-    await waitFor(() => expect(history.location.search).toMatch(/depth=2/));
-    await waitFor(() => expect(screen.getByTestId("graph-counts").textContent).not.toBe(first));
+    renderApp("/graph?project=phd-proposal", withConnections());
+    const list = await screen.findByTestId("graph-edges");
+    expect(await within(list).findAllByRole("button", { name: /widerspricht/ })).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: "Verbindungsart" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: /widerspricht/ }));
+    await waitFor(() =>
+      expect(within(list).queryAllByRole("button", { name: /widerspricht/ })).toHaveLength(0),
+    );
+    expect(screen.getByRole("button", { name: "Verbindungsart" })).toHaveTextContent(
+      /Verbindungsarten?/,
+    );
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: /widerspricht/ }));
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Kartenart" }));
+    for (const kind of ["These", "Definition"]) {
+      await user.click(await screen.findByRole("menuitemcheckbox", { name: new RegExp(kind) }));
+    }
+    await user.keyboard("{Escape}");
+    // only the Latour critique is left of the card connections
+    await waitFor(() =>
+      expect(within(list).getAllByRole("button", { name: /widerspricht/ })).toHaveLength(1),
+    );
+    expect(within(list).getByRole("button", { name: /Latour 2005/ })).toBeVisible();
+  });
+
+  it("narrows the graph to the sources a text cites", async () => {
+    const user = userEvent.setup();
+    const { history } = renderApp("/graph?project=phd-proposal", withConnections());
+    const canvas = await screen.findByTestId("fake-canvas");
+    expect(within(canvas).getByText("canvas Latour 2005")).toBeVisible();
+    await user.click(screen.getByRole("combobox", { name: "Text" }));
+    await user.click(await screen.findByRole("option", { name: "Kapitel 2" }));
+    await waitFor(() => expect(history.location.search).toMatch(/text=kapitel-2/));
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("fake-canvas")).queryByText("canvas Latour 2005"),
+      ).toBeNull(),
+    );
+    expect(
+      within(screen.getByTestId("fake-canvas")).getByText("canvas Luhmann 1984"),
+    ).toBeVisible();
+  });
+
+  it("shows the graph from one node through its menu and comes back", async () => {
+    const user = userEvent.setup();
+    const { history } = renderApp("/graph?project=phd-proposal", withConnections());
+    const canvas = await screen.findByTestId("fake-canvas");
+    await user.click(within(canvas).getByRole("button", { name: "menu Habermas 1981" }));
+    const menu = await screen.findByRole("menu", { name: "Aktionen für Habermas 1981" });
+    await user.click(within(menu).getByRole("menuitem", { name: "Von hier aus zeigen" }));
+    await waitFor(() => expect(history.location.search).toMatch(/node=habermas1981theorie/));
+    expect(await screen.findByText("Von hier aus: Habermas 1981")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Zurück zum Überblick" }));
+    await waitFor(() => expect(history.location.search).not.toMatch(/node=/));
+  });
+
+  it("opens a node from its menu", async () => {
+    const user = userEvent.setup();
+    const { history } = renderApp("/graph?project=phd-proposal", withConnections());
+    const canvas = await screen.findByTestId("fake-canvas");
+    await user.click(within(canvas).getByRole("button", { name: "menu Latour 2005" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Öffnen" }));
+    await waitFor(() => expect(history.location.pathname).toBe(`/items/${LATOUR}`));
   });
 
   it("speaks English when asked to", async () => {
-    renderApp(`/graph?node=${AUTOPOIESIS}`, undefined, { lang: "en" });
-    expect(await screen.findByRole("complementary", { name: "Filters and nodes" })).toBeVisible();
-    expect(screen.getByText("Connection type")).toBeVisible();
+    renderApp("/graph?project=phd-proposal", withConnections("en"), { lang: "en" });
+    expect(await screen.findByRole("complementary", { name: "Connections" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Connection type" })).toHaveTextContent(
+      "All connections",
+    );
+    expect(
+      await within(screen.getByTestId("graph-edges")).findByRole("button", {
+        name: /Luhmann 1984 opposes \(1 card\) Habermas 1981/,
+      }),
+    ).toBeVisible();
     expect(await screen.findByTestId("graph-counts")).toHaveTextContent(/nodes, \d+ connections/);
   });
 });

@@ -26,6 +26,11 @@ export interface MockData {
   projects: Map<string, { frontmatter: ProjectFrontmatter; brief: string }>;
   /** Converted documents by citekey: what the real core keeps under derived/<hash>/. */
   docs: Map<string, MockDoc>;
+  /**
+   * Seeds connections from cards (in literature notes) and a note that explains one, as the
+   * graph needs them. The browser mock has them; tests ask for them.
+   */
+  connections?: boolean;
 }
 
 export interface MockDoc {
@@ -372,6 +377,20 @@ const CARDS: Array<{
   },
 ];
 
+/** The card the seeded connections add (see MockData.connections). */
+const CONNECTION_CARDS: typeof CARDS = [
+  {
+    item: "latour2005reassembling",
+    quote:
+      "Social is not some glue that could fix everything including what the other glues cannot fix; it is what is glued together by many other types of connectors.",
+    page: "5",
+    kind: "critique",
+    paraphrase:
+      "The social is no substance of its own but what many other connectors hold together.",
+    projects: ["phd-proposal"],
+  },
+];
+
 /** English quotes and paraphrases of the Luhmann cards, by position in CARDS. */
 const CARDS_EN: Array<{ quote: string; paraphrase?: string }> = [
   {
@@ -433,7 +452,10 @@ const PROJECTS: Array<{
 ];
 
 /** The fixture library. `lang` picks the language of its content; it defaults to the UI language. */
-export function createFixtures(lang: Lang = initialLang()): MockData {
+export function createFixtures(
+  lang: Lang = initialLang(),
+  opts: { connections?: boolean } = {},
+): MockData {
   counter = 0;
   const en = lang === "en";
   const items: MockData["items"] = new Map();
@@ -480,30 +502,32 @@ export function createFixtures(lang: Lang = initialLang()): MockData {
     items.set(s.citekey, { frontmatter: fm, note: s.note ?? "" });
   }
 
-  const cards = CARDS.map((card, i) => {
-    const over = en ? CARDS_EN[i] : undefined;
-    return over ? { ...card, ...over } : card;
-  }).map((c) => ({
-    frontmatter: CardFrontmatter.parse({
-      id: `c_${ulid()}`,
-      item: c.item,
-      ...(c.kind ? { kind: c.kind } : {}),
-      locator: { label: "page", start: c.page, confirmed: true },
-      anchor: { text: { exact: c.quote } },
-      quote_sha256: "0".repeat(64),
-      ...(c.paraphrase
-        ? { paraphrase: { by: "claude-code", at: "2026-10-02T10:00:00.000Z", language: "en" } }
-        : {}),
-      projects: c.projects ?? [],
-      created: STAMP,
-    }),
-    body: {
-      quote: c.quote,
-      ...(c.paraphrase ? { paraphrase: c.paraphrase } : {}),
-      ...(c.note ? { note: c.note } : {}),
-      extra: [],
-    },
-  }));
+  const cards = [...CARDS, ...(opts.connections ? CONNECTION_CARDS : [])]
+    .map((card, i) => {
+      const over = en ? CARDS_EN[i] : undefined;
+      return over ? { ...card, ...over } : card;
+    })
+    .map((c) => ({
+      frontmatter: CardFrontmatter.parse({
+        id: `c_${ulid()}`,
+        item: c.item,
+        ...(c.kind ? { kind: c.kind } : {}),
+        locator: { label: "page", start: c.page, confirmed: true },
+        anchor: { text: { exact: c.quote } },
+        quote_sha256: "0".repeat(64),
+        ...(c.paraphrase
+          ? { paraphrase: { by: "claude-code", at: "2026-10-02T10:00:00.000Z", language: "en" } }
+          : {}),
+        projects: c.projects ?? [],
+        created: STAMP,
+      }),
+      body: {
+        quote: c.quote,
+        ...(c.paraphrase ? { paraphrase: c.paraphrase } : {}),
+        ...(c.note ? { note: c.note } : {}),
+        extra: [],
+      },
+    }));
 
   const projects: MockData["projects"] = new Map();
   for (const project of PROJECTS) {
@@ -533,5 +557,5 @@ export function createFixtures(lang: Lang = initialLang()): MockData {
       pages: mockPages(pagesOf, luhmann.hash),
     });
   }
-  return { lang, items, cards, projects, docs };
+  return { lang, items, cards, projects, docs, ...(opts.connections ? { connections: true } : {}) };
 }

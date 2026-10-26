@@ -1,7 +1,11 @@
 import { scanWikiLinks } from "@citegeist/editor";
 import {
+  aggregateGraph,
+  buildSemanticGraph,
   type CardLink,
+  type GraphLibrary,
   graphNeighbors,
+  graphProject,
   linksCreate,
   linksDecide,
   linksForCard,
@@ -11,10 +15,11 @@ import {
   linksSuggest,
   type Registry,
 } from "@citegeist/ops";
-import type { Link } from "@citegeist/schema";
+import { citedKeys, type Link } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
 import type { MockData } from "../mock/fixtures";
 import { type MockNote, storeFor, toNote } from "../notes/mock";
+import { textsStoreFor } from "../texts/mock";
 import type { GraphEdge, GraphNode } from "./model";
 
 type MockJobs = Map<
@@ -100,6 +105,70 @@ export function bindConnectionsMock(
       });
     }
     return edges;
+  };
+
+  /** The fixtures in the shape the shared graph builder reads, as the core gathers its index. */
+  const graphLibrary = (): GraphLibrary => {
+    const links: GraphLibrary["links"][number][] = [];
+    const wiki = (srcKind: "item" | "card" | "note", src: string, body: string) => {
+      for (const target of new Set(scanWikiLinks(body).map((m) => m.target))) {
+        const to = resolve(target);
+        if (to)
+          links.push({
+            srcKind,
+            src,
+            toKind: to.kind,
+            to: to.id,
+            status: "accepted",
+            origin: "wiki",
+          });
+      }
+    };
+    for (const n of notes.values()) {
+      for (const l of n.frontmatter.links) {
+        const to = resolve(typedTarget(l));
+        if (!to) continue;
+        links.push({
+          srcKind: l.from ? "card" : "note",
+          src: l.from ?? n.frontmatter.id,
+          toKind: to.kind,
+          to: to.id,
+          rel: l.rel,
+          status: l.status,
+          why: l.why,
+          evidence: l.evidence ? typedTarget({ ...l, to: l.evidence }) : undefined,
+          by: l.by,
+          origin: "frontmatter",
+        });
+      }
+      wiki("note", n.frontmatter.id, n.body);
+    }
+    for (const [citekey, item] of data.items) wiki("item", citekey, item.note);
+    return {
+      items: [...data.items.values()].map((i) => ({
+        citekey: i.frontmatter.citekey,
+        title: i.frontmatter.title,
+        short: shortOf(i.frontmatter.citekey),
+        projects: i.frontmatter.projects,
+      })),
+      cards: data.cards.map((c) => ({
+        id: c.frontmatter.id,
+        item: c.frontmatter.item,
+        kind: c.frontmatter.kind,
+        quote: c.body.quote,
+        page: c.frontmatter.locator?.start,
+      })),
+      notes: [...notes.values()].map((n) => ({
+        id: n.frontmatter.id,
+        slug: n.slug,
+        type: n.frontmatter.type,
+        title: n.frontmatter.title,
+        projects: n.frontmatter.projects,
+        body: n.body,
+        by: n.frontmatter.created.by,
+      })),
+      links,
+    };
   };
 
   const cardOf = (id: string) => {
@@ -377,6 +446,27 @@ export function bindConnectionsMock(
         nodes,
         edges: edges.filter((e) => known.has(e.from) && known.has(e.to)),
       };
+    })
+    .bind(graphProject, async (_ctx, input) => {
+      if (input.project && !data.projects.has(input.project)) {
+        throw new Error(`PROJECT_NOT_FOUND: no project with slug '${input.project}'`);
+      }
+      let cited: string[] | undefined;
+      if (input.text) {
+        const text = input.project
+          ? textsStoreFor(data).texts.get(input.project)?.get(input.text)
+          : undefined;
+        if (!text) throw new Error(`TEXT_NOT_FOUND: project has no text '${input.text}'`);
+        cited = citedKeys(text.body);
+      }
+      const graph = buildSemanticGraph(graphLibrary(), {
+        project: input.around ? undefined : input.project,
+        cited: input.around ? undefined : cited,
+        around: input.around,
+        depth: input.depth,
+        proposed: input.proposed,
+      });
+      return { ...graph, edges: aggregateGraph(graph, { expanded: input.expand }).edges };
     })
     .bind(linksPropose, async (_ctx, input) => {
       const note = find(input.note);
