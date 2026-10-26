@@ -421,3 +421,95 @@ describe("editing metadata by hand (items.update)", () => {
     expect(ok1.frontmatter.ISBN).toBe("978-3-518-58706-5, 0-7432-0304-6");
   });
 });
+
+describe("items.resolve on an item that only has an address", () => {
+  const URL_ = "https://essays.example.org/accelerate";
+  const THIN = `<html><head><title>Accelerate | Example Essays</title></head><body>Text</body></html>`;
+
+  async function thinItem(pages: Net["pages"] = {}) {
+    const { e, net } = await env({ [URL_]: () => ok(THIN), ...pages });
+    const { out } = await add(e, URL_);
+    expect(e.lib.getItem(out.citekey).frontmatter.author).toBeUndefined();
+    return { e, net, citekey: out.citekey };
+  }
+
+  it("reads the page again and takes authors and date from its JSON-LD", async () => {
+    const { e, net, citekey } = await thinItem();
+    net.pages[URL_] = () => ok(page("essay-jsonld.html"));
+    const out = await e.call<{ changed: string[] }>("items.resolve", { citekey });
+    expect(out.changed).toEqual(expect.arrayContaining(["author", "issued"]));
+    const fm = e.lib.getItem(citekey).frontmatter;
+    expect(fm.author).toEqual([
+      { family: "Srnicek", given: "Nick" },
+      { family: "Williams", given: "Alex" },
+    ]);
+    expect(fm.issued).toBe("2013-05-14");
+    expect(fm.provenance.author).toMatch(/^web@/);
+    expect(fm.citekey).toBe(citekey);
+  });
+
+  it("keeps a title a person edited and replaces the guess of the page", async () => {
+    const { e, net, citekey } = await thinItem();
+    await e.call("items.update", { citekey, patch: { title: "My own title" } }, "human");
+    net.pages[URL_] = () => ok(page("essay-jsonld.html"));
+    const out = await e.call<{ changed: string[] }>("items.resolve", { citekey }, "agent:test");
+    expect(out.changed).not.toContain("title");
+    const fm = e.lib.getItem(citekey).frontmatter;
+    expect(fm.title).toBe("My own title");
+    expect(fm.author?.[0]).toMatchObject({ family: "Srnicek" });
+
+    // Without an edit, the title of the page replaces the earlier guess.
+    const other = await thinItem();
+    other.net.pages[URL_] = () => ok(page("essay-jsonld.html"));
+    await other.e.call("items.resolve", { citekey: other.citekey });
+    expect(other.e.lib.getItem(other.citekey).frontmatter.title).toBe(
+      "Accelerate: Manifesto for an Accelerationist Politics",
+    );
+  });
+
+  it("names the DOI route when the page is a bot challenge", async () => {
+    const { e, net, citekey } = await thinItem();
+    net.pages[URL_] = () => ok(page("ssrn-challenge.html"));
+    await expect(e.call("items.resolve", { citekey })).rejects.toMatchObject({
+      detail: { code: "URL_BOT_CHALLENGE", fix: expect.stringContaining("DOI or ISBN") },
+    });
+    expect(e.lib.getItem(citekey).frontmatter.author).toBeUndefined();
+  });
+
+  it("names the DOI route when the page cannot be reached", async () => {
+    const { e, net, citekey } = await thinItem();
+    net.pages[URL_] = () => new Response("no", { status: 403 });
+    await expect(e.call("items.resolve", { citekey })).rejects.toMatchObject({
+      detail: { code: "URL_UNREACHABLE", fix: expect.stringContaining("DOI or ISBN") },
+    });
+  });
+
+  it("stores the DOI a page names and resolves it through the sources", async () => {
+    const { e, net, citekey } = await thinItem();
+    net.pages[URL_] = () => ok(page("article-citation-doi.html"));
+    const out = await e.call<{ changed: string[] }>("items.resolve", { citekey }, "agent:test");
+    expect(out.changed).toEqual(expect.arrayContaining(["DOI", "author"]));
+    const fm = e.lib.getItem(citekey).frontmatter;
+    expect(fm.DOI).toBe(NUMPY_DOI);
+    expect(fm.type).toBe("article-journal");
+    expect(fm.author?.[0]).toMatchObject({ family: "Harris" });
+    expect(fm.provenance.author).toMatch(/^crossref@/);
+    expect(fm.URL).toBe(URL_);
+  });
+
+  it("does not download the page as a source again", async () => {
+    const { e, net, citekey } = await thinItem();
+    const sources = e.lib.getItem(citekey).frontmatter.sources;
+    net.pages[URL_] = () => ok(page("essay-jsonld.html"));
+    await e.call("items.resolve", { citekey });
+    expect(e.lib.getItem(citekey).frontmatter.sources).toEqual(sources);
+  });
+
+  it("falls back to the title match when the page has nothing but a title", async () => {
+    const { e, citekey } = await thinItem();
+    // The recorded sources know no such title: the error is the one of the title match.
+    await expect(e.call("items.resolve", { citekey })).rejects.toMatchObject({
+      detail: { code: expect.stringMatching(/^(ITEM_NOT_RESOLVABLE|METADATA_UNAVAILABLE)$/) },
+    });
+  });
+});
