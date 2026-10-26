@@ -6,7 +6,7 @@ export function instructions(opts: {
   mode: SessionMode;
   libraryRoot: string;
   directEdits: boolean;
-  /** A11: the sandbox. When false the agent has the user's shell and tools. */
+  /** The sandbox. When false the agent has the user's shell and tools. */
   isolated?: boolean;
 }): string {
   const lines = [

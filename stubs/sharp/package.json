@@ -1,0 +1,8 @@
+{
+  "name": "sharp",
+  "version": "0.0.0-citegeist-stub",
+  "description": "Placeholder for sharp. @huggingface/transformers imports it at load time for image models, which citegeist does not use (text embeddings and rerankers only).",
+  "license": "Apache-2.0",
+  "private": true,
+  "main": "index.js"
+}

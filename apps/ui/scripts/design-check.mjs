@@ -1,9 +1,10 @@
-// Takes 1280x820 screenshots of the app against the mock core, one per board of
-// docs/design/boards, so the result can be compared with the mockups side by side, plus the
-// screens that have no board (planning, project cards, add field).
+// Takes 1280x820 screenshots of the app against the mock core, one per screen. Screens that
+// mirror a design board can also be compared with the board files when DESIGN_BOARDS_DIR points
+// at a folder of them (the boards are not part of this repository).
 //
 //   pnpm --filter @citegeist/ui design-check            screenshots of the app
-//   pnpm --filter @citegeist/ui design-check --boards   also screenshots of the board files
+//   DESIGN_BOARDS_DIR=<dir> pnpm --filter @citegeist/ui design-check --boards
+//                                                      also screenshots of the board files
 //
 // Output goes to docs/design/screens/ at the repository root. The script starts
 // `vite --mode mock` itself on port 5188 (DESIGN_CHECK_PORT) when nothing listens there.
@@ -19,7 +20,8 @@ const repo = resolve(appDir, "../..");
 const out = join(repo, "docs", "design", "screens");
 const port = process.env.DESIGN_CHECK_PORT ?? "5188";
 const url = `http://localhost:${port}`;
-const withBoards = process.argv.includes("--boards");
+const boardsDir = process.env.DESIGN_BOARDS_DIR;
+const withBoards = process.argv.includes("--boards") && Boolean(boardsDir);
 
 const READ = "#/items/luhmann1984soziale?tab=read";
 
@@ -80,7 +82,7 @@ const screens = [
   },
   { name: "projekt", hash: "#/projects/phd-proposal" },
 
-  // W3.8: screens without a board of their own, drawn in the same system
+  // Screens without a board of their own, drawn in the same system
   {
     name: "bibliothek-hinzufuegen",
     hash: "#/",
@@ -182,7 +184,7 @@ const screens = [
     board: false,
     async setup(page) {
       await page.getByRole("button", { name: "BibTeX" }).click();
-      await page.getByLabel("Pfad zur Datei").fill("/Users/jonny/Zotero/export/bibliothek.bib");
+      await page.getByLabel("Pfad zur Datei").fill("/Users/alex/Zotero/export/bibliothek.bib");
       await page.getByRole("button", { name: "Vorschau" }).click();
       await page.getByTestId("import-report").waitFor();
     },
@@ -332,7 +334,7 @@ try {
     for (const screen of screens.filter((s) => s.board !== false)) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 820 } });
       const page = await context.newPage();
-      const file = resolve(repo, "docs/design/boards", `${screen.name}.html`);
+      const file = resolve(boardsDir, `${screen.name}.html`);
       await page.goto(pathToFileURL(file).href, { waitUntil: "load" }).catch(() => {});
       await page.waitForTimeout(800);
       await page.screenshot({ path: join(out, "boards", `${screen.name}.png`) });

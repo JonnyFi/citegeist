@@ -50,7 +50,7 @@ async function connect(token: string, modern: boolean): Promise<Client> {
   return client;
 }
 
-describe("research scope (W5.1, L9)", () => {
+describe("research scope", () => {
   it("sees the read tools and add_item, nothing else that changes the library", () => {
     const all = new Registry();
     for (const c of CONTRACTS) all.bind(c, async () => ({}));

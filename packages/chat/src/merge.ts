@@ -1,6 +1,6 @@
 /**
  * Line based three-way merge for undoing an agent turn. `base` is the text the agent produced,
- * `ours` is what the file contains now (possibly edited by Jonny since) and `theirs` is the text
+ * `ours` is what the file contains now (possibly edited by the user since) and `theirs` is the text
  * from before the turn. The result applies "base to theirs" on top of `ours`. Changes that touch
  * the same lines, or lines right next to each other, are reported as a conflict.
  */

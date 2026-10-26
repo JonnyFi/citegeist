@@ -136,7 +136,7 @@ describe("bundled ACP adapters", () => {
   });
 });
 
-describe("session settings of Claude Code (A11)", () => {
+describe("session settings of Claude Code", () => {
   it("loads the user and project settings and the shell outside the sandbox", () => {
     expect(CLAUDE_CODE.sessionMeta?.(false)).toEqual({
       claudeCode: { options: { settingSources: ["user", "project"] } },

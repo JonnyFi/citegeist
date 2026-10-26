@@ -7,7 +7,7 @@ import { useOp } from "../lib/hooks";
 
 /**
  * The cards of the project next to the open text. A card opens with its two quote actions, which
- * insert the quotation and its citation at the cursor of the text (D20).
+ * insert the quotation and its citation at the cursor of the text.
  */
 export function ProjectCardColumn({ project, language }: { project: string; language: string }) {
   const { t } = useI18n();

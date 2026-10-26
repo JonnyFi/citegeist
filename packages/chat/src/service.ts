@@ -57,7 +57,7 @@ export interface ChatHost {
   /** Backend to use when `chat.start` names none: the routing setting. */
   defaultBackend?(): string | undefined;
   /**
-   * A11: true when chat sessions run in the sandbox (setting "Isolierter Agent"). Otherwise they
+   * True when chat sessions run in the sandbox (setting "Isolierter Agent"). Otherwise they
    * get the user's own environment. Research jobs ignore this and always run isolated.
    */
   isolated?(): boolean;
@@ -119,7 +119,7 @@ export class ChatService {
     return this.host.now?.() ?? new Date();
   }
 
-  /** A11: research jobs and the setting "Isolierter Agent" give the sandbox. */
+  /** Research jobs and the setting "Isolierter Agent" give the sandbox. */
   private isolated(kind: "chat" | "research"): boolean {
     return kind === "research" || this.host.isolated?.() === true;
   }

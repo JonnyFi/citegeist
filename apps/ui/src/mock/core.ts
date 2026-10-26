@@ -789,7 +789,7 @@ export function createMockRegistry(
     createSyncMockState({
       transport: "git",
       versioning: true,
-      remote: "git@github.com:jonny/library.git",
+      remote: "git@github.com:alex/library.git",
       uncommitted: 3,
       lastSync: {
         at: "2026-10-24T07:55:00.000Z",

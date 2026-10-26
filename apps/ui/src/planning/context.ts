@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * The plan Jonny has open in the project view. The plan screen publishes it, the chat panel shows
+ * The plan the user has open in the project view. The plan screen publishes it, the chat panel shows
  * it as a chip and hands it to the agent, as the reader does with a marked passage. It lives
  * outside React state so the two panels need no shared parent.
  *
- * `ChatContext` in `@citegeist/ops` carries the plan and the node, so the agent knows where Jonny is.
+ * `ChatContext` in `@citegeist/ops` carries the plan and the node, so the agent knows where the user is.
  */
 export interface PlanContext {
   project: string;

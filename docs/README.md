@@ -1,15 +1,36 @@
-# citegeist-Dokumentation
+# citegeist documentation
 
-| Datei | Inhalt |
+## For users
+
+| Page | Content |
 |---|---|
-| [product.md](product.md) | Was citegeist ist, Szenarien, Feature-Landkarte, Releases, offene Fragen |
-| [architecture.md](architecture.md) | Prozesse, Ordnerformat, Datenmodell, Ingest, AI-Schicht, Zugänge für Agents, Stack, Risiken |
-| [development-plan.md](development-plan.md) | Wellen, Workstreams, Abnahmekriterien, gstack-Ablauf in Conductor |
-| [decisions.md](decisions.md) | Entscheidungsprotokoll |
-| [licenses.md](licenses.md) | Lizenzprüfung vor dem Open-Source-Release, Empfehlung für den Kern, Datei `NOTICE` im Wurzelverzeichnis |
-| [security.md](security.md) | Sicherheitsprüfung: behobene und offene Befunde nach Schwere |
-| [agents.md](agents.md) | Agents mit citegeist verbinden: lokal per `cg mcp`, Chat, Agents in der Cloud, Fehlersuche |
-| [webhooks.md](webhooks.md) | Webhooks, Signatur, Tunnel, MCP-Zugang für Connectors |
-| [run.md](run.md) | Dev-App und gebaute App starten, Einrichtung beim ersten Start |
-| [design/design-system.md](design/design-system.md) | Design-System I: Tokens, Raster, Bausteine, Entscheidungen; [design/ui-inventory.md](design/ui-inventory.md) als Briefing |
-| [research/](research/) | Sieben Rechercheberichte (Englisch) mit Quellen |
+| [getting-started.md](getting-started.md) | Requirements, installation, first start, first paper, first card, removal |
+| [guide/library-and-import.md](guide/library-and-import.md) | Adding items, the inbox, importing collections, related works, retractions |
+| [guide/reading-and-cards.md](guide/reading-and-cards.md) | The reader, page numbers, quote cards, copying citations, quick insert |
+| [guide/notes-and-links.md](guide/notes-and-links.md) | Notes, typed connections, the graph, the concept register |
+| [guide/projects-and-planning.md](guide/projects-and-planning.md) | Projects, plans, insights, the literature matrix |
+| [guide/writing-and-export.md](guide/writing-and-export.md) | Texts with Pandoc citations, export to Word, LaTeX and PDF |
+| [guide/literature-search-and-alerts.md](guide/literature-search-and-alerts.md) | Literature search, preprint tracking, alerts, research jobs |
+| [guide/sync.md](guide/sync.md) | iCloud, Dropbox, git remote, history and conflicts |
+| [guide/settings-and-models.md](guide/settings-and-models.md) | AI backends, routing, search, metadata sources, limits |
+| [agents.md](agents.md) | Connecting agents: MCP, `cg`, chat, cloud agents |
+| [webhooks.md](webhooks.md) | Webhooks, signatures, tunnels and remote MCP for connectors |
+
+## Reference
+
+| Page | Content |
+|---|---|
+| [architecture.md](architecture.md) | Processes, library folder, data model, ingest, AI layer, agent interfaces |
+| [spec/library-format.md](spec/library-format.md) | The format of a library on disk |
+| [spec/research-planning.md](spec/research-planning.md) | Research planning: plans, outline, insights |
+| [decisions/](decisions/README.md) | Decision records |
+| [security-model.md](security-model.md) | What agents and connectors may do, and the threat model |
+| [licenses.md](licenses.md) | Licenses of third-party components |
+
+## For contributors
+
+| Page | Content |
+|---|---|
+| [development.md](development.md) | Repository layout, running from source, tests, evals, releases |
+| [maintainers.md](maintainers.md) | Maintainer-owned files, review and merge, agent models |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to propose a change |

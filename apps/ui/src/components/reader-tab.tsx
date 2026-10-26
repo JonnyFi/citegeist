@@ -151,7 +151,7 @@ function ReaderLoaded({
   const stream = useMemo(() => buildBlockStream(data.blocks), [data.blocks]);
   const pageLabels = useMemo(() => data.pages?.pages.map((p) => p.label), [data.pages]);
 
-  // remember where Jonny stopped; "Weiterlesen" on the overview comes back to it
+  // remember where the user stopped; "Weiterlesen" on the overview comes back to it
   useEffect(
     () =>
       host ? trackReading(host, fm.citekey, (page) => pageLabels?.[page] ?? undefined) : undefined,
@@ -183,7 +183,7 @@ function ReaderLoaded({
     [statuses],
   );
 
-  // D9: the dropdown shows what the core will use for this source and writes the item's own setting
+  // The dropdown shows what the core will use for this source and writes the item's own setting
   const projects = useOp(projectsList, {});
   const projectLanguages = useMemo(
     () => new Map((projects.data?.projects ?? []).map((p) => [p.slug, p.ai_language])),

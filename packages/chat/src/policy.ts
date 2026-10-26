@@ -6,16 +6,16 @@ import { relativeInside } from "./util.js";
 
 /**
  * Answers the permission requests of an agent. A request that nobody answers blocks the agent
- * (research note, section 4.5, point 6), so every request gets an answer.
+ * so every request gets an answer.
  *
  * - citegeist's own MCP tools are allowed. In a research job `add_item` must target the inbox
- *   and carry a reason (D7).
+ *   and carry a reason (docs/decisions/0014-agent-content-goes-to-inbox.md).
  * - Reading, searching and fetching are allowed, because research needs the web. A research job
  *   fetches only addresses that a web search returned or that sit on a scholarly host, and it
- *   adds papers only by an address of such a host or by DOI or arXiv id (Agents Rule of Two, L9).
- * - Edits are allowed inside the library's text areas (D12), never in derived data, converted
+ *   adds papers only by an address of such a host or by DOI or arXiv id (Agents Rule of Two).
+ * - Edits are allowed inside the library's text areas (docs/decisions/0018-direct-agent-edits-with-undo.md), never in derived data, converted
  *   sources or the manifest, and never in a research job.
- * - Shell commands and everything unknown are rejected in the sandbox (A11, isolated).
+ * - Shell commands and everything unknown are rejected in the sandbox (isolated).
  *   Outside the sandbox the agent runs in the user's own environment: the shell and the user's
  *   other tools are allowed, and edits outside the library are allowed. The library keeps its
  *   protected areas (derived data, converted sources, the manifest).
@@ -25,7 +25,7 @@ export type SessionMode = "chat" | "research";
 
 export interface PolicyContext {
   mode: SessionMode;
-  /** A11: the sandbox. Research jobs are always isolated. */
+  /** The sandbox. Research jobs are always isolated. */
   isolated: boolean;
   libraryRoot: string;
   /** The session's scratch directory, where the agent may keep working files. */
@@ -39,7 +39,7 @@ export interface PolicyContext {
 
 export interface Decision {
   allow: boolean;
-  /** Shown to Jonny when the request was rejected. */
+  /** Shown to the user when the request was rejected. */
   reason?: string;
 }
 

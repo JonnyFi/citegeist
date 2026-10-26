@@ -16,7 +16,7 @@ import { CitegeistError } from "@citegeist/schema";
 import { extendedPath, findExecutable } from "../settings/executables.js";
 
 /**
- * The Pandoc release `pandoc.setup` downloads (D20). Pandoc is GPL-2.0, so citegeist never links
+ * The Pandoc release `pandoc.setup` downloads (docs/decisions/0002-writing-in-markdown-with-pandoc.md). Pandoc is GPL-2.0, so citegeist never links
  * it: the app runs it as a separate process. Like the GROBID download, the release is pinned by
  * URL and sha256; a new version means a new pin in this file.
  */

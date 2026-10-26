@@ -22,7 +22,7 @@ export interface StoredSettings {
   connector: { enabled: boolean; port: number };
   /** Port of the hooks listener and the address of the tunnel in front of it. */
   webhooks: { port: number; publicUrl?: string };
-  /** A11: true restores the sandbox for chat agents. */
+  /** True restores the sandbox for chat agents. */
   chat: { isolated: boolean };
   /** Limits of research jobs. Zero switches a limit off. */
   research: { maxMinutes: number; maxTokens: number; maxToolCalls: number };

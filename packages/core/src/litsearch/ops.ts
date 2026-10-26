@@ -21,7 +21,7 @@ import { type LitsearchDeps, LitsearchService } from "./service.js";
  * Binds litsearch.suggest, start, resume, cancel, runs, get, export, report, toInbox,
  * compare and the preprint operations. A run is a job of kind
  * "litsearch.run" on `deps.queue`. The other litsearch.* contracts answer OPERATION_NOT_IMPLEMENTED
- * until their part of issue #50 lands.
+ * until the rest of the literature search lands.
  */
 export function bindLitsearchOperations(
   registry: Registry,

@@ -12,7 +12,7 @@ export interface RateLimit {
   concurrency: number;
 }
 
-/** Limits per source from docs/research/metadata-sources.md section 12. */
+/** Limits per source from internal metadata-sources research section 12. */
 export const DEFAULT_LIMITS: Record<string, RateLimit> = {
   // Crossref polite pool: 10/s single, 3 concurrent. The public pool allows 5/s with one in flight.
   crossref: { minIntervalMs: 120, concurrency: 1 },

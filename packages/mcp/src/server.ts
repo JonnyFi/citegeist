@@ -13,7 +13,7 @@ import { buildInstructions } from "./instructions.js";
 
 /**
  * What a connection sees: "read" has the read-only tools, "write" all tools, and "research" is
- * "read" plus the tools of `RESEARCH_WRITE_TOOLS` (W5.1). A research connection never makes the
+ * "read" plus the tools of `RESEARCH_WRITE_TOOLS`. A research connection never makes the
  * core read local files and never lets it open an address outside the scholarly hosts.
  */
 export type McpScope = "read" | "write" | "research";

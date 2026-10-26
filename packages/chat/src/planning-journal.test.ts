@@ -51,7 +51,7 @@ describe("turn journal and planning", () => {
 
     const doc = join(lib.root, chapter.doc);
     const handEdited = `${readFileSync(doc, "utf8")}\nVon Hand ergänzt.\n`;
-    // Jonny edits right below the agent's paragraph: the merge reports a conflict and keeps both.
+    // Alex edits right below the agent's paragraph: the merge reports a conflict and keeps both.
     writeFileSync(doc, handEdited);
     const result = await revertEdits(lib.root, edits, {
       changed: () => {},

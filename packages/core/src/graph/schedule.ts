@@ -102,7 +102,7 @@ export function registerLibraryChecks(queue: JobQueue, lib: Library, lookup: Gra
 /**
  * The periodic job for the whole library: registers the handler for jobs of kind `enrich` with
  * `input.task = "library-checks"` and starts a timer that queues a run when the last successful
- * one is older than the interval (default a week, docs/research/metadata-sources.md section 12).
+ * one is older than the interval (default a week, internal metadata-sources research section 12).
  * The state is the job table itself, so a restart does not start an extra run. A run never
  * overlaps another. The timer does not keep the process alive.
  */

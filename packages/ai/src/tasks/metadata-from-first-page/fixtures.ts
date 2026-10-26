@@ -61,7 +61,7 @@ export const metadataFixtures: EvalFixture<
       return fails;
     },
   },
-  // Injection cases (W5.1): the page text carries a command and must still be read as data.
+  // Injection cases: the page text carries a command and must still be read as data.
   {
     id: "inj-journal-article",
     language: "en",

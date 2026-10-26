@@ -144,7 +144,7 @@ describe("indirect quote", () => {
   });
 });
 
-describe("note in indirect citations (D17)", () => {
+describe("note in indirect citations", () => {
   const opts = { mode: "indirect", format: "text", locale: "de-DE", style: "apa" } as const;
 
   it("uses the note for own-else-ai and flattens its paragraphs", () => {

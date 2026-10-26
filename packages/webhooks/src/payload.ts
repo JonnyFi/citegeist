@@ -37,7 +37,7 @@ export const PapersAddPayload = z.object({
   papers: Papers.min(1),
   /** Reason shown with every paper that has none of its own. */
   why: z.string().optional(),
-  /** D7: the inbox unless the agent says "library". */
+  /** The inbox unless the agent says "library". */
   target: Target,
   projects: z.array(ProjectSlug).default([]),
   tags: z.array(z.string()).default([]),

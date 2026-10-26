@@ -1,5 +1,5 @@
 /**
- * Strings of the planning screens (W3.8) and of the library elements that came with them: the add
+ * Strings of the planning screens and of the library elements that came with them: the add
  * field, "Metadaten neu abrufen", "Weiterlesen", the card export and the project's card tab. They
  * are spread into the catalogs in `i18n/de.ts` and `i18n/en.ts`.
  */

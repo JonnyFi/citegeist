@@ -1,6 +1,6 @@
 # citegeist-convert
 
-Python conversion worker (workstream W1.3). It speaks JSON-RPC 2.0 over stdio, one JSON object per line, with the two methods of `packages/schema/src/worker.ts`: `health` and `convert`. All outputs of a conversion land in `outDir`: `manifest.json` (written last), `pages.json`, `blocks.jsonl`, `idmap.json`, `refs.jsonl`, `doc.md`, `doc.html`, `assets/`, and `header.json` when a header was found.
+Python conversion worker. It speaks JSON-RPC 2.0 over stdio, one JSON object per line, with the two methods of `packages/schema/src/worker.ts`: `health` and `convert`. All outputs of a conversion land in `outDir`: `manifest.json` (written last), `pages.json`, `blocks.jsonl`, `idmap.json`, `refs.jsonl`, `doc.md`, `doc.html`, `assets/`, and `header.json` when a header was found.
 
 ```
 cd workers/convert && uv sync

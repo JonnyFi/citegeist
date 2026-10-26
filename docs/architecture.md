@@ -1,52 +1,69 @@
-# citegeist: Architektur
+# citegeist architecture
 
-Stand: 2026-10-23, Entwurf zur Abstimmung. Die Belege stehen in `docs/research/`, die Entscheidungen in `docs/decisions.md`.
+citegeist is a macOS research library app. PDFs, notes, quote cards and citations live as plain files in one folder. A local index and AI agents work on top of those files. The core is TypeScript on Node, conversion runs in a Python worker, and the UI ships in Electron. This page is the reference for how the parts fit together: processes, library folder, data model, ingest, AI layer, agent interfaces, search, sync and security.
 
-## Überblick
+- [spec/library-format.md](spec/library-format.md): which file lives where and who may write it
+- [spec/research-planning.md](spec/research-planning.md): plans, outlines and insights
+- [agents.md](agents.md): connecting agents to citegeist
+- [webhooks.md](webhooks.md): connectors, signatures and tunnels
+- [security-model.md](security-model.md): threat model and security details
+- [licenses.md](licenses.md): license of the project and of its dependencies
+- [development.md](development.md): running the app from source, tests and releases
+
+Decisions are recorded as ADRs in `docs/decisions/`. This page links to the relevant ones inline.
+
+## Overview
 
 ```
  ┌──────────────── citegeist.app (Electron 45) ────────────────┐
- │  Renderer (React): Bibliothek · Reader · Notizen · Graph ·  │
- │  Projekte · Inbox · Chat-Seitenleiste · Einstellungen       │
- │  Main: Fenster, Menü, globaler Hotkey, Zwischenablage       │
+ │  Renderer (React): Library · Reader · Notes · Graph ·       │
+ │  Projects · Inbox · Concepts · Literature search ·          │
+ │  Agent chat sidebar · Settings                              │
+ │  Main: windows, menu, global hotkey (quick insert),         │
+ │  clipboard, update check                                    │
  └───────────────┬─────────────────────────────────────────────┘
-                 │ oRPC über 127.0.0.1 (HTTP + WebSocket)
- ┌───────────────▼─────────── citegeist-core (Node 24) ────────┐
- │  Operations-Registry ──► RPC (UI) · MCP (Agents) · CLI (cg) │
- │  Dienste: Items · Ingest · Dokumente · Zitatkarten ·        │
- │           Notizen/Graph · Projekte · Zitieren · Suche ·     │
- │           Jobs · Agent-Sitzungen · Connectoren              │
- │  Speicher: Bibliotheksordner (Wahrheit) + SQLite (Index)    │
- └──┬──────────────┬─────────────────┬────────────────┬───────┘
-    │ JSON-RPC     │ HTTP            │ Subprozess/ACP │ HTTPS
-    ▼ stdio        ▼ localhost       ▼                ▼
- Python-Worker   translation-     Claude Code,      Crossref, OpenAlex,
- (Docling,       server (AGPL,    Codex, Cursor     arXiv, DNB, K10plus,
- GROBID, OCR)    optional)        (eigenes Abo)     Unpaywall, API-Anbieter
+                 │ oRPC over 127.0.0.1 (HTTP + WebSocket)
+ ┌───────────────▼────────── citegeist core (Node) ────────────┐
+ │  Operations registry ──► RPC (UI) · MCP (agents) · CLI (cg) │
+ │  Services: items · ingest · documents · quote cards ·       │
+ │   notes/graph · concepts · matrix · projects/planning ·     │
+ │   texts · citations · search · jobs · chat · alerts ·          │
+ │   literature search · import · sync · webhooks · usage      │
+ │  Storage: library folder (truth) + SQLite (index, state)    │
+ └──┬─────────────┬──────────────────┬──────────────┬──────────┘
+    │ JSON-RPC    │ subprocess       │ subprocess   │ HTTPS
+    ▼ stdio       ▼ stdio/ACP        ▼              ▼
+ Python workers   Claude Code,       Pandoc         Crossref, OpenAlex,
+ convert:         Codex, Cursor      (export)       arXiv, PubMed, DNB,
+ Docling, GROBID, (own subscription)                K10plus, Unpaywall,
+ OCR; research:                                     Semantic Scholar,
+ literature search                                  API providers
 ```
 
-Die Architektur folgt drei Regeln. Der Kern ist ein eigener Prozess und gehört niemandem exklusiv: App, CLI und MCP-Clients sind gleichrangige Clients. Dateien im Bibliotheksordner sind die Wahrheit, SQLite ist ein Index, der sich jederzeit neu aufbauen lässt. Jede Fähigkeit ist genau einmal als Operation definiert und erscheint automatisch auf allen drei Zugängen.
+Three rules shape the architecture. The core is a process of its own and belongs to no client exclusively: the app, the CLI and MCP clients are peers ([core process and operations](decisions/0007-core-process-and-operations.md)). Files in the library folder are the truth, and SQLite is an index that can be rebuilt at any time ([files as source of truth](decisions/0008-files-as-source-of-truth.md)). Every capability is defined once as an operation and appears on all three access paths.
 
-## Prozesse
+The UI is available in German (default) and English.
 
-| Prozess | Rolle | Lebensdauer |
+## Processes
+
+| Process | Role | Lifetime |
 |---|---|---|
-| `citegeist-core` | Besitzt die Bibliothek, einziger Schreiber in den Index, führt Jobs aus, stellt RPC, MCP-HTTP und Events bereit | Läuft, solange App oder CLI ihn brauchen. Optional als launchd-Agent dauerhaft, damit Agents nachts arbeiten können |
-| Electron-App | Oberfläche, startet den Kern als `utilityProcess` oder verbindet sich mit einem laufenden | Solange das Fenster offen ist |
-| `cg` (CLI) | Spricht mit dem laufenden Kern, startet ihn bei Bedarf headless | Pro Aufruf |
-| `cg mcp` | stdio-Shim für MCP-Clients, leitet an den Kern weiter | Pro MCP-Client |
-| Python-Worker | Konvertierung, OCR, GROBID-Aufrufe; per `uv` in Application Support installiert, Modelle in festen Versionen beim ersten Gebrauch | Vom Kern gestartet, beendet sich bei Leerlauf |
-| Pandoc | Export von Texten nach Word, LaTeX, PDF und Markdown (D20); GPL-2.0, daher nur als eigener Prozess; aus `PATH` und Homebrew oder als festes Release auf Wunsch geladen | Pro Export |
-| translation-server | Zoteros Web-Übersetzer für URL-Import ohne Browser, AGPL, nur als eigener Prozess | Optional, bei Bedarf |
-| Agent-CLIs | Inferenz über das Abo des Nutzers | Vorgewärmter Pool plus Sitzungen |
+| Core (`packages/server`) | Owns the library, is the only writer of the index, runs jobs, serves RPC, events, library files, MCP over HTTP and webhooks | Started by the app as an Electron `utilityProcess`, or by `cg mcp`. Stops with its starter |
+| Electron app (`apps/desktop`) | UI. Starts the core or attaches to a running one | While the window is open |
+| `cg` (`apps/cli`) | CLI. Talks to the running core. Opens the library in-process when no core runs | Per call |
+| `cg mcp` | stdio MCP server for local clients, or Streamable HTTP with `--http` | Per MCP client |
+| Convert worker (`workers/convert`) | Python 3.12 under `uv`: Docling, GROBID, Apple Vision OCR, arXiv HTML, web pages. Environment in `<local base>/worker/venv`, models downloaded on first use | Started by the core, exits after 600 seconds idle |
+| Research worker (`workers/research`) | Python scripts for the literature search (OpenAlex, arXiv, Semantic Scholar, DBLP, OpenReview, Unpaywall, ORCID). Environment in `<local base>/research/venv` | One process per run or check |
+| Pandoc | Export of texts to Word, LaTeX, PDF and Markdown ([Markdown with Pandoc](decisions/0002-writing-in-markdown-with-pandoc.md)). GPL-2.0, so it runs only as a separate process. Found in `PATH` and Homebrew, or downloaded as a pinned release by `pandoc.setup` | Per export |
+| Agent CLIs | `claude`, `codex` and `agent` (Cursor) installed by the user. Inference runs on the user's subscription ([open source and own subscription](decisions/0001-open-source-and-own-subscription.md)) | Per AI call, or per chat session through an ACP adapter |
 
-Ein Kern pro Bibliothek: `~/Library/Application Support/citegeist/<library-id>/core.lock` hält PID und Port. Wer startet, prüft zuerst den Lock und verbindet sich mit dem laufenden Kern.
+One core runs per library. `<local base>/<library-id>/core.lock` holds PID and port, and `core.token` (mode 0600) holds the token for the HTTP endpoint. `<local base>` is `~/Library/Application Support/citegeist`. A starting process checks the lock first and attaches to a running core.
 
-Der Kern nimmt den Aufrufer aus dem Header `x-citegeist-actor` (`human`, `system` oder `agent:<name>`). Ohne Header handelt der Aufruf als `human`, so spricht die Oberfläche der App. Ein ungültiger Wert wird mit 400 abgelehnt. `GET /health` meldet mit `actors: true`, dass der Kern den Header kennt; `cg` leitet Schreibzugriffe von Agents nur an einen Kern weiter, der das meldet. Läuft keine App, öffnet `cg mcp` die Bibliothek als Kern: Es nimmt `core.lock`, bedient denselben HTTP-Endpunkt, und die App, die danach startet, verbindet sich mit ihm. Einmalige `cg`-Kommandos nehmen den Lock nicht.
+The core reads the caller from the header `x-citegeist-actor` (`human`, `system` or `agent:<name>`). Without the header a call acts as `human`, which is how the app's UI talks. An invalid value is rejected with 400. `GET /health` reports `actors: true` when the core knows the header, and `cg` forwards writes by agents only to a core that reports it. When no app runs, `cg mcp` opens the library as a core: it takes `core.lock` and serves the same HTTP endpoint, and an app that starts later attaches to it. One-shot `cg` commands do not take the lock. A library that a core serves is also reachable under `/files/` for the reader and under `/events` (WebSocket) for change events.
 
-## Operations-Registry
+## Operations registry
 
-Jede Fähigkeit ist eine Operation mit Name, Zod-Schema für Ein- und Ausgabe, Zugriffsklasse und Handler:
+Every capability is an operation with a name, Zod schemas for input and output, an access class and a handler. Contracts live in `packages/ops/src/contracts`, handlers in `packages/core`.
 
 ```ts
 export const addItem = defineOperation({
@@ -59,67 +76,93 @@ export const addItem = defineOperation({
 });
 ```
 
-Daraus entstehen ohne Zusatzcode die oRPC-Prozedur für die Oberfläche, das CLI-Kommando `cg items add` mit `--json` und, für eine kuratierte Teilmenge, ein MCP-Tool. `ctx.actor` trägt, wer aufruft (`human`, `agent:<name>`, `system`), und landet als Herkunft an jedem geschriebenen Objekt.
+From one definition the registry produces the oRPC procedure for the UI, the CLI command (`cg items add`, with `--json`) and, for a curated subset, an MCP tool. `ctx.actor` carries the caller (`human`, `agent:<name>`, `system`) and is written as provenance on every object the call writes.
 
-Fehler folgen dem Vertrag für agent-taugliche Fehlermeldungen aus gstack: Sie nennen, was mit welchen Werten fehlschlug, enthalten auf der ersten oder letzten Zeile einen sicheren Fix, beschreiben Wiederholbarkeit und Nebenwirkungen und tragen einen stabilen Code. Im MCP-Kanal heißt das `isError: true`, in der CLI ein eigener Exit-Code mit `--json`-Form.
+Operations are grouped in namespaces:
 
-## Bibliotheksordner
+| Namespace | Operations |
+|---|---|
+| `library`, `items`, `inbox` | status, reindex; add, attach, get, list, update, resolve, rename, trash, restore; accept, reject |
+| `documents`, `cards` | read, convert, confirmPages, assets; create, update, list, regenerate, export |
+| `notes`, `links`, `graph` | create, update, get, list, backlinks; create, propose, decide; neighbors, references, citing, related, addCandidates (plus `items.checkRetractions`) |
+| `concepts`, `matrix` | list, get, create, update, merge, describe, propose; create, list, get, update, fillCell, fill, export |
+| `projects`, `plans`, `outline`, `plan.docs`, `insights` | create, get, update, list, context; create, list; get, apply; get, update; note, find, list |
+| `texts`, `pandoc` | list, get, create, update, export; status, setup |
+| `search`, `cite` | query; format |
+| `jobs`, `research`, `chat` | get, list; start; backends, start, send, cancel, list, get, revertTurn, save |
+| `litsearch`, `alerts` | suggest, start, resume, cancel, runs, get, compare, report, export, toInbox, preprints, preprintsImport, preprintsCheck; list, create, update, delete, runNow |
+| `import`, `sync` | preview, run; status, configure, now, resolveConflict |
+| `webhooks`, `settings`, `ai`, `worker`, `usage` | list, create, setAuth, setInboundToken, rotateSecret, delete, test, send, setMcpAccess; get, update; testBackend; setup; summary |
+
+Errors follow the gstack contract for agent-readable errors. An error names what failed with which values, carries a safe fix on its first or last line, describes retryability and side effects, and has a stable code. On the MCP channel that means `isError: true`, on the CLI a distinct exit code with a `--json` shape.
+
+## Library folder
+
+The format is specified in [spec/library-format.md](spec/library-format.md). The layout:
 
 ```
-~/Citegeist/                              Bibliothek, syncbar (iCloud, Dropbox, git)
-  AGENTS.md                               Regeln für Agents, von citegeist erzeugt und gepflegt
-  CLAUDE.md                               Verweis auf AGENTS.md
-  citegeist.json                          Manifest: Format-Version, Bibliotheks-ID, geteilte Einstellungen
+~/Citegeist/                              library, syncable (iCloud, Dropbox, git)
+  AGENTS.md                               rules for agents, generated and maintained by citegeist
+  CLAUDE.md                               pointer to AGENTS.md
+  citegeist.json                          manifest: format version, library id, shared settings
+  alerts.yaml                             alerts without a project
   items/
-    luhmann1984soziale/                   ein Ordner pro Quelle, benannt nach Citekey
-      luhmann1984soziale.md               Frontmatter: Metadaten (CSL-kompatibel). Text: Literaturnotiz
-      sources/3f9a1c2e7b4d.pdf            Originale, benannt nach SHA-256, unveränderlich
-      derived/3f9a1c2e7b4d/               pro Quelldatei
-        manifest.json                     Pipeline, Werkzeug- und Modellversionen, Qualitätsflags
-        pages.json                        PDF-Index, gedruckte Seite, Herkunft der Seitenzahl, OCR ja/nein
-        blocks.jsonl                      kanonisches Blockmodell, eine Zeile pro Block
-        idmap.json                        Weiterleitungen alter Block-IDs nach Neukonvertierung
-        refs.jsonl                        Literaturverzeichnis des Papers, mit Blöcken verknüpft
-        doc.md                            Agent-Ansicht mit Seitenmarken und ^block-IDs
-        doc.html                          Lese-Ansicht
-        assets/                           Abbildungen, benannt nach Block-ID
+    luhmann1984soziale/                   one folder per source, named by citekey
+      luhmann1984soziale.md               frontmatter: metadata (CSL-compatible). Body: literature note
+      sources/3f9a1c2e7b4d.pdf            originals, named by the first 12 hex digits of the SHA-256, immutable
+      derived/3f9a1c2e7b4d/               per source file
+        manifest.json                     pipeline, tool and model versions, quality flags
+        pages.json                        PDF index, printed page label, where the label came from, OCR yes/no
+        blocks.jsonl                      canonical block model, one line per block
+        idmap.json                        redirects of old block ids after reconversion
+        header.json                       header data the worker found (only if it found any)
+        refs.jsonl                        the paper's bibliography, linked to blocks
+        doc.md                            agent view with page marks and ^block ids
+        doc.html                          reading view
+        assets/                           figures, named by block id
       cards/
-        c_01JB8Z3Q.md                     eine Zitatkarte pro Datei
+        c_01JB8Z3Q.md                     one quote card per file
   notes/
-    autopoiesis-erklaert-stabilitaet.md   Zettel mit Frontmatter und Wiki-Links
+    autopoiesis-erklaert-stabilitaet.md   note with frontmatter and wiki links
     concepts/
-      autopoiesis.md                      Begriff (type: concept) mit Aliasen, Karten und Einträgen pro Quelle
+      autopoiesis.md                      concept (type: concept) with aliases, cards and one entry per source
   projects/
     phd-proposal/
-      project.md                          Projektbrief, Forschungsfragen, Leseliste
-      exports/phd-proposal.bib            automatisch aktualisiert
-      exports/phd-proposal.json           CSL-JSON, automatisch aktualisiert
-      texts/kapitel-2.md                  Text mit Pandoc-Zitaten (D20)
-      exports/kapitel-2.docx              Export des Texts über Pandoc
-  chats/                                  gespeicherte Agent-Gespräche
+      project.md                          project brief, research questions, reading list
+      alerts.yaml                         alerts of the project
+      plans/<plan>/plan.md, outline.yaml  plans and outlines (see spec/research-planning.md)
+      insights.md                         insights without a fixed place
+      matrices/                           literature matrices
+      texts/kapitel-2.md                  text with Pandoc citations
+      exports/phd-proposal.bib            updated automatically
+      exports/phd-proposal.json           CSL-JSON, updated automatically
+      exports/kapitel-2.docx              export of the text through Pandoc
+  research/runs/<run-id>/                 literature search runs
+  chats/                                  saved agent conversations
+  .trash/                                 items removed with items.trash
 ```
 
-Rechnerlokal unter `~/Library/Application Support/citegeist/<library-id>/` liegen `index.sqlite` (Suche, Graph, Vektoren), `state.sqlite` (Jobs, Verbrauchsbuch der KI-Aufrufe, Einstellungen dieses Rechners), Logs, Caches, die Python-Umgebung und die Modelle. Nichts davon gehört in einen synchronisierten Ordner.
+Machine-local data lives under `~/Library/Application Support/citegeist/<library-id>/`: `index.sqlite` (search, graph, vectors), `state.sqlite` (jobs, the usage ledger of AI calls), `sync.json`, logs, caches and a separate git directory when the library sits in a synced folder. `settings.json`, the Python environments and the models sit one level up in `<local base>`. None of this belongs in a synced folder.
 
-Der Ordner ist ein gültiger Obsidian-Vault. Die Literaturnotiz heißt wie der Citekey, damit `[[luhmann1984soziale]]` in Obsidian und in citegeist auf dieselbe Datei zeigt. `[[luhmann1984soziale#^b7f3k2q]]` verlinkt einen Absatz des Volltexts, `![[c_01JB8Z3Q]]` bettet eine Zitatkarte ein.
+The folder is a valid Obsidian vault ([Obsidian-compatible notes](decisions/0006-obsidian-compatible-notes.md)). The literature note is named like the citekey, so `[[luhmann1984soziale]]` points to the same file in Obsidian and in citegeist. `[[luhmann1984soziale#^b7f3k2q]]` links a paragraph of the full text, and `![[c_01JB8Z3Q]]` embeds a quote card.
 
-### Schreiben in den Ordner
+### Writing to the folder
 
-Der Kern schreibt atomar (temporäre Datei, dann `rename`) und aktualisiert den Index sofort. Ein Watcher (`@parcel/watcher`) erkennt Änderungen von außen, etwa wenn ein Agent eine Notiz direkt bearbeitet oder iCloud eine Datei bringt, validiert sie gegen das Schema und indiziert neu. Eigene Schreibvorgänge erkennt er am Hash. Ungültige Dateien landen in einer Problemliste, die Oberfläche und MCP anzeigen. iCloud-Platzhalter (ausgelagerte Dateien) lädt der Kern bei Bedarf nach.
+The core writes atomically (temporary file, then `rename`) and updates the index immediately. A watcher (`@parcel/watcher`) detects outside changes, for example when an agent edits a note directly or iCloud delivers a file. It validates the file against the schema and reindexes it. The core recognizes its own writes by hash. Invalid files go to a problem list that the UI and MCP show. iCloud placeholders (evicted files) are downloaded on demand, and iCloud and Dropbox conflict copies are reported as problems.
 
-Konvertierte Dateien unter `derived/` sind nur für den Kern beschreibbar. `AGENTS.md` sagt das, und der Watcher stellt den Stand bei fremden Änderungen wieder her.
+Only the core writes under `derived/`. `AGENTS.md` tells agents to leave `derived/`, `sources/`, `exports/` and the quote of a card alone.
 
-## Datenmodell
+## Data model
 
-Alle Schemas leben als Zod-4-Definitionen in `packages/schema` und werden als JSON Schema für Agents und den Python-Worker exportiert.
+All schemas are Zod 4 definitions in `packages/schema` and are exported as JSON Schema for agents and the Python worker.
 
 ### Item
 
-Frontmatter der Literaturnotiz. Die Feldnamen folgen CSL-JSON in der YAML-Form, die auch Pandoc liest. Die Typen und Felder kommen aus dem Zotero-Schema, das als versionierte Daten eingebunden ist (37 Typen, 121 Felder, CSL-Abbildung inklusive).
+Frontmatter of the literature note. Field names follow CSL-JSON in the YAML form that Pandoc also reads. The 37 Zotero item types map onto CSL 1.0.2 types, and the original Zotero type stays in `zotero_type`.
 
 ```yaml
-id: 01JB8Z3QK7...            # ULID, unveränderlich
-citekey: luhmann1984soziale  # stabil, nur per expliziter Umbenennung änderbar
+id: 01JB8Z3QK7...            # ULID, immutable
+citekey: luhmann1984soziale  # stable, changed only by explicit rename
 type: book
 title: Soziale Systeme
 subtitle: Grundriß einer allgemeinen Theorie
@@ -132,22 +175,22 @@ language: de
 ids: {gnd: "...", openalex: W..., doi: null, arxiv: null}
 tags: [systemtheorie]
 projects: [phd-proposal]
-status: read                 # inbox | unread | reading | read
-provenance:                  # pro Feld: Quelle und Zeitpunkt
+status: read                 # unread | reading | read
+provenance:                  # per field: source and time
   title: crossref@2026-10-23
   abstract: openalex@2026-10-23
 created: {at: 2026-10-23T10:12:00Z, by: human}
 ```
 
-Citekeys folgen einer Formel im Stil von Better BibTeX (Standard: Nachname, Jahr, erstes Titelwort). Ein Key entsteht einmal und wird nicht still neu berechnet. Eine Umbenennung schreibt alle Wiki-Links und Kartenverweise um. Eine Ausnahme gibt es für Platzhalter: Entsteht der Key aus einem fehlenden Autor oder Jahr (`anonnddemos`), ersetzt ihn der Kern nach einer erfolgreichen Konvertierung durch den Key aus den besseren Daten, sofern weder Karten noch Links auf den Eintrag verweisen.
+Citekeys follow a formula in the style of Better BibTeX (default: last name, year, first title word). A key is created once and never silently recomputed. A rename rewrites all wiki links and card references. One exception covers placeholders: when the key came from a missing author or year (`anonnddemos`), the core replaces it after a successful conversion with the key from the better data, as long as no card or link refers to the item.
 
-Ein Eintrag, dessen Import scheitert, bleibt mit dem Feld `incomplete` (Code, Meldung, Zeitpunkt, Job) im Frontmatter stehen. `items.get`, `items.list`, die Problemliste, die Oberfläche und MCP zeigen ihn an. Ein Anhängen oder erneutes Hinzufügen einer funktionierenden Datei, `documents.convert` oder das Löschen beseitigen den Zustand. Eine erfolgreiche Konvertierung entfernt das Feld.
+An item whose import fails stays in the library with an `incomplete` field in the frontmatter (code, message, time, job). `items.get`, `items.list`, the problem list, the UI and MCP show it. Attaching or re-adding a working file, `documents.convert` or deletion clears the state, and a successful conversion removes the field.
 
-Zwei weitere Zustände eines Eintrags sind getippte Felder im Frontmatter. `fulltext` (`status: found | missing`, `tried` mit den geprüften Quellen, `checked_at`) hält fest, ob die Volltextsuche nach dem Hinzufügen per DOI eine Datei gefunden hat; `items.list` meldet es als Flag, und die Tabelle zeigt bei `missing` den Hinweis „ohne Volltext“. `proposal` (`status`, `source`, `reason`, `candidates`) markiert Metadaten, die nur geraten sind (erste Seite, Dateiname, Webseite) und auf eine Prüfung warten. Ältere Dateien, die `fulltext` noch als `status: none` mit `at` führen, liest der Kern in der neuen Form und schreibt sie beim nächsten Speichern um.
+Two more states are typed frontmatter fields. `fulltext` (`status: found | missing`, `tried` with the sources checked, `checked_at`) records whether the full-text lookup after adding by DOI found a file. `items.list` reports it as a flag, and the table shows "no full text" for `missing`. `proposal` (`status`, `source`, `reason`, `candidates`) marks metadata that was only guessed (first page, file name, web page) and awaits review. Older files that carry `fulltext` as `status: none` with `at` are read in the new form and rewritten on the next save.
 
-### Dokument
+### Document
 
-`blocks.jsonl` ist die kanonische Form eines konvertierten Dokuments. Jeder Block trägt eine einmal vergebene ID, Typ, Abschnitt, Text und Spans mit PDF-Seite, gedruckter Seite, Zeichenbereich und Koordinaten im Koordinatensystem des Original-PDFs:
+`blocks.jsonl` is the canonical form of a converted document ([block model](decisions/0009-block-model.md)). Every block carries an id assigned once, a type, a section, text and spans with PDF page, printed page, character range and coordinates in the coordinate system of the original PDF:
 
 ```json
 {"id":"b7f3k2q","type":"paragraph","sec":"2.1","flow":"body",
@@ -155,13 +198,13 @@ Zwei weitere Zustände eines Eintrags sind getippte Felder im Frontmatter. `full
  "src":{"engine":"docling@2.142.1","native":"#/texts/57"}}
 ```
 
-Bei einer Neukonvertierung ordnet der Kern neue Blöcke über Seitenüberlappung, Koordinaten und Textähnlichkeit den alten zu und übernimmt deren IDs. Die Zuordnung landet in `idmap.json`, damit Links und Karten weiter auflösen. `doc.md` und `doc.html` sind daraus abgeleitet.
+On reconversion the core matches new blocks to old ones by page overlap, coordinates and text similarity and keeps the old ids. The mapping lands in `idmap.json` so links and cards keep resolving. `doc.md` and `doc.html` are derived from the blocks.
 
-Gedruckte Seitenzahlen kommen in dieser Reihenfolge: aus `/PageLabels` im PDF, aus erkannten Kopf- und Fußzeilen (längste aufsteigende Zahlenfolge, wie Zotero es macht), aus dem Seitenbereich bei Crossref als Versatz. Der Nutzer kann die Zuordnung einmal pro PDF bestätigen oder korrigieren, und alle Karten dieses PDFs folgen.
+Printed page numbers come from, in this order: `/PageLabels` in the PDF, detected headers and footers (longest ascending number sequence, as Zotero does it), and the page range from Crossref as an offset. The user can confirm or correct the mapping once per PDF, and all cards of that PDF follow (`documents.confirmPages`).
 
-### Zitatkarte
+### Quote card
 
-Eine Markdown-Datei pro Karte, damit zwei Rechner gleichzeitig markieren können, ohne dass git oder iCloud Konflikte erzeugen, und damit Obsidian Karten einbetten kann.
+One Markdown file per card, so two machines can highlight at the same time without git or iCloud conflicts, and so Obsidian can embed cards ([quote cards](decisions/0010-quote-cards.md)).
 
 ```markdown
 ---
@@ -173,13 +216,13 @@ locator: {label: page, start: "31", end: "32"}
 anchor:
   pdf: {page: 42, quads: [[72.0, 310.2, 290.1, 330.0]], file: 3f9a1c2e7b4d}
   text: {block: b7f3k2q, exact: "…", prefix: "…", suffix: "…"}
-quote_sha256: 9c1d…         # Hash des Wortlauts, Abweichungen werden markiert
+quote_sha256: 9c1d…         # hash of the wording, deviations are flagged
 paraphrase: {by: "claude-code/haiku", at: 2026-10-23T11:02:00Z, checked: false}
 tags: [kommunikation]
 projects: [phd-proposal]
 created: {at: 2026-10-23T11:01:40Z, by: human}
 ---
-> Exakter Wortlaut der markierten Stelle …
+> Exact wording of the marked passage …
 
 ## Paraphrase
 …
@@ -188,21 +231,21 @@ created: {at: 2026-10-23T11:01:40Z, by: human}
 …
 ```
 
-Der Wortlaut steht im Zitatblock und bleibt unverändert, Auslassungen wie „[…]“ sind explizite Bearbeitungen. Die Karte trägt einen AI-Text, die Paraphrase mit einem bis drei Sätzen (D15), und die Paraphrase trägt ihre Herkunft. Die Art (D16) kommt aus derselben Anfrage wie die Paraphrase: Die AI ordnet die Karte beim Anlegen einer Art zu, der Nutzer ändert sie jederzeit, und eine gesetzte Art überschreibt die AI beim Neuschreiben nie. Der Abschnitt „Note“ (D17) ist ein freies Feld des Nutzers. Die Abschnitte haben feste Überschriften, die ein strenger Parser liest. Unbekannte Abschnitte bleiben erhalten. Welche Teile beim Export mitkommen, legt eine Einstellung pro Projekt fest. Die Regel `own-else-ai` nimmt für sinngemäße Zitate die Notiz, sonst die Paraphrase.
+The wording sits in the quote block and stays unchanged. Omissions such as "[…]" are explicit edits. The card carries one AI text, the paraphrase of one to three sentences, and the paraphrase carries its provenance. The kind comes from the same request as the paraphrase: the AI assigns a kind when the card is created, the user can change it at any time, and a kind that is set is never overwritten when the paraphrase is regenerated. The section "Note" is a free field of the user. The sections have fixed headings that a strict parser reads, and unknown sections are preserved. A per-project setting decides which parts go into an export. The rule `own-else-ai` takes the note for indirect quotes and the paraphrase otherwise.
 
-Karten aus früheren Fassungen bleiben lesbar. Der Parser liest die Abschnitte „In my words“ und „Comment“ als Notiz (eigene Worte, Leerzeile, Kommentar) und schreibt beim nächsten Speichern nur noch „Note“. Die Arten `quote` und `comment` gelten als nicht gesetzt, die übrigen alten Arten gelten unverändert. Ein gespeicherter Abschnitt „Core statement“ mit seinem Stempel `core` bleibt beim Umschreiben erhalten, die Oberfläche zeigt ihn nirgends, und die Suche liest ihn nicht.
+Cards from earlier versions stay readable. The parser reads the sections "In my words" and "Comment" as the note (own words, blank line, comment) and writes only "Note" on the next save. The kinds `quote` and `comment` count as unset, the other old kinds apply unchanged. A stored section "Core statement" with its stamp `core` survives a rewrite, is shown nowhere in the UI and is not read by search.
 
-Die Karte in der Oberfläche besteht aus Kopfzeile (Art und Belegstelle), Wortlaut, Paraphrase-Block, Notiz und zwei Aktionen. Der Paraphrase-Block trägt Stern und Titel, Modell und Zeit stehen in einem Tooltip, und die kleine Aktion „Neu schreiben“ mit der Sprachwahl sitzt in seiner Kopfzeile. „Wörtlich zitieren“ kopiert das Zitat mit Beleg, „Sinngemäß zitieren“ kopiert die Notiz oder die Paraphrase mit „vgl.“-Beleg.
+The card in the UI consists of a header (kind and locator), the wording, the paraphrase block, the note and two actions. The paraphrase block carries a star and a title, model and time appear in a tooltip, and the small action "Regenerate" with a language choice sits in its header. "Quote verbatim" copies the quote with its citation, "Quote indirectly" copies the note or the paraphrase with a "cf." citation.
 
-Die Auswahl im Reader rastet an Wortgrenzen ein. `packages/anchoring` rückt beide Ränder einer Auswahl nach außen, bis sie nicht mehr in einem Wort stehen (`snapToWordBoundaries`, ein Apostroph zwischen Buchstaben gehört zum Wort, ein Bindestrich nicht), und der Textanker entsteht aus dem erweiterten Bereich (`createSelectionAnchor`). Der PDF-Viewer und der Textviewer setzen die sichtbare Auswahl auf denselben Bereich, sobald der Zeiger losgelassen ist, und die Vierecke des PDF-Ankers folgen dem erweiterten Bereich.
+Selections in the reader snap to word boundaries. `packages/anchoring` moves both edges of a selection outward until neither sits inside a word (`snapToWordBoundaries`; an apostrophe between letters belongs to the word, a hyphen does not), and the text anchor is built from the widened range (`createSelectionAnchor`). The PDF viewer and the text viewer set the visible selection to the same range once the pointer is released, and the quads of the PDF anchor follow the widened range.
 
-Die Karte hat zwei Anker: einen PDF-Anker (Seite, Vierecke, Datei-Hash) im Zotero-kompatiblen Positionsformat und einen Textanker nach W3C (exakter Text, Kontext davor und danach, Block-ID als Hinweis). Fehlt ein Anker nach einer Neukonvertierung, sucht der Kern die Stelle unscharf wie der Hypothesis-Client.
+A card has two anchors: a PDF anchor (page, quads, file hash) in the position format that Zotero uses, and a W3C text anchor (exact text, context before and after, block id as a hint). When an anchor is missing after reconversion, the core searches for the passage with fuzzy matching, as the Hypothesis client does.
 
-### Notiz und Verbindung
+### Note and link
 
 ```yaml
 id: n_01JB9...
-type: permanent              # permanent | literature | question | claim | project
+type: permanent              # permanent | literature | question | claim | project | daily | concept
 title: Autopoiesis erklärt die Stabilität sozialer Systeme
 links:
   - to: "[[luhmann1984soziale]]"
@@ -213,197 +256,258 @@ links:
     status: proposed         # proposed | accepted | rejected
 ```
 
-Verbindungen dürfen untypisiert bleiben. Ein Typ wird vorgeschlagen und vom Nutzer angenommen. Eine abgelehnte Verbindung bleibt mit `status: rejected` in der Datei, damit `links.propose` sie nicht noch einmal vorschlägt. Der Index kennt sie nicht, sie erscheint weder in Rückverweisen noch im Graphen. Das Vokabular ist klein und auf die Zitations-Ontologie CiTO abbildbar:
+Links may stay untyped. A type is proposed and accepted by the user. A rejected link stays in the file with `status: rejected` so that `links.propose` does not suggest it again. The index does not know it, and it appears neither in backlinks nor in the graph. The vocabulary is small and maps onto the citation ontology CiTO:
 
-| Gruppe | Relationen |
+| Group | Relations |
 |---|---|
-| Argument | `supports`, `opposes`, `qualifies`, `addresses` (bezieht sich auf eine Forschungsfrage) |
-| Herkunft | `extends`, `uses-method-of`, `uses-data-from` |
-| Struktur | `elaborates` (Folgezettel im Sinne Luhmanns), `related` als Rückfall |
-| Automatisch | `cites`, `excerpt-of`, `derived-from` |
+| Argument | `supports`, `opposes`, `qualifies`, `addresses` (refers to a research question) |
+| Origin | `extends`, `uses-method-of`, `uses-data-from` |
+| Structure | `elaborates` (Luhmann's Folgezettel), `related` as fallback |
+| Automatic | `cites`, `excerpt-of`, `derived-from` |
 
-Der Graph ist die Vereinigung aus den Verbindungen in Notizen, den Wiki-Links und den Zitationsbeziehungen aus `refs.jsonl` und OpenAlex. Der Index hält ihn als Kantentabelle, Abfragen laufen über rekursive CTEs in SQLite.
+The graph is the union of the links in notes, the wiki links, and the citation relations from `refs.jsonl` and OpenAlex. The index holds it as an edge table, and queries use recursive CTEs in SQLite. The UI draws it with sigma.js and graphology.
 
-### Projekt
+### Concept
 
-`project.md` trägt im Frontmatter Titel, Status, Forschungsfragen mit IDs und den Zitierstil, im Text den Projektbrief. Die Zugehörigkeit einer Quelle steht im Item (`projects:`), damit ein Agent sie mit einem einzigen Lesezugriff sieht. Agents bekommen den Brief bei jeder Projektaufgabe als Kontext.
+A concept is a note of type `concept` in `notes/concepts/` with aliases in its frontmatter ([concept register](decisions/0021-concept-register.md)). It collects quote cards and holds, per source, an AI-written entry on how that source defines or uses the term. The entries sit in a generated block between `<!-- concept:entries` and `<!-- /concept:entries -->` and are verified against the card quotes. Concepts are managed with `cg concepts` and in the concept view of the UI. Agents reach them through the CLI, not through MCP tools.
 
-### Texte
+### Matrix
 
-Ein Text (D20) ist eine Markdown-Datei unter `projects/<slug>/texts/`, das Format steht in `docs/spec/library-format.md`. Der Kern liest Zitate mit dem Scanner in `packages/schema` (`scanCitations`), den auch der Editor für seine Markierungen nutzt. `texts.export` schreibt in einen Arbeitsordner den Text, die CSL-Datei des Stils, die zitierten Quellen als CSL-JSON und als `.bib`, ruft Pandoc auf und legt das Ergebnis in `exports/` ab. Word, PDF und Markdown setzt `--citeproc`. LaTeX behält die Zitate als biblatex-Befehle und kommt als ZIP mit `references.bib`. Für PDF sucht der Kern xelatex, lualatex, tectonic, pdflatex oder Typst. Pandoc findet er im `PATH`, in Homebrew oder in `<lokaler Ordner>/pandoc/<Version>/`, wohin `pandoc.setup` das festgelegte Release lädt.
+A literature matrix belongs to a project (`projects/<slug>/matrices/`). Rows are items, columns are questions, and cells are answers with evidence. `matrix.fillCell` and `matrix.fill` let the AI fill cells from the passages of the sources, and `matrix.export` writes the table out.
+
+### Project
+
+`project.md` carries title, status, research questions with ids and the citation style in its frontmatter, and the project brief as body. Membership of a source is stored in the item (`projects:`), so an agent sees it with a single read. Agents receive the brief as context for every project task.
+
+Plans, outlines, plan documents and insights are specified in [spec/research-planning.md](spec/research-planning.md) ([multiple plans and templates](decisions/0019-multiple-plans-and-templates.md), [outline and section files](decisions/0017-outline-and-section-files.md)).
+
+### Texts
+
+A text is a Markdown file under `projects/<slug>/texts/` ([Markdown with Pandoc](decisions/0002-writing-in-markdown-with-pandoc.md)). The format is in [spec/library-format.md](spec/library-format.md). The core reads citations with the scanner in `packages/schema` (`scanCitations`), which the editor (`packages/editor`, CodeMirror 6) also uses for its markers. `texts.export` writes the text, the CSL file of the style and the cited sources as CSL-JSON and as `.bib` into a working folder, calls Pandoc and puts the result into `exports/`. Word, PDF and Markdown use `--citeproc`. LaTeX keeps the citations as biblatex commands and comes as a ZIP with `references.bib`. For PDF the core looks for xelatex, lualatex, tectonic, pdflatex or Typst. It finds Pandoc in `PATH`, in Homebrew or in `<local base>/pandoc/<version>/`, where `pandoc.setup` downloads the pinned release (3.12.1).
 
 ## Ingest
 
 ```
-Eingabe ──► Erkennen ──► Metadaten ──► Quelle holen ──► Konvertieren ──► Anreichern ──► Index
+Input ──► Detect ──► Metadata ──► Fetch source ──► Convert ──► Enrich ──► Index
 ```
 
-- **Eingabe:** PDF, DOI, arXiv-ID oder Link, ISBN, PMID, URL, BibTeX-Schnipsel, Zotero Connector, MCP.
-- **Erkennen:** DOI, arXiv-ID und ISBN per Regex auf den ersten Seiten und aus XMP. Danach GROBID-Kopfdaten mit Titelabgleich, akzeptiert nur bei Übereinstimmung von Titelähnlichkeit, Erstautor, Jahr (plus minus eins) und Typ. Ein Suchscore allein reicht nicht. Zuletzt liest ein LLM die erste Seite und schlägt CSL-Felder vor, die als Vorschlag markiert bleiben.
-- **Metadaten:** Für Zitierfelder (DOI, Jahr, Typ, Seiten, Titel, Autorenreihenfolge) gewinnt der Datensatz der Registrierungsagentur (Crossref, DataCite über doi.org). OpenAlex ergänzt ORCIDs, Institutionen, Themen und Referenzen, Abstracts kommen aus der Quelle, die einen hat. Bücher kommen von DNB und K10plus, Open Library ist der Rückfall. Eingaben des Nutzers gewinnen immer. Alle Abfragen laufen über einen gemeinsamen Client mit Cache und Ratenbegrenzung pro Quelle.
-- **Quelle holen:** freie PDFs über Unpaywall, arXiv und OpenAlex, arXiv-HTML, wo es existiert.
-- **Konvertieren:** Python-Worker, siehe unten. Nach einer erfolgreichen Konvertierung liest der Kern bei geratenen Metadaten (Platzhaltertitel, fehlender Autor, Review-Marke) die erste Seite der PDF erneut: Kennungen, dann `metadata.fromFirstPage` mit Titelabgleich. Bestätigte Werte ersetzen die geratenen, Werte von Nutzern und Registrierungsagenturen bleiben unberührt.
-- **Anreichern:** Referenzen, Zitationsgraph, Embeddings, eine AI-Zusammenfassung und eine Einschätzung der Relevanz für jedes Projekt.
+- **Input:** PDF, DOI, arXiv ID or link, ISBN, PMID, URL, BibTeX snippet, Zotero Connector, MCP, importers.
+- **Detect:** DOI, arXiv ID and ISBN by regex on the first pages and from XMP. Then GROBID header data with a title comparison, accepted only when title similarity, first author, year (plus or minus one) and type agree. A search score alone is not enough. Last, an AI task (`metadata.fromFirstPage`) reads the first page and proposes CSL fields, which stay marked as a proposal.
+- **Metadata:** For citation fields (DOI, year, type, pages, title, author order) the record of the registration agency wins (Crossref, DataCite through doi.org). OpenAlex adds ORCIDs, institutions, topics and references, and abstracts come from whichever source has one. PubMed serves PMIDs. Books come from DNB and K10plus, with Open Library as fallback. Input from the user always wins. All lookups go through a shared client with a cache and a rate limit per source.
+- **Fetch source:** open-access PDFs through Unpaywall, OpenAlex locations and arXiv, the `citation_pdf_url` tag of the publisher page, and arXiv HTML where it exists.
+- **Convert:** Python worker, see below. After a successful conversion the core rereads the first page of the PDF for guessed metadata (placeholder title, missing author, review flag): identifiers first, then `metadata.fromFirstPage` with a title comparison. Confirmed values replace the guessed ones, and values from users and registration agencies stay untouched.
+- **Enrich:** references (`refs.jsonl`), citation graph through OpenAlex (`graph.*`, including retraction checks through Crossref and OpenAlex) and, when semantic search is on, embeddings.
 
-Eine URL wird wie von einem Browser abgerufen (Weiterleitungen, Browser-Kopfzeilen) und nach ihrem Inhalt beurteilt: Beginnt die Antwort mit `%PDF`, wird sie wie eine lokale PDF behandelt, auch wenn Adresse oder Content-Type etwas anderes sagen. Liefert eine Adresse, die auf eine Datei zeigt, eine Webseite (Login, Cookie- oder Bot-Sperre), scheitert der Aufruf mit `URL_RETURNED_HTML` und der Aufforderung, die Datei herunterzuladen und ihren Pfad zu übergeben.
+A URL is fetched like a browser would (redirects, browser headers) and judged by its content: a response that starts with `%PDF` is treated like a local PDF, whatever the address or content type says. When an address that points to a file returns a web page (login, cookie or bot wall), the call fails with `URL_RETURNED_HTML` and asks to download the file and pass its path.
 
-Ein Duplikat ist ein Treffer auf DOI, ISBN, arXiv-ID, PMID, URL oder Datei-Hash, ersatzweise auf vollständigen Titel mit Jahr und Erstautor. Hat der getroffene Eintrag keine funktionierende Quelle, hängt der Kern die neue Datei an und konvertiert sie, statt sie zu verwerfen.
+A duplicate is a hit on DOI, ISBN, arXiv ID, PMID, URL or file hash, or else on full title with year and first author. When the matched item has no working source, the core attaches the new file and converts it instead of discarding it.
 
-Was ein Agent hinzufügt, landet zuerst in der Inbox, dort übernimmt oder verwirft Jonny es. Mit `target: "library"` legt ein Agent ein Paper direkt in die Bibliothek. Was Jonny selbst hinzufügt, landet immer direkt in der Bibliothek (D7).
+What an agent adds lands in the inbox first, where the user accepts or discards it. With `target: "library"` an agent puts a paper directly into the library. What the user adds lands directly in the library ([agent content goes to the inbox](decisions/0014-agent-content-goes-to-inbox.md)).
 
-Jeder Schritt ist ein Job in `state.sqlite` mit Status, Fortschritt und Wiederholung. Langsame Arbeit gibt über MCP sofort einen Job-Handle zurück, den Status liefert `jobs.get`.
+Every step is a job in `state.sqlite` with status, progress and retry. The job kinds are `ingest`, `resolve-metadata`, `fetch-source`, `convert`, `enrich`, `embed`, `ai-task`, `research`, `import`, `export`, `alerts`, `worker-setup`, `litsearch.run`, `litsearch.preprints` and `pandoc-setup`. Slow work returns a job handle at once over MCP, and `jobs_get` reports the status.
 
-### Konvertierung
+### Importers
 
-| Pfad | Wann | Werkzeuge |
+`packages/import` reads Zotero (the `zotero.sqlite` file, which is copied before it is read, or the Zotero 10 local API on port 23119 while Zotero runs), BibTeX/BibLaTeX, RIS and CSL-JSON, optionally with a folder of PDFs ([importers](decisions/0003-importers.md)). `import.preview` reports what a run would do without writing anything, and `import.run` executes the plan as a job. Zotero annotations become quote cards, notes become notes, and duplicates are detected against the existing library.
+
+### Conversion
+
+The scope of conversion is described in [conversion scope](decisions/0004-conversion-scope.md). The worker (`workers/convert`) speaks JSON-RPC 2.0 over stdio with the methods `health` and `convert`.
+
+| Path | When | Tools |
 |---|---|---|
-| arXiv | arXiv-HTML existiert (etwa 97 Prozent der Paper) | LaTeXML-HTML bereinigen, Seiten über die Sprungziele im arXiv-PDF zuordnen |
-| Digital | PDF mit Textebene | Docling (MIT) für Layout und Blöcke, GROBID 0.9 (nativ auf Apple Silicon) für Kopfdaten und Referenzen |
-| Scan | keine oder schlechte Textebene | OCRmyPDF mit Apple Vision, das Deutsch kann. Seiten, die der schnelle Pfad als schlecht markiert, gehen an ein lokales VLM (PaddleOCR-VL oder MinerU2.5-Pro) |
-| Web | Artikel, graue Literatur | Readability oder defuddle, dann dasselbe Blockmodell ohne Seiten |
+| arXiv | arXiv HTML exists | clean up LaTeXML HTML, map pages through the jump targets in the arXiv PDF |
+| Digital | PDF with a text layer that passes the dictionary check | Docling (MIT) for layout and blocks, GROBID (native on Apple Silicon) for header data and references, optional formula enrichment |
+| Scan | no or poor text layer, or `ocr: "force"` | Docling with Apple Vision OCR. Pages below the quality gate are flagged |
+| Web | articles, grey literature | trafilatura, then the same block model without pages |
 
-Cloud-APIs für OCR gibt es nur auf ausdrücklichen Wunsch. Welche Werkzeuge im Pfad „Digital“ tatsächlich gewinnen, entscheidet ein Spike auf 15 Fixture-PDFs mit festen Kriterien (Plan in `docs/research/document-conversion.md`, Abschnitt 9.3).
-
-## AI-Schicht
+## AI layer
 
 ### Backends
 
-Eine Schnittstelle mit zwei Aufrufformen:
+AI tasks run through the interface `InferenceBackend` (`packages/ai`): `complete` returns structured output validated against a Zod schema, and `resolveModel` turns a model class (`fast` or `smart`) into a model name. The interface has a `session` method for agentic work, but no inference backend implements it. Agentic work runs in the chat (see below).
 
-```ts
-interface InferenceBackend {
-  complete<T>(req: { task: string; prompt: string; schema: ZodType<T>; model?: string }): Promise<T>;
-  session(req: { system: string; mcpServers: McpConfig[]; cwd: string }): AgentSession;
-}
-```
-
-| Backend | Weg | Zweck |
+| Backend id | Route | Notes |
 |---|---|---|
-| Claude Code | Claude Agent SDK, Pool aus ein bis zwei vorgewärmten Prozessen (`startup()`), strukturierte Ausgabe über `outputFormat`, `settingSources: []`, feste Claude-Code-Version | Highlighter, Extraktion, Recherche-Jobs |
-| Codex | `codex app-server` als langlebiger JSON-RPC-Prozess, `codex exec --output-schema` für Einzelaufrufe | dieselben Aufgaben |
-| Cursor | `agent -p --output-format stream-json`, Struktur über Prompt und Validierung, `agent acp` für Chat | Chat und Recherche |
-| ACP-Agents | citegeist als ACP-Client, eigener MCP-Server pro Sitzung übergeben, Umgebung des Nutzers nach A11 | Chat-Seitenleiste mit jedem ACP-fähigen Agent |
-| API-Key | Anthropic, OpenAI, OpenRouter, xAI | Option pro Aufgabe |
-| Lokal | Ollama, MLX, LM Studio über OpenAI-kompatible Endpunkte | Option pro Aufgabe |
+| `claude-code-cli` | `claude -p` per call with `--json-schema`, no tools, no user settings, isolated working directory | pinned minimum CLI version |
+| `codex-exec` | `codex exec --output-schema --ephemeral` per call | models default to the account default |
+| `cursor-cli` | `agent -p --mode ask` per call (read-only mode) | |
+| `openai`, `anthropic`, `openrouter`, `xai` | OpenAI-compatible HTTP endpoints, API key in the macOS Keychain | optional per task |
+| `ollama` | OpenAI-compatible endpoint on `localhost:11434` | optional per task |
 
-Zwei Punkte aus der Recherche bestimmen die Konfiguration. `claude -p --bare` liest nur API-Keys und ignoriert das Abo, und laut Doku wird es künftig Standard für `-p`. citegeist pinnt deshalb die Claude-Code-Version und testet das Abo-Login in CI. Ohne `settingSources: []` lädt jede Sitzung die persönliche `~/.claude`-Konfiguration des Nutzers mit. Das ist für Inferenz-Aufgaben und Recherche-Jobs gewollt und bleibt so.
+`claude -p --bare` reads only API keys and ignores the subscription login, so citegeist does not use `--bare` and pins the minimum Claude Code version. Routing (which backend serves which task) is a setting, with `*` as the fallback entry. Every call is recorded in the usage ledger ([cancellation, limits and usage ledger](decisions/0025-cancellation-limits-and-usage-ledger.md)): tokens, cache tokens, list price where the backend reports one, duration and result, per task and backend, in `state.sqlite`. `usage.summary` reads it.
 
-### Chat-Agents arbeiten in der Umgebung des Nutzers
+Background: [inference backends](decisions/0012-inference-backends.md), [agent interfaces](decisions/0013-agent-interfaces.md).
 
-Für Chat-Sitzungen gilt A11 statt der Isolation. Der Agent der Seitenleiste bekommt dieselbe Umgebung wie das Claude Code des Nutzers:
+### Chat agents
 
-| | Standard | Einstellung „Isolierter Agent" |
+The chat sidebar and research jobs (`packages/chat`) talk to an agent over the Agent Client Protocol (ACP). citegeist is the ACP client. It ships the adapters `@agentclientprotocol/claude-agent-acp` and `@agentclientprotocol/codex-acp` as pinned dependencies, which run the `claude` and `codex` programs that the user installed. Cursor starts with `agent acp`. When the Claude adapter cannot start, a fallback streams through `claude -p`. Every session receives the citegeist MCP server with its own token.
+
+Chat sessions use the environment of the user instead of isolation ([chat agents use the user's environment](decisions/0020-chat-agents-use-the-users-environment.md)). The agent of the sidebar gets the same environment as the user's own Claude Code:
+
+| | Default | Setting "Isolated agent" |
 |---|---|---|
-| Claude Code (ACP-Adapter) | `settingSources: ["user", "project"]`, Shell erlaubt, MCP-Server des Nutzers geladen | `settingSources: []`, `strictMcpConfig`, Shell gesperrt |
-| Claude Code (Rückfall `claude -p`) | `--setting-sources user,project`, `Bash` erlaubt | `--strict-mcp-config`, keine Einstellungen, `Bash` gesperrt |
-| Codex | Codex-Konfiguration des Nutzers | gleiche Konfiguration, Berechtigungen wie unten |
-| Berechtigungsregel | Shell, fremde Werkzeuge und Änderungen außerhalb der Bibliothek erlaubt | Shell und Änderungen außerhalb von Bibliothekstext und Arbeitsordner abgelehnt |
+| Claude Code (ACP adapter) | `settingSources: ["user", "project"]`, shell allowed, MCP servers of the user loaded | `settingSources: []`, `strictMcpConfig`, shell blocked |
+| Claude Code (fallback `claude -p`) | `--setting-sources user,project`, `Bash` allowed | `--strict-mcp-config`, no settings, `Bash` blocked |
+| Codex | Codex configuration of the user | same configuration, permission rule below |
+| Permission rule | shell, other tools and changes outside the library allowed | shell and changes outside library text and working folder rejected |
 
-Der citegeist-MCP-Server kommt in jedem Fall pro Sitzung dazu, mit eigenem Write-Token. Im Bibliotheksordner bleiben `derived`, `sources`, `exports` und `citegeist.json` auch in der Umgebung des Nutzers geschützt. Recherche-Aufträge laufen immer isoliert. Die Einstellung liegt in `settings.json` unter `chat.isolated` und wirkt ab dem nächsten Beitrag einer Sitzung.
+The library keeps its protected areas (`derived`, `sources`, `exports`, `citegeist.json`) in every mode. Research jobs always run isolated. The setting is `chat.isolated` in `settings.json` and takes effect from the next message of a session. Agent edits in a chat are written directly, and every turn is journaled so that `chat.revertTurn` restores all files of the turn ([direct agent edits with undo](decisions/0018-direct-agent-edits-with-undo.md)).
 
-### Aufgaben
+Research jobs (`research.start`) run an agent with the web search, the read tools and `add_item`. Found papers land in the inbox with a reason. A job has limits for time (20 minutes), tokens (2,000,000) and tool calls (200) by default, and a loop of identical calls ends it.
 
-Die Sprache aller AI-Texte (Paraphrase, Zusammenfassung) folgt einer Kette: Dropdown an der gerade gelesenen Quelle, sonst Projekteinstellung, sonst Bibliotheksstandard (D9). Das Dropdown ist im Reader jederzeit erreichbar.
+### Tasks
 
-Jede AI-Aufgabe ist ein Eintrag in `packages/ai/tasks/` mit Eingabe- und Ausgabeschema, versioniertem Prompt, Standard-Modellklasse (`fast` oder `smart`) und Eval-Fixtures. Beispiele: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `item.summarize`, `item.relevance`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name`. Das Routing (welches Backend für welche Aufgabe) ist eine Einstellung. Agentische Aufgaben (`library.ask`, `research.run`) laufen als Sitzung mit dem citegeist-MCP-Server und den Web-Werkzeugen des jeweiligen Agents. Was eine Sitzung anlegt, trägt `by: agent:<name>`.
+Each AI task is an entry in `packages/ai/src/tasks/` with input and output schema, versioned prompt, default model class and eval fixtures. The tasks: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name` and `litsearch.suggestQueries`.
 
-Jede Agent-Antwort mit Zitat geht durch eine Prüfung: Ein Zitat, das zu keiner gespeicherten Stelle passt, wird markiert.
+The language of all AI texts (paraphrase, concept entries) follows a chain: dropdown on the source being read, then the project setting, then the library default ([AI text language](decisions/0016-ai-text-language.md)). The dropdown is reachable in the reader at any time.
+
+Every agent answer with a quote goes through a check: a quote that matches no stored passage is flagged.
 
 ### Embeddings
 
-Die Abos bieten keine Embeddings, deshalb laufen sie lokal mit Transformers.js. Kandidaten sind Qwen3-Embedding-0.6B und EmbeddingGemma, die Wahl fällt ein Test mit echten deutschen und englischen Anfragen. Für Ähnlichkeit auf Paper-Ebene kommen SPECTER2-Vektoren von Semantic Scholar dazu, wo es sie gibt.
+Subscriptions offer no embeddings, so embeddings run locally with Transformers.js on quantized ONNX weights with pinned revisions (`packages/embed`). Semantic search is optional and off by default. The settings offer two models:
 
-Abschnitte konvertierter Dokumente werden zusammen mit dem Pfad ihrer Überschriften eingebettet. Ein lokaler Reranker kann die besten Treffer nachsortieren und ist standardmäßig aus. Ein Testsatz misst beides (D24).
+| Model | Key | Vectors | License |
+|---|---|---|---|
+| EmbeddingGemma 300M (default) | `embeddinggemma-300m` | 512 dimensions | Gemma Terms of Use |
+| Qwen3-Embedding 0.6B | `qwen3-embedding-0.6b` | 512 dimensions | Apache-2.0 |
 
-## Zugänge für Agents
+An optional local cross-encoder reranker (`bge-reranker-v2-m3` by default) re-sorts the best fused candidates and is off by default. The choice of the default model follows the retrieval check in `packages/embed/RETRIEVAL.md` ([retrieval benchmark](decisions/0026-retrieval-benchmark.md)); `pnpm eval:retrieval` runs it.
 
-### MCP-Server
+Sections of converted documents are embedded together with the path of their headings.
 
-- TypeScript-SDK v2 (`@modelcontextprotocol/server`), Spec-Revision 2026-07-28, ältere Clients bleiben über den Kompatibilitätsmodus des SDK bedient.
-- `cg mcp` als stdio-Shim für alle lokalen Clients, dazu Streamable HTTP auf `127.0.0.1` mit Bearer-Token sowie Origin- und Host-Prüfung. Für Claude Desktop gibt es zusätzlich ein `.mcpb`-Paket.
-- Höchstens zwanzig Tools: `search`, `get_item`, `read_document` (nach Seite, Abschnitt oder Block), `list_cards`, `add_item`, `attach_file` (lokale Datei an einen bestehenden Eintrag hängen und konvertieren), `trash_item` (Inbox-Einträge, unvollständige Einträge und von Agents angelegte Einträge, solange keine Karte und kein Link auf sie verweist; der Papierkorbordner hält fest, wer gelöscht hat), `create_card`, `create_note`, `link`, `list_projects`, `create_project`, `get_project` (Projekt, Pläne und Gliederung in einem Aufruf), `related_works` (zitierte und zitierende Werke eines Eintrags, `direction`), `cite`, `jobs_get`, dazu die Planungswerkzeuge `edit_outline`, `edit_plan_doc`, `note_insight` und `find_insights`. Lesende Tools tragen `readOnlyHint`, jede Antwort hat einen kurzen Text plus `structuredContent`, Volltexte kommen als `resource_link`.
-- Server-Anweisungen unter 4.096 Zeichen, weil Claude Code beim Start nur Tool-Namen und Anweisungen lädt.
-- Fehlertexte nennen Operationen einmal unter ihrem Operationsnamen (`items.trash`). Der MCP-Server schreibt sie auf den Namen des Tools um (`trash_item`), die CLI auf das Kommando (`cg items trash`). Eine Operation ohne Tool auf der Verbindung erscheint als `cg`-Kommando mit dem Hinweis, dass der Nutzer es ausführen muss. Ein Test stellt sicher, dass jeder Operationsname in den Quellen existiert.
+## Agent interfaces
+
+### MCP server
+
+- TypeScript SDK v2 (`@modelcontextprotocol/server`), spec revision 2026-07-28.
+- `cg mcp` is a stdio server for local clients. `cg mcp --http` serves Streamable HTTP on `127.0.0.1` with bearer tokens and Origin and Host validation. For Claude Desktop there is a `.mcpb` bundle (`skills/citegeist/mcpb`).
+- Twenty tools, derived from the operations that declare an `mcp` entry. Tools sort by name so the tool list stays byte-identical between calls.
+
+| Scope | Tools |
+|---|---|
+| `read` (read-only hint) | `search`, `get_item`, `read_document` (by page, section or block), `list_cards`, `list_projects`, `get_project` (project, plans and outline in one call), `related_works` (cited and citing works of an item, `direction`), `cite`, `jobs_get`, `find_insights` |
+| `write` (all tools) | the `read` tools plus `add_item`, `attach_file` (attach a local file to an existing item and convert it), `trash_item` (inbox items, incomplete items and items an agent added, as long as no card or link refers to them; the trash folder records who deleted), `create_card`, `create_note`, `link`, `create_project`, `edit_outline`, `edit_plan_doc`, `note_insight` |
+| `research` | the `read` tools plus `add_item`, without local files and only for addresses on scholarly hosts |
+
+Every response has a short text plus `structuredContent`, and full texts come as `resource_link`. `admin` operations are never exposed.
+
+- Server instructions stay under 4,096 characters because Claude Code loads only tool names and instructions at startup.
+- Error texts name operations once under their operation name (`items.trash`). The MCP server rewrites them to the tool name (`trash_item`), the CLI to the command (`cg items trash`). An operation without a tool on the connection appears as a `cg` command with a note that the user has to run it. A test makes sure every operation name in the sources exists.
+- Concepts, matrices, literature search, alerts, texts, import, sync and webhooks have no MCP tools. Agents with a shell reach them through `cg`.
 
 ### CLI
 
-`cg` deckt alle Operationen ab, mit `--json` für Agents mit Shell. Für Massenarbeit (50 DOIs importieren) ist sie sparsamer als MCP, weil der Agent die Ausgabe vor dem Lesen filtern kann.
+`cg` covers all operations, with `--json` for agents with a shell. For bulk work (importing 50 DOIs) it is cheaper than MCP, because the agent can filter the output before reading it. The library comes from `--library <folder>`, then `CITEGEIST_LIBRARY`, then `~/Citegeist`.
 
-### Skill
+### Skill and plugin
 
-Ein portabler Skill unter `skills/citegeist/SKILL.md` nach der Agent-Skills-Spezifikation, aufgebaut wie ein gstack-Skill: Frontmatter mit Beschreibung und Auslösern, klare Abläufe (Paper hinzufügen, Zitatkarte anlegen, Notiz verknüpfen, Zitat erzeugen), agent-taugliche Fehler. Er sagt dem Agent, MCP zu nutzen, wenn verbunden, sonst die CLI. Verteilt wird er als Claude-Code-Plugin mit einem Agent-Plugins-Manifest daneben, und ein Symlink nach `~/.agents/skills/citegeist` erreicht Codex und Cursor.
+A portable skill at `skills/citegeist/SKILL.md` follows the Agent Skills specification and is built like a gstack skill: frontmatter with description and triggers, clear flows (add a paper, create a quote card, link a note, produce a citation) and agent-readable errors. It tells the agent to use MCP when connected and the CLI otherwise. `.claude-plugin/plugin.json` packages the skill and the stdio server as a Claude Code plugin.
 
-### AGENTS.md im Bibliotheksordner
+### AGENTS.md in the library folder
 
-citegeist erzeugt und pflegt eine `AGENTS.md`, die das Ordnerformat erklärt und die Regeln nennt: Schreiben über `cg` oder MCP, Notiztexte dürfen direkt bearbeitet werden, `derived/` und Wortlaute in Karten bleiben unberührt, neue Inhalte tragen `by: agent:<name>`.
+citegeist generates and maintains an `AGENTS.md` that explains the folder format and states the rules: write through `cg` or MCP, note text may be edited directly, `derived/` and card wordings stay untouched, new content carries `by: agent:<name>`.
 
-### Webhooks und externe Agents
+### Webhooks and external agents
 
-Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC und auf Wunsch mit dem eigenen Schlüssel der Plattform des Agents in einem Auth-Header (Wert im Schlüsselbund). Eingehend nimmt ein Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Neben der HMAC-Signatur lässt sich pro Connector ein Bearer-Token für Agents einschalten, die keine Signatur berechnen können. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
+See [webhooks.md](webhooks.md) for the operational details ([webhooks](decisions/0015-webhooks.md)). Outbound, citegeist sends a job with context and a callback address by HTTP POST, signed with HMAC and, on request, with the agent platform's own key in an auth header (the value sits in the Keychain). Inbound, an endpoint accepts papers and notes and treats them like input over MCP: inbox by default, directly into the library with `target: "library"`. Besides the HMAC signature, a per-connector bearer token can be enabled for agents that cannot compute a signature.
 
-Der Kern lauscht auf einem zufälligen, privaten Port. Für Aufrufe aus dem Internet öffnet er, solange ein Connector existiert, einen zweiten Listener auf `127.0.0.1` und einem festen Port (Standard 47321, einstellbar). Dieser Listener bedient nur `/hooks/<name>` und `/mcp`; ein Tunnel (Tailscale Funnel, Cloudflare Tunnel) zeigt auf ihn. Die öffentliche Adresse des Tunnels steht in den Einstellungen und wird für alle Rückruf-Adressen verwendet.
+The core listens on a random private port. For calls from the internet it opens, as long as a connector exists, a second listener on `127.0.0.1` and a fixed port (default 47321, configurable). That listener serves only `/hooks/<name>` and `/mcp`, and a tunnel (Tailscale Funnel, Cloudflare Tunnel) points at it. The public tunnel address is a setting and is used for all callback addresses.
 
-Auf `/mcp` liegt der MCP-Server des Kerns mit Streamable HTTP, derselbe Werkzeugsatz und dieselbe Implementierung wie bei `cg mcp --http`. Zugang bekommen nur Connectors, bei denen der Nutzer ihn einschaltet, mit eigenem Token im Schlüsselbund. Der Akteur ist `agent:<connector>`, Neues landet in der Inbox, `admin`-Operationen und Zugriff auf lokale Dateien sind ausgeschlossen (D21).
+`/mcp` carries the MCP server of the core over Streamable HTTP, with the same tool set and implementation as `cg mcp --http`. Only connectors for which the user enables it get access, with their own token in the Keychain. The actor is `agent:<connector>`, new content lands in the inbox, and `admin` operations and local file access are excluded ([remote MCP through a tunnel](decisions/0023-remote-mcp-through-a-tunnel.md)).
 
-### Zotero-Kompatibilität
+### Zotero Connector
 
-- **Connector:** Der Kern spricht optional das Connector-Protokoll auf einem einstellbaren Port, damit die offizielle Zotero-Erweiterung direkt in citegeist speichert. Die Übersetzer laufen dabei im Browser, citegeist bekommt fertige Datensätze und lädt PDFs mit den Cookies des Nutzers. Die Fallstricke (Header `X-Zotero-Version`, `filesEditable: true`, Portkonflikt mit laufendem Zotero) stehen in `docs/research/zotero-parity.md`.
-- **Lese-API:** Später kann der Kern lesende Endpunkte im Format der Zotero Local API anbieten, dann funktionieren bestehende Zotero-MCP-Server und Plugins gegen citegeist.
+The core can speak the Zotero Connector protocol on a configurable port (default 23119, off by default), so the official Zotero browser extension saves directly into citegeist. The translators run in the browser, so citegeist receives finished records and downloads PDFs with the user's cookies. Only browser extensions may call the listener. When Zotero itself runs, it uses the same default port.
 
-## Suche und Index
+### Quick insert
 
-`index.sqlite` über better-sqlite3 enthält Tabellen für Items, Personen, Kennungen, Blöcke, Karten, Notizen, Kanten, Projekte und Tags. Volltext läuft über zwei FTS5-Tabellen: eine mit vorab gestemmten Wörtern (Deutsch und Englisch, Stemming in JS vor dem Indizieren) und eine Trigramm-Tabelle für Teilwörter. Vektoren liegen in sqlite-vec. Die Suche kombiniert Volltext, Vektoren und Filter per Reciprocal Rank Fusion, optional mit einem lokalen Reranker. Jede Abfrage nennt ihren Bereich: Projekt, Sammlung oder ganze Bibliothek.
+A global hotkey (default `CommandOrControl+Shift+K`) opens a palette that searches quote cards in any app and pastes the chosen citation into the frontmost app. Pasting needs the macOS accessibility permission.
 
-Ein vollständiger Neuaufbau liest nur den Bibliotheksordner und soll 1.000 Quellen in unter zwei Minuten schaffen.
+## Search and index
 
-## Sync
+`index.sqlite` (better-sqlite3) holds tables for items, creators, identifiers, blocks, cards, notes, links, projects and tags. Full text runs over two FTS5 tables: one with `unicode61` tokenizing and diacritic removal (stemmed in JS before indexing, German and English) and a trigram table for partial words. Vectors live in sqlite-vec (`vec0`, cosine distance). Search combines full text, vectors and filters by reciprocal rank fusion, optionally with a local reranker. Every query names its scope: project, collection or the whole library.
 
-Siehe D5. Der Kern bietet optional ein automatisches git-Commit nach Arbeitssitzungen, damit Änderungen von Agents als eigene Commits sichtbar sind. Da jede Karte und jede Notiz eine eigene Datei ist, entstehen Konflikte nur, wenn zwei Rechner dieselbe Datei ändern. Dann legt der Kern beide Fassungen nebeneinander und meldet den Konflikt in der Problemliste.
+A full rebuild reads only the library folder (`library.reindex`).
 
-## Sicherheit
+## Sync and versioning
 
-- Alle lokalen Server binden nur an `127.0.0.1` und prüfen Origin und Host gegen DNS-Rebinding.
-- Tokens für RPC und MCP-HTTP liegen in einer Datei mit Rechten 0600, MCP-Tokens haben Scopes (`read`, `write`, und `research` für unbeaufsichtigte Recherche-Aufträge).
-- Die Zugriffsklasse `admin` (Einstellungen, Löschen ohne Papierkorb) ist über MCP nicht erreichbar.
-- API-Keys liegen in der macOS-Keychain.
-- Agent-Sitzungen laufen mit einem eigenen Arbeitsordner und ohne persönliche Agent-Konfiguration.
-- Fremder Text (PDF- und Webinhalte, Metadaten, Texte von Agents und Webhooks) geht nur datamarkiert in die Prompts der AI-Aufgaben, siehe D22 und `packages/ai/src/untrusted.ts`.
-- Das MCP-Token eines Recherche-Auftrags hat den Scope `research`: die lesenden Werkzeuge und `add_item`, keine lokalen Dateien, keine Adresse außerhalb der Wissenschaftsserver.
+Exactly one sync transport is active at a time ([sync and versioning](decisions/0005-sync-and-versioning.md)): `none`, a synced folder (`icloud`, `dropbox`) or a `git` remote. `sync.configure` selects it, and a git remote is refused while the library sits in iCloud or Dropbox. Independent of the transport, the core can keep a git history of the library with one commit per actor after quiet periods, so changes by agents show up as their own commits. When the library sits in a synced folder, the `.git` directory lives machine-local. PDFs can go to git LFS. A background timer runs `sync.now`: git pull with rebase and push, or downloading evicted iCloud files and looking for conflicts.
 
-## Tech-Stack
+Because every card and every note is its own file, conflicts arise only when two machines change the same file. The core lists conflict copies (`sync.status`), and `sync.resolveConflict` keeps version a, version b or both.
 
-| Schicht | Wahl | Zweitbeste Option | Ausschlaggebend |
-|---|---|---|---|
-| Hülle | Electron 45 | Tauri 2 | pdf.js zielt auf Chromium, der Kern ist Node, Playwright testet Electron |
-| Kern | Node 24, TypeScript | | eine Sprache mit SDKs für MCP, Claude, Codex und Zitieren |
-| UI | React, shadcn/ui auf Base UI, Tailwind v4 | | Agents bauen damit zuverlässig |
-| RPC | oRPC | Hono RPC | typisiert, Schemas aus Zod |
-| Schemas | Zod 4, JSON-Schema-Export | | eine Quelle für TS, Python und MCP |
-| PDF | pdfjs-dist 6 mit eigener Markierungsebene, Floating UI | EmbedPDF | volle Kontrolle über Anker und Popover |
-| Editor | CodeMirror 6 mit Live-Vorschau im Stil von Obsidian | TipTap 3 | verlustfreies Markdown, Agents bearbeiten dieselben Dateien |
-| Index | SQLite (better-sqlite3), FTS5, sqlite-vec | PGlite | mehrere Leser, ausgereift, neu aufbaubar |
-| Watcher | @parcel/watcher | chokidar | nativ, robust bei vielen Dateien |
-| Embeddings | Transformers.js mit Qwen3-Embedding-0.6B oder EmbeddingGemma | Ollama | lokal, ohne zweiten Dienst |
-| Graph | sigma.js mit graphology | Cytoscape.js | WebGL, große Graphen |
-| Zitieren | citation-js mit citeproc-js, CSL-Stile, bibtex-parser | Hayagriva | Standard, deutsche Locale vorhanden |
-| Konvertierung | Python mit uv, Docling, GROBID, OCRmyPDF und Apple Vision | Marker | MIT-Lizenz, Seiten und Koordinaten pro Block |
-| MCP | TypeScript-SDK v2 | | stabil seit Juli 2026 |
-| Monorepo | pnpm, Turborepo, Vitest, Playwright, Biome | Nx | schlank, schnelle Gates |
+## Alerts and literature search
 
-## Risiken und Spikes
+Alerts are saved watches that look for new works on a schedule and put the best ones into the inbox with the reason `Alert: <name>`. Definitions are plain YAML files (`projects/<slug>/alerts.yaml`, `alerts.yaml` at the library root). Source kinds are `arxiv-category`, `arxiv-query`, `openalex-topic`, `openalex-search`, `author`, `cites` and `pipeline`. The last run and the already-seen list stay machine-local.
 
-Jede Annahme bekommt einen Test mit festem Kriterium, bevor die Arbeit darauf aufbaut. Fällt ein Test durch, greift der genannte Rückfall.
+The literature search ([literature search](decisions/0022-literature-search.md)) runs the pipeline of `workers/research` as a `litsearch.run` job. A run searches OpenAlex, arXiv and Semantic Scholar, optionally DBLP, OpenReview, Unpaywall and ORCID, ranks every paper with a score from 0 to 100, verifies each DOI and writes the result to `research/runs/<id>/`. Selected papers go to the inbox. A `pipeline` alert repeats a saved search and sends only new papers to the inbox. The preprint check (`litsearch.preprints`) looks for published versions of preprints.
 
-| Annahme | Test | Besteht, wenn | Rückfall |
-|---|---|---|---|
-| Docling und GROBID liefern Blöcke mit richtiger Seite und Lesereihenfolge | Spike auf 15 Fixture-PDFs | mindestens 95 Prozent der Blöcke auf der richtigen Seite, Lesereihenfolge in 13 von 15 PDFs korrekt, unter 60 Sekunden für 20 Seiten | Marker oder ein VLM-Pfad |
-| Gedruckte Seitenzahlen lassen sich zuordnen | gleicher Spike | richtig in mindestens 90 Prozent der Journal-Artikel | Bestätigung pro PDF wird Pflicht |
-| Der Highlighter ist über das Abo schnell genug | vorgewärmter Agent-SDK-Prozess, 50 Paraphrasen | p50 unter 3 Sekunden, p95 unter 6 Sekunden | Routing auf API-Key oder lokales Modell |
-| Karten halten zwischen PDF- und Textansicht und über Neukonvertierungen | 200 Testmarkierungen | 98 Prozent landen in der anderen Ansicht an derselben Stelle, 95 Prozent nach Neukonvertierung | Anker auf Block-Ebene vergröbern |
-| Dateien als Wahrheit vertragen gleichzeitiges Schreiben von App und Agent | Lasttest mit Watcher | kein Datenverlust, Index nach unter einer Sekunde aktuell | Schreiben nur noch über den Kern |
-| Deutsche Suche findet, was sie soll | 30 echte Anfragen | relevante Treffer in den Top 5 bei 25 von 30 | anderer Stemmer oder Embeddings als Hauptsignal |
-| MCP bleibt sparsam | `/context` in Claude Code | unter 1.500 Tokens beim Start | Tools zusammenlegen, Details in den Skill |
+## Security
 
-## Lizenzen
+Details are in [security-model.md](security-model.md). The facts that the code enforces:
 
-Der Kern bekommt eine permissive Lizenz. Zotero-Code (Client, Reader, translation-server, die meisten Übersetzer) steht unter AGPL und läuft nur als eigener Prozess. Das Zotero-Schema hat keine Lizenzdatei. Bis das geklärt ist, bindet citegeist es als Daten zur Laufzeit ein, statt es ins Repo zu kopieren. CSL-Stile stehen unter CC BY-SA und werden unverändert ausgeliefert. citeproc-js steht unter CPAL oder AGPL, die Pflichten zur Namensnennung prüft der Release-Schritt vor 1.0.
+- All local servers bind to `127.0.0.1` and validate Origin and Host against DNS rebinding. The MCP HTTP server refuses to bind to any other address.
+- The token of the HTTP endpoint is in `core.token` with mode 0600. MCP HTTP tokens have scopes (`read`, `write`, `research`) and are compared in constant time. Each chat session gets its own token, which is revoked when the session ends.
+- The access class `admin` (settings, deleting without trash, webhook management) is not reachable over MCP, and the registry refuses it for non-human actors.
+- API keys and webhook secrets are stored in the macOS Keychain, never in `settings.json` or logs.
+- Foreign text (PDF and web content, metadata, texts from agents and webhooks) enters the prompts of AI tasks only datamarked, see `packages/ai/src/untrusted.ts` ([untrusted text and the rule of two](decisions/0024-untrusted-text-and-rule-of-two.md)).
+- The MCP token of a research job has the scope `research`: the read tools and `add_item`, no local files, and no address outside the scholarly hosts.
+- Inference calls and isolated or research chat sessions run without the personal agent configuration of the user. Sessions in the default chat mode use it on purpose.
+- The webhook listener limits the body size to 1 MiB, rejects replayed delivery ids and rate-limits repeated authentication failures.
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Shell | Electron 45 (`apps/desktop`), electron-vite, electron-builder; unsigned arm64 build |
+| Core | Node 22 or newer (`engines`), TypeScript; the packaged app runs the core on Electron's Node |
+| UI | React 19, Base UI, Tailwind v4, TanStack Router and Query |
+| RPC | oRPC |
+| Schemas | Zod 4, JSON Schema export |
+| PDF | pdfjs-dist 6 with a custom highlight layer, Floating UI (`packages/reader`) |
+| Editor | CodeMirror 6 with live preview (`packages/editor`) |
+| Index | SQLite (better-sqlite3), FTS5, sqlite-vec |
+| Watcher | @parcel/watcher |
+| Embeddings | Transformers.js |
+| Graph | sigma.js with graphology |
+| Citing | citation-js with CSL styles (APA, Chicago author-date, DGP are bundled), @retorquere/bibtex-parser |
+| Conversion | Python 3.12 with uv, Docling, GROBID, Apple Vision OCR (ocrmac), trafilatura |
+| Agent protocols | MCP TypeScript SDK v2, Agent Client Protocol SDK |
+| Monorepo | pnpm, Turborepo, Vitest, Playwright, Biome |
+
+## Packages
+
+| Path | Purpose |
+|---|---|
+| `packages/schema` | Zod schemas, JSON Schema export |
+| `packages/ops` | Operations registry and contracts |
+| `packages/core` | Store, index, watcher, jobs and the services behind the operations |
+| `packages/metadata` | Resolvers and merge |
+| `packages/cite` | CSL, BibTeX, RIS, citekeys, citation export |
+| `packages/ai` | Inference backends, tasks, evals |
+| `packages/embed` | Local embedding models and rerankers |
+| `packages/import` | Importers (Zotero, BibTeX, RIS, CSL-JSON) |
+| `packages/mcp` | MCP server built on the registry |
+| `packages/chat` | Agent chat over ACP, turn undo, research jobs |
+| `packages/webhooks` | Connectors, signatures, inbound and outbound requests |
+| `packages/server` | Core process: HTTP/oRPC/WebSocket, lockfile, chat wiring, Zotero Connector, hooks listener |
+| `packages/anchoring` | Anchor library (pure TypeScript) |
+| `packages/reader` | PDF and text view with highlight layer |
+| `packages/editor` | Markdown editor with citation support |
+| `apps/cli` | `cg` command, including `cg mcp` |
+| `apps/ui` | React renderer, also runs in a browser against a mock core |
+| `apps/desktop` | Electron main and preload, quick insert |
+| `workers/convert` | Python conversion worker |
+| `workers/research` | Python literature search pipeline |
+
+## Risks and assumptions
+
+- Conversion quality depends on Docling and GROBID. Page assignment and reading order are checked against the fixture PDFs in `fixtures/` by the worker tests, and a printed page number can be confirmed per PDF.
+- The inference backends depend on the command line interfaces of Claude Code, Codex and Cursor, which change quickly. citegeist pins minimum versions and checks login state with the CLIs' own status commands.
+- Files as the truth tolerate concurrent writes from the app and from agents because the core writes atomically and the watcher revalidates outside changes. Conflicts between machines are resolved at file level.
+- Semantic search quality was measured on a small German and English retrieval set ([retrieval benchmark](decisions/0026-retrieval-benchmark.md)).
+
+## License
+
+The project is licensed under Apache-2.0. Zotero code that is licensed under AGPL runs only as a separate process or in the user's browser, and citegeist reads its records through the Connector protocol. Details on dependencies, bundled CSL styles and models are in [licenses.md](licenses.md).

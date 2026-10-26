@@ -116,7 +116,7 @@ describe("sync", () => {
       sync: {
         transport: "git",
         versioning: true,
-        remote: "git@github.com:jonny/library.git",
+        remote: "git@github.com:alex/library.git",
         uncommitted: 3,
         lastSync: { at: "2026-10-24T07:55:00.000Z", ok: true, message: "Pulled and pushed." },
       },
@@ -124,7 +124,7 @@ describe("sync", () => {
     const git = await screen.findByTestId("sync-git");
     expect(git).toHaveTextContent("main");
     expect(git).toHaveTextContent("3 Dateien");
-    expect(git).toHaveTextContent("git@github.com:jonny/library.git");
+    expect(git).toHaveTextContent("git@github.com:alex/library.git");
     expect(screen.getByTestId("sync-last")).toHaveTextContent("Pulled and pushed.");
     expect(screen.getByText("Es gibt keine Konflikte.")).toBeVisible();
   });
@@ -139,7 +139,7 @@ describe("sync", () => {
     await user.click(screen.getByRole("button", { name: "git-Remote" }));
     expect(screen.getByRole("button", { name: "Aus" })).toHaveAttribute("aria-pressed", "false");
     expect(save).toBeDisabled();
-    await user.type(screen.getByLabelText("Remote-URL"), "git@github.com:jonny/library.git");
+    await user.type(screen.getByLabelText("Remote-URL"), "git@github.com:alex/library.git");
     const interval = screen.getByLabelText("Abstand in Minuten");
     await user.clear(interval);
     await user.type(interval, "30");
@@ -148,7 +148,7 @@ describe("sync", () => {
     await waitFor(() => expect(sync.transport).toBe("git"));
     expect(calls.find((c) => c.name === "sync.configure")?.input).toEqual({
       transport: "git",
-      remote: "git@github.com:jonny/library.git",
+      remote: "git@github.com:alex/library.git",
       intervalMinutes: 30,
       versioning: false,
     });
@@ -335,12 +335,12 @@ describe("webhooks", () => {
 
   it("shows the endpoint under the public base URL", async () => {
     renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
-      webhooks: { publicBaseUrl: "https://mac.beispiel.ts.net", hooks: [HOOK] },
+      webhooks: { publicBaseUrl: "https://mac.example.ts.net", hooks: [HOOK] },
     });
     const card = await screen.findByTestId("connector");
-    expect(within(card).getByText("https://mac.beispiel.ts.net/hooks/grok")).toBeVisible();
+    expect(within(card).getByText("https://mac.example.ts.net/hooks/grok")).toBeVisible();
     expect(within(card).getByText("https://grok-bot.example.com/citegeist")).toBeVisible();
-    expect(screen.getAllByText("https://mac.beispiel.ts.net").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("https://mac.example.ts.net").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Nicht gesetzt/)).toBeNull();
   });
 
@@ -464,14 +464,14 @@ describe("webhooks reachability", () => {
       webhooks: { hooks: [HOOK] },
     });
     const field = await screen.findByLabelText("Öffentliche Adresse", { selector: "input" });
-    await user.type(field, "https://mac.beispiel.ts.net/");
+    await user.type(field, "https://mac.example.ts.net/");
     await user.click(screen.getByRole("button", { name: "Adresse speichern" }));
-    await waitFor(() => expect(settings.webhooks.publicUrl).toBe("https://mac.beispiel.ts.net"));
+    await waitFor(() => expect(settings.webhooks.publicUrl).toBe("https://mac.example.ts.net"));
     expect(calls.find((c) => c.name === "settings.update")?.input).toEqual({
-      patch: { webhooks: { publicUrl: "https://mac.beispiel.ts.net/" } },
+      patch: { webhooks: { publicUrl: "https://mac.example.ts.net/" } },
     });
     const card = within(await screen.findByTestId("connector"));
-    expect(await card.findByText("https://mac.beispiel.ts.net/hooks/grok")).toBeVisible();
+    expect(await card.findByText("https://mac.example.ts.net/hooks/grok")).toBeVisible();
     expect(screen.queryByText(/Ohne sie kann der Agent/)).toBeNull();
   });
 
@@ -580,7 +580,7 @@ describe("webhooks access", () => {
   it("grants MCP access with a scope, shows the token and the address once", async () => {
     const user = userEvent.setup();
     const { webhooks, calls } = renderWithPanelsCore(<SettingsScreen section="webhooks" />, {
-      webhooks: { hooks: [HOOK], publicBaseUrl: "https://mac.beispiel.ts.net" },
+      webhooks: { hooks: [HOOK], publicBaseUrl: "https://mac.example.ts.net" },
     });
     const card = within(await screen.findByTestId("connector"));
     await user.click(card.getByRole("button", { name: "MCP-Zugang" }));
@@ -594,7 +594,7 @@ describe("webhooks access", () => {
       enabled: true,
       scope: "read",
     });
-    expect(await card.findByText("https://mac.beispiel.ts.net/mcp")).toBeVisible();
+    expect(await card.findByText("https://mac.example.ts.net/mcp")).toBeVisible();
 
     await user.click(card.getByRole("button", { name: "MCP-Zugang" }));
     await user.click(card.getByRole("button", { name: "Zugang entziehen" }));
@@ -603,7 +603,7 @@ describe("webhooks access", () => {
 });
 
 describe("webhooks text for the agent", () => {
-  const PUBLIC = "https://mac.beispiel.ts.net";
+  const PUBLIC = "https://mac.example.ts.net";
 
   it("shows the text with the new tokens filled in when a connector is created", async () => {
     const user = userEvent.setup();

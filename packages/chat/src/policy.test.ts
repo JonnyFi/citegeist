@@ -10,7 +10,7 @@ const ctx: Ctx = {
   libraryRoot: "/lib",
   scratchDir: "/local/chats/ch_1/cwd",
 };
-/** A11: the user's own environment. */
+/** The user's own environment. */
 const open: Ctx = { ...ctx, isolated: false };
 
 const req = (
@@ -70,7 +70,7 @@ describe("decide", () => {
     expect(decide(req({ kind: "switch_mode", title: "ExitPlanMode" }), ctx).allow).toBe(false);
   });
 
-  it("lets an agent in the user's own environment use the shell and the user's tools (A11)", () => {
+  it("lets an agent in the user's own environment use the shell and the user's tools", () => {
     expect(decide(req({ kind: "execute", title: "Bash" }), open).allow).toBe(true);
     expect(decide(req({ kind: "other", title: "mcp__github__create_issue" }), open).allow).toBe(
       true,
@@ -147,7 +147,7 @@ describe("reading outside the library", () => {
     expect(decide(req({ kind: "read", title: "Read file" }), research).allow).toBe(true);
   });
 
-  it("lets the user's own environment read anywhere (A11)", () => {
+  it("lets the user's own environment read anywhere", () => {
     expect(read("/Users/me/Documents/paper.pdf", open)).toBe(true);
     // A research job stays closed even when the chat setting is open.
     expect(read("/Users/me/Documents/paper.pdf", { ...open, mode: "research" })).toBe(false);
@@ -194,7 +194,7 @@ describe("local files in citegeist tool calls", () => {
   });
 });
 
-describe("web access of a research job (L9, Agents Rule of Two)", () => {
+describe("web access of a research job (Agents Rule of Two)", () => {
   const research: Ctx = { ...ctx, mode: "research" };
   const fetchCall = (url: string) =>
     req({

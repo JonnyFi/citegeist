@@ -281,7 +281,7 @@ describe("other inputs", () => {
   });
 });
 
-describe("D7: inbox and library", () => {
+describe("inbox and library", () => {
   it("lands an agent add in the inbox with its origin", async () => {
     const e = await env();
     const out = await add(e, "10.1086/225469", { why: "cited by the Grok thread" }, "agent:grok");

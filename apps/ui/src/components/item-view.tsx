@@ -10,6 +10,7 @@ import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { hasThinMetadata } from "../lib/metadata-form";
 import { useReadingPosition } from "../lib/reading-position";
+import { webUrl } from "../lib/safe-url";
 import { useTrashItem } from "../lib/trash";
 import { cn, describeError } from "../lib/utils";
 import { markerOf, RelatedWorks, RetractionBadge, RetractionNote } from "../related";
@@ -533,15 +534,19 @@ export function ItemView({
                     <div className="contents">
                       <dt className="text-muted">URL</dt>
                       <dd className="min-w-0 break-all">
-                        <a
-                          href={fm.URL}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 underline"
-                        >
-                          {fm.URL}
-                          <ExternalLink className="size-3" />
-                        </a>
+                        {webUrl(fm.URL) ? (
+                          <a
+                            href={webUrl(fm.URL)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 underline"
+                          >
+                            {fm.URL}
+                            <ExternalLink className="size-3" />
+                          </a>
+                        ) : (
+                          fm.URL
+                        )}
                       </dd>
                     </div>
                   ) : null}

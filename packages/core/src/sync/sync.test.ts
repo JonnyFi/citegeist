@@ -122,12 +122,12 @@ function raw(root: string, rel: string, content: string | Buffer): void {
 describe("locations", () => {
   it("recognizes iCloud Drive and Dropbox folders", () => {
     expect(
-      detectLocation("/Users/j/Library/Mobile Documents/com~apple~CloudDocs/Papers/Library"),
+      detectLocation("/Users/alex/Library/Mobile Documents/com~apple~CloudDocs/Papers/Library"),
     ).toBe("icloud");
-    expect(detectLocation("/Users/j/Dropbox/Library")).toBe("dropbox");
-    expect(detectLocation("/Users/j/Dropbox (Personal)/Library")).toBe("dropbox");
-    expect(detectLocation("/Users/j/Library/CloudStorage/Dropbox/Library")).toBe("dropbox");
-    expect(detectLocation("/Users/j/Citegeist")).toBe("local");
+    expect(detectLocation("/Users/alex/Dropbox/Library")).toBe("dropbox");
+    expect(detectLocation("/Users/alex/Dropbox (Personal)/Library")).toBe("dropbox");
+    expect(detectLocation("/Users/alex/Library/CloudStorage/Dropbox/Library")).toBe("dropbox");
+    expect(detectLocation("/Users/alex/Citegeist")).toBe("local");
   });
 
   it("tells embedded, separate, broken and missing git directories apart", async () => {
@@ -537,7 +537,7 @@ describe("iCloud", () => {
     writeNote(m, "idea", "mine");
     raw(
       m.root,
-      "notes/idea (Jonny's conflicted copy 2026-10-23).md",
+      "notes/idea (Alex's conflicted copy 2026-10-23).md",
       noteFile(noteData("Idea"), "theirs"),
     );
     const st = await status(m);

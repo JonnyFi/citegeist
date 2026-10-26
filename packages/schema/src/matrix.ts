@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Actor, CardId, Citekey, Language, ProjectSlug, SourceHash, Stamp } from "./common.js";
 import { BlockId } from "./document.js";
 
-// Literature matrix (W4.4): a table of items (rows) against questions (columns) whose cells carry a
+// Literature matrix: a table of items (rows) against questions (columns) whose cells carry a
 // short answer and the passages it rests on. Lives as projects/<slug>/matrices/<id>.yaml.
 
 const ulid = "[0-9A-HJKMNP-TV-Z]{10,26}";

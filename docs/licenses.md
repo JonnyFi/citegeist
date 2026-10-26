@@ -1,89 +1,79 @@
-# Lizenzen
+# Third-party licenses
 
-Stand: 2026-10-24. Grundlage ist Entscheidung D1 (citegeist bleibt Open-Source-fähig). Das hier ist eine technische Bestandsaufnahme, kein Rechtsrat. Die Namensnennungen stehen in der Datei `NOTICE` im Wurzelverzeichnis. Die `LICENSE`-Datei im Wurzelverzeichnis enthält den Apache-2.0-Text.
+citegeist is licensed under Apache-2.0 (`LICENSE`). The attribution that third-party material asks for is in `NOTICE`, which the packaged app ships next to `LICENSE`. This page is a technical inventory, not legal advice.
 
-## Empfehlung für den Kern
+## Policy
 
-Der Kern sollte unter **Apache-2.0** stehen. Der Grund: Apache-2.0 enthält eine ausdrückliche Patentlizenz und einen NOTICE-Mechanismus, und genau diesen Mechanismus braucht citegeist für die Namensnennungen von CSL, citeproc-js und den Schriften. MIT wäre ebenfalls verträglich mit allen unten genannten Komponenten.
+- GPL, AGPL and SSPL dependencies are not bundled with citegeist and are not linked into any citegeist process.
+- Copyleft tools run as separate processes that citegeist starts with command line arguments and files. They are downloaded on the user's machine or installed by the user, and citegeist does not ship them. Pandoc (GPL) and the Temurin JRE (GPL with Classpath Exception) work this way.
+- LGPL dependencies are not bundled either. The only one that was in the app, libvips through `sharp`, is replaced by a stub (see "sharp and libvips").
+- File-level copyleft (MPL-2.0, CPAL-1.0) is acceptable for unmodified packages. Changes to such files are published under the same license.
+- Where a package offers a choice of licenses, citegeist uses the permissive option and says so in `NOTICE`.
+- Proprietary components are listed in `NOTICE` and in `scripts/license-allowlist.json` with the reason.
 
-## Wie geprüft wurde
+## License check
 
-| Bereich | Befehl oder Quelle | Umfang |
+`pnpm verify` runs `scripts/check-licenses.mjs`. It reads
+
+- the production dependencies of the whole workspace from `pnpm licenses list --prod --json`, and
+- the locked runtime dependencies of `workers/convert` and `workers/research` (`uv export --no-dev`), with license metadata from the installed worker environments (`scripts/py-licenses.py`).
+
+The check fails on GPL, AGPL, LGPL, SSPL and on unknown licenses. An `OR` expression passes when one option is permissive, an `AND` expression needs all parts to pass. A package that has to be accepted anyway goes into `scripts/license-allowlist.json` with the exact license string the check saw and a reason, so a license change fails the check again. A new entry also needs a line in `NOTICE`. The check runs offline once `pnpm install` and the `uv` environments exist.
+
+## Notable dependencies
+
+| Component | License | How it is used |
 |---|---|---|
-| JavaScript, Laufzeit | `pnpm licenses list --prod --json` | 306 Pakete |
-| JavaScript, alles inklusive Build-Werkzeugen | `pnpm licenses list --json` | 23 verschiedene Lizenzangaben |
-| Python | `uv run --with pip-licenses pip-licenses` im Worker | 125 Pakete |
-| Modelle | Lizenzfeld der Hugging-Face-Seite (API) und die Modellkarte | 5 Repositories |
-| Mitgelieferte Daten | `packages/cite/src/vendor/NOTICE.txt` und die `<rights>`-Elemente der Dateien | 5 Dateien |
-| Schwachstellen | `pnpm audit`, `pip-audit` | keine Treffer, siehe `docs/security.md` |
+| citeproc-js 2.4.63 (through `@citation-js/plugin-csl`) | CPAL-1.0 OR AGPL | Bundled, unmodified. citegeist uses the CPAL option. License text ships in `Resources/licenses` |
+| CSL styles and locales (`packages/cite/src/vendor`) | CC BY-SA 3.0 | Bundled as separate data files, unmodified. Authors are named in `NOTICE` and in the files |
+| Fonts Inter, Newsreader, JetBrains Mono (Fontsource) | OFL-1.1 | Bundled in the renderer. OFL texts ship in `Resources/licenses/fonts` |
+| `@anthropic-ai/claude-agent-sdk` | Proprietary (Anthropic legal agreements) | Bundled JavaScript, unmodified, through `claude-agent-acp`. Use falls under Anthropic's Commercial Terms. The Claude Code binary is not bundled |
+| `@agentclientprotocol/*` adapters, `@openai/codex` | Apache-2.0 | Bundled JavaScript. The Codex binary is excluded from the app |
+| `sharp` (through `@huggingface/transformers`) | Apache-2.0, with LGPL-3.0 libvips | Replaced by `stubs/sharp`, so neither is in the app |
+| ONNX Runtime, `better-sqlite3`, `sqlite-vec`, `@parcel/watcher`, `@napi-rs/canvas`, `pdfjs-dist` | MIT, Apache-2.0 | Bundled, native parts unpacked from the archive |
+| `workers/research` | Apache-2.0 | Part of citegeist. Contributed by its author under Apache-2.0 (issue #50) |
+| `workers/research/vendor/opendraft` | Apache-2.0 bundle, derived from MIT-licensed OpenDraft | In the repository, not in the app yet. Keeps its `LICENSE` and `THIRD_PARTY_NOTICES.md` |
+| Docling and its models | MIT code. Models Apache-2.0 and CDLA-Permissive-2.0 | Python packages from PyPI and models from Hugging Face, both fetched on the user's machine |
+| `certifi`, `tqdm` (Python) | MPL-2.0 | Installed by `uv` on the user's machine, unmodified |
+| `tld` (Python, through trafilatura) | MPL-1.1 OR GPL-2.0 OR LGPL-2.1+ | citegeist uses the MPL-1.1 option. Installed by `uv` on the user's machine |
+| `opencv-python-headless`, `torch`, `numpy`, `pypdfium2` (Python) | Apache-2.0, BSD, bundled libraries (OpenCV wheels include LGPL FFmpeg) | Installed by `uv` from PyPI on the user's machine. citegeist does not redistribute the wheels |
+| GROBID | Apache-2.0 | Runtime download, built from the release archive (pinned checksum), separate process on 127.0.0.1 |
+| Eclipse Temurin JRE 21 | GPL-2.0 with Classpath Exception | Runtime download (pinned checksum) for GROBID, separate process. The exception allows programs under any license |
+| Pandoc 3.12.1 | GPL-2.0-or-later | Runtime download on request (pinned checksum) or the user's own installation. Separate process, never linked, not shipped. The license covers the program, not the files it produces |
+| Claude Code, Codex CLI, Cursor CLI | The vendors' terms | Installed by the user, called through the ACP adapters |
+| Zotero Connector | AGPL-3.0 | The user's browser extension, talks to citegeist over the Connector protocol. citegeist contains no Zotero code |
 
-Verteilung der Laufzeit-Abhängigkeiten in JavaScript: MIT 245, Apache-2.0 19, BSD-3-Clause 15, ISC 13, OFL-1.1 3, BSD-2-Clause 1, CC0-1.0 1, Unlicense 2, MIT oder Apache 2, MIT oder CC0 1, CPAL-1.0 oder AGPL 1, LGPL-3.0-or-later 1, ohne Angabe 2.
+## Models downloaded at run time
 
-Verteilung in Python (einschließlich der Dev-Gruppe und des Worker-Pakets selbst): MIT 67, BSD-Familie 29, Apache-2.0 15, MPL-2.0 2, Sonstige 12 (PSF, ISC, HPND, Mehrfachlizenzen, Zusammensetzungen gebündelter Bibliotheken).
+Weights are fetched from Hugging Face at a pinned revision when the feature is used. They are not in the repository or in the app.
 
-## Was auffällt
-
-Keine Komponente steht unter GPL oder AGPL und läuft im Prozess von citegeist. Auffällig sind die folgenden Punkte.
-
-| Nr. | Komponente | Lizenz | Wirkung | Isolierung oder Namensnennung | Offene Aktion |
-|---|---|---|---|---|---|
-| 1 | `citeproc` (citeproc-js) 2.4.63, über `@citation-js/plugin-csl` | CPAL-1.0 oder AGPL (Doppellizenz) | CPAL ist Copyleft auf Dateiebene mit Namensnennung. AGPL wäre für den Kern unverträglich | citegeist nutzt die CPAL-Option, unverändert, als npm-Paket. Das mitgelieferte `LICENSE` nennt keinen Exhibit-B-Text, es gibt also keinen festen Anzeigetext. Der Lizenztext liegt im Paket und steht in `NOTICE` | Vor 1.0 prüfen, ob die CPAL-Regel zur Netzwerknutzung ein späteres gehostetes Angebot betrifft (ungeprüft). Fallback ist hayagriva (Apache-2.0) |
-| 2 | `@anthropic-ai/claude-agent-sdk` 0.3.309 | proprietär ("SEE LICENSE IN README", Anthropic Legal Agreements) | Keine Open-Source-Lizenz. Kommt als Abhängigkeit von `@agentclientprotocol/claude-agent-acp` (Apache-2.0) ins App-Paket. Laut Anthropic fällt die Nutzung des Agent SDK, auch in Produkten für eigene Endnutzer, unter die Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview, https://code.claude.com/docs/en/legal-and-compliance) | Das JavaScript des SDK bleibt im Paket und wird unverändert mitgeliefert. `electron-builder.yml` schließt nur die nativen Claude-Code-Binaries (`@anthropic-ai/claude-agent-sdk-*`) aus: Das Binary läuft unverändert so, wie Anthropic es veröffentlicht, und der Nutzer installiert es selbst. `NOTICE` nennt das SDK als proprietäre Komponente unter Anthropics Bedingungen | Kein Blocker für den Release. Der Name "Claude Code" und Namen oder Logos von Anthropic dürfen weder im Namen noch im Logo von citegeist vorkommen |
-| 3 | EmbeddingGemma 300M (`onnx-community/embeddinggemma-300m-ONNX`) | Gemma Terms of Use und Prohibited Use Policy | Keine OSI-Lizenz. Nutzungsbeschränkungen müssen an Dritte weitergegeben werden | Die Gewichte liegen nicht im Repository. Sie werden zur Laufzeit von Hugging Face geladen (fester Commit). Es ist aktuell das Standardmodell (`DEFAULT_MODEL` in `packages/embed/src/models.ts`) | Für den Release entweder Qwen3-Embedding-0.6B als Standard setzen (Apache-2.0) oder vor dem ersten Download einen Hinweis mit Link auf die Gemma-Bedingungen zeigen |
-| 4 | CSL-Stile und -Locales (3 Stile, 2 Locales) | CC BY-SA 3.0 | Namensnennung. Bearbeitete Stile müssen unter derselben Lizenz stehen | Die Dateien liegen unverändert und getrennt vom Code in `packages/cite/src/vendor`. Kopfzeilen mit Autoren bleiben erhalten. `NOTICE` nennt Quelle und Autoren | Keine, solange kein Stil geändert wird. Ein geänderter Stil bekommt CC BY-SA und eine eigene Zeile in `NOTICE` |
-| 5 | `@img/sharp-libvips-darwin-arm64` 1.3.4 (libvips, über sharp, optional für Transformers.js) | LGPL-3.0-or-later | LGPL verlangt Lizenztext, Quellhinweis und die Möglichkeit, die Bibliothek auszutauschen | Dynamisch geladene Bibliothek, unverändert. `electron-builder.yml` entfernt nur die Varianten für Linux, Windows und Intel | Prüfen, ob `sharp` im gebauten Bundle überhaupt gebraucht wird. Für Text-Embeddings ist es nicht nötig, der Ausschluss würde die LGPL-Pflicht entfallen lassen |
-| 6 | Schriften Inter, JetBrains Mono, Newsreader | OFL-1.1 | Lizenztext und Copyright-Zeile müssen bei den Schriftdateien bleiben. Der Name darf bei Änderungen nicht weiterverwendet werden | Unveränderte Pakete von Fontsource, Hinweis in `NOTICE` | Beim Bundlen die Lizenzdateien der drei Pakete mit ausliefern |
-| 7 | `certifi` 2026.10.23 (Python) und `lightningcss` (nur beim Bauen) | MPL-2.0 | Copyleft auf Dateiebene | Unveränderte Pakete, `lightningcss` läuft nur beim Bauen | Keine |
-| 8 | `tld` 0.13.2 (Python, über trafilatura) | MPL-1.1 oder GPL-2.0 oder LGPL-2.1+ | Wahlrecht | Wir wählen MPL-1.1, unverändert, Installation auf dem Rechner des Nutzers | Keine |
-| 9 | Temurin-JRE 21 für GROBID | GPL-2.0 mit Classpath Exception | Die Ausnahme erlaubt die Nutzung durch Programme beliebiger Lizenz | Wird zur Laufzeit geladen (Prüfsumme fest), läuft als eigener Prozess hinter 127.0.0.1 | Keine |
-| 10 | GROBID | Apache-2.0 | Unkritisch | Wird zur Laufzeit aus dem Release-Archiv gebaut (Prüfsumme fest), eigener Prozess | Keine |
-| 11 | `opencv-python-headless`, `torch`, `numpy`, `pypdfium2` (Python) | Apache-2.0, BSD, gebündelte Fremdbibliotheken | Die Wheels bündeln eigene native Bibliotheken. Bei OpenCV sind das laut Projekt teils LGPL-Teile wie FFmpeg (ungeprüft) | Der Worker installiert sie beim ersten Start per `uv` von PyPI auf den Rechner des Nutzers. citegeist gibt sie nicht weiter, nur den Quelltext des Workers | Keine, solange die App die Wheels nicht selbst mitliefert |
-| 12 | Fixture-Daten und Spike-Ausgaben | CC BY 4.0, CC BY-SA 4.0, gemeinfrei, bei drei Dateien ungeklärt | `fixtures/pdf/manifest.json` führt je Datei Lizenz und Beleg. Drei Einträge tragen den Vermerk, die Lizenz vor einer Weitergabe zu prüfen. `spikes/s1/out` enthält extrahierten Volltext dieser Dokumente | Die PDFs liegen nicht im Repository (`fetch.mjs` lädt sie mit Prüfsumme) | Vor dem Release `spikes/*/out` aus dem Repository nehmen oder auf klar lizenzierte Quellen beschränken |
-| 13 | Pandoc 3.12.1 (Export von Texten nach Word, LaTeX und PDF) | GPL-2.0-or-later | Starkes Copyleft. Gilt für das Programm selbst, nicht für Dateien, die es erzeugt | Wird nicht mitgeliefert und nie gelinkt. citegeist startet es als eigenen Prozess mit Kommandozeilenargumenten und Dateien (Prüfsumme fest, Download nur auf Wunsch, siehe `packages/core/src/texts/pandoc.ts`). Ein vorhandenes Pandoc im `PATH` oder in Homebrew hat Vorrang | Keine |
-| 14 | Testsatz der Suche (`fixtures/retrieval/corpus`, sechs konvertierte Dokumente) | CC BY 4.0 | Namensnennung. Die Dateien enthalten die Abschnitte der Originale als Text | `fixtures/retrieval/items.json` nennt Autoren, Titel und DOI jedes Dokuments, `fixtures/pdf/manifest.json` den Beleg der Lizenz. Enthalten sind nur Dokumente mit klarem CC-BY-Beleg, die Einträge mit ungeklärter Lizenz fehlen | Keine |
-
-## Zotero und AGPL
-
-D1 verlangt, dass AGPL-Komponenten als eigener Prozess laufen. Im Code ist dieser Fall gar nicht eingetreten, denn citegeist enthält und startet keine Zotero-Komponente.
-
-| Zotero-Teil | Lizenz | Stand in citegeist |
+| Model | License | When |
 |---|---|---|
-| translation-server, translators, reader, note-editor | AGPL-3.0 und gemischt | Nicht enthalten, nicht gestartet. Die Suche im Code findet keinen Verweis |
-| Connector-Protokoll (Port 23119) | Schnittstelle | Neu geschrieben in `packages/server/src/connector`. Die Übersetzer laufen in der Browser-Erweiterung des Nutzers (`getTranslators` antwortet mit 501) |
-| zotero-schema | keine Lizenzdatei | Keine Datei übernommen. `packages/import/src/zotero/mapping.ts` enthält eigene Tabellen mit denselben Tatsachen (Typnamen, Feldzuordnung) |
-| Online-Dienste (api.zotero.org, services.zotero.org) | Nutzungsbedingungen Abschnitt 6 | Im Code nicht angesprochen. Der Zotero-Import liest die lokale API auf 127.0.0.1 |
-| Name "Zotero" | eingetragene Marke | Nur beschreibend benutzt ("Zotero Connector"), nicht im Produktnamen |
+| EmbeddingGemma 300M (`onnx-community/embeddinggemma-300m-ONNX`) | Gemma Terms of Use and Prohibited Use Policy | Default of the semantic search |
+| Qwen3-Embedding-0.6B (`onnx-community/Qwen3-Embedding-0.6B-ONNX`) | Apache-2.0 per the original model; the ONNX card has no license field | Setting for the semantic search |
+| bge-reranker-v2-m3 (`onnx-community/bge-reranker-v2-m3-ONNX`) | Apache-2.0 per `BAAI/bge-reranker-v2-m3`; the ONNX card has no license field | Setting that re-ranks hits (off by default) |
+| bge-reranker-base (`Xenova/bge-reranker-base`), mxbai-rerank-xsmall-v1, EmbeddingGemma 2 | MIT, Apache-2.0, Apache-2.0 | Only `pnpm eval:retrieval` in a development checkout |
+| docling-layout-heron, docling-models, CodeFormulaV2 | Apache-2.0, CDLA-Permissive-2.0 | Document conversion, on first import |
 
-Wer später Zoteros translation-server anbindet, startet ihn als eigenen Prozess oder Container hinter einer lokalen HTTP-Schnittstelle und lässt den Nutzer ihn installieren.
+EmbeddingGemma is not under an open source license. Its terms say that the Gemma Terms of Use must reach everyone who receives the weights, and the download happens on the user's machine from Hugging Face, where the terms are shown. `NOTICE` links the Terms of Use and the Prohibited Use Policy. The decision for the release is that the UI shows no extra hint before the download.
 
-## Modelle und Laufzeit-Downloads
+The license of Qwen3-Embedding-0.6B should be checked against the model card of `Qwen/Qwen3-Embedding-0.6B` before it is promoted from a setting to the default.
 
-| Modell oder Programm | Lizenz | Herkunft | Wann |
-|---|---|---|---|
-| docling-project/docling-layout-heron | Apache-2.0 | Hugging Face, fester Commit | `download-models` oder erster Import |
-| docling-project/docling-models | CDLA-Permissive-2.0 und Apache-2.0 | Hugging Face, fester Commit | wie oben |
-| docling-project/CodeFormulaV2 | CDLA-Permissive-2.0 | Hugging Face, fester Commit | bei Formelseiten |
-| Qwen3-Embedding-0.6B (ONNX) | Apache-2.0 laut Ursprungsmodell, die ONNX-Karte trägt kein Lizenzfeld | Hugging Face, fester Commit | Einstellung Semantische Suche |
-| EmbeddingGemma 300M (ONNX) | Gemma Terms of Use | Hugging Face, fester Commit | Standard der Semantischen Suche |
-| bge-reranker-v2-m3 (ONNX, `onnx-community/bge-reranker-v2-m3-ONNX`) | Apache-2.0 laut Ursprungsmodell `BAAI/bge-reranker-v2-m3`, die ONNX-Karte trägt kein Lizenzfeld | Hugging Face, fester Commit, 571 MB | Einstellung "Treffer neu sortieren" (Standard aus) |
-| bge-reranker-base (ONNX, `Xenova/bge-reranker-base`) | MIT laut Ursprungsmodell `BAAI/bge-reranker-base` | Hugging Face, fester Commit, 279 MB | nur über `pnpm eval:retrieval --rerank`, nicht in den Einstellungen |
-| mxbai-rerank-xsmall-v1 | Apache-2.0 | Hugging Face, fester Commit, 87 MB | nur über `pnpm eval:retrieval --rerank`, nicht in den Einstellungen |
-| EmbeddingGemma 2 (ONNX, `onnx-community/embeddinggemma-2-ONNX`, nur das Textmodell) | Apache-2.0 | Hugging Face, fester Commit, 305 MB | nur über `pnpm eval:retrieval --model embeddinggemma-2`, nicht in den Einstellungen |
-| GROBID und Temurin-JRE | Apache-2.0, GPL-2.0 mit Classpath Exception | GitHub, Prüfsumme im Code | `install-grobid` |
-| Pandoc | GPL-2.0-or-later | GitHub-Release von jgm/pandoc (arm64-macOS-ZIP), Prüfsumme im Code | `pandoc.setup`, nur auf Wunsch |
-| Apple Vision (OCR) | Teil von macOS | System | Scans |
+## sharp and libvips
 
-Die Qwen3-Lizenz sollte vor dem Release gegen die Modellkarte des Ursprungsmodells `Qwen/Qwen3-Embedding-0.6B` geprüft werden, weil die ONNX-Karte keine Angabe macht.
+`@huggingface/transformers` imports `sharp` when the module loads, to decode images for vision models. citegeist runs text embeddings and rerankers only, which never call it. The real package brings `@img/sharp-libvips-darwin-arm64` (LGPL-3.0-or-later) into the app. A pnpm override (`pnpm-workspace.yaml`) therefore links `stubs/sharp`, a module that only has to exist, and `electron-builder.yml` adds it to the archive. Using an image model would fail with an explicit error. The real default model (EmbeddingGemma) was run against the stub.
 
-## Agenten-CLIs
+## Test data
 
-Claude Code, Codex und Cursor installiert der Nutzer selbst und meldet sich selbst an (D1). citegeist ruft sie nur auf. Die Adapter `claude-agent-acp` und `codex-acp` stehen unter Apache-2.0. Das Codex-Binary (`@openai/codex`, Apache-2.0) und das Claude-Code-Binary sind aus dem App-Paket ausgeschlossen. Das JavaScript des Claude Agent SDK, das der Claude-Adapter mitbringt, ist proprietär und bleibt im Paket. Es fällt nach Anthropics Angaben unter die Commercial Terms, siehe Punkt 2. Der Codex-Adapter hängt nur von Apache-2.0-Paketen ab und braucht keine Sonderbehandlung.
+`fixtures/pdf/manifest.json` records the license and the evidence for every fixture PDF (CC BY 4.0, CC BY-SA 4.0, public domain). The PDFs are not committed; `fixtures/pdf/fetch.mjs` downloads them and checks the checksum. The six converted texts in `fixtures/retrieval/corpus` come from CC BY 4.0 works, and `NOTICE` gives authors, titles, DOIs and source URLs. Some manifest entries carry a note to verify the license before redistribution; those PDFs are only downloaded, never committed.
 
-## Pflichten beim Release
+## Zotero
 
-1. `LICENSE` (Apache-2.0) liegt im Wurzelverzeichnis. `LICENSE` und `NOTICE` auch im App-Paket mitliefern.
-2. Punkt 2 beachten: Das Claude Agent SDK ist proprietär, seine Nutzung in einem verteilten Produkt fällt unter Anthropics Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview, https://code.claude.com/docs/en/legal-and-compliance). `NOTICE` nennt es. Das Claude-Code-Binary bleibt aus dem Paket ausgeschlossen. "Claude Code" und Anthropic-Namen oder -Logos kommen weder im Namen noch im Logo der App vor.
-3. Punkt 3 entscheiden (Standardmodell der Semantischen Suche).
-4. Lizenzdateien der drei Schriftpakete und von citeproc im App-Paket belassen. Electron liefert `LICENSES.chromium.html` mit, `afterPack` darf sie nicht löschen.
-5. `spikes/*/out` aus dem Repository nehmen.
-6. Bei jeder neuen Abhängigkeit `pnpm licenses list --prod` und die Python-Liste erneut prüfen. Neu auftauchende GPL-, AGPL- oder SSPL-Pakete stoppen den Release.
+citegeist contains and starts no Zotero component. The Connector protocol on port 23119 is implemented from scratch in `packages/server/src/connector`; the translators run in the browser extension of the user. `packages/import/src/zotero/mapping.ts` has its own tables with the same facts (type names, field mapping) and no file from `zotero-schema`. The online services of Zotero are not called, and the name is used descriptively only. Anyone who connects Zotero's translation-server later runs it as a separate process or container behind a local HTTP interface and lets the user install it.
+
+## Checklist for a release
+
+1. `LICENSE` and `NOTICE` are in the app (`Contents/Resources`), together with `licenses/fonts` and `licenses/citeproc-LICENSE.txt`. Electron's `LICENSES.chromium.html` stays; `afterPack` does not delete it.
+2. `pnpm verify` is green, including the license check.
+3. New dependencies are in `NOTICE` when they need attribution. New GPL, AGPL or SSPL packages stop the release.
+4. The Claude Code binary stays out of the package. "Claude Code" and Anthropic names or logos do not appear in the name or logo of the app.

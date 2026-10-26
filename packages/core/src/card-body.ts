@@ -22,7 +22,7 @@ function trimBlankLines(lines: string[]): string {
  * then level-2 sections. Known sections map to fields, unknown ones land in `extra` in order.
  * Text between the quote and the first heading becomes an extra section with an empty heading.
  *
- * D17: the retired sections "In my words" and "Comment" are read into `note`. With both present
+ * The retired sections "In my words" and "Comment" are read into `note`. With both present
  * the note is the own words, a blank line, the comment (a "Note" section of the same file comes
  * last). The file is only changed when the card is written again.
  */

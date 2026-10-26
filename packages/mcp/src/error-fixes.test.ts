@@ -7,7 +7,7 @@ import { createFixtureRegistry } from "./fixture.js";
 import { mcpContracts } from "./server.js";
 
 // Error texts name operations (`projects.create`). Over MCP the caller can only call tools, so
-// every name that reaches an MCP caller must be a tool of that connection (issue #37).
+// every name that reaches an MCP caller must be a tool of that connection.
 
 const REPO = fileURLToPath(new URL("../../..", import.meta.url));
 const NAMESPACES = new Set(CONTRACTS.map((c) => c.name.split(".")[0]));

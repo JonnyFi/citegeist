@@ -5,7 +5,7 @@
     "pageIndex": "zero-based",
     "expected.firstPrintedPage": "printed page number on PDF page index 0 (null when the document has no printed page numbers). Gold label for index i is firstPrintedPage + i unless expected.labelGaps says otherwise.",
     "expected.labelSource": "which of the three label sources of architecture.md should win: catalog (/PageLabels), detected (header/footer number run), crossref-offset, none",
-    "kind": "tags from the spike corpus plan (docs/research/document-conversion.md section 9.3)"
+    "kind": "tags from the spike corpus plan (internal document-conversion research section 9.3)"
   },
   "fixtures": [
     {

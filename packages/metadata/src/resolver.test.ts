@@ -295,12 +295,12 @@ describe("fixtures hygiene", () => {
     expect(files.length).toBeGreaterThan(40);
   });
 
-  it("contains no request identity and no personal address", () => {
+  it("contains no request identity", () => {
     for (const f of files) {
       const text = readFileSync(join(HTTP_DIR, f), "utf8");
       const rec = JSON.parse(text) as { url: string };
       expect(rec.url, f).not.toMatch(/[?&](mailto|email|api_key)=/);
-      expect(text, f).not.toMatch(/jonnyfischer|jhf@|mailto=/i);
+      expect(text, f).not.toMatch(/mailto=/i);
     }
   });
 });

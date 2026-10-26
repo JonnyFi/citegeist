@@ -14,7 +14,7 @@ export function resolveBackendId(settings: AiRoutingSettings, task: string): str
 }
 
 /**
- * D9: the language of AI texts follows the chain item (reader dropdown), project, library
+ * The language of AI texts follows the chain item (reader dropdown), project, library
  * default. The first defined, non-empty value wins.
  */
 export function resolveLanguage(chain: {

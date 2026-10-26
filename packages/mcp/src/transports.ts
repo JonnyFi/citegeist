@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
+import { createServer, IncomingMessage, type Server, ServerResponse } from "node:http";
+import type { AddressInfo, Socket } from "node:net";
+import { Duplex } from "node:stream";
 import type { Registry } from "@citegeist/ops";
 import type { Actor } from "@citegeist/schema";
 import {
@@ -140,9 +141,108 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 interface LegacySession {
+  id: string;
   transport: NodeStreamableHTTPServerTransport;
   server: McpServer;
   access: Access;
+  /** Unknown session ids of clients that were moved onto this session. */
+  aliases: Set<string>;
+  lastSeen: number;
+}
+
+/** A session nobody has used for this long is closed. A client that comes back gets a new one. */
+export const MCP_SESSION_IDLE_MS = 24 * 60 * 60 * 1000;
+/** Comment frames on open SSE streams, so a proxy (Tailscale Funnel) does not cut a quiet one. */
+export const MCP_SSE_KEEP_ALIVE_MS = 15_000;
+const MAX_SESSIONS = 1000;
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+const FALLBACK_PROTOCOL_VERSION = "2025-06-18";
+const PRIME_TIMEOUT_MS = 5000;
+
+export interface McpRequestHandlerOptions {
+  onerror?: (e: Error) => void;
+  /** Reports session events (opened, replaced, expired) to the app's log. Never gets a token. */
+  log?: (message: string) => void;
+  /** Idle time after which a session is closed. Default 24 hours. */
+  sessionIdleMs?: number;
+  /**
+   * What a request with an unknown session id gets. "replace" (default) opens a new session for
+   * the same caller and carries on, "reject" answers 404 as the specification says. The
+   * conformance suite checks the 404, so it runs against "reject".
+   */
+  staleSessions?: "replace" | "reject";
+  /** Interval of SSE keep-alive comments. Default 15 seconds, 0 turns them off. */
+  keepAliveMs?: number;
+}
+
+/** First characters of a session id, enough to match log lines without leaking the id. */
+function shortId(id: string): string {
+  return id.slice(0, 8);
+}
+
+/** Replaces a request header in both lists, because the conversion to a web request reads the raw one. */
+function setRequestHeader(req: IncomingMessage, name: string, value: string): void {
+  req.headers[name] = value;
+  const raw: string[] = [];
+  for (let i = 0; i + 1 < req.rawHeaders.length; i += 2) {
+    if ((req.rawHeaders[i] as string).toLowerCase() !== name) {
+      raw.push(req.rawHeaders[i] as string, req.rawHeaders[i + 1] as string);
+    }
+  }
+  req.rawHeaders = [...raw, name, value];
+}
+
+/**
+ * Runs an initialize request through a transport against a response that goes nowhere, so a
+ * session exists again without the client having asked for one.
+ */
+async function primeSession(
+  transport: NodeStreamableHTTPServerTransport,
+  protocolVersion: string,
+): Promise<void> {
+  const socket = new Duplex({
+    read() {},
+    write(_chunk, _encoding, callback) {
+      callback();
+    },
+  });
+  const req = new IncomingMessage(socket as unknown as Socket);
+  req.method = "POST";
+  req.url = "/mcp";
+  const headers = {
+    host: "localhost",
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+  };
+  req.headers = headers;
+  // The conversion to a web request reads the raw list.
+  req.rawHeaders = Object.entries(headers).flat();
+  const res = new ServerResponse(req);
+  res.assignSocket(socket as unknown as Socket);
+  const finished = new Promise<void>((resolve) => {
+    res.once("finish", resolve);
+    res.once("close", resolve);
+  });
+  await transport.handleRequest(req, res, {
+    jsonrpc: "2.0",
+    id: "citegeist-session-replay",
+    method: "initialize",
+    params: {
+      protocolVersion,
+      capabilities: {},
+      clientInfo: { name: "", version: "0" },
+    },
+  });
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    finished,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, PRIME_TIMEOUT_MS);
+      timer.unref();
+    }),
+  ]);
+  clearTimeout(timer);
+  socket.destroy();
 }
 
 export interface McpRequestHandler {
@@ -175,8 +275,11 @@ export function replyMcpError(
  */
 export function createMcpRequestHandler(
   registry: Registry,
-  options: { onerror?: (e: Error) => void } = {},
+  options: McpRequestHandlerOptions = {},
 ): McpRequestHandler {
+  const log = options.log ?? (() => {});
+  const idleMs = options.sessionIdleMs ?? MCP_SESSION_IDLE_MS;
+  const keepAliveMs = options.keepAliveMs ?? MCP_SSE_KEEP_ALIVE_MS;
   const fail = (err: unknown) =>
     options.onerror?.(err instanceof Error ? err : new Error(String(err)));
 
@@ -198,10 +301,116 @@ export function createMcpRequestHandler(
   };
   const mcp = createMcpHandler(modernFactory, {
     legacy: "reject",
+    keepAliveMs,
     ...(options.onerror ? { onerror: options.onerror } : {}),
   });
   const modern = toNodeHandler(mcp, options.onerror ? { onerror: options.onerror } : {});
   const sessions = new Map<string, LegacySession>();
+  /** Unknown session id to the session that took over, so one stale id makes one session. */
+  const aliases = new Map<string, LegacySession>();
+  /** Replacements under way, so parallel requests with the same stale id share one. */
+  const replacing = new Map<string, Promise<LegacySession>>();
+
+  function dropSession(session: LegacySession): void {
+    if (sessions.get(session.id) === session) sessions.delete(session.id);
+    for (const alias of session.aliases) {
+      if (aliases.get(alias) === session) aliases.delete(alias);
+    }
+  }
+
+  async function closeSession(session: LegacySession): Promise<void> {
+    dropSession(session);
+    await session.transport.close().catch(fail);
+  }
+
+  /**
+   * The tools keep no state per session, so a session is only a carrier for the client's name
+   * and a handle that the client keeps sending. A new transport is therefore as good as the lost
+   * one.
+   */
+  async function openSession(
+    access: Access,
+    first:
+      | { req: IncomingMessage; res: ServerResponse; body: unknown }
+      | { protocolVersion: string },
+  ): Promise<LegacySession | undefined> {
+    const server = createMcpServer(registry, {
+      scope: access.scope,
+      localFiles: access.localFiles,
+      ...(access.actor ? { actor: access.actor } : {}),
+    });
+    let created: LegacySession | undefined;
+    const transport: NodeStreamableHTTPServerTransport = new NodeStreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      keepAliveMs,
+      onsessioninitialized: (id) => {
+        created = { id, transport, server, access, aliases: new Set(), lastSeen: Date.now() };
+        sessions.set(id, created);
+      },
+    });
+    transport.onclose = () => {
+      if (created) dropSession(created);
+    };
+    await server.connect(transport);
+    if ("req" in first) await transport.handleRequest(first.req, first.res, first.body);
+    else await primeSession(transport, first.protocolVersion);
+    if (!created) {
+      await transport.close().catch(fail);
+      return undefined;
+    }
+    // Make room: the least recently used session goes first.
+    while (sessions.size > MAX_SESSIONS) {
+      let oldest: LegacySession | undefined;
+      for (const candidate of sessions.values()) {
+        if (candidate !== created && (!oldest || candidate.lastSeen < oldest.lastSeen)) {
+          oldest = candidate;
+        }
+      }
+      if (!oldest) break;
+      log(`mcp: closed session ${shortId(oldest.id)} (more than ${MAX_SESSIONS} sessions)`);
+      await closeSession(oldest);
+    }
+    return created;
+  }
+
+  function replaceStale(
+    staleId: string,
+    req: IncomingMessage,
+    access: Access,
+  ): Promise<LegacySession> {
+    const running = replacing.get(staleId);
+    if (running) return running;
+    const header = req.headers["mcp-protocol-version"];
+    const version = Array.isArray(header) ? header[0] : header;
+    const task = (async () => {
+      const session = await openSession(access, {
+        protocolVersion: version || FALLBACK_PROTOCOL_VERSION,
+      });
+      if (!session) throw new Error("The MCP session could not be replaced.");
+      session.aliases.add(staleId);
+      aliases.set(staleId, session);
+      log(
+        `mcp: unknown session ${shortId(staleId)} (${access.actor ?? "no fixed actor"}, ${req.method}) replaced by ${shortId(session.id)}, probably after a restart of the core`,
+      );
+      return session;
+    })().finally(() => replacing.delete(staleId));
+    replacing.set(staleId, task);
+    return task;
+  }
+
+  const sweeper = setInterval(
+    () => {
+      const cutoff = Date.now() - idleMs;
+      const idle = [...sessions.values()].filter((s) => s.lastSeen < cutoff);
+      if (idle.length === 0) return;
+      log(
+        `mcp: closed ${idle.length} session(s) idle for more than ${Math.round(idleMs / 3600000)} h`,
+      );
+      for (const session of idle) void closeSession(session);
+    },
+    Math.min(SWEEP_INTERVAL_MS, idleMs),
+  );
+  sweeper.unref();
 
   async function serveLegacy(
     req: IncomingMessage & { auth?: AuthInfo },
@@ -211,11 +420,20 @@ export function createMcpRequestHandler(
   ): Promise<void> {
     const header = req.headers["mcp-session-id"];
     const sessionId = Array.isArray(header) ? header[0] : header;
-    if (sessionId) {
-      const session = sessions.get(sessionId);
+    const initializing = req.method === "POST" && isInitializeRequest(body);
+    if (sessionId && !initializing) {
+      let session = sessions.get(sessionId) ?? aliases.get(sessionId);
       if (!session) {
-        reply(res, 404, "SESSION_NOT_FOUND", "Unknown MCP session. Initialize a new one.");
-        return;
+        if (options.staleSessions === "reject") {
+          reply(res, 404, "SESSION_NOT_FOUND", "Unknown MCP session. Initialize a new one.");
+          return;
+        }
+        if (req.method === "DELETE") {
+          // The session is gone already, which is what the client wants.
+          res.writeHead(204).end();
+          return;
+        }
+        session = await replaceStale(sessionId, req, access);
       }
       if (
         session.access.scope !== access.scope ||
@@ -225,29 +443,20 @@ export function createMcpRequestHandler(
         reply(res, 403, "FORBIDDEN", "This session belongs to a token with another scope.");
         return;
       }
+      session.lastSeen = Date.now();
+      // The transport only knows its own id. The answer carries it, so the client learns it.
+      setRequestHeader(req, "mcp-session-id", session.id);
       await session.transport.handleRequest(req, res, body);
       return;
     }
-    if (req.method !== "POST" || !isInitializeRequest(body)) {
+    if (!initializing) {
       reply(res, 400, "SESSION_REQUIRED", "Send an initialize request first.");
       return;
     }
-    const server = createMcpServer(registry, {
-      scope: access.scope,
-      localFiles: access.localFiles,
-      ...(access.actor ? { actor: access.actor } : {}),
-    });
-    const transport: NodeStreamableHTTPServerTransport = new NodeStreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (id) => {
-        sessions.set(id, { transport, server, access });
-      },
-    });
-    transport.onclose = () => {
-      if (transport.sessionId) sessions.delete(transport.sessionId);
-    };
-    await server.connect(transport);
-    await transport.handleRequest(req, res, body);
+    const session = await openSession(access, { req, res, body });
+    if (session) {
+      log(`mcp: session ${shortId(session.id)} opened (${access.actor ?? "client-named actor"})`);
+    }
   }
 
   return {
@@ -293,8 +502,9 @@ export function createMcpRequestHandler(
       }
     },
     async close() {
+      clearInterval(sweeper);
       await mcp.close();
-      await Promise.all([...sessions.values()].map((s) => s.transport.close().catch(fail)));
+      await Promise.all([...sessions.values()].map((s) => closeSession(s)));
     },
   };
 }

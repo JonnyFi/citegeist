@@ -17,7 +17,7 @@ describe("classifyIdentifier", () => {
     ["https://example.org/artikel", "url"],
     ["https://example.org/papers/x.pdf", "url"],
     ["@book{luhmann1984, title={Soziale Systeme}}", "bibtex"],
-    ["/Users/jonny/Papers/luhmann.pdf", "path"],
+    ["/Users/alex/Papers/luhmann.pdf", "path"],
     ["~/Papers/luhmann.pdf", "path"],
     ["luhmann.pdf", "path"],
     ["irgendein Text", "unknown"],

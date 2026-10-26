@@ -21,7 +21,7 @@ import {
 } from "./tasks/card-paraphrase/prompt.v5.js";
 import { inventedNumbers, isWrittenIn, longestSharedRun } from "./tasks/checks.js";
 
-describe("resolveLanguage (D9)", () => {
+describe("resolveLanguage", () => {
   it("prefers item, then project, then library", () => {
     expect(resolveLanguage({ item: "en", project: "fr", library: "de" })).toBe("en");
     expect(resolveLanguage({ project: "fr", library: "de" })).toBe("fr");

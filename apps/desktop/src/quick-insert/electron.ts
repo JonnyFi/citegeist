@@ -135,7 +135,7 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
       if (win && !win.isDestroyed() && loaded) win.webContents.send(QI.show);
     },
     clipboard: {
-      // HTML and plain text in one entry: a word processor pastes the formatted version, a code editor the plain one (D2).
+      // HTML and plain text in one entry: a word processor pastes the formatted version, a code editor the plain one.
       write: ({ html, text }) =>
         clipboard.write([
           new ClipboardItem({ "text/plain": text, ...(html ? { "text/html": html } : {}) }),

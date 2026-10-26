@@ -1,4 +1,4 @@
-"""Re-anchoring check on real Docling output (open item of docs/spikes/s3-anchoring.md).
+"""Re-anchoring check on real Docling output (open item of internal S3 anchoring spike report).
 
 S3 measured the anchoring algorithm on text that came from the same pdf.js items as the anchor, and called its 100 percent
 an upper bound. Here the quotes come from a different engine: pypdf reads the text layer of the PDF, a quote is a random

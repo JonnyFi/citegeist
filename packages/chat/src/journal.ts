@@ -5,7 +5,7 @@ import { writeAtomic } from "./util.js";
 
 /**
  * Turn journal: records every file the agent changes during one turn, so one click undoes them
- * all (D12). The agent may write through the citegeist MCP tools or edit files directly. Both end
+ * all (docs/decisions/0018-direct-agent-edits-with-undo.md). The agent may write through the citegeist MCP tools or edit files directly. Both end
  * as text files in the library folder, so the journal compares the folder before and after the
  * turn and does not depend on how the agent wrote.
  */
@@ -140,7 +140,7 @@ async function readText(abs: string): Promise<string | null> {
 
 /**
  * Puts the files of a turn back. A file nobody touched since the turn gets its old text back. A
- * file Jonny edited afterwards is merged line by line, and a change on the same lines stays as it
+ * file the user edited afterwards is merged line by line, and a change on the same lines stays as it
  * is and is reported as a conflict.
  */
 export async function revertEdits(

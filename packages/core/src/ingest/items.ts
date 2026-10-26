@@ -219,7 +219,7 @@ export function isCited(lib: Library, citekey: string): boolean {
 }
 
 /**
- * D7 for deletion: a person may trash anything. An agent may trash an item that is in the inbox,
+ * The inbox rule for deletion: a person may trash anything. An agent may trash an item that is in the inbox,
  * that an agent added or that is incomplete, and only while no card or link refers to it.
  * Everything else is the user's to remove.
  */
