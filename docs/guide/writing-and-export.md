@@ -18,14 +18,14 @@ The export bar offers four formats. Each export goes to `projects/<slug>/exports
 |---|---|
 | Word | A `.docx` file with the citations and the bibliography in the citation style. |
 | LaTeX | A ZIP with `main.tex` and `references.bib`, for example for Overleaf. The citations stay biblatex commands. |
-| PDF | A PDF made through a LaTeX engine or Typst. |
+| PDF | A4 PDF, 11 pt serif font, margins of 2.5 cm, typeset with Typst. |
 | Markdown | Markdown with the citations resolved. |
 
 The bibliography lists only the sources the text cites. An unknown citekey stays unresolved in the output, and the export bar names it.
 
 citegeist runs Pandoc as a separate process. It looks for Pandoc in your `PATH` and in the Homebrew folders. If it finds none, the export bar offers "Download Pandoc". That fetches a pinned release from GitHub into `~/Library/Application Support/citegeist/pandoc/<version>` and verifies a fixed checksum. `cg pandoc status` shows which Pandoc and which PDF engine citegeist uses, and `cg pandoc setup` downloads the release. A different route is `brew install pandoc`.
 
-For a PDF, citegeist looks for xelatex, lualatex, tectonic, pdflatex or Typst. Install one of them, for example `brew install --cask basictex` or `brew install typst`. Word, LaTeX and Markdown need no engine.
+For a PDF, citegeist typesets with Typst. The first time you choose PDF and Typst is missing, the export bar asks whether it may download it (about 14 MB, a pinned release with a fixed checksum, stored in `~/Library/Application Support/citegeist/typst/<version>`) and exports once the download is done. `cg typst status` shows which Typst citegeist uses, and `cg typst setup` downloads the release. A different route is `brew install typst`. Hyphenation follows the language of the text. Only on a Mac with a LaTeX engine (xelatex, lualatex, tectonic or pdflatex) and without Typst does citegeist fall back to that engine. Word, LaTeX and Markdown need no engine.
 
 ## Other routes to a citation
 

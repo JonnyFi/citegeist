@@ -26,6 +26,36 @@ export function referenceTitle(lang: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Layout of an academic text: A4, 11 pt, margins of 2.5 cm. Typst gets the serif font that
+ * macOS ships (New York; Typst falls back to its bundled serif font where it is missing), page
+ * numbers, and hyphenates by the language of the text (`-M lang`, set for every format).
+ */
+export const TYPST_LAYOUT: readonly string[] = [
+  "-V",
+  "papersize=a4",
+  "-V",
+  "margin.x=2.5cm",
+  "-V",
+  "margin.y=2.5cm",
+  "-V",
+  "fontsize=11pt",
+  "-V",
+  "mainfont=New York",
+  "-V",
+  "page-numbering=1",
+];
+
+/** The same page for a LaTeX engine, which keeps its own serif font. */
+export const LATEX_LAYOUT: readonly string[] = [
+  "-V",
+  "papersize=a4",
+  "-V",
+  "fontsize=11pt",
+  "-V",
+  "geometry:margin=2.5cm",
+];
+
 export interface PandocPlan {
   /** Arguments for the Pandoc run; every file name is relative to the working directory. */
   args: string[];
@@ -84,7 +114,7 @@ export function buildPandocArgs(input: PlanInput): PandocPlan {
           "-t",
           "pdf",
           `--pdf-engine=${input.pdfEngine ?? "xelatex"}`,
-          ...(typst ? [] : ["-V", "geometry:margin=2.5cm"]),
+          ...(typst ? TYPST_LAYOUT : LATEX_LAYOUT),
           ...citeproc(true),
           "-o",
           "main.pdf",

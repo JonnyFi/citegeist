@@ -8,10 +8,13 @@ import {
   textsGet,
   textsList,
   textsUpdate,
+  typstSetup,
+  typstStatus,
 } from "@citegeist/ops";
 import type { JobQueue } from "../jobs/queue.js";
 import { installPandoc, type PandocSpec } from "./pandoc.js";
 import { type TextsDeps, TextsService } from "./service.js";
+import { installTypst, type TypstSpec } from "./typst.js";
 
 export interface TextsOperationDeps extends Omit<TextsDeps, "localBase"> {
   localBase: string;
@@ -26,6 +29,8 @@ export interface TextsOperationDeps extends Omit<TextsDeps, "localBase"> {
   runner?: ProcessRunner;
   /** The release to download; default is the pin in pandoc.ts. */
   spec?: PandocSpec;
+  /** The Typst release to download; default is the pin in typst.ts. */
+  typstSpec?: TypstSpec;
 }
 
 function pandocSpecDeps(deps: TextsOperationDeps) {
@@ -37,8 +42,17 @@ function pandocSpecDeps(deps: TextsOperationDeps) {
   };
 }
 
+function typstSpecDeps(deps: TextsOperationDeps) {
+  return {
+    localBase: deps.localBase,
+    ...(deps.fetch ? { fetch: deps.fetch } : {}),
+    ...(deps.runner ? { runner: deps.runner } : {}),
+    ...(deps.typstSpec ? { spec: deps.typstSpec } : {}),
+  };
+}
+
 /**
- * Binds texts.* and pandoc.* (docs/decisions/0002-writing-in-markdown-with-pandoc.md) and registers the `pandoc-setup` job. Texts are plain files
+ * Binds texts.*, pandoc.* and typst.* (docs/decisions/0002-writing-in-markdown-with-pandoc.md) and registers the `pandoc-setup` and `typst-setup` jobs. Texts are plain files
  * under projects/<project>/texts/, so the chat turn journal covers them like every other note.
  */
 export function bindTextsOperations(
@@ -56,9 +70,16 @@ export function bindTextsOperations(
     { concurrency: 1, maxAttempts: 1 },
   );
 
-  const activeSetup = (): { id: string } | undefined => {
+  queue.register(
+    "typst-setup",
+    async (ctx) =>
+      installTypst({ progress: ctx.progress, signal: ctx.signal }, typstSpecDeps(deps)),
+    { concurrency: 1, maxAttempts: 1 },
+  );
+
+  const activeSetup = (kind: "pandoc-setup" | "typst-setup"): { id: string } | undefined => {
     for (const status of ["running", "queued"]) {
-      const job = queue.list({ status, limit: 50 }).jobs.find((j) => j.kind === "pandoc-setup");
+      const job = queue.list({ status, limit: 50 }).jobs.find((j) => j.kind === kind);
       if (job) return job;
     }
     return undefined;
@@ -72,7 +93,7 @@ export function bindTextsOperations(
     .bind(textsExport, async (ctx, input) => service.export(ctx.actor, input))
     .bind(pandocStatus, async () => service.status())
     .bind(pandocSetup, async (ctx) => {
-      const existing = activeSetup();
+      const existing = activeSetup("pandoc-setup");
       if (existing) return { job: existing.id };
       if (deps.inline) {
         const installed = await installPandoc({ progress: () => undefined }, pandocSpecDeps(deps));
@@ -87,6 +108,25 @@ export function bindTextsOperations(
       }
       return {
         job: queue.enqueue({ kind: "pandoc-setup", by: ctx.actor, maxAttempts: 1 }).id,
+      };
+    })
+    .bind(typstStatus, async () => service.typstStatus())
+    .bind(typstSetup, async (ctx) => {
+      const existing = activeSetup("typst-setup");
+      if (existing) return { job: existing.id };
+      if (deps.inline) {
+        const installed = await installTypst({ progress: () => undefined }, typstSpecDeps(deps));
+        return {
+          job: queue.enqueueFinished({
+            kind: "typst-setup",
+            by: ctx.actor,
+            result: installed,
+            message: `Typst ${installed.version} ready`,
+          }).id,
+        };
+      }
+      return {
+        job: queue.enqueue({ kind: "typst-setup", by: ctx.actor, maxAttempts: 1 }).id,
       };
     });
   return service;

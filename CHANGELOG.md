@@ -8,6 +8,10 @@ All notable changes to citegeist are recorded here. The format follows [Keep a C
 
 - **Citing web pages.** Cards of a source without pages (web page, HTML, EPUB) cite a paragraph instead of a page: "Abs. 4" or "para. 4", and the citation style decides the wording. The reader no longer asks for page numbers there.
 
+### Fixed
+
+- **PDF export.** A PDF no longer needs a TeX distribution. The first PDF export asks whether citegeist may download Typst (about 14 MB, pinned release with a fixed checksum), and typesets A4 with 11 pt New York and margins of 2.5 cm. Errors of the export appear in the language of the app.
+
 ### Added
 
 - **Connections from cards.** A quote card can start a typed connection, for example "widerspricht" to another source. The card menu offers "Verbinden" and "An den Agent", the agent can connect a card with the `link` tool, and a card whose text names a source of the library shows one suggestion that you accept or dismiss.

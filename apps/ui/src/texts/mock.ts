@@ -7,6 +7,8 @@ import {
   textsGet,
   textsList,
   textsUpdate,
+  typstSetup,
+  typstStatus,
 } from "@citegeist/ops";
 import { citedKeys } from "@citegeist/schema";
 import type { CoreEvent } from "../lib/core";
@@ -33,6 +35,8 @@ export interface TextsStore {
   /** Texts by project slug, then by text slug. */
   texts: Map<string, Map<string, MockText>>;
   pandoc: { found: boolean; version: string; installable: boolean };
+  typst: { found: boolean; version: string; installable: boolean; sizeMb: number };
+  /** A LaTeX engine on the Mac, the fallback when Typst is not there. */
   pdfEngine: string | undefined;
 }
 
@@ -52,7 +56,14 @@ Luhmann takes communication, not action, as the basic element of social systems 
 Platforms can then be described as places where connecting communication is organized. The argument is not yet substantiated [@gillespie2018custodians].
 `;
 
-/** The texts of the mock library, one per project at most, and the state of Pandoc. */
+/** An error the way the core sends it: the code travels next to the English message. */
+function coded(code: string, message: string, fix?: string): Error {
+  return Object.assign(new Error(`${code}: ${message}`), {
+    data: { code, message, ...(fix ? { fix } : {}) },
+  });
+}
+
+/** The texts of the mock library, one per project at most, and the state of Pandoc and Typst. */
 export function textsStoreFor(data: MockData): TextsStore {
   let store = STORES.get(data);
   if (!store) {
@@ -68,6 +79,8 @@ export function textsStoreFor(data: MockData): TextsStore {
         ],
       ]),
       pandoc: { found: true, version: "3.12.1", installable: true },
+      // Typst is not downloaded yet, as on a fresh Mac
+      typst: { found: false, version: "0.15.1", installable: true, sizeMb: 14 },
       pdfEngine: undefined,
     };
     STORES.set(data, store);
@@ -214,11 +227,18 @@ export function bindTextsMock(
     .bind(textsExport, async (_ctx, input) => {
       const t = need(input.project, input.text);
       if (!store.pandoc.found) {
-        throw new Error("PANDOC_MISSING: Pandoc was not found on this Mac.");
+        throw coded(
+          "PANDOC_MISSING",
+          "Pandoc was not found on this Mac.",
+          "Install it with `brew install pandoc`.",
+        );
       }
-      if (input.format === "pdf" && !store.pdfEngine) {
-        throw new Error(
-          "PDF_ENGINE_MISSING: A PDF needs a LaTeX engine or Typst, and none was found.",
+      const engine = store.typst.found ? "typst" : store.pdfEngine;
+      if (input.format === "pdf" && !engine) {
+        throw coded(
+          "PDF_ENGINE_MISSING",
+          "A PDF needs Typst or a LaTeX engine, and none was found.",
+          "Install it with `brew install typst`.",
         );
       }
       const settings = resolved(input.project, t);
@@ -234,7 +254,7 @@ export function bindTextsMock(
         ...unknownOf(t.body),
         warnings: [],
         pandoc: store.pandoc.version,
-        ...(input.format === "pdf" && store.pdfEngine ? { engine: store.pdfEngine } : {}),
+        ...(input.format === "pdf" && engine ? { engine } : {}),
       };
     })
     .bind(pandocStatus, async () => ({
@@ -248,7 +268,9 @@ export function bindTextsMock(
         : {}),
       pinned: "3.12.1",
       installable: store.pandoc.installable,
-      ...(store.pdfEngine ? { pdfEngine: store.pdfEngine } : {}),
+      ...(store.typst.found || store.pdfEngine
+        ? { pdfEngine: store.typst.found ? "typst" : (store.pdfEngine as string) }
+        : {}),
     }))
     .bind(pandocSetup, async () => {
       const now = new Date().toISOString();
@@ -263,6 +285,40 @@ export function bindTextsMock(
       setTimeout(
         () => {
           store.pandoc.found = true;
+          job.status = "succeeded";
+          job.progress = 1;
+          job.updatedAt = new Date().toISOString();
+        },
+        Math.max(5, delayMs / 3),
+      );
+      return { job: job.id };
+    })
+    .bind(typstStatus, async () => ({
+      found: store.typst.found,
+      ...(store.typst.found
+        ? {
+            path: "/Users/alex/Library/Application Support/citegeist/typst/0.15.1/typst",
+            version: store.typst.version,
+            source: "managed" as const,
+          }
+        : {}),
+      pinned: store.typst.version,
+      installable: store.typst.installable,
+      sizeMb: store.typst.sizeMb,
+    }))
+    .bind(typstSetup, async () => {
+      const now = new Date().toISOString();
+      const job: MockJob = {
+        id: `j_${random(16)}`,
+        status: "running",
+        createdAt: now,
+        updatedAt: now,
+        progress: 0.4,
+      };
+      jobs.set(job.id, job);
+      setTimeout(
+        () => {
+          store.typst.found = true;
           job.status = "succeeded";
           job.progress = 1;
           job.updatedAt = new Date().toISOString();

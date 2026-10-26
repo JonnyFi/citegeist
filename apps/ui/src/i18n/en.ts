@@ -506,6 +506,7 @@ export const en: Record<MessageKey, string> = {
   "job.kind.export": "Exporting",
   "job.kind.worker-setup": "Installing environment",
   "job.kind.pandoc-setup": "Downloading Pandoc",
+  "job.kind.typst-setup": "Downloading Typst",
   "job.status.queued": "queued",
   "job.status.running": "running",
   "job.status.succeeded": "done",

@@ -2,10 +2,12 @@ import { citationCompletions, noteEditorAt } from "@citegeist/editor";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
+import { translator } from "../i18n";
 import { createFixtures } from "../mock/fixtures";
 import { createReflowFixtures, renderApp } from "../test-utils";
 import { resetActiveText } from "./active";
 import { createCitationProvider } from "./citations";
+import { localizedError } from "./errors";
 import { textsStoreFor } from "./mock";
 
 afterEach(() => resetActiveText());
@@ -214,14 +216,121 @@ describe("export", () => {
     );
   });
 
-  it("explains a missing PDF engine", async () => {
+  it("asks before it downloads Typst for a PDF and exports once the download is done", async () => {
     const user = userEvent.setup();
-    renderApp(TEXTS);
+    const { calls } = renderApp(TEXTS);
     await editor();
     await user.click(screen.getByRole("button", { name: "PDF" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "A PDF needs a LaTeX engine or Typst",
+    const ask = await screen.findByTestId("typst-ask");
+    expect(ask).toHaveTextContent("Für PDF lädt citegeist einmal Typst (etwa 14 MB). Jetzt laden?");
+    // nothing is downloaded or exported before the answer
+    expect(calls.some((c) => c.name === "typst.setup" || c.name === "texts.export")).toBe(false);
+
+    await user.click(within(ask).getByRole("button", { name: "Laden" }));
+    expect(calls.some((c) => c.name === "typst.setup")).toBe(true);
+    expect(await screen.findByTestId("typst-progress")).toHaveTextContent("Typst wird geladen");
+    const result = await screen.findByTestId("export-result", undefined, { timeout: 5000 });
+    expect(result).toHaveTextContent("kapitel-2.pdf");
+    expect(calls.find((c) => c.name === "texts.export")?.input).toMatchObject({ format: "pdf" });
+    expect(screen.queryByTestId("typst-ask")).toBeNull();
+    expect(screen.queryByTestId("typst-progress")).toBeNull();
+  });
+
+  it("exports a PDF without a question once Typst is there", async () => {
+    const user = userEvent.setup();
+    const data = createFixtures();
+    textsStoreFor(data).typst.found = true;
+    const { calls } = renderApp(TEXTS, data);
+    await editor();
+    await user.click(screen.getByRole("button", { name: "PDF" }));
+    expect(await screen.findByTestId("export-result")).toHaveTextContent("kapitel-2.pdf");
+    expect(calls.some((c) => c.name === "typst.setup")).toBe(false);
+    expect(screen.queryByTestId("typst-ask")).toBeNull();
+  });
+
+  it("leaves everything as it is when the person declines the download", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp(TEXTS);
+    await editor();
+    await user.click(screen.getByRole("button", { name: "PDF" }));
+    await user.click(
+      within(await screen.findByTestId("typst-ask")).getByRole("button", { name: "Abbrechen" }),
     );
+    expect(screen.queryByTestId("typst-ask")).toBeNull();
+    expect(calls.some((c) => c.name === "typst.setup" || c.name === "texts.export")).toBe(false);
+  });
+
+  it("says in German that a PDF has no engine where Typst cannot be downloaded", async () => {
+    const user = userEvent.setup();
+    const data = createFixtures();
+    textsStoreFor(data).typst.installable = false;
+    renderApp(TEXTS, data);
+    await editor();
+    await user.click(screen.getByRole("button", { name: "PDF" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Für ein PDF fehlt Typst oder ein LaTeX-Programm.");
+    expect(alert).toHaveTextContent("Installiere Typst mit „brew install typst“");
+    expect(alert).not.toHaveTextContent("A PDF needs");
+  });
+
+  it("shows an export error of the core in the UI language and keeps an unknown one as it is", async () => {
+    const user = userEvent.setup();
+    const data = createFixtures();
+    textsStoreFor(data).pandoc.found = false;
+    renderApp(TEXTS, data);
+    await editor();
+    await user.click(screen.getByRole("button", { name: "Word" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Pandoc fehlt oder ist zu alt.");
+    expect(alert).not.toHaveTextContent("was not found");
+  });
+});
+
+describe("error messages", () => {
+  const tr = translator("de");
+
+  it("translates a known code and fills in the detail", () => {
+    expect(
+      localizedError(tr, {
+        code: "PANDOC_FAILED",
+        message: "Pandoc could not export x: boom",
+        fix: "Fix it.",
+        context: { detail: "boom", exitCode: 64 },
+      }),
+    ).toEqual({
+      message: "Pandoc konnte den Text nicht exportieren: boom",
+      fix: "Behebe das genannte Problem im Text oder exportiere als Word oder LaTeX.",
+    });
+  });
+
+  it("keeps the message of the core for a code the catalog does not know", () => {
+    expect(
+      localizedError(tr, { code: "SOMETHING_NEW", message: "English", fix: "Do it." }),
+    ).toEqual({ message: "English", fix: "Do it." });
+    expect(localizedError(tr, { message: "No code" })).toEqual({ message: "No code" });
+  });
+
+  it("has a German and an English message for every code the export and the setups throw", () => {
+    const codes = [
+      "PANDOC_MISSING",
+      "PANDOC_FAILED",
+      "PANDOC_TIMEOUT",
+      "PDF_ENGINE_MISSING",
+      "TEXT_UNKNOWN_STYLE",
+      "TEXT_NOT_FOUND",
+      ...["PANDOC", "TYPST"].flatMap((tool) =>
+        ["NOT_INSTALLABLE", "DOWNLOAD_FAILED", "CHECKSUM", "UNPACK_FAILED", "UNUSABLE"].map(
+          (c) => `${tool}_${c}`,
+        ),
+      ),
+    ];
+    for (const lang of ["de", "en"] as const) {
+      const t = translator(lang);
+      for (const code of codes) {
+        expect(t.has(`texts.error.${code}`), `${lang} ${code}`).toBe(true);
+        expect(t.has(`texts.error.${code}.fix`), `${lang} ${code}.fix`).toBe(true);
+      }
+    }
   });
 });
 

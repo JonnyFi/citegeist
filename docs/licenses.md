@@ -5,7 +5,7 @@ citegeist is licensed under Apache-2.0 (`LICENSE`). The attribution that third-p
 ## Policy
 
 - GPL, AGPL and SSPL dependencies are not bundled with citegeist and are not linked into any citegeist process.
-- Copyleft tools run as separate processes that citegeist starts with command line arguments and files. They are downloaded on the user's machine or installed by the user, and citegeist does not ship them. Pandoc (GPL) and the Temurin JRE (GPL with Classpath Exception) work this way.
+- Copyleft tools run as separate processes that citegeist starts with command line arguments and files. They are downloaded on the user's machine or installed by the user, and citegeist does not ship them. Pandoc (GPL) and the Temurin JRE (GPL with Classpath Exception) work this way. Typst (Apache-2.0) is downloaded and started the same way.
 - LGPL dependencies are not bundled either. The only one that was in the app, libvips through `sharp`, is replaced by a stub (see "sharp and libvips").
 - File-level copyleft (MPL-2.0, CPAL-1.0) is acceptable for unmodified packages. Changes to such files are published under the same license.
 - Where a package offers a choice of licenses, citegeist uses the permissive option and says so in `NOTICE`.
@@ -40,6 +40,7 @@ The check fails on GPL, AGPL, LGPL, SSPL and on unknown licenses. An `OR` expres
 | GROBID | Apache-2.0 | Runtime download, built from the release archive (pinned checksum), separate process on 127.0.0.1 |
 | Eclipse Temurin JRE 21 | GPL-2.0 with Classpath Exception | Runtime download (pinned checksum) for GROBID, separate process. The exception allows programs under any license |
 | Pandoc 3.12.1 | GPL-2.0-or-later | Runtime download on request (pinned checksum) or the user's own installation. Separate process, never linked, not shipped. The license covers the program, not the files it produces |
+| Typst 0.15.1 | Apache-2.0 | Runtime download on request (pinned checksum) or the user's own installation. Separate process that Pandoc starts for the PDF export, not shipped. The download keeps the `LICENSE` and `NOTICE` of the release |
 | Claude Code, Codex CLI, Cursor CLI | The vendors' terms | Installed by the user, called through the ACP adapters |
 | Zotero Connector | AGPL-3.0 | The user's browser extension, talks to citegeist over the Connector protocol. citegeist contains no Zotero code |
 

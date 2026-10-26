@@ -39,7 +39,7 @@ The interface starts in English and follows the preferred language of macOS: whe
 Four features are off until you turn them on in the settings:
 
 - **Semantic search** downloads an embedding model once (EmbeddingGemma 300M, about 325 MB) and combines full text and meaning in the search. See [settings and models](guide/settings-and-models.md).
-- **Pandoc** is needed to export texts. citegeist finds it in your `PATH` or in Homebrew. Otherwise the texts tab offers "Download Pandoc", which fetches a pinned release with a fixed checksum (`cg pandoc setup` does the same). A PDF export additionally needs a LaTeX engine (`brew install --cask basictex`) or Typst (`brew install typst`). Word, LaTeX and Markdown export need neither.
+- **Pandoc** is needed to export texts. citegeist finds it in your `PATH` or in Homebrew. Otherwise the texts tab offers "Download Pandoc", which fetches a pinned release with a fixed checksum (`cg pandoc setup` does the same). A PDF export additionally needs Typst. The first PDF export asks whether citegeist may download it (about 14 MB, pinned release with a fixed checksum, `cg typst setup` does the same). Word, LaTeX and Markdown export need neither.
 - **Zotero Connector** lets the browser extension save into citegeist.
 - **Quick insert** opens a card search with a global hotkey and pastes the citation into the app you are working in. It needs the Accessibility permission of macOS.
 
