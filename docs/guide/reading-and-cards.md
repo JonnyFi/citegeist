@@ -40,10 +40,10 @@ Each card has two copy actions:
 
 The clipboard holds formatted text and plain text. The citation style and language come from the project, and the project's export setting decides which parts of a card an export includes. In a project, "Export" copies several cards at once as direct or indirect citations. `cg cards export` does the same from a shell.
 
-In the text editor of a project, the card column inserts the same citations at the cursor. See [writing and export](writing-and-export.md).
+The "..." menu of a card also offers "Citation only". In the text editor of a project, the card column inserts the same citations at the cursor. See [writing and export](writing-and-export.md).
 
 ## Quick insert
 
-A global hotkey (default Cmd+Shift+K, configurable) opens a small search palette over your cards in any app. Enter copies the verbatim citation and pastes it into the app that had focus. Shift+Enter does the same for the indirect citation, and Escape closes the palette. Pasting into other apps needs the Accessibility permission of macOS. Without it, citegeist copies the citation and says so. Turn quick insert on in the settings.
+A global hotkey (default Cmd+Shift+K, configurable) opens a small search palette over your cards and sources in any app. Enter inserts the quote with its citation, Shift+Enter the paraphrase with its citation, and Alt+Enter the citation alone. A source always inserts its citation. Escape closes the palette. In another app, citegeist copies the citation as formatted text and pastes it into the app that had focus. Pasting into other apps needs the Accessibility permission of macOS. Without it, citegeist copies the citation and says so. When the palette opens over the editor of a text in citegeist, the citation goes into the editor as a Pandoc citation. Turn quick insert on in the settings.
 
 If you rebuild citegeist locally, macOS ties the permission to each build unless the app is signed with a stable identity. See [development](../development.md#stable-signing-identity).

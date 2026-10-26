@@ -6,7 +6,9 @@ The "Texts" tab of a project holds the texts you write in citegeist. A text is a
 
 "New text" asks for a title and creates the file. A text uses the citation style and language of the project unless you set its own. The citation styles shipped with citegeist are APA, Chicago (author-date) and DGPs.
 
-Citations use Pandoc syntax: `[@luhmann1984soziale, p. 31]`. Typing `[@` opens a list of the sources in your library, with the sources of the project first. Pick one, and citegeist inserts the citekey. You type the locator yourself. A citekey that the library does not know is underlined, and a line under the editor lists unknown keys.
+Citations use Pandoc syntax: `[@luhmann1984soziale, p. 31]`. The file keeps this syntax. The editor shows a citation as a chip with the in-text form of the citation style, for example "(Luhmann, 1984, p. 31)", and shows the syntax again when you put the cursor in it. Change the style or the language of the text, and every chip changes with it. A citekey that the library does not know is underlined, and a line under the editor lists unknown keys.
+
+Typing `[@` opens a list of the sources and the quote cards in your library, with the sources of the project first. A source inserts the citation only. A card inserts what the key says: Enter the quote with its citation, Shift+Enter the paraphrase with its "cf." citation, and Alt+Enter the citation alone. The quick insert hotkey and the card buttons write the same three kinds. A text that holds citations pasted as plain text, such as "(Luhmann, 1984, p. 31)", shows "Detect citations". After you confirm, citegeist turns them into Pandoc citations, so that they follow the citation style, too.
 
 The card column next to the editor lists the cards of the project. "Quote verbatim" inserts the wording with its citation at the cursor, and "Quote indirectly" inserts the note or paraphrase with a "cf." citation. Texts are plain Markdown, so the chat agent can write into them as well. It drafts and revises passages directly in the file, and "Undo" under its answer takes back the turn. `cg texts` offers the same operations in a shell: `list`, `get`, `create`, `update` and `export`.
 
@@ -30,7 +32,7 @@ For a PDF, citegeist typesets with Typst. The first time you choose PDF and Typs
 ## Other routes to a citation
 
 - Copy a card as a verbatim or indirect citation. See [reading and cards](reading-and-cards.md).
-- Use the quick insert hotkey to paste a citation into any other app, for example a Google Docs document.
+- Use the quick insert hotkey to paste a citation into any other app, for example a Google Docs document. Over the editor of a text in citegeist, it inserts the Pandoc citation instead.
 - Use the `.bib` and CSL-JSON files that citegeist keeps up to date for each project, with a reference manager or a LaTeX project of your own.
 
 LaTeX is an export target in citegeist. There is no visual editor, and there are no add-ins for Word or Google Docs. See [ADR 0002](../decisions/0002-writing-in-markdown-with-pandoc.md).
