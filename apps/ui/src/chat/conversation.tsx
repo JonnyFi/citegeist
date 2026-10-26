@@ -20,7 +20,12 @@ import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { describeError } from "../lib/utils";
 import { type PlanContext, planContextLabel, usePlanContext } from "../planning/context";
 import { type ActiveText, useOpenText } from "../texts/active";
-import { useChatSelection, useScreenContext } from "./context";
+import {
+  clearChatFocusRequest,
+  useChatFocusRequest,
+  useChatSelection,
+  useScreenContext,
+} from "./context";
 import { Messages } from "./messages";
 
 type Chip = "project" | "plan" | "text" | "item" | "selection";
@@ -56,9 +61,13 @@ function ContextChips({
       ? [
           {
             id: "selection" as const,
-            label: context.selection.page
-              ? t("chat.context.selectionPage", { page: context.selection.page })
-              : t("chat.context.selection"),
+            label: context.selection.card
+              ? context.selection.page
+                ? t("chat.context.cardPage", { page: context.selection.page })
+                : t("chat.context.card")
+              : context.selection.page
+                ? t("chat.context.selectionPage", { page: context.selection.page })
+                : t("chat.context.selection"),
           },
         ]
       : []),
@@ -117,6 +126,18 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
   const [failure, setFailure] = useState<unknown>(null);
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const focusRequested = useChatFocusRequest();
+
+  // A card sent from the card menu puts the cursor into the composer.
+  useEffect(() => {
+    if (!focusRequested) return;
+    const timer = setTimeout(() => {
+      composer.current?.focus();
+      clearChatFocusRequest();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [focusRequested]);
 
   // The research tab can send us to the transcript of a job.
   useEffect(() => {
@@ -346,6 +367,7 @@ export function Conversation({ openSession }: { openSession?: string | null }) {
         </label>
         <textarea
           id="chat-composer"
+          ref={composer}
           rows={3}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

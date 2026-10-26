@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { aiErrors } from "../errors.js";
 import type { AiUsage, InferenceBackend, ModelChoice } from "../types.js";
 import { cardParaphrase } from "./card-paraphrase/index.js";
+import { cardSuggestLinks } from "./card-suggest-links/index.js";
 import { cardVerify } from "./card-verify/index.js";
 import { conceptDescribe } from "./concept-describe/index.js";
 import { conceptName } from "./concept-name/index.js";
@@ -13,6 +14,7 @@ import type { TaskDefinition } from "./types.js";
 
 export const TASKS = {
   "card.paraphrase": cardParaphrase,
+  "card.suggestLinks": cardSuggestLinks,
   "card.verify": cardVerify,
   "concept.describe": conceptDescribe,
   "concept.name": conceptName,

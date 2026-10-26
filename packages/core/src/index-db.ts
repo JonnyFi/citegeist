@@ -444,8 +444,19 @@ export class Index {
       const ev = l.evidence ? wikiTarget(l.evidence) : null;
       this.stmt(
         `INSERT INTO links(path, src_kind, src_ref, dst, rel, status, why, evidence, actor, origin)
-         VALUES (?, 'note', ?, ?, ?, ?, ?, ?, ?, 'frontmatter')`,
-      ).run(path, fm.id, wikiTarget(l.to), l.rel ?? null, l.status, l.why ?? null, ev, l.by);
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'frontmatter')`,
+      ).run(
+        path,
+        // a connection that starts at a card is the card's edge, stored in the literature note
+        l.from ? "card" : "note",
+        l.from ?? fm.id,
+        wikiTarget(l.to),
+        l.rel ?? null,
+        l.status,
+        l.why ?? null,
+        ev,
+        l.by,
+      );
     }
     this.putWikiLinks(path, "note", fm.id, body);
     this.addDoc({

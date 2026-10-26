@@ -2,6 +2,7 @@ import { cardsExport, cardsRegenerate, cardsUpdate } from "@citegeist/ops";
 import type { ModelStamp } from "@citegeist/schema";
 import { CardKind } from "@citegeist/schema";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { CardConnections, CardMenu } from "../cards/connect";
 import { CardConcepts } from "../concepts/card-concepts";
 import { type I18n, useI18n } from "../i18n";
 import { AI_LANGUAGES } from "../lib/ai-language";
@@ -330,6 +331,8 @@ export function QuoteCard({
         </p>
       ) : null}
 
+      <CardConnections card={card} />
+
       {mode === "panel" && !open ? (
         pending ? (
           <div
@@ -410,7 +413,7 @@ export function QuoteCard({
           ) : null}
 
           {editing ? (
-            <div className="grid grid-cols-2 border-t border-line">
+            <div className="grid grid-cols-[1fr_1fr_auto] border-t border-line">
               <button
                 type="button"
                 title={
@@ -435,6 +438,7 @@ export function QuoteCard({
               >
                 {t("card.quoteIndirect")}
               </button>
+              <CardMenu card={card} className="border-l border-line" />
             </div>
           ) : onOpenInReader ? (
             <div className="flex border-t border-line">
@@ -445,6 +449,7 @@ export function QuoteCard({
               >
                 {t("card.openInReader")}
               </button>
+              <CardMenu card={card} className="border-l border-line" />
             </div>
           ) : null}
         </>

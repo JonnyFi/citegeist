@@ -33,6 +33,14 @@ export {
   CardParaphraseInput,
   CardParaphraseOutput,
 } from "./tasks/card-paraphrase/index.js";
+export {
+  CardLinkSuggestion,
+  CardSuggestLinksInput,
+  CardSuggestLinksOutput,
+  MAX_SUGGESTIONS,
+  type SuggestCandidate,
+  sanitizeSuggestions,
+} from "./tasks/card-suggest-links/index.js";
 export { CardVerifyInput, CardVerifyOutput } from "./tasks/card-verify/index.js";
 export {
   ConceptDescribeInput,
