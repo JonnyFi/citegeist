@@ -79,7 +79,18 @@ cd workers/convert && uv run pytest       run the worker tests
 
 ## Workflow (gstack)
 
-gstack is required for AI-assisted work in this repo, in every tool. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. The Claude Code hook in `.claude/` enforces the install. Cursor and Codex users read the install check in `CLAUDE.md`.
+gstack is required for AI-assisted work in this repo, in every tool. Before doing any work, check that it is installed:
+
+```bash
+_GS=""
+for _D in "${GSTACK_ROOT:-}" "$HOME/gstack" "$HOME/.claude/skills/gstack" "$HOME/.codex/skills/gstack" "$HOME/.cursor/skills/gstack" "$HOME/.config/opencode/skills/gstack" "$HOME/.copilot/skills/gstack" "$HOME/.factory/skills/gstack" "$HOME/.kiro/skills/gstack" "$HOME/.gemini/antigravity-cli/skills/gstack" "$HOME/.gstack/repos/gstack"; do
+  [ -z "$_GS" ] && [ -n "$_D" ] && [ -d "$_D/bin" ] && _GS="$_D"
+done
+[ -n "$_GS" ] && echo "GSTACK_OK: $_GS" || echo "GSTACK_MISSING"
+ls -d "${CODEX_HOME:-$HOME/.codex}"/skills/gstack-* "$HOME"/.cursor/skills/gstack-* "$HOME"/.config/opencode/skills/gstack-* "$HOME"/.copilot/skills/gstack-* 2>/dev/null | head -1
+```
+
+If neither line finds gstack, stop and tell the user to install it for their tool: `git clone --depth 1 https://github.com/garrytan/gstack.git ~/gstack && cd ~/gstack && ./setup --team --host <tool>` with `<tool>` one of `claude`, `codex`, `cursor`, `opencode`, `copilot` (or `auto`). In Claude Code the hook in `.claude/` enforces this; other tools rely on this check. Skills are called `/review` in Claude Code and `gstack-review` (or `/gstack-review`) elsewhere.
 
 1. `/spec` turns the change into an executable spec.
 2. Build against fixtures and mocks, and run `pnpm verify` until green.

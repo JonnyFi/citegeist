@@ -46,14 +46,22 @@ Schemas, operation contracts, the root `package.json`, the lockfile, `turbo.json
 
 ## AI-assisted contributions
 
-AI-assisted contributions are welcome. gstack is required for AI-assisted work in this repository, and the Claude Code hook in `.claude/` enforces it. Install it once:
+AI-assisted contributions are welcome. gstack is required for AI-assisted work in this repository, whatever coding agent you use. Clone it once and run its setup for your tool:
 
 ```sh
-git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
-cd ~/.claude/skills/gstack && ./setup --team
+git clone --depth 1 https://github.com/garrytan/gstack.git ~/gstack
+cd ~/gstack && ./setup --team --host <tool>
 ```
 
-`CLAUDE.md` runs the same check for other tools. The workflow is `/spec` to plan the change, `/review` and `/qa` to check it, and `/ship` to open the pull request.
+| Tool | `--host` | How you call a skill | Enforcement |
+|---|---|---|---|
+| Claude Code | `claude` (default) | `/review` | the hook in `.claude/` blocks skills until gstack is installed |
+| Codex CLI | `codex` | ask for `gstack-review` | the install check in `AGENTS.md` |
+| Cursor | `cursor` | ask for `gstack-review` | the install check in `AGENTS.md` |
+| OpenCode | `opencode` | `/gstack-review` | the install check in `AGENTS.md` |
+| GitHub Copilot CLI | `copilot` | `/gstack-review` | the install check in `AGENTS.md` |
+
+`./setup --host auto` installs for every agent it finds on your machine. Other hosts (Kiro, Factory Droid, Antigravity) are listed in `./setup --help`. The workflow is the same everywhere: spec to plan the change, review and qa to check it, ship to open the pull request.
 
 The author of a pull request has reviewed the diff and understands it. You are expected to explain any line in review, whether you or an agent wrote it. Say in the pull request that an agent wrote part of the change when that is the case, and keep the `Co-Authored-By` line that your tool adds to the commit message.
 
