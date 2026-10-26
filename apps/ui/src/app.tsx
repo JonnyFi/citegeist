@@ -11,6 +11,7 @@ import type { Core } from "./lib/core";
 import { CoreProvider, useCore } from "./lib/hooks";
 import { FirstRun, OnboardingGate } from "./onboarding";
 import { createAppRouter } from "./routes";
+import { QuickInsertLink } from "./texts/quick-insert-link";
 
 export function createQueryClient() {
   return new QueryClient({
@@ -65,6 +66,7 @@ export function App({
           <CoreProvider core={core}>
             <ToastProvider>
               <LanguageSync />
+              <QuickInsertLink bridge={bridge} />
               <OnboardingGate>
                 <RouterProvider router={router} />
               </OnboardingGate>

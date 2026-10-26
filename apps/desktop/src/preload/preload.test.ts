@@ -8,6 +8,8 @@ describe("main preload", () => {
     const source = readFileSync(join(import.meta.dirname, "index.ts"), "utf8");
     expect(source).toContain(`"${QI.getSettings}"`);
     expect(source).toContain(`"${QI.setSettings}"`);
+    expect(source).toContain(`"${QI.editorState}"`);
+    expect(source).toContain(`"${QI.insert}"`);
     // A sandboxed preload cannot require a shared chunk, so no local module may be imported.
     expect(source).not.toMatch(/from "\.\.?\//);
   });

@@ -36,6 +36,22 @@ export interface PickPathsOptions {
   extensions?: readonly string[];
 }
 
+/** The text open in the editor, as far as the quick-insert palette needs to know. */
+export interface OpenTextInfo {
+  project: string;
+  text: string;
+  /** BCP 47 language of the text: the terms of Pandoc locators. */
+  lang?: string | undefined;
+}
+
+/** The link between the texts editor and the quick-insert palette (a separate window). */
+export interface TextLinkBridge {
+  /** Tells the main process which text is open in the editor, null when none is. */
+  publish(text: OpenTextInfo | null): void;
+  /** The palette sends a Pandoc snippet for the open text. Returns how to stop listening. */
+  onInsert(listener: (snippet: string) => void): () => void;
+}
+
 /** A newer release than the running app. */
 export interface UpdateInfo {
   /** Version without a leading `v`. */
@@ -96,6 +112,8 @@ export interface CitegeistBridge {
   onNavigate(listener: (path: string) => void): () => void;
   /** Settings of the quick-insert palette. Absent where there is no palette. */
   quickInsert?: QuickInsertSettingsBridge;
+  /** Open text for the quick-insert palette. Absent where there is no palette. */
+  textLink?: TextLinkBridge;
   /** Update notice. Absent where the app updates itself some other way, such as the browser. */
   update?: UpdateBridge;
   /**

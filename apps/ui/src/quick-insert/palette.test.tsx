@@ -4,24 +4,46 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 import type { Core } from "../lib/core";
 import { createMockCore } from "../mock/core";
 import { createFixtures } from "../mock/fixtures";
-import type { CitationPayload, DeliverResult, QuickInsertBridge } from "./bridge";
+import type {
+  CitationPayload,
+  DeliverResult,
+  EditorPayload,
+  PaletteTarget,
+  QuickInsertBridge,
+} from "./bridge";
 import { QuickInsertRoot } from "./root";
-import { findCards, sourceLabel } from "./search";
+import { findCitables, sourceLabel } from "./search";
 
-type FakeBridge = Omit<QuickInsertBridge, "close" | "requestAccessibility"> & {
-  delivered: CitationPayload[];
+/** What the fake bridge records: a citation for the clipboard or a snippet for the editor. */
+type Delivered = { html?: string | undefined; text: string; kind?: "editor" };
+
+type FakeBridge = Omit<QuickInsertBridge, "close" | "requestAccessibility" | "deliver"> & {
+  delivered: Delivered[];
+  deliver: Mock<(payload: CitationPayload | EditorPayload) => Promise<DeliverResult>>;
   close: Mock<() => void>;
   requestAccessibility: Mock<() => void>;
-  show(): void;
+  show(target?: PaletteTarget): void;
 };
 
-function fakeBridge(result: DeliverResult = { pasted: true }): FakeBridge {
-  const listeners = new Set<() => void>();
-  const delivered: CitationPayload[] = [];
+const external: PaletteTarget = { type: "external" };
+const editorTarget: PaletteTarget = {
+  type: "text",
+  project: "phd-proposal",
+  text: "chapter-1",
+  lang: "de",
+};
+
+function fakeBridge(
+  result: DeliverResult = { pasted: true },
+  target: PaletteTarget = external,
+): FakeBridge {
+  const listeners = new Set<(target: PaletteTarget) => void>();
+  const delivered: Delivered[] = [];
   return {
     delivered,
     connection: () => null,
-    deliver: vi.fn(async (payload: CitationPayload) => {
+    target: () => target,
+    deliver: vi.fn(async (payload: CitationPayload | EditorPayload) => {
       delivered.push(payload);
       return result;
     }),
@@ -31,9 +53,9 @@ function fakeBridge(result: DeliverResult = { pasted: true }): FakeBridge {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    show: () =>
+    show: (next = target) =>
       act(() => {
-        for (const l of listeners) l();
+        for (const l of listeners) l(next);
       }),
     hotkey: () => "CommandOrControl+Shift+K",
     platform: "darwin",
@@ -82,7 +104,7 @@ describe("quick-insert palette", () => {
       expect(list[0]).toHaveTextContent("selbstreferentielle Systeme");
     });
     const search = calls.find((c) => c.name === "search.query");
-    expect(search?.input).toMatchObject({ q: "Selbstreferenz", kinds: ["card"] });
+    expect(search?.input).toMatchObject({ q: "Selbstreferenz", kinds: ["item", "card"] });
     expect(
       calls.some((c) => c.name === "cards.list" && JSON.stringify(c.input).includes("citekey")),
     ).toBe(true);
@@ -93,8 +115,10 @@ describe("quick-insert palette", () => {
     const { user } = setup();
     await options();
     await user.type(field(), "xyzzy");
-    expect(await screen.findByText("Keine Karte gefunden")).toBeVisible();
-    expect(screen.getByText(/Für „xyzzy“ gibt es keine Zitatkarte/)).toBeVisible();
+    expect(await screen.findByText("Nichts gefunden")).toBeVisible();
+    expect(
+      screen.getByText(/Für „xyzzy“ gibt es weder eine Zitatkarte noch eine Quelle/),
+    ).toBeVisible();
   });
 
   it("Enter delivers the direct citation as HTML and text", async () => {
@@ -212,7 +236,7 @@ describe("quick-insert palette", () => {
     const { user, bridge } = setup();
     await options();
     await user.type(field(), "xyzzy");
-    await screen.findByText("Keine Karte gefunden");
+    await screen.findByText("Nichts gefunden");
     bridge.show();
     await waitFor(() => expect(field()).toHaveValue(""));
     expect((await options()).length).toBeGreaterThan(3);
@@ -225,7 +249,8 @@ describe("quick-insert palette", () => {
     await options();
     expect(screen.getByRole("combobox", { name: "Insert citation" })).toBeVisible();
     expect(screen.getByText("Recently added")).toBeVisible();
-    expect(screen.getByText(/Shift\+Enter: indirect citation/)).toBeVisible();
+    expect(screen.getByText(/Shift\+Enter: paraphrase/)).toBeVisible();
+    expect(screen.getByText(/Alt\+Enter: citation only/)).toBeVisible();
   });
 
   it("asks for a library when none is open, and still closes on Escape", async () => {
@@ -238,13 +263,289 @@ describe("quick-insert palette", () => {
   });
 });
 
-describe("findCards", () => {
-  it("keeps the order of the search hits and names the source", async () => {
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const callsOf = (calls: Array<{ name: string; input: unknown }>, name: string) =>
+  calls.filter((c) => c.name === name);
+
+describe("sources in the palette", () => {
+  async function findSource(user: ReturnType<typeof userEvent.setup>) {
+    await options();
+    await user.type(field(), "Surveillance Capitalism");
+    return await screen.findByRole("option", { name: /Age of Surveillance Capitalism/ });
+  }
+
+  it("shows a source with title, authors, year and a label", async () => {
+    const { user } = setup();
+    const row = await findSource(user);
+    expect(within(row).getByText("The Age of Surveillance Capitalism")).toBeVisible();
+    expect(within(row).getByText("Zuboff (2019)")).toBeVisible();
+    expect(within(row).getByText("Quelle")).toBeVisible();
+  });
+
+  it("lists cards before sources when the field is empty", async () => {
+    setup();
+    const list = await options();
+    const tagged = list.map((row) => within(row).queryByText("Quelle") !== null);
+    expect(tagged[0]).toBe(false);
+    expect(tagged).toContain(true);
+    expect(tagged.lastIndexOf(false)).toBeLessThan(tagged.indexOf(true));
+  });
+
+  it("inserts the citation only, whatever the keys, and says so in the hint line", async () => {
+    const { user, bridge, calls } = setup();
+    await findSource(user);
+    expect(screen.getByText(/^Quelle: Enter fügt nur den Beleg ein/)).toBeVisible();
+    expect(screen.queryByText(/Umschalt\+Enter/)).toBeNull();
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(bridge.delivered[0]?.text).toContain("Zuboff");
+    expect(bridge.delivered[0]?.text).not.toContain("Surveillance");
+    expect(callsOf(calls, "cards.export")).toHaveLength(0);
+    expect(callsOf(calls, "cite.format")[0]?.input).toMatchObject({
+      items: [{ citekey: "zuboff2019age" }],
+      mode: "citation",
+      format: "html",
+    });
+  });
+});
+
+describe("keys", () => {
+  it("shows the hint line for cards in German and English", async () => {
+    setup();
+    await options();
+    expect(
+      screen.getByText(
+        "Enter: wörtlich · Umschalt+Enter: sinngemäß · Alt+Enter: nur Beleg · Esc: schließen",
+      ),
+    ).toBeVisible();
+  });
+
+  it("Alt+Enter delivers the citation only", async () => {
+    const { user, bridge, calls } = setup();
+    await options();
+    await user.keyboard("{Alt>}{Enter}{/Alt}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({ mode: "cite" });
+    expect(bridge.delivered[0]?.text).toContain("Luhmann");
+    expect(bridge.delivered[0]?.text).not.toContain("Soziale Systeme bestehen");
+  });
+
+  it("Alt+click and Shift+click pick citation only and paraphrase", async () => {
+    const { user, bridge, calls } = setup();
+    const list = await options();
+    await user.keyboard("{Alt>}");
+    await user.click(list[0] as HTMLElement);
+    await user.keyboard("{/Alt}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    await user.keyboard("{Shift>}");
+    await user.click(list[0] as HTMLElement);
+    await user.keyboard("{/Shift}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(2));
+    expect(callsOf(calls, "cards.export").map((c) => (c.input as { mode: string }).mode)).toEqual([
+      "cite",
+      "indirect",
+    ]);
+  });
+});
+
+describe("Shift+Enter and Alt+Enter paste", () => {
+  // Regression: the main process types Cmd+V right after deliver. With Shift (or Alt) still held
+  // the other app received Cmd+Shift+V (Cmd+Alt+V), not a paste. The palette now waits for the keyup.
+  it("hands the indirect citation over only after Shift is released", async () => {
+    const { user, bridge, calls } = setup();
+    await options();
+    await user.keyboard("{Shift>}{Enter}");
+    await waitFor(() =>
+      expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({
+        mode: "indirect",
+        format: "html",
+      }),
+    );
+    await wait(80);
+    expect(bridge.deliver).not.toHaveBeenCalled();
+    await user.keyboard("{/Shift}");
+    await waitFor(() => expect(bridge.deliver).toHaveBeenCalledTimes(1));
+    expect(bridge.delivered[0]?.text).toContain("(vgl. Luhmann 1984, S. 31)");
+    expect(bridge.delivered[0]?.kind).toBeUndefined();
+  });
+
+  it("hands the citation over only after Alt is released", async () => {
+    const { user, bridge, calls } = setup();
+    await options();
+    await user.keyboard("{Alt>}{Enter}");
+    await waitFor(() => expect(callsOf(calls, "cards.export")).toHaveLength(1));
+    expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({ mode: "cite" });
+    await wait(80);
+    expect(bridge.deliver).not.toHaveBeenCalled();
+    await user.keyboard("{/Alt}");
+    await waitFor(() => expect(bridge.deliver).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not wait for a plain Enter", async () => {
+    const { user, bridge } = setup();
+    await options();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.deliver).toHaveBeenCalledTimes(1));
+  });
+
+  it("gives up waiting after a moment when the keyup never comes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const bridge = fakeBridge();
+      render(<QuickInsertRoot bridge={bridge} core={createMockCore(createFixtures())} lang="de" />);
+      await options();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await user.keyboard("{Shift>}{Enter}");
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      expect(bridge.deliver).not.toHaveBeenCalled();
+      await act(() => vi.advanceTimersByTimeAsync(700));
+      expect(bridge.deliver).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("inserting into the open text", () => {
+  it("sends Pandoc syntax to the editor and never the clipboard payload", async () => {
+    const { user, bridge, calls } = setup(fakeBridge({ pasted: true }, editorTarget));
+    await options();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({
+      mode: "direct",
+      format: "pandoc",
+      locale: "de",
+    });
+    expect(bridge.delivered[0]?.kind).toBe("editor");
+    expect(bridge.delivered[0]?.html).toBeUndefined();
+    expect(bridge.delivered[0]?.text).toContain("[@luhmann1984soziale, S. 31]");
+  });
+
+  it("inserts the paraphrase with vgl. in the language of the text, without waiting for Shift", async () => {
+    const target: PaletteTarget = { ...editorTarget, lang: "de" };
+    const { user, bridge, calls } = setup(fakeBridge({ pasted: true }, target));
+    await options();
+    await user.keyboard("{Shift>}{Enter}");
+    // No keyup yet: the editor path types nothing, so it does not wait.
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({
+      mode: "indirect",
+      format: "pandoc",
+      locale: "de",
+    });
+    expect(bridge.delivered[0]?.kind).toBe("editor");
+    expect(bridge.delivered[0]?.text).toContain("vgl.");
+    expect(bridge.delivered[0]?.text).toContain("@luhmann1984soziale");
+    await user.keyboard("{/Shift}");
+  });
+
+  it("passes the language of an English text on", async () => {
+    const { user, bridge, calls } = setup(
+      fakeBridge({ pasted: true }, { ...editorTarget, lang: "en" }),
+    );
+    await options();
+    await user.keyboard("{Alt>}{Enter}{/Alt}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(callsOf(calls, "cards.export")[0]?.input).toMatchObject({
+      mode: "cite",
+      format: "pandoc",
+      locale: "en",
+    });
+  });
+
+  it("cites a source in Pandoc syntax", async () => {
+    const { user, bridge, calls } = setup(fakeBridge({ pasted: true }, editorTarget));
+    await options();
+    await user.type(field(), "Surveillance Capitalism");
+    await screen.findByRole("option", { name: /Age of Surveillance Capitalism/ });
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(callsOf(calls, "cite.format")[0]?.input).toMatchObject({
+      items: [{ citekey: "zuboff2019age" }],
+      format: "pandoc",
+      locale: "de",
+    });
+    expect(bridge.delivered[0]).toMatchObject({ kind: "editor", text: "[@zuboff2019age]" });
+  });
+
+  it("learns a new target each time it is shown", async () => {
+    const { user, bridge, calls } = setup(fakeBridge({ pasted: true }, external));
+    await options();
+    bridge.show(editorTarget);
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(1));
+    expect(bridge.delivered[0]?.kind).toBe("editor");
+    bridge.show(external);
+    await options();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.delivered).toHaveLength(2));
+    expect(bridge.delivered[1]?.kind).toBeUndefined();
+    expect(
+      callsOf(calls, "cards.export").map((c) => (c.input as { format: string }).format),
+    ).toEqual(["pandoc", "html"]);
+  });
+
+  it("says so when the text is gone, then closes", async () => {
+    const bridge = fakeBridge({ pasted: false, reason: "editor-unavailable" }, editorTarget);
+    const { user } = setup(bridge);
+    await options();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Das Zitat konnte nicht in den Text eingefügt werden",
+    );
+  });
+
+  it("says so when the editor path throws", async () => {
+    const bridge = fakeBridge({ pasted: true }, editorTarget);
+    bridge.deliver.mockRejectedValueOnce(new Error("channel closed"));
+    const { user } = setup(bridge);
+    await options();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("status")).toHaveTextContent("nicht in den Text eingefügt");
+  });
+});
+
+describe("findCitables", () => {
+  it("keeps the order of the search hits and names the source of a card", async () => {
     const core = createMockCore(createFixtures());
-    const found = await findCards(core, "Transformer");
-    expect(found.length).toBeGreaterThan(1);
-    expect(found.every((r) => r.card.body.quote.length > 0)).toBe(true);
-    expect(found.some((r) => r.source.startsWith("Vaswani"))).toBe(true);
+    const found = await findCitables(core, "Transformer");
+    const cards = found.flatMap((r) => (r.type === "card" ? [r] : []));
+    expect(cards.length).toBeGreaterThan(1);
+    expect(cards.every((r) => r.card.body.quote.length > 0)).toBe(true);
+    expect(cards.some((r) => r.source.startsWith("Vaswani"))).toBe(true);
+  });
+
+  it("finds a source by its title", async () => {
+    const core = createMockCore(createFixtures());
+    const found = await findCitables(core, "Surveillance Capitalism");
+    const source = found.find((r) => r.type === "source");
+    expect(source?.type === "source" && source.item.citekey).toBe("zuboff2019age");
+    expect(source?.type === "source" && source.label).toMatch(/^Zuboff \(2019\), The Age of/);
+  });
+
+  it("without a query lists cards first, then sources, at most twelve", async () => {
+    const core = createMockCore(createFixtures());
+    const found = await findCitables(core, "  ");
+    expect(found.length).toBeLessThanOrEqual(12);
+    const types = found.map((r) => r.type);
+    expect(types[0]).toBe("card");
+    expect(types).toContain("source");
+    expect(types.lastIndexOf("card")).toBeLessThan(types.indexOf("source"));
+  });
+
+  it("asks for items and cards in one search.query", async () => {
+    const core = createMockCore(createFixtures());
+    const seen: Array<{ name: string; input: unknown }> = [];
+    const original = core.call.bind(core);
+    core.call = ((contract, input) => {
+      seen.push({ name: contract.name, input });
+      return original(contract, input);
+    }) as typeof core.call;
+    await findCitables(core, "systeme");
+    const searches = seen.filter((c) => c.name === "search.query");
+    expect(searches).toHaveLength(1);
+    expect(searches[0]?.input).toMatchObject({ q: "systeme", kinds: ["item", "card"] });
   });
 });
 

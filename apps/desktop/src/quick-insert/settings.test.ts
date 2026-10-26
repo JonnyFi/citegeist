@@ -8,7 +8,7 @@ import {
   loadQuickInsertSettings,
   saveQuickInsertSettings,
 } from "./settings.js";
-import { macFrontApp, parseAsn, parseBundleId } from "./system.js";
+import { macBundleIdOfPid, macFrontApp, parseAsn, parseBundleId } from "./system.js";
 
 describe("checkAccelerator", () => {
   it.each([
@@ -114,5 +114,27 @@ describe("macOS front app", () => {
     calls.length = 0;
     await front.activate("com.x; touch /tmp/pwned");
     expect(calls).toEqual([]);
+  });
+});
+
+describe("macBundleIdOfPid", () => {
+  it("asks lsappinfo for the bundle id of the process", async () => {
+    const calls: string[][] = [];
+    const id = await macBundleIdOfPid(4242, async (file, args) => {
+      calls.push([file, ...args]);
+      return '"CFBundleIdentifier"="app.citegeist.desktop"\n';
+    });
+    expect(id).toBe("app.citegeist.desktop");
+    expect(calls).toEqual([["/usr/bin/lsappinfo", "info", "-only", "bundleid", "-app", "4242"]]);
+  });
+
+  it("is undefined when macOS does not know the process or the call fails", async () => {
+    expect(await macBundleIdOfPid(4242, async () => "")).toBeUndefined();
+    expect(
+      await macBundleIdOfPid(4242, async () => {
+        throw new Error("no lsappinfo");
+      }),
+    ).toBeUndefined();
+    expect(await macBundleIdOfPid(0, async () => "x")).toBeUndefined();
   });
 });

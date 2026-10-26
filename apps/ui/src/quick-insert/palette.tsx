@@ -1,4 +1,3 @@
-import { cardsExport } from "@citegeist/ops";
 import { Search } from "lucide-react";
 import {
   type KeyboardEvent,
@@ -10,15 +9,42 @@ import {
   useState,
 } from "react";
 import { useI18n } from "../i18n";
+import {
+  type CitationSubject,
+  type CitationTarget,
+  kindFor,
+  kindForKeys,
+  renderCitation,
+} from "../lib/citation-insert";
 import { locatorText } from "../lib/format";
 import { useCore } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
-import type { QuickInsertBridge } from "./bridge";
+import type { DeliverResult, PaletteTarget, QuickInsertBridge } from "./bridge";
 import { type QuickInsertKey, quickInsertText } from "./messages";
-import { findCards, type PaletteResult } from "./search";
+import { shiftOrAltHeld, waitForModifiersReleased } from "./modifiers";
+import { type Citable, citableKey, findCitables, sourceCredit } from "./search";
 
-type Mode = "direct" | "indirect";
-type Notice = { kind: "no-permission" | "unsupported" } | { kind: "error"; detail: string };
+type Notice =
+  | { kind: "no-permission" | "unsupported" | "editor-unavailable" }
+  | { kind: "error"; detail: string };
+
+/** Which modifiers a choice was made with (Enter or click). */
+interface Keys {
+  shiftKey: boolean;
+  altKey: boolean;
+}
+
+function subjectOf(row: Citable): CitationSubject {
+  return row.type === "card"
+    ? { type: "card", id: row.card.frontmatter.id }
+    : { type: "source", citekey: row.item.citekey };
+}
+
+function citationTarget(target: PaletteTarget): CitationTarget {
+  return target.type === "text"
+    ? { type: "text", project: target.project, lang: target.lang }
+    : { type: "external" };
+}
 
 export interface PaletteProps {
   bridge: QuickInsertBridge;
@@ -29,8 +55,10 @@ export interface PaletteProps {
 }
 
 /**
- * The floating search palette. Type to find a quote card, Enter copies the direct citation (and
- * pastes it into the app that had focus), Shift+Enter the indirect one, Escape closes.
+ * The floating search palette. Type to find a quote card or a source. Enter inserts the quote with
+ * its citation, Shift+Enter the paraphrase, Alt+Enter the citation alone (a source only has the
+ * citation), Escape closes. The citation goes into the open text of citegeist when the palette was
+ * opened over its editor, otherwise into the app that had focus.
  */
 export function QuickInsertPalette({
   bridge,
@@ -45,7 +73,8 @@ export function QuickInsertPalette({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PaletteResult[]>([]);
+  const [results, setResults] = useState<Citable[]>([]);
+  const [target, setTarget] = useState<PaletteTarget>(() => bridge.target());
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [active, setActive] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -59,8 +88,9 @@ export function QuickInsertPalette({
   // A fresh palette on every hotkey press: empty search, no message, cursor in the field.
   useEffect(() => {
     inputRef.current?.focus();
-    return bridge.onShow(() => {
+    return bridge.onShow((next) => {
       clearCloseTimer();
+      setTarget(next);
       setQuery("");
       setNotice(null);
       setActive(0);
@@ -75,7 +105,7 @@ export function QuickInsertPalette({
     let current = true;
     setState("loading");
     const timer = setTimeout(() => {
-      findCards(core, query).then(
+      findCitables(core, query).then(
         (found) => {
           if (!current) return;
           setResults(found);
@@ -96,28 +126,47 @@ export function QuickInsertPalette({
   }, [core, query, debounceMs]);
 
   const choose = useCallback(
-    async (result: PaletteResult | undefined, mode: Mode) => {
-      if (!result || busy) return;
+    async (row: Citable | undefined, keys: Keys) => {
+      if (!row || busy) return;
       setBusy(true);
       try {
-        const out = await core.call(cardsExport, {
-          ids: [result.card.frontmatter.id],
-          mode,
-          format: "html",
-        });
-        const delivered = await bridge.deliver({ html: out.html, text: out.text });
-        if (!delivered.pasted) {
-          setNotice({ kind: delivered.reason });
-          clearCloseTimer();
-          closeTimer.current = setTimeout(() => bridge.close(), closeDelayMs);
+        const subject = subjectOf(row);
+        const kind = kindFor(subject, kindForKeys(keys));
+        // Read now: the keys are gone from the event once the wait starts.
+        keys = { shiftKey: keys.shiftKey, altKey: keys.altKey };
+        const rendering = renderCitation(core, subject, kind, citationTarget(target));
+        if (target.type === "text") {
+          const rendered = await rendering;
+          const delivered = await bridge
+            .deliver({ kind: "editor", text: rendered.text })
+            .catch((): DeliverResult => ({ pasted: false, reason: "editor-unavailable" }));
+          if (!delivered.pasted) failWith(delivered.reason);
+          return;
         }
+        // The paste types Cmd+V: with Shift or Alt still down it would arrive as Cmd+Shift+V or Cmd+Alt+V.
+        let held = keys.shiftKey || keys.altKey;
+        const [rendered] = await Promise.all([
+          rendering,
+          waitForModifiersReleased(window, (event) => {
+            if (event) held = shiftOrAltHeld(event);
+            return held;
+          }),
+        ]);
+        const delivered = await bridge.deliver({ html: rendered.html, text: rendered.text });
+        if (!delivered.pasted) failWith(delivered.reason);
       } catch (err) {
         setNotice({ kind: "error", detail: describeError(err, qi("qi.error")).message });
       } finally {
         setBusy(false);
       }
+
+      function failWith(reason: "no-permission" | "unsupported" | "editor-unavailable") {
+        setNotice({ kind: reason });
+        clearCloseTimer();
+        closeTimer.current = setTimeout(() => bridge.close(), closeDelayMs);
+      }
     },
-    [busy, core, bridge, closeDelayMs, clearCloseTimer, qi],
+    [busy, core, bridge, target, closeDelayMs, clearCloseTimer, qi],
   );
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -134,7 +183,7 @@ export function QuickInsertPalette({
       setActive((i) => (results.length === 0 ? 0 : (i - 1 + results.length) % results.length));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      void choose(results[active], e.shiftKey ? "indirect" : "direct");
+      void choose(results[active], e);
     }
   };
 
@@ -176,13 +225,16 @@ export function QuickInsertPalette({
             <div id={listId} role="listbox" aria-label={qi("qi.results")} className="p-1.5">
               {results.map((r, i) => (
                 <ResultRow
-                  key={r.card.frontmatter.id}
+                  key={citableKey(r)}
                   id={optionId(i)}
                   result={r}
                   selected={i === active}
-                  page={locatorText(i18n, r.card.frontmatter.locator)}
+                  page={
+                    r.type === "card" ? locatorText(i18n, r.card.frontmatter.locator) : undefined
+                  }
+                  sourceTag={qi("qi.source")}
                   onHover={() => setActive(i)}
-                  onChoose={(mode) => void choose(r, mode)}
+                  onChoose={(keys) => void choose(r, keys)}
                 />
               ))}
             </div>
@@ -205,7 +257,9 @@ export function QuickInsertPalette({
               ? `${qi("qi.error")} ${notice.detail}`
               : notice.kind === "no-permission"
                 ? qi("qi.noPermission")
-                : qi("qi.unsupported")}
+                : notice.kind === "editor-unavailable"
+                  ? qi("qi.editorGone")
+                  : qi("qi.unsupported")}
           </span>
           {notice.kind === "no-permission" ? (
             <button
@@ -222,7 +276,10 @@ export function QuickInsertPalette({
         </div>
       ) : (
         <p className="border-t border-line px-3 py-1.5 text-xs text-muted">
-          {[qi("qi.hintDirect"), qi("qi.hintIndirect"), qi("qi.hintClose")].join("  ·  ")}
+          {(results[active]?.type === "source"
+            ? [qi("qi.hintSource"), qi("qi.hintClose")]
+            : [qi("qi.hintDirect"), qi("qi.hintIndirect"), qi("qi.hintCite"), qi("qi.hintClose")]
+          ).join("  ·  ")}
         </p>
       )}
     </div>
@@ -234,15 +291,17 @@ function ResultRow({
   result,
   selected,
   page,
+  sourceTag,
   onHover,
   onChoose,
 }: {
   id: string;
-  result: PaletteResult;
+  result: Citable;
   selected: boolean;
   page: string | undefined;
+  sourceTag: string;
   onHover: () => void;
-  onChoose: (mode: Mode) => void;
+  onChoose: (keys: Keys) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -259,14 +318,30 @@ function ResultRow({
       aria-selected={selected}
       data-testid="palette-result"
       onMouseMove={onHover}
-      onClick={(e) => onChoose(e.shiftKey ? "indirect" : "direct")}
+      onClick={(e) => onChoose(e)}
       className={cn("cursor-pointer px-2.5 py-2", selected && "bg-accent-soft")}
     >
-      <p className="line-clamp-3 font-serif text-[14.5px] leading-snug">{result.card.body.quote}</p>
-      <p className="mt-1 flex items-baseline gap-2 text-xs text-muted">
-        <span className="min-w-0 flex-1 truncate">{result.source}</span>
-        {page ? <span className="shrink-0">{page}</span> : null}
-      </p>
+      {result.type === "card" ? (
+        <>
+          <p className="line-clamp-3 font-serif text-[14.5px] leading-snug">
+            {result.card.body.quote}
+          </p>
+          <p className="mt-1 flex items-baseline gap-2 text-xs text-muted">
+            <span className="min-w-0 flex-1 truncate">{result.source}</span>
+            {page ? <span className="shrink-0">{page}</span> : null}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="line-clamp-2 text-[14.5px] font-medium leading-snug">{result.item.title}</p>
+          <p className="mt-1 flex items-baseline gap-2 text-xs text-muted">
+            <span className="min-w-0 flex-1 truncate">{sourceCredit(result.item) ?? ""}</span>
+            <span className="shrink-0 border border-line px-1 uppercase tracking-wide">
+              {sourceTag}
+            </span>
+          </p>
+        </>
+      )}
     </div>
   );
 }

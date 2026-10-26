@@ -10,8 +10,10 @@ const bridge: QuickInsertBridge = {
   deliver: (payload) => ipcRenderer.invoke(QI.deliver, payload),
   close: () => ipcRenderer.send(QI.close),
   requestAccessibility: () => ipcRenderer.send(QI.requestAccessibility),
+  target: () => ipcRenderer.sendSync(QI.target) as ReturnType<QuickInsertBridge["target"]>,
   onShow(listener) {
-    const handler = () => listener();
+    const handler = (_event: Electron.IpcRendererEvent, target: Parameters<typeof listener>[0]) =>
+      listener(target);
     ipcRenderer.on(QI.show, handler);
     return () => {
       ipcRenderer.removeListener(QI.show, handler);

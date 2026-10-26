@@ -1,4 +1,10 @@
-export type { CitationPayload, DeliverResult, QuickInsertBridge } from "./bridge";
+export type {
+  CitationPayload,
+  DeliverResult,
+  EditorPayload,
+  PaletteTarget,
+  QuickInsertBridge,
+} from "./bridge";
 export { QuickInsertPalette } from "./palette";
 export { QuickInsertRoot } from "./root";
 
