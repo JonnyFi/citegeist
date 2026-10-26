@@ -30,3 +30,4 @@ This folder holds the decisions that shape citegeist, one short record per decis
 | 0024 | [Untrusted text and the Rule of Two](0024-untrusted-text-and-rule-of-two.md) | accepted |
 | 0025 | [Cancellation, limits and usage ledger](0025-cancellation-limits-and-usage-ledger.md) | accepted |
 | 0026 | [Retrieval benchmark](0026-retrieval-benchmark.md) | accepted |
+| 0027 | [AI backend switch and fallback](0027-ai-backend-fallback.md) | accepted |
