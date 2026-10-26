@@ -14,7 +14,7 @@ import pytest
 from conftest import FAST, fixture_pdf, manifest_fixtures
 from helpers import assert_docs_consistent, assert_schema_valid, page_correctness, read_outputs
 
-from citegeist_convert import ids
+from citegeist_convert import ids, quality
 
 PARAMS = [
     pytest.param(f["id"], marks=[] if f["id"] in FAST else [pytest.mark.slow], id=f["id"])
@@ -36,11 +36,19 @@ def test_fixture_outputs(fid, convert_fixture):
 
     if scan:
         assert "ocr" in manifest["flags"]
-        assert "low-quality" in manifest["flags"], "poor OCR must be flagged, not passed off as text"
         assert all(p["textSource"] == "ocr" for p in pages["pages"])
+        # Poor OCR must be flagged, not passed off as text. How well a page reads depends on the
+        # engine (Apple Vision on macOS, RapidOCR elsewhere), so the flags are checked against the
+        # quality measured per page rather than assumed.
+        low = [p["index"] for p in pages["pages"] if p.get("quality") is None or p["quality"] < quality.GATE]
+        flagged = next((f for f in manifest["flags"] if f.startswith("low-quality-pages:")), None)
+        if low:
+            assert "low-quality" in manifest["flags"], "poor OCR must be flagged, not passed off as text"
+            assert flagged == f"low-quality-pages:{','.join(str(i) for i in low)}"
+        else:
+            assert "low-quality" not in manifest["flags"] and flagged is None, "readable OCR is not flagged"
         if "negative-control" in fx["kind"]:
-            flagged = next(f for f in manifest["flags"] if f.startswith("low-quality-pages:"))
-            assert len(flagged.split(":")[1].split(",")) == fx["pages"], "every page of the control is unreadable"
+            assert len(low) == fx["pages"], "every page of the control is unreadable"
         return
 
     # S1 criterion: at least 95 percent of verifiable blocks sit on the page they claim.
