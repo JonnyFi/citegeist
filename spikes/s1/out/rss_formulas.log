@@ -1,24 +1,0 @@
-W1023 14:50:07.573000 52986 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
-Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 14552.53it/s]
-Loading weights:   0%|          | 0/471 [00:00<?, ?it/s]Loading weights: 100%|██████████| 471/471 [00:00<00:00, 6909.58it/s]
-[transformers] The tied weights mapping and config for this model specifies to tie model.text_model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints with different values, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning.
-warm-up (digital pipeline, 1 page, includes model load): 3.4 s
-arxiv-2312.00752-mamba                    36 p    300.6 s    8.35 s/p   598 blocks  ConversionStatus.SUCCESS
-      307.91 real      1083.04 user        11.61 sys
-          2242985984  maximum resident set size
-                   0  average shared memory size
-                   0  average unshared data size
-                   0  average unshared stack size
-              624985  page reclaims
-               70806  page faults
-                   0  swaps
-                   0  block input operations
-                   0  block output operations
-                  24  messages sent
-                  70  messages received
-                   0  signals received
-                6941  voluntary context switches
-             2316266  involuntary context switches
-      10267108357485  instructions retired
-       4286617561662  cycles elapsed
-          5481189504  peak memory footprint
