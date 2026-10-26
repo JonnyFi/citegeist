@@ -32,6 +32,24 @@ describe("electron fuses", () => {
   });
 });
 
+describe("first run without a checkout", () => {
+  it("ships the workers and the license files in Resources", () => {
+    // protects: a user who installed via install.sh has no repository next to the app
+    // fails_when: the core would have to read workers/ or NOTICE from a checkout
+    expect(config).toMatch(/from: \.\.\/\.\.\/workers\/convert\n\s+to: workers\/convert/);
+    expect(config).toMatch(/from: \.\.\/\.\.\/workers\/research\n\s+to: workers\/research/);
+    expect(config).toMatch(/from: \.\.\/\.\.\/NOTICE\n\s+to: NOTICE/);
+    expect(config).toMatch(/from: \.\.\/\.\.\/LICENSE\n\s+to: LICENSE/);
+  });
+
+  it("tells the core it is packaged, so no repository fallback applies", () => {
+    const main = readFileSync(new URL("./main/index.ts", import.meta.url), "utf8");
+    const core = readFileSync(new URL("./main/core-process.ts", import.meta.url), "utf8");
+    expect(main).toContain("packaged: app.isPackaged");
+    expect(core).toContain('CITEGEIST_PACKAGED: "1"');
+  });
+});
+
 describe("cg in the app", () => {
   const viteConfig = readFileSync(new URL("../electron.vite.config.ts", import.meta.url), "utf8");
   const launcher = new URL("../resources/cg", import.meta.url);

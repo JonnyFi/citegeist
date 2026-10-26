@@ -236,6 +236,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
   const workerSource = resolveWorkerSource({
     override: process.env.CITEGEIST_WORKER_DIR,
     resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath,
+    packaged: process.env.CITEGEIST_PACKAGED === "1",
   });
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   const runtime = createRuntime(library, {
@@ -244,6 +245,7 @@ export async function startCoreServer(opts: CoreServerOptions): Promise<CoreServ
       sourceDir: resolveResearchSource({
         override: process.env.CITEGEIST_RESEARCH_DIR,
         resourcesPath,
+        packaged: process.env.CITEGEIST_PACKAGED === "1",
       }),
     },
     ...(process.env.CITEGEIST_WORKER_CMD

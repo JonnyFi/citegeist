@@ -14,6 +14,7 @@ import { Section } from "../settings/parts";
 import { ResearchLimitsPanel, UsagePanel } from "../settings/run-control";
 import { SourcesPanel } from "../settings/sources-panel";
 import { SyncPanel } from "../settings/sync-panel";
+import { TroubleshootingPanel } from "../settings/troubleshooting";
 import { WebhooksPanel } from "../settings/webhooks-panel";
 import { ChatPanel, ConnectorPanel, QuickInsertPanel, SemanticPanel } from "./settings-extras";
 
@@ -330,6 +331,16 @@ export function SettingsScreen({
       >
         <WorkerPanel worker={worker} />
       </Section>
+
+      {window.citegeist?.about ? (
+        <Section
+          id="settings-about"
+          title={t("settings.about.title")}
+          description={t("settings.about.desc")}
+        >
+          <TroubleshootingPanel />
+        </Section>
+      ) : null}
     </SettingsFrame>
   );
 }

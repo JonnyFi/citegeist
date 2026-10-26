@@ -1,9 +1,11 @@
 import { app, Menu, type MenuItemConstructorOptions } from "electron";
+import { mt } from "../shared/text.js";
 
 export interface MenuActions {
   openLibrary(): void;
   createLibrary(): void;
   navigate(path: string): void;
+  about(): void;
 }
 
 /** Native menu bar. View entries navigate the renderer; File entries open the native pickers. */
@@ -15,10 +17,10 @@ export function buildMenu(actions: MenuActions): Menu {
           {
             label: app.name,
             submenu: [
-              { role: "about" },
+              { label: mt("menu.about"), click: () => actions.about() },
               { type: "separator" },
               {
-                label: "Settings...",
+                label: mt("menu.settings"),
                 accelerator: "CmdOrCtrl+,",
                 click: () => actions.navigate("/settings"),
               },
@@ -33,15 +35,15 @@ export function buildMenu(actions: MenuActions): Menu {
         ]
       : []),
     {
-      label: "File",
+      label: mt("menu.file"),
       submenu: [
         {
-          label: "Open Library...",
+          label: mt("menu.openLibrary"),
           accelerator: "CmdOrCtrl+O",
           click: () => actions.openLibrary(),
         },
         {
-          label: "New Library...",
+          label: mt("menu.newLibrary"),
           accelerator: "CmdOrCtrl+Shift+N",
           click: () => actions.createLibrary(),
         },
@@ -51,16 +53,28 @@ export function buildMenu(actions: MenuActions): Menu {
     },
     { role: "editMenu" },
     {
-      label: "View",
+      label: mt("menu.view"),
       submenu: [
-        { label: "Library", accelerator: "CmdOrCtrl+1", click: () => actions.navigate("/") },
-        { label: "Inbox", accelerator: "CmdOrCtrl+2", click: () => actions.navigate("/inbox") },
         {
-          label: "Projects",
+          label: mt("menu.library"),
+          accelerator: "CmdOrCtrl+1",
+          click: () => actions.navigate("/"),
+        },
+        {
+          label: mt("menu.inbox"),
+          accelerator: "CmdOrCtrl+2",
+          click: () => actions.navigate("/inbox"),
+        },
+        {
+          label: mt("menu.projects"),
           accelerator: "CmdOrCtrl+3",
           click: () => actions.navigate("/projects"),
         },
-        { label: "Search", accelerator: "CmdOrCtrl+F", click: () => actions.navigate("/search") },
+        {
+          label: mt("menu.search"),
+          accelerator: "CmdOrCtrl+F",
+          click: () => actions.navigate("/search"),
+        },
         { type: "separator" },
         { role: "reload" },
         { role: "toggleDevTools" },

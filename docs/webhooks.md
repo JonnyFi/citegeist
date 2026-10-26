@@ -249,7 +249,7 @@ Clients that speak the 2025 protocol get a session (`Mcp-Session-Id`) on `initia
 - Open SSE streams (`GET /mcp`) get a comment (`: keepalive`) every 15 seconds, so Funnel or Cloudflare do not drop a quiet stream.
 - A restart of the core interrupts calls in flight. This includes the seconds in which the tunnel answers `502` because the hooks port is not listening yet.
 
-For troubleshooting, the core writes lines prefixed with `mcp:` to its log: `session ... opened`, `unknown session ... replaced by ...` (a session from before a restart was replaced), `closed ... idle`, and the source of the request on `401` or `429`. Tokens and full session ids never appear. The core runs as a child process of the app and writes to its standard error; there is no log file. To see the lines, quit citegeist and start it from Terminal with `/Applications/citegeist.app/Contents/MacOS/citegeist`. A start from the Dock or Finder discards the output.
+For troubleshooting, the core writes lines prefixed with `mcp:` to its log: `session ... opened`, `unknown session ... replaced by ...` (a session from before a restart was replaced), `closed ... idle`, and the source of the request on `401` or `429`. Tokens and full session ids never appear. The app writes these lines, together with its own, to `~/Library/Logs/citegeist/core.log`. The file rotates at 5 MB and keeps three files (`core.log`, `core.log.1`, `core.log.2`). Secrets such as tokens and API keys are removed before a line is written. Open the file from the About window (citegeist menu, "About citegeist") or from Settings under "Troubleshooting" with "Open log".
 
 ## Grok Bot (xAI and Cursor)
 
