@@ -44,3 +44,16 @@ Decisions are recorded in [decisions/](decisions/README.md). A decision is never
 ## Releases
 
 `pnpm release` publishes a release from the maintainer's Mac. See [development.md](development.md#releases).
+
+## Going public
+
+The repository is private until the open-source release. These steps happen on the day it becomes public, in this order:
+
+1. Run `pnpm secrets` and `pnpm verify` on `main`.
+2. Switch the repository to public (Settings, General, Danger Zone).
+3. Turn on Private Vulnerability Reporting (Settings, Security, Private vulnerability reporting). `SECURITY.md` points reporters there.
+4. Turn on Dependabot alerts and security updates (Settings, Security). `.github/dependabot.yml` already exists for version updates.
+5. Make the `ci` workflow a required status check for `main` (Settings, Branches). Public repositories get Actions minutes on standard runners for free, including macOS.
+6. Review the open Dependabot pull requests for the GitHub Actions now that CI runs on them.
+7. Set the description, topics and the social preview image (the app icon).
+8. Bump the version in `apps/desktop/package.json`, run `pnpm release`, and check `curl -fsSL https://raw.githubusercontent.com/JonnyFi/citegeist/main/install.sh | sh` on a Mac that has never had citegeist.
