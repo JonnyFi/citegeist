@@ -16,6 +16,7 @@ import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
 import { type MessageKey, useI18n } from "../i18n";
 import { useCore, useOpMutation } from "../lib/hooks";
+import { webUrl } from "../lib/safe-url";
 import { cn } from "../lib/utils";
 import { ErrorLine, useGuarded } from "../settings/parts";
 import { PART_COLOR, SCORE_PARTS } from "./charts";
@@ -594,9 +595,9 @@ export function PaperDetail({
               {t("litsearch.detail.openLibrary")}
             </Link>
           ) : null}
-          {paper.link || paper.doi ? (
+          {webUrl(paper.link) || paper.doi ? (
             <a
-              href={paper.link ?? `https://doi.org/${paper.doi}`}
+              href={webUrl(paper.link) ?? `https://doi.org/${paper.doi}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-[12px] underline"
