@@ -15,7 +15,7 @@ export const textsDe = {
     "Ein Text ist eine Markdown-Datei im Projektordner. Zitiere mit [@citekey, S. 12]. Beim Export setzt citegeist Belege und Literaturverzeichnis im gewählten Stil.",
   "texts.stats.one": "{words} Wörter, {n} Quelle",
   "texts.stats.other": "{words} Wörter, {n} Quellen",
-  "texts.placeholder": "Schreibe hier. Tippe [@ und wähle eine Quelle.",
+  "texts.placeholder": "Schreibe hier. Tippe [@ und wähle eine Quelle oder eine Karte.",
   "texts.keepMine": "Meine Fassung behalten",
   "texts.openText": "Text öffnen: {title}",
 
@@ -36,6 +36,14 @@ export const textsDe = {
   "texts.lang.en-US": "Englisch (USA)",
   "texts.lang.en-GB": "Englisch (Großbritannien)",
 
+  "texts.detect.button": "Belege erkennen ({n})",
+  "texts.detect.region": "Belege als Text",
+  "texts.detect.question.one":
+    "{n} Beleg steht als gewöhnlicher Text im Dokument, zum Beispiel {example}. Als Pandoc-Zitat folgt er dem Zitierstil des Texts.",
+  "texts.detect.question.other":
+    "{n} Belege stehen als gewöhnlicher Text im Dokument, zum Beispiel {example}. Als Pandoc-Zitate folgen sie dem Zitierstil des Texts.",
+  "texts.detect.apply": "Umwandeln",
+  "texts.detect.cancel": "Abbrechen",
   "texts.unknown.one": "Ein Citekey steht nicht in der Bibliothek: {keys}",
   "texts.unknown.other": "{n} Citekeys stehen nicht in der Bibliothek: {keys}",
 
@@ -127,7 +135,7 @@ export const textsEn: { [K in keyof typeof textsDe]: string } = {
     "A text is a Markdown file in the project folder. Cite with [@citekey, p. 12]. On export, citegeist sets citations and bibliography in the chosen style.",
   "texts.stats.one": "{words} words, {n} source",
   "texts.stats.other": "{words} words, {n} sources",
-  "texts.placeholder": "Write here. Type [@ and pick a source.",
+  "texts.placeholder": "Write here. Type [@ and pick a source or a card.",
   "texts.keepMine": "Keep my version",
   "texts.openText": "Open text: {title}",
 
@@ -148,6 +156,14 @@ export const textsEn: { [K in keyof typeof textsDe]: string } = {
   "texts.lang.en-US": "English (US)",
   "texts.lang.en-GB": "English (UK)",
 
+  "texts.detect.button": "Detect citations ({n})",
+  "texts.detect.region": "Citations as text",
+  "texts.detect.question.one":
+    "{n} citation is plain text in the document, for example {example}. As a Pandoc citation it follows the citation style of the text.",
+  "texts.detect.question.other":
+    "{n} citations are plain text in the document, for example {example}. As Pandoc citations they follow the citation style of the text.",
+  "texts.detect.apply": "Convert",
+  "texts.detect.cancel": "Cancel",
   "texts.unknown.one": "One citekey is not in the library: {keys}",
   "texts.unknown.other": "{n} citekeys are not in the library: {keys}",
 

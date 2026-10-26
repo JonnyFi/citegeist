@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { FOCUS_SETTLE_MS, QuickInsertController, type QuickInsertDeps } from "./controller.js";
+import type { PaletteTarget } from "./target.js";
+
+const OWN = "app.citegeist.desktop";
 
 function setup(
   over: {
@@ -7,12 +10,15 @@ function setup(
     supportsPaste?: boolean;
     frontmost?: string | undefined;
     taken?: string[];
+    mainFocused?: boolean;
+    insertWorks?: boolean;
   } = {},
 ) {
   const log: string[] = [];
   let visible = false;
   let shortcutCallback: (() => void) | undefined;
   const taken = new Set(over.taken ?? []);
+  const shown: PaletteTarget[] = [];
   const deps: QuickInsertDeps = {
     shortcuts: {
       register: vi.fn((accelerator: string, cb: () => void) => {
@@ -36,7 +42,19 @@ function setup(
       },
       isVisible: () => visible,
     },
-    notifyShown: () => log.push("notify"),
+    notifyShown: (target) => {
+      shown.push(target);
+      log.push("notify");
+    },
+    ownBundleId: OWN,
+    mainWindow: {
+      isFocused: () => over.mainFocused ?? false,
+      focus: vi.fn(() => void log.push("focus main")),
+      insert: vi.fn((snippet: string) => {
+        log.push(`insert ${snippet}`);
+        return over.insertWorks ?? true;
+      }),
+    },
     clipboard: {
       write: vi.fn(
         async (d: { html?: string; text: string }) => void log.push(`clipboard ${d.text}`),
@@ -55,7 +73,14 @@ function setup(
     delay: vi.fn(async (ms: number) => void log.push(`delay ${ms}`)),
   };
   const controller = new QuickInsertController(deps);
-  return { controller, deps, log, press: () => shortcutCallback?.(), isVisible: () => visible };
+  return {
+    controller,
+    deps,
+    log,
+    shown,
+    press: () => shortcutCallback?.(),
+    isVisible: () => visible,
+  };
 }
 
 describe("hotkey", () => {
@@ -141,6 +166,132 @@ describe("opening and closing", () => {
     controller.blurred();
     expect(isVisible()).toBe(false);
     expect(deps.front.activate).not.toHaveBeenCalled();
+  });
+});
+
+describe("target", () => {
+  const editor = { project: "thesis", text: "chapter-1", lang: "de" };
+
+  it("is the open text when citegeist was in front with its main window focused", async () => {
+    const { controller, shown } = setup({ frontmost: OWN, mainFocused: true });
+    controller.setEditor(editor);
+    await controller.open();
+    expect(shown).toEqual([{ type: "text", project: "thesis", text: "chapter-1", lang: "de" }]);
+    expect(controller.currentTarget).toEqual(shown[0]);
+  });
+
+  it("is external when another app was in front", async () => {
+    const { controller, shown } = setup({ frontmost: "com.microsoft.Word", mainFocused: true });
+    controller.setEditor(editor);
+    await controller.open();
+    expect(shown).toEqual([{ type: "external" }]);
+  });
+
+  it("is external when no text is open, or after the editor closed", async () => {
+    const { controller, shown } = setup({ frontmost: OWN, mainFocused: true });
+    await controller.open();
+    await controller.close();
+    controller.setEditor(editor);
+    controller.setEditor(null);
+    await controller.open();
+    expect(shown).toEqual([{ type: "external" }, { type: "external" }]);
+  });
+
+  it("is external when the main window has no focus", async () => {
+    const { controller, shown } = setup({ frontmost: OWN, mainFocused: false });
+    controller.setEditor(editor);
+    await controller.open();
+    expect(shown).toEqual([{ type: "external" }]);
+  });
+
+  it("is external without a main window", async () => {
+    const { controller, deps, shown } = setup({ frontmost: OWN, mainFocused: true });
+    delete (deps as { mainWindow?: unknown }).mainWindow;
+    controller.setEditor(editor);
+    await controller.open();
+    expect(shown).toEqual([{ type: "external" }]);
+  });
+
+  it("is decided anew on every open", async () => {
+    const { controller, shown } = setup({ frontmost: OWN, mainFocused: true });
+    controller.setEditor(editor);
+    await controller.open();
+    await controller.close();
+    controller.setEditor(null);
+    await controller.open();
+    expect(shown.map((t) => t.type)).toEqual(["text", "external"]);
+    expect(controller.currentTarget).toEqual({ type: "external" });
+  });
+});
+
+describe("deliverToEditor", () => {
+  const editor = { project: "thesis", text: "chapter-1" };
+  const snippet = "[@luhmann1984soziale, S. 31]";
+
+  async function opened(over: Parameters<typeof setup>[0] = {}) {
+    const rig = setup({ frontmost: OWN, mainFocused: true, ...over });
+    rig.controller.setEditor(editor);
+    await rig.controller.open();
+    rig.log.length = 0;
+    return rig;
+  }
+
+  it("hands the snippet to the main window, hides the palette and focuses the main window", async () => {
+    const { controller, log, deps, isVisible } = await opened();
+    expect(await controller.deliverToEditor(snippet)).toEqual({ pasted: true });
+    expect(log).toEqual([`insert ${snippet}`, "hide", "focus main"]);
+    expect(isVisible()).toBe(false);
+    expect(deps.mainWindow?.insert).toHaveBeenCalledWith(snippet);
+  });
+
+  it("neither writes the clipboard nor types Cmd+V nor activates another app", async () => {
+    const { controller, deps } = await opened();
+    await controller.deliverToEditor(snippet);
+    expect(deps.clipboard.write).not.toHaveBeenCalled();
+    expect(deps.front.paste).not.toHaveBeenCalled();
+    expect(deps.front.activate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the palette open and says so when the main window cannot take the snippet", async () => {
+    const { controller, isVisible, log } = await opened({ insertWorks: false });
+    expect(await controller.deliverToEditor(snippet)).toEqual({
+      pasted: false,
+      reason: "editor-unavailable",
+    });
+    expect(isVisible()).toBe(true);
+    expect(log).not.toContain("focus main");
+  });
+
+  it("refuses when the text was closed in the meantime", async () => {
+    const { controller, deps } = await opened();
+    controller.setEditor(null);
+    expect(await controller.deliverToEditor(snippet)).toEqual({
+      pasted: false,
+      reason: "editor-unavailable",
+    });
+    expect(deps.mainWindow?.insert).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the palette was opened over another app", async () => {
+    const { controller, deps } = setup({ frontmost: "com.apple.Safari", mainFocused: true });
+    controller.setEditor(editor);
+    await controller.open();
+    expect(await controller.deliverToEditor(snippet)).toEqual({
+      pasted: false,
+      reason: "editor-unavailable",
+    });
+    expect(deps.mainWindow?.insert).not.toHaveBeenCalled();
+  });
+
+  it("does not hide the palette on blur while it delivers", async () => {
+    const { controller, deps, log } = await opened();
+    const insert = deps.mainWindow?.insert as ReturnType<typeof vi.fn> | undefined;
+    insert?.mockImplementationOnce(() => {
+      controller.blurred();
+      return true;
+    });
+    await controller.deliverToEditor(snippet);
+    expect(log.filter((entry) => entry === "hide")).toHaveLength(1);
   });
 });
 

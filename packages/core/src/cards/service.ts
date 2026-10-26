@@ -66,9 +66,10 @@ export interface CardFile {
 
 export interface ExportCardsInput {
   ids: string[];
-  mode?: "direct" | "indirect" | undefined;
+  mode?: "direct" | "indirect" | "cite" | undefined;
   format?: "html" | "text" | "pandoc" | "latex" | "typst" | undefined;
   project?: string | undefined;
+  locale?: string | undefined;
 }
 
 const PATCH_KEYS = new Set(["note", "paraphrase", "extra", "kind", "tags", "locator"]);
@@ -438,7 +439,7 @@ export class CardService {
       mode: input.mode ?? "direct",
       format: input.format ?? "html",
       style: project?.style ?? defaults.style,
-      locale: project?.locale ?? defaults.locale,
+      locale: input.locale ?? project?.locale ?? defaults.locale,
       policy: project?.export,
     });
   }

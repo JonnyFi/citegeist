@@ -455,6 +455,7 @@ async function start(): Promise<void> {
         ? w.loadURL(`${RENDERER_URL}#/quick-insert`)
         : w.loadFile(UI_INDEX, { hash: "/quick-insert" }),
     isOwnUrl,
+    mainWindow: () => window,
     onHotkeyError: (message) => dialog.showErrorBox(mt("quickInsert.hotkeyError"), message),
   });
   const link = findDeepLink(process.argv);

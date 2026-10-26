@@ -1,5 +1,5 @@
 import { type EditorView, WidgetType } from "@codemirror/view";
-import { configFacet, toggleFrontmatterEffect } from "./config";
+import { configFacet, setFocusEffect, toggleFrontmatterEffect } from "./config";
 import type { CardEmbed, OpenLinkEvent } from "./types";
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -169,5 +169,46 @@ export class CardEmbedWidget extends WidgetType {
   }
   override ignoreEvent(event: Event): boolean {
     return event.target instanceof HTMLElement && event.target.closest(".cm-card-open") !== null;
+  }
+}
+
+/**
+ * A Pandoc citation cluster drawn as its in-text form. A press on it moves the cursor into the
+ * cluster, which turns it back into source text.
+ */
+export class CitationChipWidget extends WidgetType {
+  constructor(
+    readonly text: string,
+    readonly pos: number,
+    readonly raw: string = "",
+  ) {
+    super();
+  }
+  override eq(other: WidgetType): boolean {
+    return (
+      other instanceof CitationChipWidget &&
+      other.text === this.text &&
+      other.pos === this.pos &&
+      other.raw === this.raw
+    );
+  }
+  override toDOM(view: EditorView): HTMLElement {
+    const chip = el("span", "cm-cite-chip", this.text);
+    chip.title = this.raw;
+    chip.setAttribute("role", "button");
+    chip.setAttribute("aria-label", this.raw);
+    chip.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      const at = view.posAtDOM(chip);
+      view.dispatch({
+        selection: { anchor: at + 1 },
+        effects: setFocusEffect.of(true),
+      });
+      view.focus();
+    });
+    return chip;
+  }
+  override ignoreEvent(): boolean {
+    return true;
   }
 }

@@ -1,13 +1,17 @@
 import {
+  acceptCompletion,
   autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
+  completionStatus,
+  selectedCompletion,
 } from "@codemirror/autocomplete";
-import type { Extension } from "@codemirror/state";
-import { citationSource } from "./citations";
+import { type Extension, Prec } from "@codemirror/state";
+import { type EditorView, keymap } from "@codemirror/view";
+import { cardHint, citationSource, isCitationOption, withInsertKind } from "./citations";
 import { configFacet } from "./config";
-import type { EditorLabels, Suggestion } from "./types";
+import type { CitationInsertKind, EditorLabels, Suggestion } from "./types";
 
 const TRIGGER = /!?\[\[[^[\]\n|#]*$/;
 
@@ -82,9 +86,32 @@ export async function wikiLinkSource(context: CompletionContext): Promise<Comple
   return { from, options, filter: false };
 }
 
-export const wikiLinkAutocomplete: Extension = autocompletion({
-  override: [wikiLinkSource, citationSource],
-  activateOnTyping: true,
-  icons: false,
-  closeOnBlur: true,
-});
+/** Accepts the selected citation (source or card) as `kind`; other completions are left alone. */
+function acceptAs(kind: CitationInsertKind) {
+  return (view: EditorView): boolean => {
+    if (completionStatus(view.state) !== "active") return false;
+    if (!isCitationOption(selectedCompletion(view.state) ?? undefined)) return false;
+    return withInsertKind(kind, () => acceptCompletion(view));
+  };
+}
+
+// Enter accepts as it always does, which for a card means the verbatim quote. Shift+Enter and
+// Alt+Enter pick the other kinds; for a source all three write the same.
+const citationKeys = Prec.highest(
+  keymap.of([
+    { key: "Enter", run: acceptAs("direct") },
+    { key: "Shift-Enter", run: acceptAs("indirect") },
+    { key: "Alt-Enter", run: acceptAs("cite") },
+  ]),
+);
+
+export const wikiLinkAutocomplete: Extension = [
+  autocompletion({
+    override: [wikiLinkSource, citationSource],
+    activateOnTyping: true,
+    icons: false,
+    closeOnBlur: true,
+    addToOptions: [{ render: (completion, state) => cardHint(completion, state), position: 90 }],
+  }),
+  citationKeys,
+];

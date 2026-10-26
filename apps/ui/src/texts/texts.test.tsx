@@ -1,4 +1,4 @@
-import { citationCompletions, noteEditorAt } from "@citegeist/editor";
+import { citationCompletions, noteEditorAt, withInsertKind } from "@citegeist/editor";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
@@ -25,6 +25,11 @@ async function editor() {
   return { content, instance };
 }
 
+/** Citations on screen, as chips (known) or marks (unknown or being edited). */
+const pieces = () => document.querySelectorAll(".cm-cite, .cm-cite-chip").length;
+
+const chips = () => [...document.querySelectorAll(".cm-cite-chip")].map((el) => el.textContent);
+
 const marks = () =>
   [...document.querySelectorAll(".cm-cite")].map((el) => ({
     text: el.textContent,
@@ -41,25 +46,26 @@ describe("the Texte tab", () => {
     expect(rows[0]).toHaveTextContent(/\d+ Wörter, 3 Quellen/);
   });
 
-  it("opens the first text in the editor and marks known and unknown citekeys", async () => {
+  it("opens the first text in the editor and shows the known citations as chips", async () => {
     const data = createFixtures();
     textsStoreFor(data).texts.get("phd-proposal")?.get("kapitel-2")?.body.concat("");
     renderApp(TEXTS, data);
     const { content } = await editor();
     await waitFor(() => expect(content.textContent).toContain("Luhmann setzt Kommunikation"));
-    await waitFor(() => expect(marks()).toHaveLength(3));
-    expect(marks()).toEqual([
-      { text: "luhmann1984soziale", unknown: false },
-      { text: "habermas1981theorie", unknown: false },
-      { text: "gillespie2018custodians", unknown: false },
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    expect(chips()).toEqual([
+      "(Luhmann, 1984, S. 31)",
+      "(vgl. Habermas, 1981)",
+      "(Gillespie, 2018)",
     ]);
+    expect(marks()).toEqual([]);
     expect(screen.queryByTestId("unknown-citekeys")).toBeNull();
   });
 
   it("flags a citekey the library does not know, in the text and in a summary", async () => {
     renderApp(TEXTS);
     const { instance } = await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     act(() => {
       instance.view.dispatch({
         changes: {
@@ -77,7 +83,7 @@ describe("the Texte tab", () => {
   it("saves edits with the hash of the file and reports the state", async () => {
     const { calls } = renderApp(TEXTS);
     const { instance } = await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     act(() => {
       instance.view.dispatch({ changes: { from: 0, insert: "Neu. " } });
     });
@@ -101,7 +107,7 @@ describe("the Texte tab", () => {
   it("completes @ from the library with the sources of the project first", async () => {
     renderApp(TEXTS);
     const { instance } = await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     act(() => {
       instance.view.dispatch({
         changes: { from: instance.view.state.doc.length, insert: "\nSiehe [@" },
@@ -116,6 +122,44 @@ describe("the Texte tab", () => {
     expect(project).toBeGreaterThanOrEqual(0);
     expect(project).toBeLessThan(other);
     expect(result?.options[0]).toMatchObject({ section: { name: "Dieses Projekt" } });
+  });
+
+  it("finds quote cards after @ by their quote and inserts the chosen kind", async () => {
+    const { calls } = renderApp(TEXTS);
+    const { instance } = await editor();
+    await waitFor(() => expect(pieces()).toBe(3));
+    const end = instance.view.state.doc.length;
+    act(() => {
+      instance.view.focus();
+      instance.view.dispatch({
+        changes: { from: end, insert: "\nSiehe [@Kommunikationen" },
+        selection: { anchor: end + "\nSiehe [@Kommunikationen".length },
+      });
+    });
+    const result = await citationCompletions(instance.view.state);
+    const cards = result?.options.filter((o) => o.type === "card") ?? [];
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards[0]?.label).toMatch(/Soziale Systeme bestehen aus Kommunikationen/);
+    expect(cards[0]?.detail).toBe("Luhmann 1984, S. 31");
+    expect(cards[0]?.section).toMatchObject({ name: "Karten" });
+
+    // Shift+Enter writes the paraphrase with the "vgl." citation
+    const option = cards[0];
+    const apply = option?.apply;
+    if (!option || !result || typeof apply !== "function") throw new Error("no card option");
+    const head = instance.view.state.selection.main.head;
+    act(() => {
+      withInsertKind("indirect", () => apply(instance.view, option, result.from, head));
+    });
+    await waitFor(() =>
+      expect(instance.getValue()).toMatch(/Siehe \S[^\n]*\[vgl\. @luhmann1984soziale, S\. 31\]$/),
+    );
+    expect(calls.find((c) => c.name === "cards.export")?.input).toMatchObject({
+      mode: "indirect",
+      format: "pandoc",
+      project: "phd-proposal",
+      locale: "de-DE",
+    });
   });
 
   it("creates a text from its title and opens it", async () => {
@@ -156,6 +200,119 @@ describe("the Texte tab", () => {
   });
 });
 
+describe("citation chips", () => {
+  it("restyle at once when the citation style of the text changes", async () => {
+    const user = userEvent.setup();
+    renderApp(TEXTS);
+    await editor();
+    await waitFor(() =>
+      expect(chips()).toEqual([
+        "(Luhmann, 1984, S. 31)",
+        "(vgl. Habermas, 1981)",
+        "(Gillespie, 2018)",
+      ]),
+    );
+    await user.click(screen.getByRole("combobox", { name: "Zitierstil" }));
+    await user.click(await screen.findByRole("option", { name: "Chicago (Autor-Jahr)" }));
+    await waitFor(() =>
+      expect(chips()).toEqual(["(Luhmann 1984, 31)", "(vgl. Habermas 1981)", "(Gillespie 2018)"]),
+    );
+    await user.click(screen.getByRole("combobox", { name: "Zitierstil" }));
+    await user.click(await screen.findByRole("option", { name: "APA" }));
+    await waitFor(() => expect(chips()[0]).toBe("(Luhmann, 1984, S. 31)"));
+  });
+
+  it("follow the language of the text in the locator terms", async () => {
+    const user = userEvent.setup();
+    renderApp(TEXTS);
+    await editor();
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    await user.click(screen.getByRole("combobox", { name: "Sprache" }));
+    await user.click(await screen.findByRole("option", { name: "Englisch (USA)" }));
+    await waitFor(() => expect(chips()[0]).toBe("(Luhmann, 1984, p. 31)"));
+  });
+
+  it("keep the Pandoc syntax in the file and show it again when the cursor enters", async () => {
+    renderApp(TEXTS);
+    const { instance } = await editor();
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    expect(instance.getValue()).toContain("[@luhmann1984soziale, S. 31]");
+    expect(document.querySelector(".cm-content")?.textContent).not.toContain("@luhmann1984soziale");
+    const at = instance.getValue().indexOf("@luhmann1984soziale") + 3;
+    act(() => {
+      instance.view.focus();
+      instance.view.dispatch({ selection: { anchor: at } });
+    });
+    await waitFor(() =>
+      expect(document.querySelector(".cm-content")?.textContent).toContain(
+        "[@luhmann1984soziale, S. 31]",
+      ),
+    );
+    expect(chips()).toHaveLength(2);
+  });
+
+  it("draw clusters of a new citation only for sources the library knows", async () => {
+    renderApp(TEXTS);
+    const { instance } = await editor();
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    act(() => {
+      instance.view.dispatch({
+        changes: {
+          from: instance.view.state.doc.length,
+          insert: "\nNoch offen [@nobody2020none].",
+        },
+      });
+    });
+    await waitFor(() => expect(marks().at(-1)).toEqual({ text: "nobody2020none", unknown: true }));
+    expect(chips()).toHaveLength(3);
+  });
+});
+
+describe("Belege erkennen", () => {
+  const PLAIN =
+    "\nEr schreibt: „Das gilt.“ (Luhmann, 1984, S. 31) und sinngemäß (vgl. Habermas, 1981).\n";
+
+  it("stays away while the text has no plain citation", async () => {
+    renderApp(TEXTS);
+    await editor();
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    expect(screen.queryByRole("button", { name: /Belege erkennen/ })).toBeNull();
+  });
+
+  it("offers to convert plain citations after the person confirms, and the chips follow the style", async () => {
+    const user = userEvent.setup();
+    renderApp(TEXTS);
+    const { instance } = await editor();
+    await waitFor(() => expect(chips()).toHaveLength(3));
+    act(() => {
+      instance.view.dispatch({ changes: { from: instance.view.state.doc.length, insert: PLAIN } });
+    });
+    const button = await screen.findByRole("button", { name: "Belege erkennen (2)" });
+    // nothing changes before the person agrees
+    expect(instance.getValue()).toContain("(Luhmann, 1984, S. 31) und");
+    await user.click(button);
+    const region = await screen.findByRole("region", { name: "Belege als Text" });
+    expect(region).toHaveTextContent("2 Belege stehen als gewöhnlicher Text im Dokument");
+    expect(region).toHaveTextContent("(Luhmann, 1984, S. 31)");
+    await user.click(within(region).getByRole("button", { name: "Abbrechen" }));
+    expect(instance.getValue()).toContain("(Luhmann, 1984, S. 31) und");
+
+    await user.click(screen.getByRole("button", { name: "Belege erkennen (2)" }));
+    await user.click(screen.getByRole("button", { name: "Umwandeln" }));
+    expect(instance.getValue()).toContain(
+      "„Das gilt.“ [@luhmann1984soziale, S. 31] und sinngemäß [vgl. @habermas1981theorie].",
+    );
+    await waitFor(() => expect(chips()).toHaveLength(5));
+    expect(screen.queryByRole("button", { name: /Belege erkennen/ })).toBeNull();
+
+    await user.click(screen.getByRole("combobox", { name: "Zitierstil" }));
+    await user.click(await screen.findByRole("option", { name: "Chicago (Autor-Jahr)" }));
+    await waitFor(() =>
+      expect(chips().slice(3)).toEqual(["(Luhmann 1984, 31)", "(vgl. Habermas 1981)"]),
+    );
+  });
+});
+
 describe("the empty project", () => {
   it("offers to create the first text", async () => {
     const data = createFixtures();
@@ -187,7 +344,7 @@ describe("export", () => {
     const user = userEvent.setup();
     const { calls } = renderApp(TEXTS);
     const { instance } = await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     act(() => {
       instance.view.dispatch({ changes: { from: 0, insert: "Frisch. " } });
     });
@@ -203,7 +360,7 @@ describe("export", () => {
     const user = userEvent.setup();
     renderApp(TEXTS);
     const { instance } = await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     act(() => {
       instance.view.dispatch({
         changes: { from: instance.view.state.doc.length, insert: "\n[@nobody2020none]" },
@@ -376,7 +533,7 @@ describe("quote cards", () => {
     snippet = /Soziale Systeme bestehen/,
   ) {
     await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     const rows = await screen.findAllByTestId("panel-card");
     const row = rows.find((r) => snippet.test(r.textContent ?? ""));
     if (!row) throw new Error("card row not found");
@@ -394,7 +551,7 @@ describe("quote cards", () => {
     expect(instance.getValue()).toMatch(
       /Soziale Systeme bestehen aus Kommunikationen[^\n]*\[@luhmann1984soziale, S\. 31\]\n$/,
     );
-    await waitFor(() => expect(marks()).toHaveLength(4));
+    await waitFor(() => expect(pieces()).toBe(4));
   });
 
   it("inserts at the cursor once the person has put it somewhere", async () => {
@@ -416,12 +573,29 @@ describe("quote cards", () => {
     expect(instance.getValue()).toMatch(/\[vgl\. @luhmann1984soziale, S\. 31\]Plattformen/);
   });
 
+  it("inserts the citation alone from the menu of the card", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp(TEXTS);
+    const card = await openCard(user);
+    expect(within(card).queryByRole("button", { name: "Nur Beleg" })).toBeNull();
+    await user.click(within(card).getByRole("button", { name: "Weitere Aktionen" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Nur Beleg" }));
+    await within(card).findByText("Eingefügt in „Kapitel 2“");
+    expect(calls.find((c) => c.name === "cards.export")?.input).toMatchObject({
+      mode: "cite",
+      format: "pandoc",
+      project: "phd-proposal",
+    });
+    const { instance } = await editor();
+    expect(instance.getValue()).toMatch(/\n\n\[@luhmann1984soziale, S\. 31\]\n$/);
+  });
+
   it("still inserts into the last open text after the person left the tab", async () => {
     const user = userEvent.setup();
     const data = createReflowFixtures();
     const view = renderApp(TEXTS, data);
     await editor();
-    await waitFor(() => expect(marks()).toHaveLength(3));
+    await waitFor(() => expect(pieces()).toBe(3));
     await act(async () => {
       await view.history.push("/items/luhmann1984soziale?tab=read");
     });
@@ -491,5 +665,34 @@ describe("createCitationProvider", () => {
       detail: "Luhmann 1984",
       group: "library",
     });
+  });
+
+  it("offers quote cards after the sources, with the page, and inserts through insertCard", async () => {
+    const insertCard = async (id: string, kind: string) => `${kind}:${id}`;
+    const provider = createCitationProvider(items, new Set(["luhmann1984soziale"]), {
+      cards: [
+        {
+          id: "c_1",
+          citekey: "luhmann1984soziale",
+          quote: "Soziale Systeme bestehen aus Kommunikationen.",
+          where: "S. 31",
+        },
+        { id: "c_2", citekey: "nobody2020none", quote: "Unknown source", where: "S. 1" },
+      ],
+      insertCard,
+    });
+    const found = await provider.suggest("kommunikation");
+    expect(found).toEqual([
+      expect.objectContaining({
+        kind: "card",
+        id: "c_1",
+        key: "luhmann1984soziale",
+        detail: "Luhmann 1984, S. 31",
+        group: "project",
+      }),
+    ]);
+    const all = await provider.suggest("");
+    expect(all.map((s) => s.kind ?? "source")).toEqual(["source", "source", "card"]);
+    expect(await provider.insertCard?.("c_1", "cite")).toBe("cite:c_1");
   });
 });

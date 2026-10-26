@@ -220,7 +220,16 @@ function ConnectForm({ cardId, onDone }: { cardId: string; onDone: () => void })
  * popover) and "An den Agent" (the card becomes a context chip of the chat). Nothing else of the
  * card changes while the menu is closed.
  */
-export function CardMenu({ card, className }: { card: CardData; className?: string }) {
+export function CardMenu({
+  card,
+  className,
+  onCiteOnly,
+}: {
+  card: CardData;
+  className?: string;
+  /** Puts the citation alone (no quote, no paraphrase) into the open text or on the clipboard. */
+  onCiteOnly?: () => void;
+}) {
   const { t } = useI18n();
   const { frontmatter: fm, body } = card;
   const trigger = useRef<HTMLButtonElement>(null);
@@ -260,6 +269,11 @@ export function CardMenu({ card, className }: { card: CardData; className?: stri
               aria-label={t("cardLink.more")}
               className="min-w-40 border border-line bg-surface text-ink"
             >
+              {onCiteOnly ? (
+                <Menu.Item className={entry} onClick={onCiteOnly}>
+                  {t("cardLink.citeOnly")}
+                </Menu.Item>
+              ) : null}
               <Menu.Item className={entry} onClick={() => setConnecting(true)}>
                 {t("cardLink.connect")}
               </Menu.Item>

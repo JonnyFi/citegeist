@@ -49,6 +49,11 @@ export interface NoteEditor {
    * takes the text at the end, in a paragraph of its own, rather than at the top.
    */
   insert(text: string): void;
+  /**
+   * Applies several replacements as one undoable edit that `onChange` reports. Offsets are
+   * document offsets of the current text and must not overlap.
+   */
+  replaceRanges(changes: Array<{ from: number; to: number; insert: string }>): void;
   focus(): void;
   destroy(): void;
 }
@@ -212,6 +217,10 @@ export function createNoteEditor(options: NoteEditorOptions): NoteEditor {
         userEvent: "input.paste",
       });
       touched = true;
+    },
+    replaceRanges(changes) {
+      if (changes.length === 0) return;
+      view.dispatch({ changes, userEvent: "input.replace" });
     },
     focus: () => view.focus(),
     destroy: () => view.destroy(),

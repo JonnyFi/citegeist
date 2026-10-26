@@ -17,7 +17,8 @@ import {
   type QuickInsertSettings,
   saveQuickInsertSettings,
 } from "./settings.js";
-import { macFrontApp, noFrontApp } from "./system.js";
+import { macBundleIdOfPid, macFrontApp, noFrontApp } from "./system.js";
+import { EXTERNAL_TARGET, type PaletteTarget, parseEditorState } from "./target.js";
 
 /** System Settings, Privacy & Security, Accessibility. */
 const ACCESSIBILITY_PANE =
@@ -32,6 +33,8 @@ export interface RegisterQuickInsertOptions {
   load(window: BrowserWindow): void | Promise<void>;
   /** True for URLs the palette may navigate to (its own page). Everything else is blocked. */
   isOwnUrl(url: string): boolean;
+  /** The main window, or null while there is none. */
+  mainWindow(): BrowserWindow | null;
   /** Called when the hotkey could not be registered, so the app can tell the user. */
   onHotkeyError?(message: string): void;
 }
@@ -55,6 +58,18 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
   let settings = loadQuickInsertSettings(opts.userDataDir);
   let win: BrowserWindow | null = null;
   let loaded = false;
+  // Bundle id of citegeist itself, to tell "citegeist was in front" from "another app was".
+  let ownBundleId: string | undefined;
+  if (process.platform === "darwin") {
+    void macBundleIdOfPid(process.pid).then((id) => {
+      ownBundleId = id;
+    });
+  }
+
+  const liveMainWindow = (): BrowserWindow | null => {
+    const w = opts.mainWindow();
+    return w && !w.isDestroyed() && !w.webContents.isDestroyed() ? w : null;
+  };
 
   const ensureWindow = (): BrowserWindow => {
     if (win && !win.isDestroyed()) return win;
@@ -131,8 +146,30 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
       unregister: (accelerator) => globalShortcut.unregister(accelerator),
     },
     window: paletteWindow,
-    notifyShown() {
-      if (win && !win.isDestroyed() && loaded) win.webContents.send(QI.show);
+    notifyShown(target: PaletteTarget) {
+      if (win && !win.isDestroyed() && loaded) win.webContents.send(QI.show, target);
+    },
+    get ownBundleId() {
+      return ownBundleId;
+    },
+    mainWindow: {
+      isFocused() {
+        const w = liveMainWindow();
+        return Boolean(w?.isVisible() && !w.isMinimized() && w.isFocused());
+      },
+      focus() {
+        const w = liveMainWindow();
+        if (!w) return;
+        if (w.isMinimized()) w.restore();
+        w.show();
+        w.focus();
+      },
+      insert(snippet) {
+        const w = liveMainWindow();
+        if (!w || w.webContents.isLoading()) return false;
+        w.webContents.send(QI.insert, snippet);
+        return true;
+      },
     },
     clipboard: {
       // HTML and plain text in one entry: a word processor pastes the formatted version, a code editor the plain one.
@@ -161,12 +198,23 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
   const fromPalette = (sender: Electron.WebContents) =>
     Boolean(win && !win.isDestroyed() && sender === win.webContents);
   // Every handler answers the app's own renderer only (M8): the palette and the settings page.
+  // The main window publishes its open text; only its own page may.
+  const fromMainWindow = (sender: Electron.WebContents) => {
+    const w = liveMainWindow();
+    return Boolean(w && sender === w.webContents);
+  };
   const fromOwnPage = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     isTrustedSender(event.senderFrame, opts.isOwnUrl);
 
   ipcMain.handle(QI.deliver, async (event, payload: unknown) => {
     if (!fromPalette(event.sender) || !fromOwnPage(event)) throw new Error("not the palette");
-    const p = payload as Partial<CitationPayload> | null;
+    const p = payload as (Partial<CitationPayload> & { kind?: unknown }) | null;
+    if (p?.kind === "editor") {
+      if (typeof p.text !== "string" || p.text.length > 1_000_000) {
+        throw new Error("invalid citation payload");
+      }
+      return controller.deliverToEditor(p.text);
+    }
     if (!p || typeof p.text !== "string" || p.text.length > 1_000_000) {
       throw new Error("invalid citation payload");
     }
@@ -178,6 +226,23 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
   });
   ipcMain.on(QI.requestAccessibility, (event) => {
     if (fromPalette(event.sender) && fromOwnPage(event)) controller.requestAccessibility();
+  });
+  ipcMain.on(QI.target, (event) => {
+    event.returnValue =
+      fromPalette(event.sender) && fromOwnPage(event) ? controller.currentTarget : EXTERNAL_TARGET;
+  });
+  // The editor state belongs to one page load: a reload (library switch) or a closed window drops it.
+  const watched = new WeakSet<Electron.WebContents>();
+  ipcMain.on(QI.editorState, (event, state: unknown) => {
+    if (!fromMainWindow(event.sender) || !fromOwnPage(event)) return;
+    controller.setEditor(parseEditorState(state));
+    if (watched.has(event.sender)) return;
+    watched.add(event.sender);
+    const clear = () => controller.setEditor(null);
+    event.sender.on("did-start-navigation", (details) => {
+      if (details.isMainFrame && !details.isSameDocument) clear();
+    });
+    event.sender.once("destroyed", clear);
   });
   ipcMain.on(QI.hotkey, (event) => {
     event.returnValue = fromOwnPage(event) ? settings.accelerator : "";
@@ -222,7 +287,13 @@ export function registerQuickInsert(opts: RegisterQuickInsertOptions): QuickInse
       controller.dispose();
       for (const channel of [QI.deliver, QI.getSettings, QI.setSettings])
         ipcMain.removeHandler(channel);
-      for (const channel of [QI.close, QI.requestAccessibility, QI.hotkey])
+      for (const channel of [
+        QI.close,
+        QI.requestAccessibility,
+        QI.hotkey,
+        QI.target,
+        QI.editorState,
+      ])
         ipcMain.removeAllListeners(channel);
       if (win && !win.isDestroyed()) win.destroy();
       win = null;

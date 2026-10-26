@@ -33,3 +33,4 @@ This folder holds the decisions that shape citegeist, one short record per decis
 | 0027 | [Paragraph locators for unpaginated sources](0027-paragraph-locators.md) | accepted |
 | 0028 | [Connections from cards](0028-connections-from-cards.md) | accepted |
 | 0029 | [AI backend switch and fallback](0029-ai-backend-fallback.md) | accepted |
+| 0030 | [One way to insert a citation](0030-unified-citation-insert.md) | accepted |

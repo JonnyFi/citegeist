@@ -140,6 +140,44 @@ function citationLabel(
   return `${surname(fm)}${year}${locator ? `, ${lang === "en" ? "p." : "S."} ${locator}` : ""}`;
 }
 
+const LOCATOR_TERMS = {
+  en: { page: "p.", paragraph: "para." },
+  de: { page: "S.", paragraph: "Abs." },
+} as const;
+
+/** "p. 31" or "Abs. 4": the locator term of a language (mock of the CSL terms). */
+function locatorTerm(label: string | undefined, lang: Lang): string {
+  const terms = LOCATOR_TERMS[lang];
+  return label === "paragraph" ? terms.paragraph : terms.page;
+}
+
+function langOf(locale: string | undefined, fallback: Lang): Lang {
+  if (!locale) return fallback;
+  return locale.toLowerCase().startsWith("en") ? "en" : "de";
+}
+
+/**
+ * The in-text citation of the mock in a style: APA and DGPs "(Luhmann, 1984, S. 31)", Chicago
+ * "(Luhmann 1984, 31)". Without a style it keeps the plain form "(Luhmann 1984, S. 31)".
+ */
+function styledCitation(
+  fm: ItemFrontmatter,
+  ref: { locator?: string | undefined; label?: string | undefined; prefix?: string | undefined },
+  style: string | undefined,
+  lang: Lang,
+): string {
+  const year = fm.issued !== undefined ? String(fm.issued).slice(0, 4) : undefined;
+  const chicago = style === "chicago-author-date";
+  const head = year ? `${surname(fm)}${style && !chicago ? "," : ""} ${year}` : surname(fm);
+  const where = ref.locator
+    ? chicago
+      ? `, ${ref.locator}`
+      : `, ${locatorTerm(ref.label, lang)} ${ref.locator}`
+    : "";
+  const prefix = ref.prefix ? `${ref.prefix} ` : "";
+  return `(${prefix}${head}${where})`;
+}
+
 function firstSentence(text: string): string {
   const m = /^.*?[.!?](\s|$)/.exec(text.trim());
   return (m ? m[0] : text).trim();
@@ -746,23 +784,35 @@ export function createMockRegistry(
     .bind(cardsExport, async (_ctx, input) => {
       const lines: string[] = [];
       const htmls: string[] = [];
+      const lang = langOf(input.locale, data.lang);
       for (const id of input.ids) {
         const card = findCard(id);
         const item = data.items.get(card.frontmatter.item);
         if (!item) continue;
-        const loc = card.frontmatter.locator?.start;
+        const locator = card.frontmatter.locator;
+        const loc = locator?.start;
         const quote = card.body.quote;
-        const en = data.lang === "en";
+        const en = lang === "en";
         const [open, close] = en ? ["\u201c", "\u201d"] : ["\u201e", "\u201c"];
         const cf = en ? "cf." : "vgl.";
         const own = card.body.note || card.body.paraphrase || quote;
+        const term = locatorTerm(locator?.label, lang);
         if (input.format === "pandoc") {
-          const at = `@${item.frontmatter.citekey}${loc ? `, ${en ? "p." : "S."} ${loc}` : ""}`;
-          lines.push(input.mode === "direct" ? `"${quote}" [${at}]` : `${own} [${cf} ${at}]`);
+          const at = `@${item.frontmatter.citekey}${loc ? `, ${term} ${loc}` : ""}`;
+          lines.push(
+            input.mode === "direct"
+              ? `${open}${quote}${close} [${at}]`
+              : input.mode === "indirect"
+                ? `${own} [${cf} ${at}]`
+                : `[${at}]`,
+          );
           continue;
         }
-        const label = citationLabel(item.frontmatter, loc, data.lang);
-        if (input.mode === "direct") {
+        const label = citationLabel(item.frontmatter, loc, lang);
+        if (input.mode === "cite") {
+          lines.push(`(${label})`);
+          htmls.push(`<p>(${label})</p>`);
+        } else if (input.mode === "direct") {
           lines.push(`${open}${quote}${close} (${label})`);
           htmls.push(`<blockquote>${open}${quote}${close}</blockquote><p>(${label})</p>`);
         } else {
@@ -802,9 +852,26 @@ export function createMockRegistry(
             .join("\n"),
         };
       }
-      return {
-        text: `(${items.map((i) => citationLabel(i.fm, i.locator, data.lang)).join("; ")})`,
-      };
+      const lang = langOf(input.locale, data.lang);
+      const style = input.style;
+      if (input.format === "pandoc") {
+        const parts = input.items.flatMap((r) => {
+          if (!data.items.has(r.citekey)) return [];
+          const at = `@${r.citekey}${r.locator ? `, ${locatorTerm(r.label, lang)} ${r.locator}` : ""}`;
+          return [`${r.prefix ? `${r.prefix} ` : ""}${at}`];
+        });
+        return { text: `[${parts.join("; ")}]` };
+      }
+      const rendered = input.items.flatMap((r) => {
+        const found = data.items.get(r.citekey);
+        return found ? [styledCitation(found.frontmatter, r, style, lang)] : [];
+      });
+      // One cluster: "(A, 2013; B, 2014)". The mock joins the parts of the single citations.
+      const text =
+        rendered.length <= 1
+          ? (rendered[0] ?? "")
+          : `(${rendered.map((r) => r.slice(1, -1)).join("; ")})`;
+      return { text, ...(input.format === "html" ? { html: text } : {}) };
     })
     .bind(jobsGet, async (_ctx, input) => {
       const imported = importJobs?.get(input.job);

@@ -10,7 +10,8 @@ import { type LocaleTerms, localeTerms, resolveLocale } from "./styles.js";
 export type CardExportFormat = "html" | "text" | "pandoc" | "latex" | "typst";
 export type ParaphraseSource = "ai" | "own" | "own-else-ai" | "none";
 type ResolvedPolicy = ReturnType<typeof ExportPolicy.parse>;
-export type CardExportMode = "direct" | "indirect";
+/** direct: quote plus citation; indirect: paraphrase plus "vgl." citation; cite: the citation only. */
+export type CardExportMode = "direct" | "indirect" | "cite";
 
 export interface CardExportEntry {
   card: Pick<CardFrontmatter, "locator">;
@@ -209,8 +210,9 @@ function paraphraseText(
 }
 
 /**
- * Renders one card as a direct quote ("„Wortlaut“ (Luhmann 1984, S. 31)") or as an indirect
- * citation (paraphrase plus citation, with "vgl." when the locale is German). The project's
+ * Renders one card as a direct quote ("„Wortlaut“ (Luhmann 1984, S. 31)"), as an indirect
+ * citation (paraphrase plus citation, with "vgl." when the locale is German) or as the citation
+ * alone (mode "cite", no prefix). The project's
  * ExportPolicy decides which paraphrase is used and whether an AI paraphrase is labeled.
  * When the policy yields no paraphrase, an indirect export contains the citation only.
  */
@@ -231,7 +233,7 @@ export function exportCard(entry: CardExportEntry, opts: CardExportOptions = {})
     const pieces: string[] = [];
     if (mode === "direct") {
       pieces.push(renderQuote(entry.body.quote, resolved.terms, fmt, esc));
-    } else {
+    } else if (mode === "indirect") {
       const para = paraphraseText(entry.body, policy);
       if (para) {
         pieces.push(esc(para.text.replace(/\s*\n\s*/g, " ")));

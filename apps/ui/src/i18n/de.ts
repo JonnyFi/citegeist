@@ -203,6 +203,7 @@ export const de = {
   "card.quoteIndirectHint": "Kopiert die Notiz oder die Paraphrase mit „vgl.“-Beleg.",
   "card.copiedDirect": "Wörtliches Zitat kopiert.",
   "card.copiedIndirect": "Sinngemäßes Zitat kopiert.",
+  "card.copiedCite": "Beleg kopiert.",
   "card.openInReader": "Im Reader zeigen",
   "card.orphaned": "Markierung nicht gefunden",
   "card.orphanedHint": "Die Stelle ließ sich im Text nicht mehr finden.",

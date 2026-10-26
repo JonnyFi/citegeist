@@ -395,13 +395,16 @@ export const cardsRegenerate = defineContract({
 });
 export const cardsExport = defineContract({
   name: "cards.export",
-  summary: "Render cards as direct or indirect citations for the clipboard or a document",
+  summary:
+    "Render cards as direct citations, indirect citations or citations alone (cite) for the clipboard or a document",
   access: "read",
   input: z.object({
     ids: z.array(CardFrontmatter.shape.id).min(1),
-    mode: z.enum(["direct", "indirect"]).default("direct"),
+    mode: z.enum(["direct", "indirect", "cite"]).default("direct"),
     format: z.enum(["html", "text", "pandoc", "latex", "typst"]).default("html"),
     project: ProjectSlug.optional(),
+    /** Locale of the quote marks, locator terms and style; defaults to the project's, else the library's. */
+    locale: z.string().optional(),
   }),
   output: z.object({ html: z.string().optional(), text: z.string() }),
 });

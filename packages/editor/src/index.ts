@@ -1,7 +1,14 @@
 export const name = "@citegeist/editor";
 
 export { filterSuggestions, wikiLinkAutocomplete, wikiLinkSource } from "./autocomplete";
-export { citationCompletions, citationMarks, citationSource, filterCitations } from "./citations";
+export {
+  citationCompletions,
+  citationMarks,
+  citationSource,
+  filterCitations,
+  withInsertKind,
+} from "./citations";
+export { type Cluster, type ClusterRef, scanClusters } from "./clusters";
 export {
   createNoteEditor,
   type NoteEditor,
@@ -9,10 +16,12 @@ export {
   noteEditorAt,
 } from "./editor";
 export { buildDecorations } from "./live-preview";
+export { type LocatorLabel, labelForTerm, termFor } from "./locators";
 export { type NoteEditorProps, NoteEditorView } from "./react";
 export { frontmatterEnd, parseInner, scanWikiLinks, type WikiMatch } from "./scan";
 export {
   type CardEmbed,
+  type CitationInsertKind,
   type CitationProvider,
   type CitationSuggestion,
   DEFAULT_LABELS,

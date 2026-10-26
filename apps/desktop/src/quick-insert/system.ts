@@ -21,6 +21,18 @@ export function parseAsn(output: string): string | undefined {
   return /ASN:0x[0-9a-f]+-0x[0-9a-f]+:?/i.exec(output)?.[0]?.replace(/:$/, "");
 }
 
+/** Bundle id of the app that runs the process `pid` (citegeist itself), or undefined when macOS does not know it. */
+export async function macBundleIdOfPid(pid: number, exec: Exec = run): Promise<string | undefined> {
+  if (!Number.isInteger(pid) || pid <= 0) return undefined;
+  try {
+    return parseBundleId(
+      await exec("/usr/bin/lsappinfo", ["info", "-only", "bundleid", "-app", String(pid)]),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * What the palette needs from the operating system around it: which app has focus, how to give
  * focus back, and how to type Cmd+V into it. Only macOS has all three. None of the macOS calls

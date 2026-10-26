@@ -5,6 +5,9 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 // cannot load a shared chunk, so it must not import ../quick-insert/channels. A test pins them.
 const QI_GET_SETTINGS = "citegeist:quick-insert:get-settings";
 const QI_SET_SETTINGS = "citegeist:quick-insert:set-settings";
+// The main window tells the palette's controller which text is open, and receives its snippets.
+const QI_EDITOR_STATE = "citegeist:quick-insert:editor-state";
+const QI_INSERT = "citegeist:quick-insert:insert";
 
 // The connection is read once per page load. After a library switch the main process reloads the
 // window, which runs this script again with the new token and port.
@@ -27,6 +30,16 @@ const bridge: CitegeistBridge = {
   quickInsert: {
     get: () => ipcRenderer.invoke(QI_GET_SETTINGS),
     set: (patch) => ipcRenderer.invoke(QI_SET_SETTINGS, patch),
+  },
+  textLink: {
+    publish: (text) => ipcRenderer.send(QI_EDITOR_STATE, text),
+    onInsert(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, snippet: string) => listener(snippet);
+      ipcRenderer.on(QI_INSERT, handler);
+      return () => {
+        ipcRenderer.removeListener(QI_INSERT, handler);
+      };
+    },
   },
   update: {
     get: () => ipcRenderer.invoke("citegeist:update-get"),
