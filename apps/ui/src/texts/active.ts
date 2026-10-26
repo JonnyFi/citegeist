@@ -14,6 +14,8 @@ export interface ActiveText {
   project: string;
   text: string;
   title: string;
+  /** BCP 47 language of the text (its own, else the project's): the terms of Pandoc locators. */
+  lang?: string | undefined;
 }
 
 interface Store {

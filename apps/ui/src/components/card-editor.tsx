@@ -1,4 +1,4 @@
-import { cardsExport, cardsRegenerate, cardsUpdate } from "@citegeist/ops";
+import { cardsRegenerate, cardsUpdate } from "@citegeist/ops";
 import type { ModelStamp } from "@citegeist/schema";
 import { CardKind } from "@citegeist/schema";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -8,6 +8,7 @@ import { type I18n, useI18n } from "../i18n";
 import { AI_LANGUAGES } from "../lib/ai-language";
 import { type CardJob, isPending } from "../lib/card-jobs";
 import { kindColor } from "../lib/cards";
+import { type CitationKind, renderCitation } from "../lib/citation-insert";
 import { copyRich } from "../lib/clipboard";
 import { locatorText } from "../lib/format";
 import { useCore, useOpMutation } from "../lib/hooks";
@@ -179,31 +180,35 @@ export function QuoteCard({
       { onSuccess: (out) => onJob?.(fm.id, out.job, fm.paraphrase?.at) },
     );
 
-  const copyAs = async (mode: "direct" | "indirect") => {
+  const copyAs = async (kind: CitationKind) => {
     setCopy(null);
     try {
+      const subject = { type: "card", id: fm.id } as const;
       if (insertTarget) {
-        // a text is open: the quotation goes into it, with the citation in Pandoc syntax (docs/decisions/0002-writing-in-markdown-with-pandoc.md)
-        const out = await core.call(cardsExport, {
-          ids: [fm.id],
-          mode,
-          format: "pandoc",
+        // a text is open: the citation goes into it in Pandoc syntax (docs/decisions/0002-writing-in-markdown-with-pandoc.md)
+        const out = await renderCitation(core, subject, kind, {
+          type: "text",
           project: insertTarget.project,
+          lang: insertTarget.lang,
         });
         const into = await insertIntoText(core, out.text);
         setCopy({ kind: "ok", text: t("card.insertedIn", { title: into.title }) });
         return;
       }
-      const out = await core.call(cardsExport, {
-        ids: [fm.id],
-        mode,
-        format: "html",
-        ...(fm.projects[0] ? { project: fm.projects[0] } : {}),
+      const out = await renderCitation(core, subject, kind, {
+        type: "external",
+        project: fm.projects[0],
       });
       await copyRich(out);
       setCopy({
         kind: "ok",
-        text: t(mode === "direct" ? "card.copiedDirect" : "card.copiedIndirect"),
+        text: t(
+          kind === "direct"
+            ? "card.copiedDirect"
+            : kind === "indirect"
+              ? "card.copiedIndirect"
+              : "card.copiedCite",
+        ),
       });
     } catch (err) {
       setCopy({ kind: "error", text: describeError(err).message });
@@ -438,7 +443,11 @@ export function QuoteCard({
               >
                 {t("card.quoteIndirect")}
               </button>
-              <CardMenu card={card} className="border-l border-line" />
+              <CardMenu
+                card={card}
+                className="border-l border-line"
+                onCiteOnly={() => void copyAs("cite")}
+              />
             </div>
           ) : onOpenInReader ? (
             <div className="flex border-t border-line">
@@ -449,7 +458,11 @@ export function QuoteCard({
               >
                 {t("card.openInReader")}
               </button>
-              <CardMenu card={card} className="border-l border-line" />
+              <CardMenu
+                card={card}
+                className="border-l border-line"
+                onCiteOnly={() => void copyAs("cite")}
+              />
             </div>
           ) : null}
         </>

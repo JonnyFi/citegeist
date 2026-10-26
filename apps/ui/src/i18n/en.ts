@@ -199,6 +199,7 @@ export const en: Record<MessageKey, string> = {
   "card.quoteIndirectHint": 'Copies the note or the paraphrase with a "cf." citation.',
   "card.copiedDirect": "Verbatim quote copied.",
   "card.copiedIndirect": "Indirect quote copied.",
+  "card.copiedCite": "Citation copied.",
   "card.openInReader": "Show in reader",
   "card.orphaned": "Highlight not found",
   "card.orphanedHint": "The passage could not be found in the text any more.",
