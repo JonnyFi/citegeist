@@ -468,6 +468,7 @@ export const de = {
   ...litsearchDe,
   ...textsDe,
   "agent.tab": "Agent",
+  "aside.resize": "Breite der rechten Spalte",
   "agent.soon": "Der Agent-Chat folgt.",
   "rail.collapse": "Leiste einklappen",
   "rail.expand": "Leiste ausklappen",
