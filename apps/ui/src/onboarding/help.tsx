@@ -48,12 +48,12 @@ interface AgentOption {
   login: string;
 }
 
-/** Install and login commands of the agent CLIs citegeist runs. Same as install.sh prints. */
+/** Install and login commands of the agent CLIs citegeist runs (docs/guide/settings-and-models.md). */
 export const AGENT_OPTIONS: readonly AgentOption[] = [
   {
     id: "claude",
     name: "onb.agents.claude",
-    install: "curl -fsSL https://claude.ai/install.sh | bash",
+    install: "npm install -g @anthropic-ai/claude-code",
     login: "claude auth login",
   },
   {

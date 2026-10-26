@@ -2,7 +2,8 @@
 // mirror a design board can also be compared with the board files when DESIGN_BOARDS_DIR points
 // at a folder of them (the boards are not part of this repository).
 //
-//   pnpm --filter @citegeist/ui design-check            screenshots of the app
+//   pnpm --filter @citegeist/ui design-check            screenshots of the app (German)
+//   pnpm --filter @citegeist/ui design-check --lang=en  English screenshots with English file names
 //   DESIGN_BOARDS_DIR=<dir> pnpm --filter @citegeist/ui design-check --boards
 //                                                      also screenshots of the board files
 //
@@ -22,6 +23,39 @@ const port = process.env.DESIGN_CHECK_PORT ?? "5188";
 const url = `http://localhost:${port}`;
 const boardsDir = process.env.DESIGN_BOARDS_DIR;
 const withBoards = process.argv.includes("--boards") && Boolean(boardsDir);
+const lang = process.argv.includes("--lang=en") ? "en" : "de";
+
+/** UI texts the shots look for, German and English. */
+const TEXT = {
+  add: ["Hinzufügen", "Add"],
+  added: ["Hinzugefügt:", "Added:"],
+  sources: ["Metadatenquellen", "Metadata sources"],
+  chatAgent: ["Chat-Agent", "Chat agent"],
+  semantic: ["Suche nach Bedeutung", "Search by meaning"],
+  model: ["Embedding-Modell", "Embedding model"],
+  pathFile: ["Pfad zur Datei", "Path to the file"],
+  preview: ["Vorschau", "Preview"],
+  pathZotero: [
+    "Pfad zu zotero.sqlite oder zum Zotero-Ordner",
+    "Path to zotero.sqlite or to the Zotero folder",
+  ],
+  projects: ["Projekten", "Projects"],
+  run: ["Importieren", "Import"],
+  newMatrix: ["Neue Matrix", "New matrix"],
+  createMatrix: ["Matrix anlegen", "Create matrix"],
+  createForm: ["Matrix anlegen", "Create a matrix"],
+  question: ["Fragestellung", "Research question"],
+  method: ["Methode", "Method"],
+  finding: ["Ergebnis", "Result"],
+  matrixTable: ["Literaturmatrix", "Literature matrix"],
+  fillOpen: ["Offene Zellen füllen", "Fill open cells"],
+  filling: ["Zellen werden gefüllt", "Filling cells"],
+  related: ["Verwandte Werke", "Related works"],
+  citing: ["Zitiert von", "Cited by"],
+  retracted: ["Zurückgezogen", "Retracted"],
+  composer: ["Nachricht an den Agent", "Message to the agent"],
+};
+const tx = (key) => TEXT[key][lang === "en" ? 1 : 0];
 
 const READ = "#/items/luhmann1984soziale?tab=read";
 
@@ -29,6 +63,7 @@ const READ = "#/items/luhmann1984soziale?tab=read";
 const screens = [
   {
     name: "lesen-hell",
+    enName: "reading-light",
     hash: READ,
     async setup(page) {
       await showText(page);
@@ -37,6 +72,7 @@ const screens = [
   },
   {
     name: "lesen-dunkel",
+    enName: "reading-dark",
     hash: READ,
     theme: "dark",
     async setup(page) {
@@ -46,6 +82,7 @@ const screens = [
   },
   {
     name: "lesen-agent-chat",
+    enName: "reading-agent-chat",
     hash: READ,
     async setup(page) {
       await showText(page);
@@ -54,6 +91,7 @@ const screens = [
   },
   {
     name: "quelle-uebersicht",
+    enName: "source-overview",
     hash: "#/items/luhmann1984soziale",
     // "Weiterlesen, S. 216" needs a stored reading position
     local: {
@@ -65,14 +103,23 @@ const screens = [
       }),
     },
   },
-  { name: "bibliothek", hash: "#/" },
+  {
+    name: "bibliothek-leer",
+    enName: "library-empty",
+    hash: "",
+    query: "?mock=empty",
+    board: false,
+  },
+  { name: "bibliothek", enName: "library", hash: "#/" },
   {
     name: "bibliothek-spalte-offen",
+    enName: "library-column-open",
     hash: "#/?project=phd-proposal",
     rail: "open",
   },
   {
     name: "inbox",
+    enName: "inbox-review",
     hash: "#/inbox",
     async setup(page) {
       const boxes = page.getByRole("checkbox");
@@ -80,23 +127,30 @@ const screens = [
       await boxes.nth(2).check();
     },
   },
-  { name: "projekt", hash: "#/projects/phd-proposal" },
+  { name: "projekt", enName: "project", hash: "#/projects/phd-proposal" },
 
   // Screens without a board of their own, drawn in the same system
   {
     name: "bibliothek-hinzufuegen",
+    enName: "library-add",
     hash: "#/",
     board: false,
     async setup(page) {
-      const field = page.getByRole("textbox", { name: "Hinzufügen" });
+      const field = page.getByRole("textbox", { name: tx("add") });
       await field.fill("10.1000/xyz123");
       await field.press("Enter");
-      await page.getByText("Hinzugefügt:").waitFor();
+      await page.getByText(tx("added")).waitFor();
     },
   },
-  { name: "projekt-karten", hash: "#/projects/phd-proposal?tab=cards", board: false },
+  {
+    name: "projekt-karten",
+    enName: "project-cards",
+    hash: "#/projects/phd-proposal?tab=cards",
+    board: false,
+  },
   {
     name: "projekt-plan",
+    enName: "project-plan",
     hash: "#/projects/phd-proposal?tab=plan&node=k_01JC6A1B2D",
     board: false,
     async setup(page) {
@@ -106,6 +160,7 @@ const screens = [
   },
   {
     name: "projekt-plan-einsichten",
+    enName: "project-plan-insights",
     hash: "#/projects/phd-proposal?tab=plan&view=insights",
     board: false,
     async setup(page) {
@@ -114,6 +169,7 @@ const screens = [
   },
   {
     name: "projekt-plan-luecken",
+    enName: "project-plan-gaps",
     hash: "#/projects/phd-proposal?tab=plan&view=gaps",
     board: false,
     async setup(page) {
@@ -122,12 +178,13 @@ const screens = [
   },
   {
     name: "projekt-plan-agent",
+    enName: "project-plan-agent",
     hash: "#/projects/phd-proposal?tab=plan&view=insights&node=k_01JC6A1B2C",
     board: false,
     async setup(page) {
       await page.getByTestId("insight").first().waitFor();
       await page.getByRole("tab", { name: /^Agent/ }).click();
-      const composer = page.getByRole("textbox", { name: "Nachricht an den Agent" });
+      const composer = page.getByRole("textbox", { name: tx("composer") });
       await composer.fill(
         "Ich sehe eine Verbindung zwischen Luhmann und Gillespie, bitte notieren",
       );
@@ -137,33 +194,37 @@ const screens = [
   },
   {
     name: "projekt-plan-neu",
+    enName: "project-plan-new",
     hash: "#/projects/rag-evaluation?tab=plan",
     board: false,
   },
 
   // UI-2b: settings sections and the import screen
-  { name: "einstellungen", hash: "#/settings", board: false },
+  { name: "einstellungen", enName: "settings", hash: "#/settings", board: false },
   {
     name: "einstellungen-quellen",
+    enName: "settings-sources",
     hash: "#/settings",
     board: false,
     async setup(page) {
-      await page.getByRole("heading", { name: "Metadatenquellen" }).scrollIntoViewIfNeeded();
-      await page.getByRole("heading", { name: "Chat-Agent" }).scrollIntoViewIfNeeded();
-      await page.getByRole("heading", { name: "Metadatenquellen" }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: tx("sources") }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: tx("chatAgent") }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: tx("sources") }).scrollIntoViewIfNeeded();
     },
   },
   {
     name: "einstellungen-modell",
+    enName: "settings-model",
     hash: "#/settings",
     board: false,
     async setup(page) {
-      await page.getByRole("heading", { name: "Suche nach Bedeutung" }).scrollIntoViewIfNeeded();
-      await page.getByRole("combobox", { name: "Embedding-Modell" }).waitFor();
+      await page.getByRole("heading", { name: tx("semantic") }).scrollIntoViewIfNeeded();
+      await page.getByRole("combobox", { name: tx("model") }).waitFor();
     },
   },
   {
     name: "einstellungen-sync",
+    enName: "settings-sync",
     hash: "#/settings?section=sync",
     board: false,
     async setup(page) {
@@ -172,6 +233,7 @@ const screens = [
   },
   {
     name: "einstellungen-webhooks",
+    enName: "settings-webhooks",
     hash: "#/settings?section=webhooks",
     board: false,
     async setup(page) {
@@ -180,25 +242,27 @@ const screens = [
   },
   {
     name: "import",
+    enName: "import-preview",
     hash: "#/import",
     board: false,
     async setup(page) {
       await page.getByRole("button", { name: "BibTeX" }).click();
-      await page.getByLabel("Pfad zur Datei").fill("/Users/alex/Zotero/export/bibliothek.bib");
-      await page.getByRole("button", { name: "Vorschau" }).click();
+      await page.getByLabel(tx("pathFile")).fill("/Users/alex/Zotero/export/bibliothek.bib");
+      await page.getByRole("button", { name: tx("preview") }).click();
       await page.getByTestId("import-report").waitFor();
     },
   },
   {
     name: "import-ergebnis",
+    enName: "import-result",
     hash: "#/import",
     board: false,
     async setup(page) {
-      await page.getByLabel("Pfad zu zotero.sqlite oder zum Zotero-Ordner").fill("~/Zotero");
-      await page.getByRole("button", { name: "Projekten" }).click();
-      await page.getByRole("button", { name: "Vorschau" }).click();
+      await page.getByLabel(tx("pathZotero")).fill("~/Zotero");
+      await page.getByRole("button", { name: tx("projects") }).click();
+      await page.getByRole("button", { name: tx("preview") }).click();
       await page.getByTestId("import-report").waitFor();
-      await page.getByRole("button", { name: "Importieren" }).click();
+      await page.getByRole("button", { name: tx("run"), exact: true }).click();
       await page.getByTestId("import-result").waitFor({ timeout: 10000 });
     },
   },
@@ -206,46 +270,50 @@ const screens = [
   // UI-2a: literature matrix, related works, retraction warnings
   {
     name: "projekt-matrix-anlegen",
+    enName: "project-matrix-create",
     hash: "#/projects/phd-proposal?tab=matrix",
     board: false,
     async setup(page) {
       await newMatrix(page);
-      await page.getByRole("button", { name: "Methode", exact: true }).click();
-      await page.getByRole("button", { name: "Ergebnis", exact: true }).click();
+      await page.getByRole("button", { name: tx("method"), exact: true }).click();
+      await page.getByRole("button", { name: tx("finding"), exact: true }).click();
     },
   },
   {
     name: "projekt-matrix",
+    enName: "project-matrix",
     hash: "#/projects/phd-proposal?tab=matrix",
     board: false,
     async setup(page) {
       await newMatrix(page);
-      for (const preset of ["Fragestellung", "Methode", "Ergebnis"]) {
+      for (const preset of [tx("question"), tx("method"), tx("finding")]) {
         await page.getByRole("button", { name: preset, exact: true }).click();
       }
-      await page.getByRole("button", { name: "Matrix anlegen" }).click();
-      await page.getByRole("table", { name: "Literaturmatrix" }).waitFor();
-      await page.getByRole("button", { name: "Offene Zellen füllen" }).click();
-      const fill = page.getByRole("progressbar", { name: "Zellen werden gefüllt" });
+      await page.getByRole("button", { name: tx("createMatrix") }).click();
+      await page.getByRole("table", { name: tx("matrixTable") }).waitFor();
+      await page.getByRole("button", { name: tx("fillOpen") }).click();
+      const fill = page.getByRole("progressbar", { name: tx("filling") });
       await fill.waitFor();
       await fill.waitFor({ state: "detached", timeout: 20000 });
     },
   },
   {
     name: "quelle-verwandte-werke",
+    enName: "source-related-works",
     hash: "#/items/luhmann1984soziale",
     board: false,
     async setup(page) {
-      const heading = page.getByRole("heading", { name: "Verwandte Werke" });
+      const heading = page.getByRole("heading", { name: tx("related") });
       await heading.scrollIntoViewIfNeeded();
       await page.getByTestId("related-work").first().waitFor();
-      await page.getByRole("button", { name: "Zitiert von", exact: true }).click();
+      await page.getByRole("button", { name: tx("citing"), exact: true }).click();
       await page.getByText("Reassembling the Social").waitFor();
       await heading.evaluate((el) => el.closest("section")?.scrollIntoView({ block: "start" }));
     },
   },
   {
     name: "quelle-rueckzug",
+    enName: "source-retraction",
     hash: "#/items/es2023ragas",
     board: false,
     async setup(page) {
@@ -254,17 +322,18 @@ const screens = [
   },
   {
     name: "bibliothek-rueckzug",
+    enName: "library-retraction",
     hash: "#/?project=rag-evaluation",
     board: false,
     async setup(page) {
-      await page.getByText("Zurückgezogen").first().waitFor();
+      await page.getByText(tx("retracted")).first().waitFor();
     },
   },
 ];
 
 async function newMatrix(page) {
-  await page.getByRole("button", { name: "Neue Matrix" }).click();
-  await page.getByRole("form", { name: "Matrix anlegen" }).waitFor();
+  await page.getByRole("button", { name: tx("newMatrix") }).click();
+  await page.getByRole("form", { name: tx("createForm") }).waitFor();
 }
 
 async function showText(page) {
@@ -309,21 +378,21 @@ try {
   for (const screen of screens) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 820 } });
     await context.addInitScript(
-      ([theme, rail, local]) => {
+      ([theme, rail, local, lang]) => {
         localStorage.setItem("citegeist.theme", theme);
-        localStorage.setItem("citegeist.lang", "de");
+        localStorage.setItem("citegeist.lang", lang);
         localStorage.setItem("citegeist.rail", rail);
         for (const [key, value] of Object.entries(local)) localStorage.setItem(key, value);
       },
-      [screen.theme ?? "light", screen.rail ?? "closed", screen.local ?? {}],
+      [screen.theme ?? "light", screen.rail ?? "closed", screen.local ?? {}, lang],
     );
     const page = await context.newPage();
-    await page.goto(`${url}/${screen.hash}`);
+    await page.goto(`${url}/${screen.query ?? ""}${screen.hash}`);
     await page.waitForSelector("header");
     await page.evaluate(() => document.fonts.ready);
     await screen.setup?.(page);
     await page.waitForTimeout(600);
-    const file = join(out, `${screen.name}.png`);
+    const file = join(out, `${lang === "en" ? screen.enName : screen.name}.png`);
     await page.screenshot({ path: file });
     console.log(file);
     await context.close();

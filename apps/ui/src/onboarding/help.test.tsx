@@ -51,7 +51,7 @@ describe("no AI backend", () => {
     });
     const help = await screen.findByTestId("backend-help");
     for (const command of [
-      "curl -fsSL https://claude.ai/install.sh | bash",
+      "npm install -g @anthropic-ai/claude-code",
       "claude auth login",
       "npm install -g @openai/codex",
       "codex login",
