@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createReflowFixtures as reflowOnly, renderApp } from "../test-utils";
+import { createWebFixtures, createReflowFixtures as reflowOnly, renderApp } from "../test-utils";
 
 const READER = "/items/luhmann1984soziale?tab=read";
 const PASSAGE =
@@ -387,6 +387,27 @@ describe("page confirmation banner", () => {
     );
     const doc = view.data.docs.get("luhmann1984soziale");
     expect(doc?.pages.pages.map((p) => p.label)).toEqual(["40", "41", "42"]);
+  });
+});
+
+describe("a source without pages", () => {
+  it("does not ask for page numbers", async () => {
+    await openReader(createWebFixtures());
+    expect(screen.queryByRole("region", { name: "Seitenzahlen prüfen" })).not.toBeInTheDocument();
+  });
+
+  it("gives a new card the paragraph instead of a page", async () => {
+    const user = userEvent.setup();
+    const view = await openReader(createWebFixtures());
+    await select("bpara0002", PASSAGE);
+    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    const editor = await screen.findByTestId("card-editor");
+    // bpara0002 is the second text block of the page, the heading does not count
+    expect(within(editor).getByText("Abs. 2")).toBeVisible();
+    expect(within(editor).queryByText(/S\. /)).toBeNull();
+    expect(within(editor).queryByText("Seite ungeprüft")).toBeNull();
+    const created = view.data.cards.at(-1)?.frontmatter.locator;
+    expect(created).toEqual({ label: "paragraph", start: "2", confirmed: true });
   });
 });
 

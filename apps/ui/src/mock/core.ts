@@ -26,7 +26,14 @@ import {
   searchQuery,
   summarizeRetraction,
 } from "@citegeist/ops";
-import { CardFrontmatter, ItemFrontmatter, type Job, ProjectFrontmatter } from "@citegeist/schema";
+import {
+  CardFrontmatter,
+  ItemFrontmatter,
+  type Job,
+  ProjectFrontmatter,
+  paragraphLocator,
+  paragraphNumbers,
+} from "@citegeist/schema";
 import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
 import { bindChatMock } from "../chat/mock";
 import { bindConceptsMock } from "../concepts/mock";
@@ -526,6 +533,7 @@ export function createMockRegistry(
         html: doc.html,
         blocks: doc.blocks,
         pages: doc.pages,
+        paginated: doc.paginated ?? true,
       };
     })
     .bind(documentsConfirmPages, async (_ctx, input) => {
@@ -583,14 +591,21 @@ export function createMockRegistry(
         pageIndex === undefined
           ? undefined
           : (doc?.pages.pages[pageIndex]?.label ?? block?.spans[0]?.label ?? undefined);
+      // a source without pages cites the paragraph, counted over its text blocks
+      const paragraph =
+        doc && doc.paginated === false && block
+          ? paragraphLocator(paragraphNumbers(doc.blocks), [block.id])
+          : undefined;
       const frontmatter = CardFrontmatter.parse({
         id: randomId("c_"),
         item: input.citekey,
         ...(doc ? { source: doc.source } : {}),
         ...(input.kind ? { kind: input.kind } : {}),
-        ...(label
-          ? { locator: { label: "page", start: label, confirmed: doc?.pages.confirmed ?? false } }
-          : {}),
+        ...(paragraph
+          ? { locator: paragraph }
+          : label
+            ? { locator: { label: "page", start: label, confirmed: doc?.pages.confirmed ?? false } }
+            : {}),
         anchor: input.anchor,
         quote_sha256: "0".repeat(64),
         tags: input.tags,

@@ -144,7 +144,9 @@ export class MatrixService {
             { card: id },
           );
         }
-        const loc = card.frontmatter.locator;
+        // matrix evidence cites printed pages; a paragraph locator has no page to show
+        const loc =
+          card.frontmatter.locator?.label === "page" ? card.frontmatter.locator : undefined;
         return {
           type: "card",
           card: id,

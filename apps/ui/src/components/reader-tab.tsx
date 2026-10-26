@@ -301,7 +301,7 @@ function ReaderLoaded({
             />
           ) : null}
         </ReaderToolbar>
-        {data.pages && !data.pages.confirmed ? (
+        {data.pages && !data.pages.confirmed && data.paginated !== false ? (
           <PageBanner citekey={fm.citekey} pages={data.pages} />
         ) : null}
         <div ref={setHost} className="min-h-0 flex-1">

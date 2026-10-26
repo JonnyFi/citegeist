@@ -212,7 +212,7 @@ id: c_01JB8Z3Q
 item: luhmann1984soziale
 source: 3f9a1c2e7b4d
 kind: definition             # optional: thesis | finding | method | definition | example | critique
-locator: {label: page, start: "31", end: "32"}
+locator: {label: page, start: "31", end: "32"}   # unpaginated sources: {label: paragraph, start: "4"}
 anchor:
   pdf: {page: 42, quads: [[72.0, 310.2, 290.1, 330.0]], file: 3f9a1c2e7b4d}
   text: {block: b7f3k2q, exact: "…", prefix: "…", suffix: "…"}

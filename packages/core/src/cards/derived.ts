@@ -1,6 +1,13 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { buildBlockStream, type TextStream } from "@citegeist/anchoring";
-import { Block, Pages } from "@citegeist/schema";
+import {
+  Block,
+  DerivedManifest,
+  isUnpaginated,
+  Pages,
+  paragraphNumbers,
+  type Source,
+} from "@citegeist/schema";
 import type { LibraryPaths } from "../paths.js";
 
 interface Cached<T> {
@@ -21,6 +28,8 @@ function signature(file: string): string | undefined {
 export class DerivedStore {
   private readonly blockCache = new Map<string, Cached<{ blocks: Block[]; stream: TextStream }>>();
   private readonly pagesCache = new Map<string, Cached<Pages | undefined>>();
+  private readonly manifestCache = new Map<string, Cached<DerivedManifest | undefined>>();
+  private readonly paragraphCache = new Map<string, Cached<Map<string, number>>>();
 
   constructor(private readonly paths: LibraryPaths) {}
 
@@ -69,5 +78,43 @@ export class DerivedStore {
     }
     this.pagesCache.set(file, { sig, value });
     return value;
+  }
+
+  manifest(citekey: string, hash: string): DerivedManifest | undefined {
+    const file = this.paths.derivedManifest(citekey, hash);
+    const sig = signature(file);
+    if (!sig) return undefined;
+    const hit = this.manifestCache.get(file);
+    if (hit && hit.sig === sig) return hit.value;
+    let value: DerivedManifest | undefined;
+    try {
+      const r = DerivedManifest.safeParse(JSON.parse(readFileSync(file, "utf8")));
+      value = r.success ? r.data : undefined;
+    } catch {
+      value = undefined;
+    }
+    this.manifestCache.set(file, { sig, value });
+    return value;
+  }
+
+  /** Paragraph number of every text block (counted from 1), or undefined if the source has no blocks. */
+  paragraphs(citekey: string, hash: string): Map<string, number> | undefined {
+    const file = this.paths.blocks(citekey, hash);
+    const sig = signature(file);
+    if (!sig) return undefined;
+    const hit = this.paragraphCache.get(file);
+    if (hit && hit.sig === sig) return hit.value;
+    const value = paragraphNumbers(this.blocks(citekey, hash)?.blocks ?? []);
+    this.paragraphCache.set(file, { sig, value });
+    return value;
+  }
+
+  /** True when the source has neither printed pages nor PDF pages and its cards cite a paragraph. */
+  isUnpaginated(citekey: string, source: Pick<Source, "hash" | "kind">): boolean {
+    return isUnpaginated({
+      kind: source.kind,
+      manifest: this.manifest(citekey, source.hash),
+      pages: this.pages(citekey, source.hash),
+    });
   }
 }

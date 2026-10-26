@@ -17,6 +17,8 @@ import {
 import watcher from "@parcel/watcher";
 import { writeAgentsMd } from "./agents-md/index.js";
 import { serializeCardBody } from "./card-body.js";
+import { DerivedStore } from "./cards/derived.js";
+import { withParagraphLocator } from "./cards/paragraphs.js";
 import { classify } from "./classify.js";
 import { MarkdownFile } from "./frontmatter.js";
 import { TEMP_FILE, writeFileAtomic } from "./fsutil.js";
@@ -79,6 +81,8 @@ export class Library extends EventEmitter {
   readonly local: LocalPaths;
   readonly index: Index;
   readonly indexer: Indexer;
+  /** Reader for the derived files (blocks, pages, manifest) of converted sources. */
+  readonly derived: DerivedStore;
   manifest: LibraryManifest;
   private readonly now: () => Date;
   private subscription: { unsubscribe(): Promise<void> } | undefined;
@@ -89,6 +93,7 @@ export class Library extends EventEmitter {
   private constructor(root: string, manifest: LibraryManifest, opts: OpenOptions) {
     super();
     this.paths = new LibraryPaths(root);
+    this.derived = new DerivedStore(this.paths);
     this.manifest = manifest;
     this.now = opts.now ?? (() => new Date());
     this.local = new LocalPaths(opts.localBase ?? defaultLocalBase(), manifest.id);
@@ -349,6 +354,15 @@ export class Library extends EventEmitter {
     return r.parsed;
   }
 
+  /** Frontmatter of an item from the index, or undefined if there is no such item. */
+  getItemFrontmatter(citekey: string): ItemFrontmatter | undefined {
+    const row = this.index.get<{ frontmatter_json: string }>(
+      "SELECT frontmatter_json FROM items WHERE citekey = ?",
+      citekey,
+    );
+    return row ? (JSON.parse(row.frontmatter_json) as ItemFrontmatter) : undefined;
+  }
+
   getItem(citekey: string) {
     const row = this.index.get<{ path: string }>(
       "SELECT path FROM items WHERE citekey = ?",
@@ -454,8 +468,9 @@ export class Library extends EventEmitter {
       cursor?: string | undefined;
     },
   ) {
+    // Cards of an unpaginated source show their paragraph, whatever the file says
     const parse = (r: { frontmatter_json: string; body_json: string }) => ({
-      frontmatter: JSON.parse(r.frontmatter_json) as CardFrontmatter,
+      frontmatter: withParagraphLocator(this, JSON.parse(r.frontmatter_json) as CardFrontmatter),
       body: JSON.parse(r.body_json) as CardBody,
     });
     const sc = scopeClauses(input, {

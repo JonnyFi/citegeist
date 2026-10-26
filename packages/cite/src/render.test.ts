@@ -60,6 +60,28 @@ describe("locators", () => {
     expect(cite("en-US", {}, "chicago-author-date")).toBe("(Luhmann 1984, 31)");
   });
 
+  it("renders a paragraph locator in each bundled style", () => {
+    // What every style and locale makes of {label: "paragraph"}; the style decides the wording.
+    const rows = BUNDLED_STYLES.flatMap((style) =>
+      LOCALES.map(
+        (locale) =>
+          `${style} ${locale}: ${cite(locale, { label: "paragraph", locator: "4" }, style)}  |  ${cite(
+            locale,
+            { label: "paragraph", locator: "4-5" },
+            style,
+          )}`,
+      ),
+    );
+    expect(rows).toEqual([
+      "apa de-DE: (Luhmann, 1984, Abs. 4)  |  (Luhmann, 1984, Abs. 4–5)",
+      "apa en-US: (Luhmann, 1984, para. 4)  |  (Luhmann, 1984, paras. 4–5)",
+      "chicago-author-date de-DE: (Luhmann 1984, Abs. 4)  |  (Luhmann 1984, Abs. 4–5)",
+      "chicago-author-date en-US: (Luhmann 1984, para. 4)  |  (Luhmann 1984, paras. 4–5)",
+      "deutsche-gesellschaft-fur-psychologie de-DE: (Luhmann, 1984, Abs. 4)  |  (Luhmann, 1984, Abs. 4–5)",
+      "deutsche-gesellschaft-fur-psychologie en-US: (Luhmann, 1984, para. 4)  |  (Luhmann, 1984, paras. 4–5)",
+    ]);
+  });
+
   it("falls back to the language of an unbundled locale", () => {
     expect(cite("de-AT")).toBe("(Luhmann, 1984, S. 31)");
   });

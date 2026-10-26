@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import type { Translator } from "../i18n";
 import { useI18n } from "../i18n";
 import type { Core } from "../lib/core";
+import { locatorText } from "../lib/format";
 import { useCore } from "../lib/hooks";
 
 type ItemSummary = Awaited<ReturnType<typeof loadItems>>[number];
@@ -76,10 +77,9 @@ function citation(item: ItemSummary | undefined): string | undefined {
   return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
-function pageOf(card: CardData): string | undefined {
-  const loc = card.frontmatter.locator;
-  if (!loc) return undefined;
-  return loc.end ? `${loc.start}-${loc.end}` : loc.start;
+/** "S. 31" or "Abs. 4": the locator of a card with its term. */
+function pageOf(card: CardData, tr: Translator): string | undefined {
+  return locatorText(tr, card.frontmatter.locator);
 }
 
 /** Builds the editor's provider over a loaded library index. Exported for tests. */
@@ -98,13 +98,13 @@ export function createProvider(index: LinkIndex, tr: Translator): WikiLinkProvid
     notes.push({ kind: "note", target: n.slug, label: n.title });
   }
   const cards: Suggestion[] = [...index.cards.values()].map((c) => {
-    const page = pageOf(c);
+    const page = pageOf(c, tr);
     const owner = citation(index.items.get(c.frontmatter.item));
     return {
       kind: "card",
       target: c.frontmatter.id,
       label: c.body.quote.replace(/\s+/g, " ").slice(0, 90),
-      detail: [owner, page ? tr.t("editor.page", { page }) : undefined].filter(Boolean).join(", "),
+      detail: [owner, page].filter(Boolean).join(", "),
     };
   });
 
@@ -125,7 +125,7 @@ export function createProvider(index: LinkIndex, tr: Translator): WikiLinkProvid
       const card = index.cards.get(id);
       if (!card) return undefined;
       const owner = citation(index.items.get(card.frontmatter.item));
-      const page = pageOf(card);
+      const page = pageOf(card, tr);
       return {
         id,
         quote: card.body.quote,

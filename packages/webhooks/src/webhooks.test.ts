@@ -920,7 +920,7 @@ describe("outbound auth header", () => {
     expect(headers[SIGNATURE_HEADER]).toMatch(/^v1=/);
     expect(headers[ID_HEADER]).toBeTruthy();
     await h.service.test("grok");
-    expect(rec.sent[1]?.headers["Authorization"]).toBe("Bearer crsr_secret_value");
+    expect(rec.sent[1]?.headers.Authorization).toBe("Bearer crsr_secret_value");
   });
 
   it("changes and removes the header with setAuth, and deleting the connector clears it", async () => {

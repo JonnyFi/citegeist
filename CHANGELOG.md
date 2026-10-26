@@ -4,6 +4,10 @@ All notable changes to citegeist are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+
+- **Citing web pages.** Cards of a source without pages (web page, HTML, EPUB) cite a paragraph instead of a page: "Abs. 4" or "para. 4", and the citation style decides the wording. The reader no longer asks for page numbers there.
+
 ## [0.1.0] - not yet released
 
 The first public version. It covers the whole workflow from adding a paper to writing a text.

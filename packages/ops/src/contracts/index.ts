@@ -314,6 +314,11 @@ export const documentsAssets = defineContract({
     html: z.string().optional(),
     blocks: z.array(Block).default([]),
     pages: Pages.optional(),
+    /**
+     * False for a source without printed pages and PDF pages (web, HTML, EPUB). Cards of such a
+     * source carry a paragraph locator, and the reader shows no page number check.
+     */
+    paginated: z.boolean().default(true),
   }),
 });
 
