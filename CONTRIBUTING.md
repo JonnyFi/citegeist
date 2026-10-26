@@ -2,7 +2,7 @@
 
 citegeist is built mostly by coding agents. These rules keep everyone's agents working the same way.
 
-1. **gstack is recommended.** `CLAUDE.md` checks for it and a hook in `.claude/` points it out when it is missing, without blocking anything. For the maintainers it is the norm. Install it once:
+1. **gstack is required.** AI-assisted work in this repo uses gstack. `CLAUDE.md` checks for it, and a hook in `.claude/` stops skill use until it is installed. Install it once:
    ```bash
    git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
    cd ~/.claude/skills/gstack && ./setup --team

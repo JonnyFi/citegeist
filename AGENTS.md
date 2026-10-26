@@ -69,7 +69,7 @@ cd workers/convert && uv run pytest       run the worker tests
 
 ## Workflow (gstack)
 
-gstack is the workflow of the maintainers (required for them) and a recommendation for everyone else. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. Cursor and Codex users read the install check in `CLAUDE.md`.
+gstack is required for all AI-assisted work in this repo, in every tool. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. Cursor and Codex users read the install check in `CLAUDE.md`.
 
 1. `/spec` turns the workstream into an executable spec.
 2. Build against fixtures and mocks, and run `pnpm verify` until green.
