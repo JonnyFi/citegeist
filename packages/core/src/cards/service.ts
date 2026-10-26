@@ -40,6 +40,8 @@ export interface CardDeps {
   ai: Pick<AiRouter, "run">;
   /** Core job queue. Without one, AI work runs detached in this process. */
   jobs?: CardJobQueue;
+  /** Called with the card id when a card is created without AI and after its paraphrase arrived. */
+  onCardText?: (id: string) => void;
   /** Run `card.verify` after each paraphrase and store the verdict in `paraphrase.checked`. */
   verify?: boolean;
 }
@@ -136,7 +138,10 @@ export class CardService {
     });
     this.lib.writeCard(fm, { quote, extra: [] });
     const card = this.getCard(fm.id);
-    if (input.ai === false) return { card };
+    if (input.ai === false) {
+      this.deps.onCardText?.(fm.id);
+      return { card };
+    }
     const language = this.languageFor(item, projects, input.language);
     return { card, job: this.scheduleAi(actor, fm.id, language, true) };
   }
@@ -294,6 +299,7 @@ export class CardService {
       stamp: r.stamp,
       checked,
     });
+    this.deps.onCardText?.(id);
   }
 
   private applyAi(

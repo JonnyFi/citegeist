@@ -3,10 +3,12 @@ import type { OpContext } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
 import { MarkdownFile } from "./frontmatter.js";
 import type { Library } from "./library.js";
+import { createCardLink, isCardId } from "./links/card-links.js";
 import { wikiTarget } from "./wikilinks.js";
 
 /**
- * links.create: adds one typed link to the frontmatter of a note and stamps the caller. The
+ * links.create: adds one typed link to the frontmatter of a note (or, for a card id in `from`,
+ * to the literature note of the card's item) and stamps the caller. The
  * target must exist as item, card or note, so a typo never becomes a dangling link. A link that
  * is already there (same target and relation) is returned unchanged.
  */
@@ -15,6 +17,12 @@ export function createLink(
   ctx: OpContext,
   input: { from: string; link: { to: string; rel?: string | undefined } & Record<string, unknown> },
 ) {
+  if (isCardId(input.from)) {
+    return createCardLink(lib, ctx, {
+      card: input.from,
+      link: input.link as Parameters<typeof createCardLink>[2]["link"],
+    });
+  }
   const note = lib.getNote(input.from);
   const target = wikiTarget(input.link.to);
   const known =
@@ -31,8 +39,8 @@ export function createLink(
       context: { from: input.from, to: input.link.to },
     });
   }
-  const same = (l: { to: string; rel?: string | undefined }) =>
-    wikiTarget(l.to) === target && l.rel === input.link.rel;
+  const same = (l: { to: string; rel?: string | undefined; from?: string | undefined }) =>
+    !l.from && wikiTarget(l.to) === target && l.rel === input.link.rel;
   const exists = note.frontmatter.links.some((l) => same(l) && l.status !== "rejected");
   if (exists) return note;
   const file = MarkdownFile.parse(readFileSync(note.path, "utf8"));

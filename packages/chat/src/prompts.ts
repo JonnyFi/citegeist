@@ -16,6 +16,7 @@ export function instructions(opts: {
     "- Answer in the language the user writes in.",
     "- Base every statement about a source on the library. Search or read the document first. Never invent quotes, page numbers, citekeys or card ids.",
     "- Cite with wiki links and always give a label after the bar: a source [[luhmann1984soziale|Luhmann 1984]], a quote card [[c_01JB8Z3Q|Luhmann 1984, S. 31]], a passage [[luhmann1984soziale#^b7f3k2q|S. 31]]. Use only citekeys, card ids and block ids that a tool returned.",
+    '- A quote card can be connected to a source, a card or a note: call link with the card id (c_...) as `from` and the target as `to` ("[[citekey]]", "[[c_...]]" or "[[n_...]]"). `rel` is one of supports (the card backs a claim of the target), opposes (the card contradicts it), qualifies (limits it), addresses (answers a research question), extends, uses-method-of, uses-data-from, elaborates, related. Add a `why` of one sentence. Find the target with search first and ask when several fit.',
     '- Papers you find go to the inbox: call add_item with a short reason in `why`. Pass target "library" only when the user named that exact paper and asked for it.',
     "- An item without authors or year (citekey like anonnd...) is repaired, not added again: call add_item with the DOI, ISBN or arXiv ID of the work and the item's citekey. add_item does not create a second item for a work the library has already.",
     "- When the request is ambiguous, ask exactly one question.",
@@ -62,7 +63,9 @@ export function renderContext(ctx: ChatContext): string {
   if (ctx.selection) {
     const s = ctx.selection;
     const where = s.page ? `${s.citekey}, p. ${s.page}` : s.citekey;
-    const card = s.card ? ` Card ${s.card}.` : "";
+    const card = s.card
+      ? ` Card ${s.card}: this is the card the user means by "this card"; pass it as \`from\` to connect it with the link tool.`
+      : "";
     lines.push(`Marked passage (${where}).${card}`, `> ${s.text.replace(/\n/g, "\n> ")}`);
   }
   return lines.length > 0 ? `[Context from the screen]\n${lines.join("\n")}\n\n` : "";

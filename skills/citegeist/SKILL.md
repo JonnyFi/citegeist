@@ -124,6 +124,7 @@ link {"from": "n_01JB8Z3QK7ABCDEFGH", "link": {"to": "[[granovetter1973strength]
 2. Write the body with wiki links: `[[luhmann1984soziale]]` for an item, `[[c_<ULID>]]` for a card, `[[note-file-name]]` for a note.
 3. Add a typed link: MCP `link {from: "n_<ULID>", link: {to: "[[luhmann1984soziale]]", rel: "supports", why: "<reason>", evidence: "[[c_<ULID>]]"}}`.
    CLI: `cg links create --from n_<ULID> --link '{"to":"[[luhmann1984soziale]]","rel":"supports","why":"..."}' --json`.
+   To connect a quote card, pass its id as `from`: `link {from: "c_<ULID>", link: {to: "[[land2012dark]]", rel: "opposes", why: "..."}}`. The link is stored in the literature note of the card's item (created when missing), with the card as `evidence`.
 4. `rel` is one of `supports`, `opposes`, `qualifies`, `addresses`, `extends`, `uses-method-of`, `uses-data-from`, `elaborates`, `related`. Give a `why` for every link.
 5. Read a project before you write notes for it: `get_project {slug}` or `cg projects get <slug> --json`.
 

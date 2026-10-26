@@ -235,7 +235,7 @@ The wording sits in the quote block and stays unchanged. Omissions such as "[…
 
 Cards from earlier versions stay readable. The parser reads the sections "In my words" and "Comment" as the note (own words, blank line, comment) and writes only "Note" on the next save. The kinds `quote` and `comment` count as unset, the other old kinds apply unchanged. A stored section "Core statement" with its stamp `core` survives a rewrite, is shown nowhere in the UI and is not read by search.
 
-The card in the UI consists of a header (kind and locator), the wording, the paraphrase block, the note and two actions. The paraphrase block carries a star and a title, model and time appear in a tooltip, and the small action "Regenerate" with a language choice sits in its header. "Quote verbatim" copies the quote with its citation, "Quote indirectly" copies the note or the paraphrase with a "cf." citation.
+The card in the UI consists of a header (kind and locator), the wording, the paraphrase block, the note and two actions. A third cell of the same bar opens a short menu with "Connect" (a popover with a search over items, cards and notes, a relation and an optional reason) and "To the agent" (the card becomes a context chip of the chat). A card shows one line for its connections and one line for an open suggestion, and nothing when it has neither. The paraphrase block carries a star and a title, model and time appear in a tooltip, and the small action "Regenerate" with a language choice sits in its header. "Quote verbatim" copies the quote with its citation, "Quote indirectly" copies the note or the paraphrase with a "cf." citation.
 
 Selections in the reader snap to word boundaries. `packages/anchoring` moves both edges of a selection outward until neither sits inside a word (`snapToWordBoundaries`; an apostrophe between letters belongs to the word, a hyphen does not), and the text anchor is built from the widened range (`createSelectionAnchor`). The PDF viewer and the text viewer set the visible selection to the same range once the pointer is released, and the quads of the PDF anchor follow the widened range.
 
@@ -255,6 +255,8 @@ links:
     by: agent:claude-code
     status: proposed         # proposed | accepted | rejected
 ```
+
+A connection can also start at a quote card ([ADR 0028](decisions/0028-connections-from-cards.md)). It is stored in the literature note of the card's item (the note of type `literature` with the line `Item: [[citekey]]`, created when it is missing) as a link with `from: c_...`, `evidence: "[[c_...]]"` and a target that is an item, a card or a note. The index treats such a link as an edge that starts at the card.
 
 Links may stay untyped. A type is proposed and accepted by the user. A rejected link stays in the file with `status: rejected` so that `links.propose` does not suggest it again. The index does not know it, and it appears neither in backlinks nor in the graph. The vocabulary is small and maps onto the citation ontology CiTO:
 
@@ -358,7 +360,7 @@ Research jobs (`research.start`) run an agent with the web search, the read tool
 
 ### Tasks
 
-Each AI task is an entry in `packages/ai/src/tasks/` with input and output schema, versioned prompt, default model class and eval fixtures. The tasks: `card.paraphrase`, `card.verify`, `note.proposeLinks`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name` and `litsearch.suggestQueries`.
+Each AI task is an entry in `packages/ai/src/tasks/` with input and output schema, versioned prompt, default model class and eval fixtures. The tasks: `card.paraphrase`, `card.verify`, `card.suggestLinks`, `note.proposeLinks`, `metadata.fromFirstPage`, `matrix.fillCell`, `concept.describe`, `concept.name` and `litsearch.suggestQueries`.
 
 The language of all AI texts (paraphrase, concept entries) follows a chain: dropdown on the source being read, then the project setting, then the library default ([AI text language](decisions/0016-ai-text-language.md)). The dropdown is reachable in the reader at any time.
 

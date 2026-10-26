@@ -35,6 +35,11 @@ export const Relation = z.enum([
 export const AutoRelation = z.enum(["cites", "excerpt-of", "derived-from"]);
 
 export const Link = z.object({
+  /**
+   * Set when the connection starts at a quote card instead of at the note. The note is then the
+   * literature note of the card's item, and the card is also its `evidence`.
+   */
+  from: CardId.optional(),
   to: WikiLink,
   rel: Relation.optional(),
   why: z.string().optional(),

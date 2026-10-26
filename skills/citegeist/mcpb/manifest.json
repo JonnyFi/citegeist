@@ -36,7 +36,10 @@
     },
     { "name": "create_card", "description": "Save a verbatim quote as a quote card" },
     { "name": "create_note", "description": "Create a note" },
-    { "name": "link", "description": "Add a typed link from a note to an item, card or note" },
+    {
+      "name": "link",
+      "description": "Add a typed link from a note or a quote card to an item, card or note"
+    },
     {
       "name": "attach_file",
       "description": "Attach a local PDF, HTML page or EPUB to an existing item and convert it"

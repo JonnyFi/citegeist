@@ -2,6 +2,7 @@ import {
   Block,
   CardBody,
   CardFrontmatter,
+  CardId,
   CardKind,
   Citekey,
   DerivedManifest,
@@ -491,13 +492,70 @@ export const notesBacklinks = defineContract({
   input: z.object({ id: NoteFrontmatter.shape.id }),
   output: z.object({ backlinks: z.array(Backlink) }),
 });
+/** Where a typed link starts: a note, or a quote card (the link is then stored in the item's literature note). */
+const LinkOrigin = z.union([NoteFrontmatter.shape.id, CardId]);
 export const linksCreate = defineContract({
   name: "links.create",
-  summary: "Add a typed link from a note to an item, card or note",
+  summary:
+    "Add a typed link from a note or from a quote card to an item, card or note. `from` is a note id (n_...) or a card id (c_...). A link from a card is stored in the literature note of the card's item, with the card as evidence. Relations: supports, opposes (contradicts), qualifies, addresses, extends, uses-method-of, uses-data-from, elaborates, related",
   access: "write",
-  input: z.object({ from: NoteFrontmatter.shape.id, link: Link.omit({ by: true }) }),
+  input: z.object({ from: LinkOrigin, link: Link.omit({ by: true, from: true }) }),
   output: Note,
   mcp: { tool: "link", readOnly: false },
+});
+export const linksRemove = defineContract({
+  name: "links.remove",
+  summary:
+    "Remove the typed link from a note or a quote card to a target; without rel every relation to that target goes",
+  access: "write",
+  input: z.object({ from: LinkOrigin, to: z.string().min(1), rel: Relation.optional() }),
+  output: Note,
+});
+/** A typed link that starts at a card, with where it is stored. */
+export const CardLink = z.object({
+  /** The card the link starts at. */
+  card: CardId,
+  /** Note that holds the link (the literature note of the card's item). */
+  note: NoteFrontmatter.shape.id,
+  /** Position in the frontmatter `links` of that note; `links.decide` takes it. */
+  index: z.number().int().nonnegative(),
+  to: z.string(),
+  kind: z.enum(["item", "card", "note"]),
+  /** Title of the item or note, or the start of the card quote. */
+  label: z.string(),
+  /** Short form such as "Land 2012" for an item. */
+  short: z.string(),
+  /** Citekey of the target item, or of the item a target card belongs to. */
+  citekey: Citekey.optional(),
+  rel: Relation.optional(),
+  why: z.string().optional(),
+  by: z.string(),
+  /** "proposed" is a suggestion the user has not decided yet. Rejected links are not listed. */
+  status: z.enum(["proposed", "accepted"]),
+});
+export type CardLink = z.infer<typeof CardLink>;
+export const linksForCard = defineContract({
+  name: "links.forCard",
+  summary:
+    "The typed links that start at a quote card, including suggestions that await a decision",
+  access: "read",
+  input: z.object({ card: CardId }),
+  output: z.object({ links: z.array(CardLink) }),
+});
+export const linksForItem = defineContract({
+  name: "links.forItem",
+  summary: "The typed links that start at the quote cards of one item",
+  access: "read",
+  input: z.object({ citekey: Citekey }),
+  output: z.object({ links: z.array(CardLink) }),
+});
+export const linksSuggest = defineContract({
+  name: "links.suggest",
+  summary:
+    "Let the AI suggest up to two typed links from a quote card to sources of the library that its text names. Suggestions are stored as proposed and need the user's decision",
+  access: "write",
+  input: z.object({ card: CardId }),
+  output: JobHandle,
 });
 export const linksPropose = defineContract({
   name: "links.propose",
@@ -875,6 +933,10 @@ export const CONTRACTS: readonly OperationContract[] = [
   notesList,
   notesBacklinks,
   linksCreate,
+  linksRemove,
+  linksForCard,
+  linksForItem,
+  linksSuggest,
   linksPropose,
   linksDecide,
   graphNeighbors,
