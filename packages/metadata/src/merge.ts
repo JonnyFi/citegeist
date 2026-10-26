@@ -1,5 +1,5 @@
 /**
- * Field-level merge with provenance. Rules (docs/research/metadata-sources.md section 12):
+ * Field-level merge with provenance. Rules (internal metadata-sources research section 12):
  *
  * - Citation fields come from the registration agency (Crossref, or DataCite and others through
  *   doi.org), then arXiv, then the library catalogues, then Open Library, then OpenAlex.

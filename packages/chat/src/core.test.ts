@@ -115,7 +115,7 @@ describe("chat against the real core", () => {
     expect(lib.status().notes).toBe(0);
   });
 
-  it("merges Jonny's later edit into the undo of a note change", async () => {
+  it("merges Alex's later edit into the undo of a note change", async () => {
     const created = (await runtime.registry.call(
       "notes.create",
       { actor: "human" },
@@ -133,10 +133,10 @@ describe("chat against the real core", () => {
     await service.idle(s.id);
     expect(service.get(s.id).turns[0]?.edits).toEqual([{ path: rel, change: "modified" }]);
 
-    // Jonny adds a line at the end after the agent's turn.
-    writeFileSync(file, `${readFileSync(file, "utf8")}\nsechs von Jonny`);
+    // Alex adds a line at the end after the agent's turn.
+    writeFileSync(file, `${readFileSync(file, "utf8")}\nsechs von Alex`);
     const result = await service.revertTurn(s.id, 1);
     expect(result.conflicts).toEqual([]);
-    expect(readFileSync(file, "utf8")).toBe(`${original}\nsechs von Jonny`);
+    expect(readFileSync(file, "utf8")).toBe(`${original}\nsechs von Alex`);
   });
 });

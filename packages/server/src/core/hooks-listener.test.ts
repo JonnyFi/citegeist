@@ -203,12 +203,12 @@ describe("public address", () => {
     expect((await call(client, "webhooks.list")).publicBaseUrl).toBeUndefined();
 
     await call(client, "settings.update", {
-      patch: { webhooks: { publicUrl: "https://mac.tailnet.ts.net/" } },
+      patch: { webhooks: { publicUrl: "https://mac.example.ts.net/" } },
     });
     let listed = await call(client, "webhooks.list");
-    expect(listed.publicBaseUrl).toBe("https://mac.tailnet.ts.net");
+    expect(listed.publicBaseUrl).toBe("https://mac.example.ts.net");
     expect(listed.publicBaseUrlSource).toBe("settings");
-    expect(listed.webhooks[0].inboundUrl).toBe("https://mac.tailnet.ts.net/hooks/grok");
+    expect(listed.webhooks[0].inboundUrl).toBe("https://mac.example.ts.net/hooks/grok");
 
     process.env.CITEGEIST_PUBLIC_URL = "https://env.example.com";
     listed = await call(client, "webhooks.list");
@@ -239,7 +239,7 @@ describe("public address", () => {
 
     const { client } = await start({ hooksPort: 0 });
     await call(client, "settings.update", {
-      patch: { webhooks: { publicUrl: "https://mac.tailnet.ts.net" } },
+      patch: { webhooks: { publicUrl: "https://mac.example.ts.net" } },
     });
     const created = await call(client, "webhooks.create", {
       name: "grok",
@@ -258,7 +258,7 @@ describe("public address", () => {
     expect(received[0]?.headers.authorization).toBe("Bearer crsr_test_key");
     expect(received[0]?.headers["x-citegeist-signature"]).toMatch(/^v1=/);
     expect(JSON.parse(received[0]?.body ?? "{}").callback.url).toBe(
-      "https://mac.tailnet.ts.net/hooks/grok",
+      "https://mac.example.ts.net/hooks/grok",
     );
     // Answer the task, so the job does not wait for its callback when the core closes.
     const answer = JSON.stringify({ event: "task.result", task: sent.job, status: "failed" });

@@ -7,7 +7,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * citegeist design tokens, system "I" (see docs/design/design-system.md).
+ * citegeist design tokens, system "I".
  * White ground, 1px ink rules, no radii, no shadows. Serif for reading,
  * sans for UI, mono for citekeys, page numbers and counts.
  */

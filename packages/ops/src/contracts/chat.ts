@@ -22,7 +22,7 @@ export type ChatSessionId = z.infer<typeof ChatSessionId>;
 /** Virtual change path under which a session announces new content. */
 export const chatChangePath = (session: string): string => `chat/${session}`;
 
-/** The passage Jonny marked when he opened the chat from the reader. */
+/** The passage the user marked when they opened the chat from the reader. */
 export const ChatSelection = z.object({
   citekey: Citekey,
   text: z.string().min(1).max(8000),
@@ -168,7 +168,7 @@ export const chatSend = defineContract({
   input: z.object({
     session: ChatSessionId,
     message: z.string().min(1),
-    /** Replaces the session context for this and later turns, e.g. after Jonny opened another source. */
+    /** Replaces the session context for this and later turns, e.g. after the user opened another source. */
     context: ChatContext.optional(),
   }),
   output: z.object({ turn: z.number().int().positive() }),
@@ -210,7 +210,7 @@ export const chatGet = defineContract({
 export const chatRevertTurn = defineContract({
   name: "chat.revertTurn",
   summary:
-    "Undo all file edits of one agent turn; files Jonny changed in between are merged, conflicts stay untouched",
+    "Undo all file edits of one agent turn; files the user changed in between are merged, conflicts stay untouched",
   access: "write",
   input: z.object({ session: ChatSessionId, turn: z.number().int().positive() }),
   output: z.object({

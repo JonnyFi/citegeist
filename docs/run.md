@@ -146,7 +146,7 @@ Die zweite Form misst eine echte Bibliothek. Die Fragen stehen in einer Datei au
 | `--details` | Rang jeder einzelnen Frage |
 | `--json` | Zahlen als JSON |
 
-Ändert sich, wie Abschnitte eingebettet werden (Überschriftenpfad, Modell), bettet der nächste Abgleich nur die Chunks neu ein, deren Eingabe sich geändert hat. Beim Wechsel auf den Überschriftenpfad (W5.3) sind das alle Abschnitte konvertierter Dokumente. Das dauert auf einem M4 Pro etwa 24 Chunks pro Sekunde, rund 7 Minuten für 10 000 Abschnitte, und läuft im Hintergrund. Notizen, Karten und Items bleiben unberührt.
+Ändert sich, wie Abschnitte eingebettet werden (Überschriftenpfad, Modell), bettet der nächste Abgleich nur die Chunks neu ein, deren Eingabe sich geändert hat. Beim Wechsel auf den Überschriftenpfad sind das alle Abschnitte konvertierter Dokumente. Das dauert auf einem M4 Pro etwa 24 Chunks pro Sekunde, rund 7 Minuten für 10 000 Abschnitte, und läuft im Hintergrund. Notizen, Karten und Items bleiben unberührt.
 
 ## Erster Start
 

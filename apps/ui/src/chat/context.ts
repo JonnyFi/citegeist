@@ -3,7 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 
 /**
- * The passage Jonny marked in the reader. The reader publishes it, the chat shows it as a chip.
+ * The passage the user marked in the reader. The reader publishes it, the chat shows it as a chip.
  * It lives outside React state so the reader and the chat panel need no shared parent.
  */
 let current: ChatSelection | null = null;

@@ -39,7 +39,7 @@ export interface PolicyContext {
 
 export interface Decision {
   allow: boolean;
-  /** Shown to Jonny when the request was rejected. */
+  /** Shown to the user when the request was rejected. */
   reason?: string;
 }
 

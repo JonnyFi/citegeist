@@ -1,6 +1,6 @@
 # citegeist: Architektur
 
-Stand: 2026-10-23, Entwurf zur Abstimmung. Die Belege stehen in `docs/research/`, die Entscheidungen in `docs/decisions.md`.
+Stand: 2026-10-23, Entwurf zur Abstimmung. Die Belege stehen in internen Recherchen, die Entscheidungen (D1 bis D24) in einem internen Entscheidungsprotokoll.
 
 ## Überblick
 
@@ -249,7 +249,7 @@ Eine URL wird wie von einem Browser abgerufen (Weiterleitungen, Browser-Kopfzeil
 
 Ein Duplikat ist ein Treffer auf DOI, ISBN, arXiv-ID, PMID, URL oder Datei-Hash, ersatzweise auf vollständigen Titel mit Jahr und Erstautor. Hat der getroffene Eintrag keine funktionierende Quelle, hängt der Kern die neue Datei an und konvertiert sie, statt sie zu verwerfen.
 
-Was ein Agent hinzufügt, landet zuerst in der Inbox, dort übernimmt oder verwirft Jonny es. Mit `target: "library"` legt ein Agent ein Paper direkt in die Bibliothek. Was Jonny selbst hinzufügt, landet immer direkt in der Bibliothek (D7).
+Was ein Agent hinzufügt, landet zuerst in der Inbox, dort übernimmt oder verwirft der Nutzer es. Mit `target: "library"` legt ein Agent ein Paper direkt in die Bibliothek. Was der Nutzer selbst hinzufügt, landet immer direkt in der Bibliothek (D7).
 
 Jeder Schritt ist ein Job in `state.sqlite` mit Status, Fortschritt und Wiederholung. Langsame Arbeit gibt über MCP sofort einen Job-Handle zurück, den Status liefert `jobs.get`.
 
@@ -262,7 +262,7 @@ Jeder Schritt ist ein Job in `state.sqlite` mit Status, Fortschritt und Wiederho
 | Scan | keine oder schlechte Textebene | OCRmyPDF mit Apple Vision, das Deutsch kann. Seiten, die der schnelle Pfad als schlecht markiert, gehen an ein lokales VLM (PaddleOCR-VL oder MinerU2.5-Pro) |
 | Web | Artikel, graue Literatur | Readability oder defuddle, dann dasselbe Blockmodell ohne Seiten |
 
-Cloud-APIs für OCR gibt es nur auf ausdrücklichen Wunsch. Welche Werkzeuge im Pfad „Digital“ tatsächlich gewinnen, entscheidet ein Spike auf 15 Fixture-PDFs mit festen Kriterien (Plan in `docs/research/document-conversion.md`, Abschnitt 9.3).
+Cloud-APIs für OCR gibt es nur auf ausdrücklichen Wunsch. Welche Werkzeuge im Pfad „Digital“ tatsächlich gewinnen, entscheidet ein Spike auf 15 Fixture-PDFs mit festen Kriterien (Plan in der internen Recherche zur Dokumentkonvertierung, Abschnitt 9.3).
 
 ## AI-Schicht
 
@@ -339,7 +339,7 @@ citegeist erzeugt und pflegt eine `AGENTS.md`, die das Ordnerformat erklärt und
 
 ### Webhooks und externe Agents
 
-Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC und auf Wunsch mit dem eigenen Schlüssel der Plattform des Agents in einem Auth-Header (Wert im Schlüsselbund). Eingehend nimmt ein Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Neben der HMAC-Signatur lässt sich pro Connector ein Bearer-Token für Agents einschalten, die keine Signatur berechnen können. Der erste Anwendungsfall ist Jonnys Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
+Ausgehend schickt citegeist einen Auftrag mit Kontext und Rückruf-Adresse per HTTP POST, signiert mit HMAC und auf Wunsch mit dem eigenen Schlüssel der Plattform des Agents in einem Auth-Header (Wert im Schlüsselbund). Eingehend nimmt ein Endpunkt Paper und Notizen an und behandelt sie wie Eingaben über MCP: Inbox als Standard, direkt in die Bibliothek mit `target: "library"` (D7). Neben der HMAC-Signatur lässt sich pro Connector ein Bearer-Token für Agents einschalten, die keine Signatur berechnen können. Der erste Anwendungsfall ist ein Grok-Bot. Webhooks sind allgemein gehalten, damit sich auch andere Agents wie Hermes anschließen lassen (D8).
 
 Der Kern lauscht auf einem zufälligen, privaten Port. Für Aufrufe aus dem Internet öffnet er, solange ein Connector existiert, einen zweiten Listener auf `127.0.0.1` und einem festen Port (Standard 47321, einstellbar). Dieser Listener bedient nur `/hooks/<name>` und `/mcp`; ein Tunnel (Tailscale Funnel, Cloudflare Tunnel) zeigt auf ihn. Die öffentliche Adresse des Tunnels steht in den Einstellungen und wird für alle Rückruf-Adressen verwendet.
 

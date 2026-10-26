@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import type { Core } from "../lib/core";
 
 /**
- * The text Jonny works on. The Texte tab publishes it while a text is open; the card actions
+ * The text the user works on. The Texte tab publishes it while a text is open; the card actions
  * insert into it and the chat hands it to the agent, as with the open plan. It lives outside React
  * state so the panels need no shared parent.
  *

@@ -1,7 +1,7 @@
 import { isScholarlyUrl, normalizeUrl, urlsIn } from "@citegeist/ops";
 
 /**
- * The web access of a research job (W5.1, Agents Rule of Two, L9 in docs/security.md). The agent
+ * The web access of a research job (W5.1, Agents Rule of Two, L9 in the internal security audit). The agent
  * reads untrusted pages and the library, so it must not be able to call an address that it
  * composed itself: such an address can carry library content to a server of the attacker. A
  * fetch is allowed when its address sits on a scholarly host (`SCHOLARLY_HOSTS`) or when an
