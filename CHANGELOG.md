@@ -4,6 +4,14 @@ All notable changes to citegeist are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+
+- **Citing web pages.** Cards of a source without pages (web page, HTML, EPUB) cite a paragraph instead of a page: "Abs. 4" or "para. 4", and the citation style decides the wording. The reader no longer asks for page numbers there.
+
+### Added
+
+- **Connections from cards.** A quote card can start a typed connection, for example "widerspricht" to another source. The card menu offers "Verbinden" and "An den Agent", the agent can connect a card with the `link` tool, and a card whose text names a source of the library shows one suggestion that you accept or dismiss.
+
 ## [0.1.0] - not yet released
 
 The first public version. It covers the whole workflow from adding a paper to writing a text.

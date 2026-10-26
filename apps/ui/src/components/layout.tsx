@@ -60,6 +60,19 @@ export function useLayout(): LayoutState {
 }
 
 /**
+ * Opens the agent chat in the right column: on a screen with its own column the agent tab, else
+ * the chat column of the shell. Without a shell it does nothing.
+ */
+export function useOpenAgent(): () => void {
+  const value = useContext(LayoutContext);
+  return useCallback(() => {
+    if (!value) return;
+    value.setTab("agent");
+    if (value.ownColumns === 0) value.setChatOpen(true);
+  }, [value]);
+}
+
+/**
  * Puts content into the middle of the 48px top bar: breadcrumbs, counters, the add field. Each
  * screen decides what its bar says. Without a shell (a screen rendered alone) nothing is drawn.
  */

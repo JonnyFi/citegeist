@@ -184,7 +184,7 @@ export class ConceptService {
       );
       for (const r of rows) {
         const fm = JSON.parse(r.frontmatter_json) as {
-          locator?: { start: string; end?: string };
+          locator?: { label?: string; start: string; end?: string };
         };
         out.set(r.id, {
           id: r.id,
@@ -193,7 +193,7 @@ export class ConceptService {
           quote: r.quote,
           paraphrase: r.paraphrase ?? undefined,
           note: r.note ?? undefined,
-          page: pageOf(fm.locator),
+          page: fm.locator?.label === "page" ? pageOf(fm.locator) : null,
         });
       }
     }

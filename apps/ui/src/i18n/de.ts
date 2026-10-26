@@ -1,4 +1,5 @@
 import { alertsDe } from "../alerts/strings";
+import { cardsDe } from "../cards/strings";
 import { chatDe } from "../chat/strings";
 import { importDe } from "../import/strings";
 import { litsearchDe } from "../litsearch/strings";
@@ -401,18 +402,18 @@ export const de = {
   "notes.backlinkTyped": "Verbindung im Frontmatter",
   "rel.supports": "stützt",
   "rel.opposes": "widerspricht",
-  "rel.qualifies": "präzisiert",
-  "rel.addresses": "bezieht sich auf Frage",
+  "rel.qualifies": "schränkt ein",
+  "rel.addresses": "behandelt",
   "rel.extends": "erweitert",
   "rel.uses-method-of": "nutzt Methode von",
   "rel.uses-data-from": "nutzt Daten von",
-  "rel.elaborates": "führt fort",
+  "rel.elaborates": "führt aus",
   "rel.related": "verwandt",
   "editor.frontmatter": "Eigenschaften",
   "editor.cardLoading": "Karte lädt",
   "editor.cardMissing": "Karte nicht gefunden",
   "editor.openCard": "Karte öffnen",
-  "editor.page": "S. {page}",
+  "editor.page": "{page}",
   "editor.sectionItem": "Quellen",
   "editor.sectionNote": "Notizen",
   "editor.sectionCard": "Karten",
@@ -473,6 +474,7 @@ export const de = {
   ...matrixDe,
   ...conceptsDe,
   ...modelsDe,
+  ...cardsDe,
   ...litsearchDe,
   ...onboardingDe,
   ...textsDe,

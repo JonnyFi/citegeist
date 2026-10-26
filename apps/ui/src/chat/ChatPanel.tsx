@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n";
 import { cn } from "../lib/utils";
+import { useChatFocusRequest } from "./context";
 import { Conversation } from "./conversation";
 import { ResearchJobs } from "./research";
 
@@ -14,6 +15,12 @@ export function ChatPanel({ className }: { className?: string }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("chat");
   const [opened, setOpened] = useState<string | null>(null);
+  const focusRequested = useChatFocusRequest();
+
+  // a card sent from the card menu belongs in the conversation
+  useEffect(() => {
+    if (focusRequested) setTab("chat");
+  }, [focusRequested]);
 
   return (
     <section

@@ -21,7 +21,7 @@ export interface ResolvedLink {
 export interface CardEmbed {
   id: string;
   quote: string;
-  /** Printed page or range, e.g. "31 f." */
+  /** Where the quote stands, inserted into the `page` label. An app with several locator terms passes "para. 4" and sets that label to "{page}". */
   page?: string;
   /** Short citation, e.g. "Luhmann 1984" */
   citation?: string;

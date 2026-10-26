@@ -35,6 +35,8 @@ export interface MockDoc {
   html: string;
   blocks: Block[];
   pages: Pages;
+  /** False for a web page, HTML file or EPUB: cards cite a paragraph and there are no page numbers to check. */
+  paginated?: boolean;
 }
 
 const STAMP = { at: "2026-10-01T09:00:00.000Z", by: "human" } as const;

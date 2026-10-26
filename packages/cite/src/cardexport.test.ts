@@ -243,6 +243,29 @@ describe("locators and secondary sources", () => {
     );
   });
 
+  it("cites a paragraph of an unpaginated source in every format", () => {
+    const para: CardExportEntry = {
+      ...entry,
+      card: { locator: { label: "paragraph", start: "4", confirmed: true } },
+    };
+    const de = all(para, "direct", "de-DE");
+    expect(de.html?.text).toContain("(Luhmann, 1984, Abs. 4)");
+    expect(de.text?.text).toContain("(Luhmann, 1984, Abs. 4)");
+    expect(de.pandoc?.text).toContain("[@luhmann1984soziale, Abs. 4]");
+    expect(de.latex?.text).toContain("\\parencite[Abs. 4]{luhmann1984soziale}");
+    expect(de.typst?.text).toContain("@luhmann1984soziale[Abs. 4]");
+    const en = all(para, "direct", "en-US");
+    expect(en.text?.text).toContain("(Luhmann, 1984, para. 4)");
+    expect(en.pandoc?.text).toContain("[@luhmann1984soziale, para. 4]");
+    const range: CardExportEntry = {
+      ...entry,
+      card: { locator: { label: "paragraph", start: "4", end: "5", confirmed: true } },
+    };
+    expect(all(range, "direct", "en-US").pandoc?.text).toContain(
+      "[@luhmann1984soziale, paras. 4-5]",
+    );
+  });
+
   it("works without a locator", () => {
     const bare: CardExportEntry = { ...entry, body: { quote: "Q" }, card: {} };
     expect(exportCard(bare, { format: "text", locale: "de-DE" }).text).toBe("„Q“ (Luhmann, 1984)");

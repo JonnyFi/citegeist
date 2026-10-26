@@ -416,11 +416,72 @@ export class IngestService {
         lib: this.lib,
         resolver: this.deps.resolver,
         fromUrl: (a, url) => this.lookupUrl(a, url),
+        refetchUrl: (a, url) => this.refetchUrl(a, url),
       },
       actor,
       citekey,
       identifier,
     );
+
+  /**
+   * Reads the page at the address of an item again, for its metadata only: nothing is stored as a
+   * source and nothing is converted. A PDF or any other non-page answer counts as a page that
+   * yields nothing. A page that names an identifier goes through the normal resolvers; otherwise
+   * the fields of the page are the lookup. Undefined when the page has nothing to merge.
+   */
+  private async refetchUrl(
+    actor: Actor,
+    url: string,
+  ): Promise<{ lookup: Lookup; viaIdentifier: boolean } | undefined> {
+    const unreachable = (why: string, recovery: "retry" | "fix-and-retry"): CitegeistError =>
+      problem(
+        "URL_UNREACHABLE",
+        `${url} could not be read again (${why})`,
+        "Open the URL in a browser to check it. If the site turns programs away, add a DOI or ISBN of the work by hand with items.add and the citekey of the item.",
+        { url },
+        recovery,
+      );
+    let res: { buf: Buffer; contentType: string; url: string } | undefined;
+    try {
+      res = await this.get(url, undefined, ACCEPT_ANY, actor);
+    } catch (err) {
+      if (err instanceof TransientError) throw unreachable(err.message, "retry");
+      throw err;
+    }
+    if (!res) throw unreachable("the server answered 401, 403, 404 or 410", "fix-and-retry");
+    if (sniffContent(res.buf, res.contentType) !== "html") return undefined;
+    const page = extractPageMetadata(res.buf.toString("utf8"), res.url || url);
+    if (page.challenge) {
+      throw problem(
+        "URL_BOT_CHALLENGE",
+        `${url} answered with a bot check page ("Just a moment...", a captcha or an access wall), so its metadata cannot be read`,
+        "Add a DOI or ISBN of the work by hand with items.add and the citekey of the item.",
+        { url },
+      );
+    }
+    const resolved = await this.resolvePageIdentifiers(page);
+    if (resolved) {
+      return {
+        lookup: { fields: resolved.fields, ids: resolved.ids, provenance: resolved.provenance },
+        viaIdentifier: true,
+      };
+    }
+    const ids: Record<string, string> = {};
+    const fields: Record<string, unknown> = { ...page.fields };
+    for (const id of page.identifiers) {
+      if (id.kind === "doi" && fields.DOI === undefined) fields.DOI = id.value;
+      if (id.kind === "isbn" && fields.ISBN === undefined) fields.ISBN = id.value;
+      if (id.kind === "arxiv" && ids.arxiv === undefined) ids.arxiv = id.value;
+      if (id.kind === "pmid" && ids.pmid === undefined) ids.pmid = id.value;
+    }
+    // A title alone is what a title match does better.
+    const informative = Object.keys(fields).some((k) => k !== "title" && k !== "type");
+    if (!informative && Object.keys(ids).length === 0) return undefined;
+    const today = this.lib.stamp("system").at.slice(0, 10);
+    const provenance: Record<string, string> = {};
+    for (const key of Object.keys(fields)) provenance[key] = `web@${today}`;
+    return { lookup: { fields, ids, provenance }, viaIdentifier: false };
+  }
 
   /** What a web page says about its work, in the shape of a metadata lookup. */
   private async lookupUrl(actor: Actor, url: string): Promise<Lookup> {

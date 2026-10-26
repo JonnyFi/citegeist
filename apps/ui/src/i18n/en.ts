@@ -1,4 +1,5 @@
 import { alertsEn } from "../alerts/strings";
+import { cardsEn } from "../cards/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
@@ -405,7 +406,7 @@ export const en: Record<MessageKey, string> = {
   "editor.cardLoading": "Loading card",
   "editor.cardMissing": "Card not found",
   "editor.openCard": "Open card",
-  "editor.page": "p. {page}",
+  "editor.page": "{page}",
   "editor.sectionItem": "Sources",
   "editor.sectionNote": "Notes",
   "editor.sectionCard": "Cards",
@@ -465,6 +466,7 @@ export const en: Record<MessageKey, string> = {
   ...matrixEn,
   ...conceptsEn,
   ...modelsEn,
+  ...cardsEn,
   ...litsearchEn,
   ...onboardingEn,
   ...textsEn,

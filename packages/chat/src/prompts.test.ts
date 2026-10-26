@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderContext, turnPrompt } from "./prompts.js";
+import { instructions, renderContext, turnPrompt } from "./prompts.js";
 
 describe("renderContext", () => {
   it("is empty without a context", () => {
@@ -40,5 +40,40 @@ describe("renderContext", () => {
     });
     expect(prompt.endsWith("\n\nWo stehe ich?")).toBe(true);
     expect(prompt).toContain("Open plan: proposal");
+  });
+});
+
+describe("cards in the chat", () => {
+  it("names a card in the context as the one to pass to the link tool", () => {
+    const text = renderContext({
+      item: "williams2013accelerate",
+      selection: {
+        citekey: "williams2013accelerate",
+        text: "Die Beschleunigung endet in Hierarchie.",
+        page: "4",
+        card: "c_01JB8Z3Q0001",
+      },
+    });
+    expect(text).toContain("Card c_01JB8Z3Q0001");
+    expect(text).toContain("`from`");
+    expect(text).toContain("link tool");
+  });
+
+  it("teaches the link tool with a card as from and the relation vocabulary", () => {
+    const text = instructions({ mode: "chat", libraryRoot: "/lib", directEdits: false });
+    expect(text).toContain("call link with the card id (c_...) as `from`");
+    for (const rel of [
+      "supports",
+      "opposes",
+      "qualifies",
+      "addresses",
+      "extends",
+      "uses-method-of",
+      "uses-data-from",
+      "elaborates",
+      "related",
+    ]) {
+      expect(text).toContain(rel);
+    }
   });
 });

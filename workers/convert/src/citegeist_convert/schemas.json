@@ -886,6 +886,10 @@
         "items": {
           "type": "object",
           "properties": {
+            "from": {
+              "type": "string",
+              "pattern": "^c_[0-9A-HJKMNP-TV-Z]{10,26}$"
+            },
             "to": {
               "type": "string",
               "pattern": "^\\[\\[[^\\]|#]+(#\\^?[^\\]|]+)?(\\|[^\\]]+)?\\]\\]$"

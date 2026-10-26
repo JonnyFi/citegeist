@@ -23,6 +23,7 @@ export * from "./job.js";
 export * from "./library.js";
 export * from "./matrix.js";
 export * from "./note.js";
+export * from "./paragraphs.js";
 export * from "./planning.js";
 export * from "./project.js";
 export * from "./texts.js";

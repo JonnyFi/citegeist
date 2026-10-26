@@ -362,8 +362,16 @@ export function createRuntime(lib: Library, opts: RuntimeOptions = {}): Runtime 
   // operations return and shows the progress of a fill. A one-shot process (the CLI) does not run
   // the queue and keeps the detached fallback.
   const jobs = opts.autoStart !== false ? aiTaskJobs(ingest.queue) : undefined;
-  bindCardOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
-  bindLinkOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  // A new card text may name a source of the library: the link service suggests a typed link.
+  let suggestLinks: ((id: string) => void) | undefined;
+  bindCardOperations(registry, lib, {
+    ai,
+    ...(jobs ? { jobs } : {}),
+    onCardText: (id) => suggestLinks?.(id),
+  });
+  const linkOps = bindLinkOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
+  // a one-shot process (the CLI) leaves it to the user to ask for suggestions
+  if (jobs) suggestLinks = (id) => linkOps.links.autoSuggest(id);
   bindConceptOperations(registry, lib, { ai, ...(jobs ? { jobs } : {}) });
   bindMatrixOperations(registry, lib, {
     ai,

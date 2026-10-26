@@ -45,7 +45,7 @@ export function perturb(paras: Mapped[], names: PerturbName[], seed = 1): Mapped
             if (r < 0.1) return "\n";
             return c;
           });
-          return { text: e.text + " \n", src: [...e.src, -1, -1] };
+          return { text: `${e.text} \n`, src: [...e.src, -1, -1] };
         });
         break;
       case "lig":
@@ -89,7 +89,7 @@ export function perturb(paras: Mapped[], names: PerturbName[], seed = 1): Mapped
           replaceRegex(p, /\p{L}{4,}/gu, (m) => {
             if (rand() >= 0.04) return m[0];
             const r = pool[Math.floor(rand() * pool.length)] ?? "x";
-            return r === m[0] ? r + "s" : r;
+            return r === m[0] ? `${r}s` : r;
           }),
         );
         break;
@@ -105,7 +105,7 @@ export function perturb(paras: Mapped[], names: PerturbName[], seed = 1): Mapped
               /\p{L}/u.test(p.text[i - 1] ?? "") &&
               rand() < 0.003
             )
-              return c + " ";
+              return `${c} `;
             return c;
           }),
         );
@@ -116,7 +116,7 @@ export function perturb(paras: Mapped[], names: PerturbName[], seed = 1): Mapped
           replaceRegex(p, /\p{L}{9,}/gu, (m) => {
             if (rand() >= 0.05) return m[0];
             const k = 3 + Math.floor(rand() * (m[0].length - 6));
-            return m[0].slice(0, k) + "- " + m[0].slice(k);
+            return `${m[0].slice(0, k)}- ${m[0].slice(k)}`;
           }),
         );
         break;

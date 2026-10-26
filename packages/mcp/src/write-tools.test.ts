@@ -233,6 +233,45 @@ describe("write tools over stdio against a real library", () => {
     expect(twice.frontmatter.links).toHaveLength(1);
   });
 
+  it("link takes a card as from and stores the link in the literature note of the card's item", async () => {
+    const added = await call<{ citekey: string; job: string }>("add_item", {
+      identifier: DOI,
+      target: "library",
+    });
+    await finished(added.job);
+    const quote = "Paragraph 1 of Introduction on printed page 10.";
+    const card = await call<{ card: { frontmatter: { id: string } } }>("create_card", {
+      citekey: added.citekey,
+      quote,
+      anchor: { text: { exact: quote, prefix: "", suffix: "" } },
+    });
+    const target = await call<{ frontmatter: { id: string } }>("create_note", {
+      title: "The argument it attacks",
+      type: "permanent",
+    });
+    const cardId = card.card.frontmatter.id;
+    const linked = await call<{
+      frontmatter: {
+        type: string;
+        links: Array<{ from: string; to: string; rel: string; evidence: string; by: string }>;
+      };
+      body: string;
+    }>("link", {
+      from: cardId,
+      link: { to: `[[${target.frontmatter.id}]]`, rel: "opposes", why: "it contradicts the note" },
+    });
+    expect(linked.frontmatter.type).toBe("literature");
+    expect(linked.body).toContain(`Item: [[${added.citekey}]]`);
+    expect(linked.frontmatter.links).toHaveLength(1);
+    expect(linked.frontmatter.links[0]).toMatchObject({
+      from: cardId,
+      to: `[[${target.frontmatter.id}]]`,
+      rel: "opposes",
+      evidence: `[[${cardId}]]`,
+      by: `agent:${CLIENT}`,
+    });
+  });
+
   it("create_card on a missing item and jobs_get on a missing job return errors with a fix", async () => {
     const card = await client.callTool({
       name: "create_card",
