@@ -11,7 +11,7 @@ import { chatError, oneLine } from "./util.js";
 
 /**
  * Fallback for Claude Code when the ACP adapter cannot start: `claude -p` with streaming JSON
- * output, one process per turn, the conversation continued with `--resume`. In the sandbox (A11)
+ * output, one process per turn, the conversation continued with `--resume`. In the sandbox (docs/decisions/0020-chat-agents-use-the-users-environment.md)
  * it keeps the isolation (no user settings, only citegeist's MCP server, no shell). Otherwise it
  * loads the settings of the user and the project, which bring the user's MCP servers, and allows
  * the shell. It cannot ask for permissions, so tools outside the allow list are simply denied.
@@ -172,7 +172,7 @@ export class ClaudePrintDriver implements AgentDriver {
     ];
     // `claude -p` cannot ask for permission, so a research job gets the web search and the web
     // fetch of the scholarly hosts only. The ACP route also allows the addresses that a web
-    // search returned, because the permission policy can check them (egress.ts, L9).
+    // search returned, because the permission policy can check them (egress.ts).
     const webFetch = research ? SCHOLARLY_HOSTS.map((h) => `WebFetch(domain:${h})`) : ["WebFetch"];
     const args = req.isolated
       ? [

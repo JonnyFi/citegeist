@@ -178,7 +178,7 @@ export class SettingsService {
     return { ...this.deps.store.load().webhooks };
   }
 
-  /** A11: true when chat agents run in the sandbox instead of the user's own environment. */
+  /** True when chat agents run in the sandbox instead of the user's own environment. */
   chatIsolated(): boolean {
     return this.deps.store.load().chat.isolated;
   }

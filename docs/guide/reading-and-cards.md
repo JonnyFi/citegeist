@@ -1,0 +1,49 @@
+# Reading and quote cards
+
+## The reader
+
+The "Read" tab of an item shows the source in one of two views, which you switch at the top right:
+
+- **PDF** shows the original file.
+- **Text** shows the converted, reflowed text.
+
+Both views share the same highlights. A highlight made in one appears in the other, and it survives a new conversion of the file. The converted text has stable block IDs, which are also the targets of links such as `[[luhmann1984soziale#^b7f3k2q]]`.
+
+The dropdown "AI language" sets the language of the AI texts for the source you are reading. It overrides the project setting, which overrides the library default.
+
+## Printed page numbers
+
+A citation needs the printed page, not the position in the PDF. citegeist reads page labels from the PDF, from running headers and footers, and from the page range in the metadata. When it is not sure, a bar above the reader asks which printed number a PDF page carries. Confirm it once, and every card of that PDF follows. Cards on a PDF page that is not confirmed carry a "Page unchecked" mark.
+
+## Creating a card
+
+Select a passage in either view. The selection snaps to word boundaries. The popover offers "Quote", which saves a card. "Explain" and "Link to note" are visible but disabled.
+
+A card is a Markdown file in `items/<citekey>/cards/`. It stores:
+
+- the wording, unchanged. A gap in the quote is an explicit edit marked with "[...]".
+- the locator (printed page) and two anchors, one in the PDF and one in the text.
+- a **paraphrase** of one to three sentences. The AI writes it in the background, and the card shows "AI writing" until it arrives. The paraphrase records which model wrote it.
+- a **kind**: thesis, finding, method, definition, example or critique. The AI proposes it together with the paraphrase. You can change it at any time, and a kind you set is never overwritten.
+- your own **note**, a free text field, and tags.
+
+Cards appear in the right column ("Cards") of the item and in the project. "Show in reader" jumps to the passage. If the passage can no longer be found after a new conversion, the card shows "Highlight not found". The card file stays and remains valid.
+
+"Regenerate" asks the AI for a new paraphrase, optionally in another language. The AI never changes the wording.
+
+## Copying a citation
+
+Each card has two copy actions:
+
+- **Quote verbatim** copies the wording with a citation, for example "(Luhmann 1984, p. 31)".
+- **Quote indirectly** copies your note, or the paraphrase when you have no note, with a "cf." citation.
+
+The clipboard holds formatted text and plain text. The citation style and language come from the project, and the project's export setting decides which parts of a card an export includes. In a project, "Export" copies several cards at once as direct or indirect citations. `cg cards export` does the same from a shell.
+
+In the text editor of a project, the card column inserts the same citations at the cursor. See [writing and export](writing-and-export.md).
+
+## Quick insert
+
+A global hotkey (default Cmd+Shift+K, configurable) opens a small search palette over your cards in any app. Enter copies the verbatim citation and pastes it into the app that had focus. Shift+Enter does the same for the indirect citation, and Escape closes the palette. Pasting into other apps needs the Accessibility permission of macOS. Without it, citegeist copies the citation and says so. Turn quick insert on in the settings.
+
+If you rebuild citegeist locally, macOS ties the permission to each build unless the app is signed with a stable identity. See [development](../development.md#stable-signing-identity).

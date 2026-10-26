@@ -1,19 +1,20 @@
-## Worum geht es
+## What changes
 
-<!-- Ein bis drei Sätze: was ändert sich und warum. Verweise auf das Issue (Fixes #n). -->
+<!-- One to three sentences: what changes and why. Link the issue (Fixes #n). -->
 
-## Wie geprüft
+## How it was checked
 
-- [ ] `pnpm verify` lokal grün (letzte Zeilen hier einfügen)
-- [ ] bei Oberfläche: Screenshot oder kurzer Ablauf
-- [ ] bei neuen Operationen: Vertrag in `packages/ops/src/contracts` und Test
+- [ ] `pnpm verify` is green locally (paste the last lines below)
+- [ ] For UI changes: a screenshot or a short walkthrough
+- [ ] For new operations: a contract in `packages/ops/src/contracts` and a test
+- [ ] I reviewed the whole diff and understand it, including parts an agent wrote
 
 ```
-<Ausgabe von pnpm verify, letzte Zeilen>
+<last lines of pnpm verify>
 ```
 
-## Offene Punkte
+## Open points
 
-<!-- Was bewusst nicht gemacht wurde, was die Maintainer noch verdrahten müssen. -->
+<!-- What this pull request leaves out on purpose, and what the maintainers need to wire up (lockfile, schema or contract changes). -->
 
-Mit gstack (empfohlen): `/review` vor dem PR, `/ship` zum Öffnen.
+gstack is required for AI-assisted work: run `/review` before the pull request and `/ship` to open it.

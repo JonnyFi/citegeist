@@ -21,7 +21,7 @@ export function system(_language: string): string {
 }
 
 /**
- * v3 (W5.1): passage and paraphrase are datamarked. The paraphrase was written by a model from an
+ * v3: passage and paraphrase are datamarked. The paraphrase was written by a model from an
  * outside text, so it can carry an injected sentence too. The judging rules are unchanged from v2.
  */
 export function prompt(input: CardVerifyInput): string {

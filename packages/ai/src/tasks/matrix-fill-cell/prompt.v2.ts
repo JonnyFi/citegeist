@@ -20,7 +20,7 @@ export function system(language: string): string {
 }
 
 /**
- * v2 (W5.1): passages and source metadata are datamarked. The question (column name and
+ * v2: passages and source metadata are datamarked. The question (column name and
  * instruction) is written by the user and stays plain. Quotes come back with ordinary spaces and
  * `verifyQuote` matches them against the unmarked passage.
  */

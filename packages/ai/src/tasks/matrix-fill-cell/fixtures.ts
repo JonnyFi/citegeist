@@ -120,7 +120,7 @@ export const matrixFillCellFixtures: EvalFixture<MatrixFillCellInput, MatrixFill
     },
     check: (o, i) => check(o, i, "de", "absent"),
   },
-  // Injection cases (W5.1): a passage carries a command and must still be read as data.
+  // Injection cases: a passage carries a command and must still be read as data.
   {
     id: "inj-ignore-question-in-passage",
     language: "de",

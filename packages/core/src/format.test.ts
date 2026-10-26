@@ -37,7 +37,7 @@ Autopoiesis ist [[luhmann1984soziale#^b7f3k2q]] zentral.
 
 const QUOTE = "Soziale Systeme bestehen aus Kommunikationen.\n\nNicht aus Menschen.";
 
-/** A card as written before D15 to D17: kind "quote", core statement, own words and comment. */
+/** A card as written before the quote card change (docs/decisions/0010-quote-cards.md): kind "quote", core statement, own words and comment. */
 const CARD_LEGACY = `---
 id: c_01JB8Z3Q7K
 item: luhmann1984soziale
@@ -276,7 +276,7 @@ describe("card body", () => {
     expect(serializeCardBody(parseCardBody(file.body))).toBe(file.body);
   });
 
-  describe("migration of cards from before D15 to D17", () => {
+  describe("migration of cards from before the quote card change", () => {
     it("reads an old card: the empty comment disappears, own words become the note", () => {
       const body = parseCardBody(MarkdownFile.parse(CARD_LEGACY).body);
       expect(body.note).toBe("Mein Gedanke, siehe [[luhmann1984soziale]].");

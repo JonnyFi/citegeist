@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Sync and versioning (W4.3, decisions D5 and A9). Exactly one sync transport is active at a
+// Sync and versioning (docs/decisions/0005-sync-and-versioning.md). Exactly one sync transport is active at a
 // time: a synced folder (iCloud or Dropbox) or a git remote. git history is always allowed.
 
 export const SyncTransport = z.enum(["none", "icloud", "dropbox", "git"]);

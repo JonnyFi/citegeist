@@ -24,7 +24,7 @@ export function system(language: string): string {
 }
 
 /**
- * v2 (W5.1): passages, source metadata and the term are datamarked. The quotes in `evidence` come
+ * v2: passages, source metadata and the term are datamarked. The quotes in `evidence` come
  * back with ordinary spaces and `sanitizeUsage` matches them against the unmarked passage.
  */
 export function prompt(input: ConceptDescribeInput): string {

@@ -82,7 +82,7 @@ const screens = [
   },
   { name: "projekt", hash: "#/projects/phd-proposal" },
 
-  // W3.8: screens without a board of their own, drawn in the same system
+  // Screens without a board of their own, drawn in the same system
   {
     name: "bibliothek-hinzufuegen",
     hash: "#/",

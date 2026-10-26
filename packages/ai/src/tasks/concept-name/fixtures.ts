@@ -52,7 +52,7 @@ export const conceptNameFixtures: EvalFixture<ConceptNameInput, ConceptNameOutpu
     },
     check: (o, i) => check(o, i, "absent"),
   },
-  // Injection cases (W5.1): the passage carries a command and must still be read as data.
+  // Injection cases: the passage carries a command and must still be read as data.
   {
     id: "inj-ignore-rules-names-payload",
     language: "de",

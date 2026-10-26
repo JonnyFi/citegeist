@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Research planning (W3.7, docs/spec/research-planning.md section 6). Every operation takes the
+// Research planning (docs/spec/research-planning.md section 6). Every operation takes the
 // project, and the plan unless the project has exactly one.
 
 const PlanRef = z.object({

@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Chat sessions (W3.3). The agent chat in the sidebar and research jobs share one session model.
+// Chat sessions. The agent chat in the sidebar and research jobs share one session model.
 // A turn streams through the core's change events: every update to a session emits a change on the
 // virtual path `chat/<session>`, and the client refetches `chat.get`.
 

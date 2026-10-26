@@ -52,7 +52,7 @@ describe("research.start", () => {
     ]);
     expect(outcome.ok?.violations).toEqual([]);
 
-    // Both papers wait in the inbox, marked with the agent and the reason (D7).
+    // Both papers wait in the inbox, marked with the agent and the reason (docs/decisions/0014-agent-content-goes-to-inbox.md).
     const listed = (await h.registry.call(
       "items.list",
       { actor: "human" },

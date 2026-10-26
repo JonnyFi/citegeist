@@ -6,13 +6,13 @@ import { delimiter, dirname, extname, join } from "node:path";
 
 /**
  * The agents the chat can talk to. Every user brings an own subscription through the official CLI
- * (D1); citegeist never handles vendor credentials. It starts an ACP adapter for the agent, passes
+ * (docs/decisions/0001-open-source-and-own-subscription.md); citegeist never handles vendor credentials. It starts an ACP adapter for the agent, passes
  * its environment through a scrub, and checks the login with the CLI's own status command.
  */
 
 /**
  * The ACP adapters (JavaScript) ship with citegeist as dependencies of this package, pinned in
- * package.json because ACP and its adapters change quickly (research note, section 4.5). Nothing is
+ * package.json because ACP and its adapters change quickly. Nothing is
  * fetched at run time. The CLIs behind them (`claude`, `codex`) do not ship with the app: the
  * adapters run the ones the user installed.
  */
@@ -118,7 +118,7 @@ export interface BackendDefinition {
   /** Command that speaks ACP on stdio. Undefined when it cannot be found. */
   launch(find: (name: string) => string | undefined): AcpLaunch | undefined;
   /**
-   * Extra `_meta` for `session/new`, per agent. In the sandbox (A11, "Isolierter Agent" or a
+   * Extra `_meta` for `session/new`, per agent. In the sandbox (docs/decisions/0020-chat-agents-use-the-users-environment.md, "Isolierter Agent" or a
    * research job) it switches off the user's settings and the shell; otherwise it loads them.
    */
   sessionMeta?(isolated: boolean): Record<string, unknown> | undefined;
@@ -157,7 +157,7 @@ export const CLAUDE_CODE: BackendDefinition = {
     return cli ? adapterLaunch(CLAUDE_ACP_PACKAGE, { CLAUDE_CODE_EXECUTABLE: cli }) : undefined;
   },
   // Read by claude-agent-acp. Sandbox: no personal ~/.claude config, only the MCP servers citegeist
-  // passes, no shell (research notes, section 4.5, points 3 and 4). Otherwise (A11): the settings
+  // passes, no shell. Otherwise (docs/decisions/0020-chat-agents-use-the-users-environment.md): the settings
   // of the user and the project, which bring the user's MCP servers, plus the shell, and the
   // citegeist MCP server that the session passes.
   sessionMeta(isolated) {

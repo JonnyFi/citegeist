@@ -2,7 +2,7 @@ import { JobId, ProjectSlug, Sha256, TextSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Texts (D20, docs/spec/library-format.md): Markdown files with Pandoc citations under
+// Texts (docs/decisions/0002-writing-in-markdown-with-pandoc.md, docs/spec/library-format.md): Markdown files with Pandoc citations under
 // projects/<project>/texts/, exported through Pandoc. No MCP tools: the cap of 20 is used up, so
 // agents reach texts through `cg texts ...` and the files.
 

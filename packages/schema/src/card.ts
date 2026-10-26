@@ -3,7 +3,7 @@ import { CardId, Citekey, ModelStamp, ProjectSlug, Sha256, SourceHash, Stamp } f
 import { BlockId } from "./document.js";
 
 /**
- * What a card says (D16). Every card holds a quote, so "quote" is not a kind. The AI pre-classifies
+ * What a card says (docs/decisions/0010-quote-cards.md). Every card holds a quote, so "quote" is not a kind. The AI pre-classifies
  * the kind in the paraphrase call and the reader can change it; a card without a kind is valid.
  */
 export const CardKind = z.enum([
@@ -18,7 +18,7 @@ export type CardKind = z.infer<typeof CardKind>;
 
 /**
  * The `kind` field of a card file. Old libraries may contain the retired kinds "quote" and
- * "comment" (D16); they read as no kind, and so does any other value that is not a kind, because
+ * "comment"; they read as no kind, and so does any other value that is not a kind, because
  * the kind is a hint for the reader and a typo in it must not hide the card. A `catch` instead of
  * a transform keeps the schema representable as JSON Schema for MCP and the CLI.
  */
@@ -65,7 +65,7 @@ export const CardFrontmatter = z.object({
   /** Secondary source for "zit. n." citations. */
   via: Citekey.optional(),
   paraphrase: ModelStamp.optional(),
-  /** Legacy (D15): the core statement is gone. A stored stamp is kept on rewrite and shown nowhere. */
+  /** Legacy: the core statement is gone. A stored stamp is kept on rewrite and shown nowhere. */
   core: ModelStamp.optional(),
   tags: z.array(z.string()).default([]),
   projects: z.array(ProjectSlug).default([]),
@@ -79,9 +79,9 @@ export type CardFrontmatter = z.infer<typeof CardFrontmatter>;
  * Card body sections. The body starts with a blockquote holding the verbatim quote, followed by
  * these level-2 headings in this order. Unknown sections are preserved by the parser.
  *
- * D17: one free field "Note" replaces "In my words" and "Comment". The parser still reads the two
+ * One free field "Note" replaces "In my words" and "Comment". The parser still reads the two
  * old headings ({@link LEGACY_NOTE_SECTIONS}) and merges them into `note`; the writer only emits
- * "Note". D15: "Core statement" is a legacy section. It is preserved as it is but shown nowhere.
+ * "Note". "Core statement" is a legacy section. It is preserved as it is but shown nowhere.
  */
 export const CARD_SECTIONS = {
   paraphrase: "Paraphrase",
@@ -94,11 +94,11 @@ export const LEGACY_NOTE_SECTIONS = ["In my words", "Comment"] as const;
 
 export const CardBody = z.object({
   quote: z.string().min(1),
-  /** The one AI text of a card (D15): one to three sentences in the resolved language. */
+  /** The one AI text of a card: one to three sentences in the resolved language. */
   paraphrase: z.string().optional(),
-  /** Legacy (D15): never written for new cards, kept so that old files survive a rewrite. */
+  /** Legacy: never written for new cards, kept so that old files survive a rewrite. */
   core: z.string().optional(),
-  /** The reader's own text (D17). Old "In my words" and "Comment" sections end up here. */
+  /** The reader's own text. Old "In my words" and "Comment" sections end up here. */
   note: z.string().optional(),
   extra: z.array(z.object({ heading: z.string(), text: z.string() })).default([]),
 });

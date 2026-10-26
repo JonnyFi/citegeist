@@ -1,5 +1,5 @@
 /**
- * Strings of the Texte tab (D20): the list of texts, the editor with Pandoc citations, the export
+ * Strings of the Texte tab: the list of texts, the editor with Pandoc citations, the export
  * and the Pandoc setup, plus the card actions that insert into the open text. They are spread
  * into the catalogs in `i18n/de.ts` and `i18n/en.ts`.
  */

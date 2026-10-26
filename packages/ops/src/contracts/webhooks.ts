@@ -2,7 +2,7 @@ import { JobId, ProjectSlug } from "@citegeist/schema";
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Webhooks for external agents (W4.6, decision D8). A connector is one external agent such as the
+// Webhooks for external agents (docs/decisions/0015-webhooks.md). A connector is one external agent such as the
 // Grok bot. It signs requests to /hooks/<name> with HMAC-SHA256 (inbound) and citegeist signs
 // research tasks to the connector's URL the same way (outbound). Secrets live in the Keychain
 // and are shown once, when they are created or rotated.

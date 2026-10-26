@@ -47,7 +47,7 @@ describe("a chat turn with the fake ACP agent", () => {
       text: "Fertig, siehe [[paper1|Granovetter 1973]].",
     });
 
-    // The agent wrote through the citegeist MCP server, so the item carries the agent's name (D7).
+    // The agent wrote through the citegeist MCP server, so the item carries the agent's name (docs/decisions/0014-agent-content-goes-to-inbox.md).
     expect(h.inbox).toEqual([
       expect.objectContaining({
         citekey: "paper1",
@@ -93,7 +93,7 @@ describe("a chat turn with the fake ACP agent", () => {
     expect(JSON.parse((second as { text: string }).text).promptHasInstructions).toBe(false);
   });
 
-  it("gives the agent the user's own environment by default and the sandbox on request (A11)", async () => {
+  it("gives the agent the user's own environment by default and the sandbox on request", async () => {
     let isolated = false;
     const h = await harness({ host: { isolated: () => isolated } });
     const reports = (session: string) =>

@@ -225,7 +225,7 @@ describe("ClaudePrintDriver", () => {
     expect(args).toEqual(expect.arrayContaining(["--disallowedTools", "Bash"]));
   });
 
-  it("loads the user's settings and allows the shell when the chat is not isolated (A11)", () => {
+  it("loads the user's settings and allows the shell when the chat is not isolated", () => {
     const args = new ClaudePrintDriver({
       command: "claude",
       env: {},

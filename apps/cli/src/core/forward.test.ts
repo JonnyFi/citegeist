@@ -227,7 +227,7 @@ describe("cg forwards to a running app core", () => {
     expect(core.lib.getNote(note.frontmatter.id).frontmatter.title).toBe("Written through the app");
   });
 
-  it("carries the agent name along, so D7 puts the paper in the inbox", async () => {
+  it("carries the agent name along, so the paper lands in the inbox", async () => {
     const sb = await sandbox();
     const core = await startFakeCore(sb, { actors: true });
 

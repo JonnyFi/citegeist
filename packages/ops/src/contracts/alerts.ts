@@ -4,11 +4,11 @@ import { defineContract, type OperationContract } from "../registry.js";
 import { LitsearchRunId } from "./litsearch.js";
 
 // Alerts: saved watches that look for new works on a schedule and put the best ones into the
-// inbox (D7, actor "system", why "Alert: <name>"). The definitions are plain files:
+// inbox (docs/decisions/0014-agent-content-goes-to-inbox.md, actor "system", why "Alert: <name>"). The definitions are plain files:
 // projects/<slug>/alerts.yaml for the alerts of a project, alerts.yaml at the library root for
 // the others. When an alert ran, what it found and a cursor stay machine-local.
 //
-// The kind `pipeline` is a saved literature search (D19): each check runs the pipeline of
+// The kind `pipeline` is a saved literature search (docs/decisions/0022-literature-search.md): each check runs the pipeline of
 // workers/research as a litsearch.run job, compares the run with the alert's previous one and
 // puts the new papers, best score first, into the inbox.
 

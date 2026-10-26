@@ -178,7 +178,7 @@ describe("settings screen", () => {
     expect(await screen.findByText("Das Sortiermodell ist bereit.")).toBeVisible();
   });
 
-  it("lets the chat agent work in the user's environment until Isolierter Agent is turned on (A11)", async () => {
+  it("lets the chat agent work in the user's environment until Isolierter Agent is turned on", async () => {
     const user = userEvent.setup();
     const { state, calls } = renderWithSettingsCore(<SettingsScreen />);
     const toggle = await screen.findByRole("checkbox", { name: "Isolierter Agent" });

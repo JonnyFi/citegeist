@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ProjectSlug, Stamp } from "./common.js";
 
-// Texts (D20, docs/spec/library-format.md): Markdown files under projects/<project>/texts/ whose
+// Texts (docs/decisions/0002-writing-in-markdown-with-pandoc.md, docs/spec/library-format.md): Markdown files under projects/<project>/texts/ whose
 // citations use the Pandoc syntax, so that `pandoc --citeproc` can format them.
 
 /** File name (without `.md`) of a text under projects/<project>/texts/. */
