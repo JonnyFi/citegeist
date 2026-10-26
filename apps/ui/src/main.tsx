@@ -17,7 +17,8 @@ async function pickCore(): Promise<Core | null> {
     data.items.clear();
     return createMockCore(data);
   }
-  return createMockCore(undefined, { demoJobs: true });
+  const { createFixtures } = await import("./mock/fixtures");
+  return createMockCore(createFixtures(undefined, { connections: true }), { demoJobs: true });
 }
 
 const root = document.getElementById("root");
