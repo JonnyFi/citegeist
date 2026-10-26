@@ -11,6 +11,7 @@ import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
 import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
+import { membershipEn } from "./membership";
 import { metadataEn } from "./metadata";
 import { modelsEn } from "./models";
 import { relatedEn } from "./related";
@@ -462,6 +463,7 @@ export const en: Record<MessageKey, string> = {
   ...importEn,
   ...manageEn,
   ...relatedEn,
+  ...membershipEn,
   ...metadataEn,
   ...matrixEn,
   ...conceptsEn,

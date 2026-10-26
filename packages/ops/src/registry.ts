@@ -42,6 +42,11 @@ export interface OperationContract<
   /** CLI command path, e.g. ["items", "add"]. Defaults to the name split at dots. */
   cli?: string[];
   /**
+   * Input field that the CLI takes as the positional argument although the schema does not
+   * require it. Default: the first required string field.
+   */
+  cliPositional?: string;
+  /**
    * Input fields that hold a secret. The CLI adds `--<field>-stdin` for each, so the value does
    * not appear in the process list or the shell history.
    */

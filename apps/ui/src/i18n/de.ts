@@ -10,6 +10,7 @@ import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
+import { membershipDe } from "./membership";
 import { metadataDe } from "./metadata";
 import { modelsDe } from "./models";
 import { relatedDe } from "./related";
@@ -470,6 +471,7 @@ export const de = {
   ...importDe,
   ...manageDe,
   ...relatedDe,
+  ...membershipDe,
   ...metadataDe,
   ...matrixDe,
   ...conceptsDe,

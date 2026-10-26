@@ -22,6 +22,6 @@ describe("contracts", () => {
     }));
     const out = await reg.call("items.add", { actor: "agent:grok" }, { identifier: "10.1000/x" });
     expect(out).toEqual({ citekey: "smith2020", job: "j_01JB8Z3QK7ABCDEFGH" });
-    await expect(reg.call("items.add", { actor: "human" }, {})).rejects.toThrow();
+    await expect(reg.call("items.add", { actor: "human" }, { identifier: "" })).rejects.toThrow();
   });
 });

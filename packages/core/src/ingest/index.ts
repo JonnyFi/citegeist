@@ -93,17 +93,31 @@ export function bindIngestOperations(
           recovery: "fix-and-retry",
         });
       }
-      if (ctx.localFiles === false && svc.namesLocalFile(input.identifier)) {
+      const { identifier } = input;
+      if (identifier === undefined) {
+        if (!input.citekey || input.projects.length === 0) {
+          throw new CitegeistError({
+            code: "IDENTIFIER_MISSING",
+            message: "items.add needs an identifier, or a citekey together with projects",
+            fix: "Pass a DOI, arXiv id, ISBN, PMID, URL, BibTeX snippet or file path as identifier. To put an item that is in the library into projects, pass its citekey and projects.",
+            recovery: "fix-and-retry",
+          });
+        }
+        return svc.addToProjects(ctx.actor, input.citekey, input.projects);
+      }
+      if (ctx.localFiles === false && svc.namesLocalFile(identifier)) {
         refuseLocalFiles("items.add with this identifier");
       }
       if (ctx.egress === "scholarly") {
-        const id = detectIdentifier(input.identifier);
-        if (id?.kind === "url" && !isScholarlyUrl(id.value)) refuseOpenAddress(input.identifier);
+        const id = detectIdentifier(identifier);
+        if (id?.kind === "url" && !isScholarlyUrl(id.value)) refuseOpenAddress(identifier);
       }
       // A research job lands in the inbox, whatever it asks for (docs/decisions/0014-agent-content-goes-to-inbox.md).
       return svc.addItem(
         ctx.actor,
-        ctx.egress === "scholarly" ? { ...input, target: "inbox" } : input,
+        ctx.egress === "scholarly"
+          ? { ...input, identifier, target: "inbox" }
+          : { ...input, identifier },
       );
     })
     .bind(itemsAttach, async (ctx, input) => {

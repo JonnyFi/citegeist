@@ -5,7 +5,7 @@ import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
 import { AddField } from "./add-field";
 import { FirstSteps } from "./first-steps";
-import { ItemsTable } from "./items-table";
+import { SelectableItemsTable } from "./item-selection";
 import { HeaderSlot, SubBar } from "./layout";
 import { Button } from "./ui/button";
 import { Segmented } from "./ui/segmented";
@@ -129,7 +129,7 @@ export function ItemsScreen({
           )
         ) : (
           <>
-            <ItemsTable items={items} />
+            <SelectableItemsTable items={items} project={filters.project} />
             {pages.hasNextPage ? (
               <div className="px-8 py-4">
                 <Button

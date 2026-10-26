@@ -10,9 +10,11 @@ import {
   notesCreate,
   notesGet,
   notesUpdate,
+  projectsAddItems,
   projectsCreate,
   projectsGet,
   projectsList,
+  projectsRemoveItems,
   projectsUpdate,
   Registry,
   searchQuery,
@@ -22,6 +24,7 @@ import { formatCitations } from "./cite-ops.js";
 import { neighbors } from "./graph.js";
 import type { Library } from "./library.js";
 import { createLink } from "./links.js";
+import { changeProjectItems } from "./project-items.js";
 import type { SearchHit, SearchInput } from "./search.js";
 
 export interface CoreOperationOptions {
@@ -58,6 +61,14 @@ export function bindCoreOperations(
     .bind(projectsGet, async (_ctx, input) => lib.getProject(input.slug))
     .bind(projectsList, async () => lib.listProjects())
     .bind(projectsUpdate, async (_ctx, input) => lib.updateProject(input))
+    .bind(projectsAddItems, async (ctx, input) => {
+      const r = changeProjectItems(lib, ctx.actor, "add", input.slug, input.citekeys);
+      return { added: r.changed, unchanged: r.unchanged };
+    })
+    .bind(projectsRemoveItems, async (ctx, input) => {
+      const r = changeProjectItems(lib, ctx.actor, "remove", input.slug, input.citekeys);
+      return { removed: r.changed, unchanged: r.unchanged };
+    })
     .bind(searchQuery, async (_ctx, input) => ({
       hits: await search({
         q: input.q,

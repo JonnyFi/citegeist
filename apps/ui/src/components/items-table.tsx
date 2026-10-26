@@ -11,12 +11,25 @@ import { Menu } from "./ui/menu";
 
 export type ItemSummary = z.output<typeof itemsList.output>["items"][number];
 
+/** Row selection of the table: a checkbox per row, shift-click on a checkbox takes a range. */
+export interface RowSelection {
+  selected: ReadonlySet<string>;
+  onToggle: (citekey: string, opts: { range: boolean }) => void;
+  onToggleAll: () => void;
+}
+
 const TH =
   "h-9 border-b border-line px-3 text-left text-label font-semibold uppercase tracking-[0.08em] text-muted";
 const TD = "h-row border-b border-line-soft px-3";
 
 /** The library table: 36px head, 40px rows. Titles are links; clicking anywhere in a row opens the item too. */
-export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
+export function ItemsTable({
+  items,
+  selection,
+}: {
+  items: readonly ItemSummary[];
+  selection?: RowSelection | undefined;
+}) {
   const i18n = useI18n();
   const { t } = i18n;
   const navigate = useNavigate();
@@ -26,7 +39,18 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
       <caption className="sr-only">{t("table.caption")}</caption>
       <thead>
         <tr>
-          <th scope="col" className={`${TH} w-11 pl-8`}>
+          {selection ? (
+            <th scope="col" className={`${TH} w-11 pl-8`}>
+              <input
+                type="checkbox"
+                className="size-3.5 align-middle"
+                aria-label={t("membership.selectAll")}
+                checked={items.length > 0 && items.every((i) => selection.selected.has(i.citekey))}
+                onChange={selection.onToggleAll}
+              />
+            </th>
+          ) : null}
+          <th scope="col" className={`${TH} w-11 ${selection ? "pl-0" : "pl-8"}`}>
             <span className="sr-only">{t("table.status")}</span>
           </th>
           <th scope="col" className={TH}>
@@ -58,12 +82,32 @@ export function ItemsTable({ items }: { items: readonly ItemSummary[] }) {
               onClick={(e) => {
                 // the row menu and its popup (a portal, whose clicks still bubble) do not open the item
                 const target = e.target as HTMLElement;
-                if (!e.currentTarget.contains(target) || target.closest("button")) return;
+                if (!e.currentTarget.contains(target) || target.closest("button, input")) return;
+                // cmd, ctrl or shift on the row select it instead of opening it
+                if (selection && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+                  selection.onToggle(item.citekey, { range: e.shiftKey });
+                  return;
+                }
                 void navigate({ to: "/items/$citekey", params: { citekey: item.citekey } });
               }}
               className="cursor-default hover:bg-sunken"
             >
-              <td className={`${TD} pl-8`}>
+              {selection ? (
+                <td className={`${TD} pl-8`}>
+                  <input
+                    type="checkbox"
+                    className="size-3.5 align-middle"
+                    aria-label={t("membership.selectRow", { title: item.title })}
+                    checked={selection.selected.has(item.citekey)}
+                    onChange={() => {}}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selection.onToggle(item.citekey, { range: e.shiftKey });
+                    }}
+                  />
+                </td>
+              ) : null}
+              <td className={`${TD} ${selection ? "pl-0" : "pl-8"}`}>
                 <StatusSquare filled={item.status !== "unread"} />
               </td>
               <td className={`${TD} max-w-0`}>

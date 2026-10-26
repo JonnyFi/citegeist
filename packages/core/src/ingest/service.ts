@@ -327,6 +327,27 @@ export class IngestService {
     return { citekey, job: jobId };
   }
 
+  /**
+   * items.add with a citekey and projects but no identifier: the existing item joins the
+   * projects. No new item, no download. The job is finished at once, as for a duplicate.
+   */
+  addToProjects(actor: Actor, citekey: string, projects: string[]): AddResult {
+    for (const slug of projects) this.lib.getProject(slug);
+    const item = loadItem(this.lib, citekey);
+    const joined = [...new Set([...item.fm.projects, ...projects])];
+    if (joined.length !== item.fm.projects.length) {
+      saveItem(this.lib, actor, item, { projects: joined });
+    }
+    const job = this.queue.enqueueFinished({
+      kind: "ingest",
+      by: actor,
+      input: { citekey, projects },
+      result: { citekey, projects: joined },
+      message: `${citekey} is in the projects ${projects.join(", ")}`,
+    });
+    return { citekey, job: job.id };
+  }
+
   /** True when the item names no author or no year. */
   private isThin(citekey: string): boolean {
     return hasThinMetadata(loadItem(this.lib, citekey).fm);
