@@ -42,7 +42,7 @@ export function miniRegistry() {
       inbox.push({
         citekey,
         by: ctx.actor,
-        identifier: input.identifier,
+        identifier: input.identifier ?? "",
         ...(input.why ? { why: input.why } : {}),
       });
       return { citekey, job: "j_01JB8Z3QK7ABCDEFGH" };

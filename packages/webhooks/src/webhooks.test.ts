@@ -72,7 +72,7 @@ function fakeRegistry(): { registry: Registry; calls: Calls } {
         });
       }
       const key =
-        input.identifier
+        (input.identifier ?? "")
           .replace(/[^a-z0-9]/gi, "")
           .toLowerCase()
           .slice(0, 20) || "x1";

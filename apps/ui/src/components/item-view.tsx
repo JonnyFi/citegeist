@@ -25,6 +25,7 @@ import {
   type Notice,
   RenameOffer,
 } from "./metadata-tools";
+import { ProjectChips } from "./project-membership";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
 import { Badge, Stamp, StatusSquare } from "./ui/badge";
@@ -466,11 +467,7 @@ export function ItemView({
                   {statusLabel(i18n, fm.status)}
                 </Badge>
                 {fm.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
-                {fm.projects.map((slug) => (
-                  <Link key={slug} to="/projects/$slug" params={{ slug }}>
-                    <Badge tone="outline">{projectTitle(slug)}</Badge>
-                  </Link>
-                ))}
+                <ProjectChips citekey={citekey} projects={fm.projects} />
                 {fm.tags.map((tag) => (
                   <Badge key={tag}>{tag}</Badge>
                 ))}

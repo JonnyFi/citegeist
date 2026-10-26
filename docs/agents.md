@@ -11,7 +11,7 @@ The commands and file formats of the clients come from their documentation (Octo
 - **A skill.** `skills/citegeist/SKILL.md` tells an agent which channel to use and in what order: search, read by page, add a paper, create a card, link a note, cite.
 - **`AGENTS.md` in the library.** citegeist writes and maintains an `AGENTS.md` in the library root. It explains the folder format and the rules: write through `cg` or MCP, note bodies may be edited directly, never edit `derived/` or the wording of a card, and mark new content with `by: agent:<name>`.
 
-Everything an agent adds lands in the inbox with its origin. With `target: "library"`, `add_item` puts a paper straight into the library. See [ADR 0014](decisions/0014-agent-content-goes-to-inbox.md).
+Everything an agent adds lands in the inbox with its origin. With `target: "library"`, `add_item` puts a paper straight into the library. See [ADR 0014](decisions/0014-agent-content-goes-to-inbox.md). To put an item that is in the library already into projects, `add_item` takes its `citekey` and `projects` without an identifier; on the command line `cg projects addItems` and `cg projects removeItems` change many items in one call.
 
 ## Local agents
 

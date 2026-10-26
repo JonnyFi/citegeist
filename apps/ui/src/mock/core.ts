@@ -19,8 +19,11 @@ import {
   itemsUpdate,
   jobsGet,
   libraryStatus,
+  projectsAddItems,
+  projectsCreate,
   projectsGet,
   projectsList,
+  projectsRemoveItems,
   projectsUpdate,
   Registry,
   searchQuery,
@@ -87,6 +90,7 @@ function summary(fm: ItemFrontmatter) {
     type: fm.type,
     status: fm.status,
     inbox: fm.inbox !== undefined,
+    ...(fm.projects.length > 0 ? { projects: fm.projects } : {}),
     ...(fm.inbox ? { inboxBy: fm.inbox.by } : {}),
     ...(fm.inbox?.why ? { inboxWhy: fm.inbox.why } : {}),
     ...(fm.incomplete
@@ -193,6 +197,42 @@ export function createMockRegistry(
   const jobs = new Map<string, MockJob>();
   let importJobs: ImportMockJobs | undefined;
   /** Items moved to the trash, newest last; items.restore takes the latest of a citekey back. */
+  const requireProject = (slug: string) => {
+    if (!data.projects.has(slug)) {
+      throw new Error(`PROJECT_NOT_FOUND: no project with slug '${slug}'`);
+    }
+  };
+  /** projects.addItems and projects.removeItems: all checks first, then the writes. */
+  const changeMembers = (
+    mode: "add" | "remove",
+    input: { slug: string; citekeys: string[] },
+  ): { added: string[]; removed: string[]; unchanged: string[] } => {
+    requireProject(input.slug);
+    const keys = [...new Set(input.citekeys)];
+    for (const key of keys) {
+      if (!data.items.has(key)) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${key}'`);
+    }
+    const out = { added: [] as string[], removed: [] as string[], unchanged: [] as string[] };
+    for (const key of keys) {
+      const item = data.items.get(key);
+      if (!item) continue;
+      const has = item.frontmatter.projects.includes(input.slug);
+      if (has === (mode === "add")) {
+        out.unchanged.push(key);
+        continue;
+      }
+      item.frontmatter = {
+        ...item.frontmatter,
+        projects:
+          mode === "add"
+            ? [...item.frontmatter.projects, input.slug]
+            : item.frontmatter.projects.filter((p) => p !== input.slug),
+      } as ItemFrontmatter;
+      (mode === "add" ? out.added : out.removed).push(key);
+      changed(`items/${key}/${key}.md`);
+    }
+    return out;
+  };
   const trashed: Array<{
     citekey: string;
     item: NonNullable<ReturnType<MockData["items"]["get"]>>;
@@ -292,6 +332,27 @@ export function createMockRegistry(
       };
     })
     .bind(itemsAdd, async (_ctx, input) => {
+      if (input.identifier === undefined) {
+        const existing = input.citekey ? data.items.get(input.citekey) : undefined;
+        if (!existing || input.projects.length === 0) {
+          throw new Error("IDENTIFIER_MISSING: pass an identifier, or a citekey with projects");
+        }
+        for (const slug of input.projects) requireProject(slug);
+        existing.frontmatter = {
+          ...existing.frontmatter,
+          projects: [...new Set([...existing.frontmatter.projects, ...input.projects])],
+        } as ItemFrontmatter;
+        changed(`items/${existing.frontmatter.citekey}/${existing.frontmatter.citekey}.md`);
+        const stamp = new Date().toISOString();
+        const job: MockJob = {
+          id: randomId("j_"),
+          status: "succeeded",
+          createdAt: stamp,
+          updatedAt: stamp,
+        };
+        jobs.set(job.id, job);
+        return { citekey: existing.frontmatter.citekey, job: job.id };
+      }
       const { kind, value } = classifyIdentifier(input.identifier);
       if (kind === "unknown") {
         throw new Error(
@@ -511,6 +572,21 @@ export function createMockRegistry(
           .length,
       };
     })
+    .bind(projectsCreate, async (_ctx, input) => {
+      if (data.projects.has(input.slug)) {
+        throw new Error(`PROJECT_EXISTS: project '${input.slug}' already exists`);
+      }
+      const frontmatter = ProjectFrontmatter.parse({
+        slug: input.slug,
+        title: input.title,
+        created: { at: new Date().toISOString(), by: "human" },
+      });
+      data.projects.set(input.slug, { frontmatter, brief: input.brief });
+      changed(`projects/${input.slug}/project.md`);
+      return { frontmatter, brief: input.brief };
+    })
+    .bind(projectsAddItems, async (_ctx, input) => changeMembers("add", input))
+    .bind(projectsRemoveItems, async (_ctx, input) => changeMembers("remove", input))
     .bind(projectsUpdate, async (_ctx, input) => {
       const project = data.projects.get(input.slug);
       if (!project) throw new Error(`PROJECT_NOT_FOUND: no project with slug '${input.slug}'`);

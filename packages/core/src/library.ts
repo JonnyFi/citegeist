@@ -416,10 +416,12 @@ export class Library extends EventEmitter {
       incomplete_message: string | null;
       retraction_json: string | null;
       fulltext_status: string | null;
+      projects_json: string | null;
     }>(
       `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
          json_extract(i.frontmatter_json, '$.retraction') AS retraction_json,
          json_extract(i.frontmatter_json, '$.fulltext.status') AS fulltext_status,
+         json_extract(i.frontmatter_json, '$.projects') AS projects_json,
          json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
          json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why,
          json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
@@ -434,9 +436,11 @@ export class Library extends EventEmitter {
       const retraction = summarizeRetraction(
         r.retraction_json ? JSON.parse(r.retraction_json) : undefined,
       );
+      const projects: string[] = r.projects_json ? JSON.parse(r.projects_json) : [];
       return {
         citekey: r.citekey,
         title: r.title,
+        ...(projects.length > 0 ? { projects } : {}),
         ...(r.year ? { year: r.year } : {}),
         ...(r.authors ? { authors: r.authors } : {}),
         type: r.type,

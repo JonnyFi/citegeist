@@ -71,7 +71,7 @@ export function commandSpec(contract: OperationContract): CommandSpec {
     const kind = kindOf(prop);
     if (
       !positional &&
-      required.has(name) &&
+      (required.has(name) || contract.cliPositional === name) &&
       (kind === "string" || kind === "string-list") &&
       !Array.isArray(prop.enum)
     ) {

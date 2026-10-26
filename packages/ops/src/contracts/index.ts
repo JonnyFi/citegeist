@@ -59,6 +59,8 @@ const ItemSummary = z.object({
   /** Who added an inbox item and why (docs/decisions/0014-agent-content-goes-to-inbox.md). */
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
+  /** Projects the item belongs to. Absent when it belongs to none. */
+  projects: z.array(ProjectSlug).optional(),
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
   incomplete: z.boolean().optional(),
   incompleteReason: z.string().optional(),
@@ -111,22 +113,32 @@ export const libraryReindex = defineContract({
 export const itemsAdd = defineContract({
   name: "items.add",
   summary:
-    "Add an item by DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path. A work the library has already (same DOI, ISBN, address or a confident title match with an item that lacks author or year) is not added twice: the existing item is returned as duplicateOf and takes over the metadata it lacked. To repair an item that arrived without authors or year, pass its citekey together with a DOI, ISBN, arXiv ID, PMID or URL: the identifier is added to that item and its metadata is looked up again (the fields that changed are in enriched)",
+    "Add an item by DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path. To put an item that is already in the library into projects, pass its citekey and projects without an identifier: no new item is created and the projects are added to the item. A work the library has already (same DOI, ISBN, address or a confident title match with an item that lacks author or year) is not added twice: the existing item is returned as duplicateOf and takes over the metadata it lacked. To repair an item that arrived without authors or year, pass its citekey together with a DOI, ISBN, arXiv ID, PMID or URL: the identifier is added to that item and its metadata is looked up again (the fields that changed are in enriched)",
   access: "write",
-  input: z.object({
-    identifier: z.string().min(1),
-    /**
-     * Repair an existing item: the identifier is added to it and the metadata is looked up again,
-     * instead of a new item. Use it for items that arrived without authors or year. Fields a
-     * person or an agent edited are kept.
-     */
-    citekey: Citekey.optional(),
-    projects: z.array(ProjectSlug).default([]),
-    tags: z.array(z.string()).default([]),
-    /** Agents land in the inbox unless they pass "library". Humans always land in the library. */
-    target: z.enum(["inbox", "library"]).default("inbox"),
-    why: z.string().optional(),
-  }),
+  input: z
+    .object({
+      /** Required, except together with citekey and projects: then the item only joins the projects. */
+      identifier: z.string().min(1).optional(),
+      /**
+       * Repair an existing item: the identifier is added to it and the metadata is looked up again,
+       * instead of a new item. Use it for items that arrived without authors or year. Fields a
+       * person or an agent edited are kept.
+       */
+      citekey: Citekey.optional(),
+      projects: z.array(ProjectSlug).default([]),
+      tags: z.array(z.string()).default([]),
+      /** Agents land in the inbox unless they pass "library". Humans always land in the library. */
+      target: z.enum(["inbox", "library"]).default("inbox"),
+      why: z.string().optional(),
+    })
+    .refine(
+      (v) => v.identifier !== undefined || (v.citekey !== undefined && v.projects.length > 0),
+      {
+        path: ["identifier"],
+        message:
+          "identifier is required, except together with a citekey and projects (which puts that item into the projects)",
+      },
+    ),
   output: z.object({
     /**
      * The item the input belongs to. When the library already has the work and the match is
@@ -148,6 +160,7 @@ export const itemsAdd = defineContract({
      */
     suggestedCitekey: Citekey.optional(),
   }),
+  cliPositional: "identifier",
   mcp: { tool: "add_item", readOnly: false },
 });
 export const itemsAttach = defineContract({
@@ -563,6 +576,22 @@ export const projectsUpdate = defineContract({
   }),
   output: z.object({ frontmatter: ProjectFrontmatter, brief: z.string() }),
 });
+export const projectsAddItems = defineContract({
+  name: "projects.addItems",
+  summary:
+    "Add library items to a project in one call (the project is written into each item's frontmatter). Items that are in the project already are left alone, so the call can be repeated. Fails before any change when the project or a citekey does not exist",
+  access: "write",
+  input: z.object({ slug: ProjectSlug, citekeys: z.array(Citekey).min(1).max(500) }),
+  output: z.object({ added: z.array(Citekey), unchanged: z.array(Citekey) }),
+});
+export const projectsRemoveItems = defineContract({
+  name: "projects.removeItems",
+  summary:
+    "Remove items from a project in one call. The items stay in the library. Items that are not in the project are left alone. Fails before any change when the project or a citekey does not exist",
+  access: "write",
+  input: z.object({ slug: ProjectSlug, citekeys: z.array(Citekey).min(1).max(500) }),
+  output: z.object({ removed: z.array(Citekey), unchanged: z.array(Citekey) }),
+});
 export const projectsList = defineContract({
   name: "projects.list",
   summary: "List projects",
@@ -881,6 +910,8 @@ export const CONTRACTS: readonly OperationContract[] = [
   projectsCreate,
   projectsGet,
   projectsUpdate,
+  projectsAddItems,
+  projectsRemoveItems,
   projectsList,
   searchQuery,
   citeFormat,
