@@ -1,5 +1,14 @@
-import { graphNeighbors, jobsGet, linksDecide, linksPropose, notesGet } from "@citegeist/ops";
-import type { Link as NoteLink } from "@citegeist/schema";
+import {
+  type CardLink,
+  graphNeighbors,
+  jobsGet,
+  linksDecide,
+  linksForItem,
+  linksPropose,
+  linksRemove,
+  notesGet,
+} from "@citegeist/ops";
+import { type Link as NoteLink, Relation } from "@citegeist/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Network, Quote, Sparkles } from "lucide-react";
@@ -105,6 +114,8 @@ interface Row {
   evidence?: string | undefined;
   by?: string | undefined;
   index?: number | undefined;
+  /** Removes the connection; set on connections that start at a card. */
+  remove?: (() => void) | undefined;
 }
 
 function rowsFromEdges(
@@ -201,6 +212,18 @@ function Groups({
                   {row.proposed ? (
                     <Badge tone="outline">{tr.t("notes.backlinkProposed")}</Badge>
                   ) : null}
+                  {row.remove ? (
+                    <button
+                      type="button"
+                      aria-label={tr.t("cardLink.removeLabel", {
+                        target: row.node?.label ?? row.fallback,
+                      })}
+                      onClick={row.remove}
+                      className="ml-auto shrink-0 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      {tr.t("cardLink.remove")}
+                    </button>
+                  ) : null}
                 </div>
                 {row.why ? <p className="pl-1 text-muted">{row.why}</p> : null}
               </li>
@@ -291,6 +314,66 @@ function Proposals({
   );
 }
 
+/** Connections that start at the quote cards of an item, with the card they come from. */
+function CardLinks({
+  links,
+  nodes,
+  onOpen,
+  onRemove,
+}: {
+  links: readonly CardLink[];
+  nodes: Map<string, GraphNode>;
+  onOpen: (node: GraphNode) => void;
+  onRemove: (link: CardLink) => void;
+}) {
+  const tr = useI18n();
+  const { t } = tr;
+  return (
+    <ul className="flex flex-col gap-2" data-testid="card-links">
+      {links.map((l) => {
+        const card = nodes.get(l.card);
+        return (
+          <li key={`${l.note}:${l.index}`} className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <Badge>{t("cardLink.kind.card")}</Badge>
+              {card ? (
+                <button
+                  type="button"
+                  onClick={() => onOpen(card)}
+                  className="min-w-0 truncate text-left font-medium hover:text-accent"
+                >
+                  {card.label}
+                </button>
+              ) : (
+                <span className="min-w-0 truncate font-medium">{l.card}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pl-1">
+              <span className="text-muted">{relationLabel(tr, relationKey(l.rel))}</span>
+              <span className="min-w-0 truncate" title={l.label}>
+                {l.short}
+              </span>
+              {l.status === "proposed" ? (
+                <Badge tone="outline">{t("connections.cardLinkProposed")}</Badge>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={t("cardLink.removeLabel", { target: l.short })}
+                  onClick={() => onRemove(l)}
+                  className="ml-auto shrink-0 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+                >
+                  {t("cardLink.remove")}
+                </button>
+              )}
+            </div>
+            {l.why ? <p className="pl-1 text-muted">{l.why}</p> : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 const PROPOSE_STATUS: Record<"running" | "done" | "failed", MessageKey> = {
   running: "connections.proposing",
   done: "connections.proposeDone",
@@ -330,6 +413,8 @@ export function ConnectionsPanel({ kind, id }: { kind: ConnectionSubject; id: st
   const { t } = useI18n();
   const neighbors = useOp(graphNeighbors, { node: id, depth: 1 });
   const note = useOp(notesGet, { id }, { enabled: kind === "note" });
+  const cardLinks = useOp(linksForItem, { citekey: id }, { enabled: kind === "item" });
+  const removeLink = useOpMutation(linksRemove);
   const data: Neighbors | undefined = neighbors.data;
   const open = useOpenNode(data?.edges ?? []);
   const nodes = nodeIndex(data);
@@ -364,8 +449,20 @@ export function ConnectionsPanel({ kind, id }: { kind: ConnectionSubject; id: st
   } else {
     outgoing = rowsFromEdges(edgesOut, nodes, "from");
   }
-  const incoming = rowsFromEdges(edgesIn, nodes, "to");
-  const total = proposals.length + outgoing.length + incoming.length;
+  // a typed connection from a card of another source can be removed where it arrives
+  const incoming = rowsFromEdges(edgesIn, nodes, "to").map((row, i) => {
+    const edge = edgesIn[i];
+    const from = row.node;
+    if (!edge || !from || from.kind !== "card" || row.proposed) return row;
+    const rel = Relation.safeParse(edge.rel);
+    if (!rel.success) return row;
+    return {
+      ...row,
+      remove: () => removeLink.mutate({ from: from.id, to: `[[${id}]]`, rel: rel.data }),
+    };
+  });
+  const fromCards = cardLinks.data?.links ?? [];
+  const total = proposals.length + outgoing.length + incoming.length + fromCards.length;
 
   const loading = neighbors.isPending || (kind === "note" && note.isPending);
   const error = neighbors.error ?? note.error;
@@ -407,11 +504,35 @@ export function ConnectionsPanel({ kind, id }: { kind: ConnectionSubject; id: st
               <Groups rows={outgoing} testId="outgoing" onOpen={(n) => void open(n)} />
             </div>
           ) : null}
+          {fromCards.length > 0 ? (
+            <div>
+              <h3 className="mb-1.5 text-xs font-medium text-muted">
+                {t("connections.fromCards")}
+              </h3>
+              <CardLinks
+                links={fromCards}
+                nodes={nodes}
+                onOpen={(n) => void open(n)}
+                onRemove={(l) =>
+                  removeLink.mutate({
+                    from: l.card,
+                    to: `[[${l.to}]]`,
+                    ...(l.rel ? { rel: l.rel } : {}),
+                  })
+                }
+              />
+            </div>
+          ) : null}
           {incoming.length > 0 ? (
             <div>
               <h3 className="mb-1.5 text-xs font-medium text-muted">{t("connections.incoming")}</h3>
               <Groups rows={incoming} testId="incoming" onOpen={(n) => void open(n)} />
             </div>
+          ) : null}
+          {removeLink.isError ? (
+            <p role="alert" className="text-danger">
+              {describeError(removeLink.error, t("cardLink.removeFailed")).message}
+            </p>
           ) : null}
           {total === 0 ? <p className="text-muted">{t("connections.empty")}</p> : null}
         </div>

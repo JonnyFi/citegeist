@@ -1,4 +1,5 @@
 import { alertsEn } from "../alerts/strings";
+import { cardsEn } from "../cards/strings";
 import { chatEn } from "../chat/strings";
 import { importEn } from "../import/strings";
 import { litsearchEn } from "../litsearch/strings";
@@ -462,6 +463,7 @@ export const en: Record<MessageKey, string> = {
   ...metadataEn,
   ...matrixEn,
   ...conceptsEn,
+  ...cardsEn,
   ...litsearchEn,
   ...onboardingEn,
   ...textsEn,

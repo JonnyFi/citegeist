@@ -39,3 +39,33 @@ export function useScreenContext(): Pick<ChatContext, "project" | "item"> {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return contextFromPath(pathname);
 }
+
+/**
+ * A card the user sent to the agent from the card menu. It becomes the marked passage (with the
+ * card id, so the agent can pass it to the link tool) and asks the chat to take the focus.
+ */
+let focusRequested = false;
+const focusListeners = new Set<() => void>();
+
+export function sendCardToChat(selection: ChatSelection & { card: string }): void {
+  focusRequested = true;
+  publishChatSelection(selection);
+  for (const l of focusListeners) l();
+}
+
+/** True once after a card was sent; the chat calls `clearChatFocusRequest` when it took the focus. */
+export function useChatFocusRequest(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      focusListeners.add(cb);
+      return () => focusListeners.delete(cb);
+    },
+    () => focusRequested,
+    () => false,
+  );
+}
+
+export function clearChatFocusRequest(): void {
+  focusRequested = false;
+  for (const l of focusListeners) l();
+}
