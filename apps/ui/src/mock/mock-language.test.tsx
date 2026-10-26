@@ -86,7 +86,7 @@ describe("the language of the mock library", () => {
       format: "text",
     })) as { text: string };
     expect(exported.text).toBe(
-      "\u201cSocial systems consist of communications and only of communications. Human beings are in their environment.\u201d (Luhmann 1984, p. 31)",
+      "\u201cSocial systems consist of communications and only of communications. Human beings are in their environment\u201d (Luhmann 1984, p. 31).",
     );
   });
 });

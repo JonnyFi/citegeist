@@ -26,10 +26,18 @@ export function referenceTitle(lang: string): string | undefined {
   return undefined;
 }
 
+/** Typst rule that spaces the bibliography entries; see TYPST_LAYOUT. */
+export const TYPST_REFERENCE_GAP = "#show <refs>: set par(spacing: 0.7em)";
+
 /**
  * Layout of an academic text: A4, 11 pt, margins of 2.5 cm. Typst gets the serif font that
  * macOS ships (New York; Typst falls back to its bundled serif font where it is missing), page
  * numbers, and hyphenates by the language of the text (`-M lang`, set for every format).
+ *
+ * The last variable is raw Typst that Pandoc places after its own bibliography rule. Pandoc turns
+ * the `entry-spacing="0"` of a CSL style (APA has it) into `#show <refs>: set par(spacing: 0em)`.
+ * The entries are blocks stacked at that spacing, and the line of one entry is then drawn over the
+ * line of the next. A gap of 0.7 em keeps the hanging indent of the style and separates the entries.
  */
 export const TYPST_LAYOUT: readonly string[] = [
   "-V",
@@ -44,6 +52,8 @@ export const TYPST_LAYOUT: readonly string[] = [
   "mainfont=New York",
   "-V",
   "page-numbering=1",
+  "-V",
+  `header-includes=${TYPST_REFERENCE_GAP}`,
 ];
 
 /** The same page for a LaTeX engine, which keeps its own serif font. */

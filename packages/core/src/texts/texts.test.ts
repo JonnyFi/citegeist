@@ -152,6 +152,8 @@ describe("buildPandocArgs", () => {
     ]) {
       expect(typst.args).toContain(v);
     }
+    // APA asks for entry spacing 0, which Pandoc writes as par(spacing: 0em) and Typst overprints
+    expect(typst.args).toContain("header-includes=#show <refs>: set par(spacing: 0.7em)");
     expect(typst.args).not.toContain("geometry:margin=2.5cm");
   });
 

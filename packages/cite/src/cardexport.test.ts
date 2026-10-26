@@ -59,20 +59,20 @@ describe("direct quote", () => {
     expect(all(entry, "direct", "de-DE")).toMatchInlineSnapshot(`
       {
         "html": {
-          "html": "<p>„Soziale Systeme sind ‚autopoietisch‘ organisiert &amp; operieren [sic] 100% 'selbst'.“ (Luhmann, 1984, S. 31)</p>",
-          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren [sic] 100% 'selbst'.“ (Luhmann, 1984, S. 31)",
+          "html": "<p>„Soziale Systeme sind ‚autopoietisch‘ organisiert &amp; operieren [sic] 100% 'selbst'“ (Luhmann, 1984, S. 31).</p>",
+          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren [sic] 100% 'selbst'“ (Luhmann, 1984, S. 31).",
         },
         "latex": {
-          "text": "\\enquote{Soziale Systeme sind \\enquote{autopoietisch} organisiert \\& operieren [sic] 100\\% 'selbst'.} \\parencite[31]{luhmann1984soziale}",
+          "text": "\\enquote{Soziale Systeme sind \\enquote{autopoietisch} organisiert \\& operieren [sic] 100\\% 'selbst'} \\parencite[31]{luhmann1984soziale}.",
         },
         "pandoc": {
-          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren \\[sic\\] 100% 'selbst'.“ [@luhmann1984soziale, S. 31]",
+          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren \\[sic\\] 100% 'selbst'“ [@luhmann1984soziale, S. 31].",
         },
         "text": {
-          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren [sic] 100% 'selbst'.“ (Luhmann, 1984, S. 31)",
+          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren [sic] 100% 'selbst'“ (Luhmann, 1984, S. 31).",
         },
         "typst": {
-          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren \\[sic\\] 100% 'selbst'.“ @luhmann1984soziale[S. 31]",
+          "text": "„Soziale Systeme sind ‚autopoietisch‘ organisiert & operieren \\[sic\\] 100% 'selbst'“ @luhmann1984soziale[S. 31].",
         },
       }
     `);
@@ -82,20 +82,20 @@ describe("direct quote", () => {
     expect(all(entry, "direct", "en-US")).toMatchInlineSnapshot(`
       {
         "html": {
-          "html": "<p>“Soziale Systeme sind ‘autopoietisch’ organisiert &amp; operieren [sic] 100% 'selbst'.” (Luhmann, 1984, p. 31)</p>",
-          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren [sic] 100% 'selbst'.” (Luhmann, 1984, p. 31)",
+          "html": "<p>“Soziale Systeme sind ‘autopoietisch’ organisiert &amp; operieren [sic] 100% 'selbst'” (Luhmann, 1984, p. 31).</p>",
+          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren [sic] 100% 'selbst'” (Luhmann, 1984, p. 31).",
         },
         "latex": {
-          "text": "\\enquote{Soziale Systeme sind \\enquote{autopoietisch} organisiert \\& operieren [sic] 100\\% 'selbst'.} \\parencite[31]{luhmann1984soziale}",
+          "text": "\\enquote{Soziale Systeme sind \\enquote{autopoietisch} organisiert \\& operieren [sic] 100\\% 'selbst'} \\parencite[31]{luhmann1984soziale}.",
         },
         "pandoc": {
-          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren \\[sic\\] 100% 'selbst'.” [@luhmann1984soziale, p. 31]",
+          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren \\[sic\\] 100% 'selbst'” [@luhmann1984soziale, p. 31].",
         },
         "text": {
-          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren [sic] 100% 'selbst'.” (Luhmann, 1984, p. 31)",
+          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren [sic] 100% 'selbst'” (Luhmann, 1984, p. 31).",
         },
         "typst": {
-          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren \\[sic\\] 100% 'selbst'.” @luhmann1984soziale[p. 31]",
+          "text": "“Soziale Systeme sind ‘autopoietisch’ organisiert & operieren \\[sic\\] 100% 'selbst'” @luhmann1984soziale[p. 31].",
         },
       }
     `);
@@ -128,20 +128,20 @@ describe("indirect quote", () => {
     expect(all(entry, "indirect", "de-DE")).toMatchInlineSnapshot(`
       {
         "html": {
-          "html": "<p>Gesellschaft reproduziert sich über Kommunikation. (vgl. Luhmann, 1984, S. 31)</p>",
-          "text": "Gesellschaft reproduziert sich über Kommunikation. (vgl. Luhmann, 1984, S. 31)",
+          "html": "<p>Gesellschaft reproduziert sich über Kommunikation (vgl. Luhmann, 1984, S. 31).</p>",
+          "text": "Gesellschaft reproduziert sich über Kommunikation (vgl. Luhmann, 1984, S. 31).",
         },
         "latex": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. \\parencite[vgl.][31]{luhmann1984soziale}",
+          "text": "Gesellschaft reproduziert sich über Kommunikation \\parencite[vgl.][31]{luhmann1984soziale}.",
         },
         "pandoc": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. [vgl. @luhmann1984soziale, S. 31]",
+          "text": "Gesellschaft reproduziert sich über Kommunikation [vgl. @luhmann1984soziale, S. 31].",
         },
         "text": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. (vgl. Luhmann, 1984, S. 31)",
+          "text": "Gesellschaft reproduziert sich über Kommunikation (vgl. Luhmann, 1984, S. 31).",
         },
         "typst": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. vgl. @luhmann1984soziale[S. 31]",
+          "text": "Gesellschaft reproduziert sich über Kommunikation vgl. @luhmann1984soziale[S. 31].",
         },
       }
     `);
@@ -151,20 +151,20 @@ describe("indirect quote", () => {
     expect(all(entry, "indirect", "en-US")).toMatchInlineSnapshot(`
       {
         "html": {
-          "html": "<p>Gesellschaft reproduziert sich über Kommunikation. (Luhmann, 1984, p. 31)</p>",
-          "text": "Gesellschaft reproduziert sich über Kommunikation. (Luhmann, 1984, p. 31)",
+          "html": "<p>Gesellschaft reproduziert sich über Kommunikation (Luhmann, 1984, p. 31).</p>",
+          "text": "Gesellschaft reproduziert sich über Kommunikation (Luhmann, 1984, p. 31).",
         },
         "latex": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. \\parencite[31]{luhmann1984soziale}",
+          "text": "Gesellschaft reproduziert sich über Kommunikation \\parencite[31]{luhmann1984soziale}.",
         },
         "pandoc": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. [@luhmann1984soziale, p. 31]",
+          "text": "Gesellschaft reproduziert sich über Kommunikation [@luhmann1984soziale, p. 31].",
         },
         "text": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. (Luhmann, 1984, p. 31)",
+          "text": "Gesellschaft reproduziert sich über Kommunikation (Luhmann, 1984, p. 31).",
         },
         "typst": {
-          "text": "Gesellschaft reproduziert sich über Kommunikation. @luhmann1984soziale[p. 31]",
+          "text": "Gesellschaft reproduziert sich über Kommunikation @luhmann1984soziale[p. 31].",
         },
       }
     `);
@@ -183,7 +183,7 @@ describe("note in indirect citations", () => {
       exportCard(multi, { ...opts, policy: { paraphrase: "own-else-ai" } }),
     ).toMatchInlineSnapshot(`
       {
-        "text": "Erster Gedanke. Zweiter Gedanke. (vgl. Luhmann, 1984, S. 31)",
+        "text": "Erster Gedanke. Zweiter Gedanke (vgl. Luhmann, 1984, S. 31).",
       }
     `);
   });
@@ -191,7 +191,7 @@ describe("note in indirect citations", () => {
   it("falls back to the AI paraphrase when the note is blank", () => {
     const blank: CardExportEntry = { ...entry, body: { ...entry.body, note: "  \n " } };
     expect(exportCard(blank, opts).text).toBe(
-      "Soziale Systeme erzeugen ihre Elemente selbst. (vgl. Luhmann, 1984, S. 31)",
+      "Soziale Systeme erzeugen ihre Elemente selbst (vgl. Luhmann, 1984, S. 31).",
     );
   });
 
@@ -206,16 +206,16 @@ describe("export policy", () => {
 
   it("prefers own words, then the AI paraphrase", () => {
     expect(exportCard(entry, opts).text).toBe(
-      "Gesellschaft reproduziert sich über Kommunikation. (vgl. Luhmann, 1984, S. 31)",
+      "Gesellschaft reproduziert sich über Kommunikation (vgl. Luhmann, 1984, S. 31).",
     );
     expect(exportCard(aiOnly, opts).text).toBe(
-      "Soziale Systeme erzeugen ihre Elemente selbst. (vgl. Luhmann, 1984, S. 31)",
+      "Soziale Systeme erzeugen ihre Elemente selbst (vgl. Luhmann, 1984, S. 31).",
     );
   });
 
   it("labels an AI paraphrase when asked, and only then", () => {
     expect(exportCard(aiOnly, { ...opts, policy: { labelAi: true } }).text).toBe(
-      "Soziale Systeme erzeugen ihre Elemente selbst. [KI-generierte Paraphrase] (vgl. Luhmann, 1984, S. 31)",
+      "Soziale Systeme erzeugen ihre Elemente selbst [KI-generierte Paraphrase] (vgl. Luhmann, 1984, S. 31).",
     );
     expect(exportCard(entry, { ...opts, policy: { labelAi: true } }).text).not.toContain("KI");
     expect(
@@ -226,7 +226,7 @@ describe("export policy", () => {
   it("honors the paraphrase source", () => {
     const cite = "(vgl. Luhmann, 1984, S. 31)";
     expect(exportCard(entry, { ...opts, policy: { paraphrase: "ai" } }).text).toBe(
-      `Soziale Systeme erzeugen ihre Elemente selbst. ${cite}`,
+      `Soziale Systeme erzeugen ihre Elemente selbst ${cite}.`,
     );
     expect(exportCard(aiOnly, { ...opts, policy: { paraphrase: "own" } }).text).toBe(cite);
     expect(exportCard(entry, { ...opts, policy: { paraphrase: "none" } }).text).toBe(cite);
@@ -241,6 +241,117 @@ describe("export policy", () => {
     });
     expect(out.text).not.toContain("Soziale Systeme erzeugen");
     expect(out.text).toContain("autopoietisch");
+  });
+});
+
+describe("sentence punctuation", () => {
+  const withText = (quote: string, para: string): CardExportEntry => ({
+    ...entry,
+    body: { quote, note: para },
+    card: { locator: { label: "paragraph", start: "5", confirmed: true } },
+  });
+  const run = (
+    e: CardExportEntry,
+    mode: "direct" | "indirect",
+    locale: string,
+    format: CardExportFormat = "pandoc",
+  ) => exportCard(e, { mode, format, locale, style: "apa" }).text;
+
+  it("moves the final period of a paraphrase behind the citation", () => {
+    const e = withText("Q", "Das ist wesentlich.");
+    expect(run(e, "indirect", "de-DE")).toBe(
+      "Das ist wesentlich [vgl. @luhmann1984soziale, Abs. 5].",
+    );
+    expect(run(e, "indirect", "de-DE", "text")).toBe(
+      "Das ist wesentlich (vgl. Luhmann, 1984, Abs. 5).",
+    );
+    expect(run(e, "indirect", "de-DE", "html")).toBe(
+      "Das ist wesentlich (vgl. Luhmann, 1984, Abs. 5).",
+    );
+    expect(exportCard(e, { mode: "indirect", format: "html", locale: "de-DE" }).html).toBe(
+      "<p>Das ist wesentlich (vgl. Luhmann, 1984, Abs. 5).</p>",
+    );
+    expect(run(withText("Q", "This is essential."), "indirect", "en-US")).toBe(
+      "This is essential [@luhmann1984soziale, para. 5].",
+    );
+    expect(run(withText("Q", "This is essential."), "indirect", "en-US", "text")).toBe(
+      "This is essential (Luhmann, 1984, para. 5).",
+    );
+  });
+
+  it("moves a final ! or ? of a paraphrase as well", () => {
+    expect(run(withText("Q", "Ist das wesentlich?"), "indirect", "de-DE")).toBe(
+      "Ist das wesentlich [vgl. @luhmann1984soziale, Abs. 5]?",
+    );
+    expect(run(withText("Q", "Is this essential!"), "indirect", "en-US")).toBe(
+      "Is this essential [@luhmann1984soziale, para. 5]!",
+    );
+  });
+
+  it("leaves a paraphrase without a closing mark and an ellipsis alone", () => {
+    expect(run(withText("Q", "Das ist wesentlich"), "indirect", "de-DE")).toBe(
+      "Das ist wesentlich [vgl. @luhmann1984soziale, Abs. 5]",
+    );
+    expect(run(withText("Q", "Das ist wesentlich ..."), "indirect", "de-DE")).toBe(
+      "Das ist wesentlich ... [vgl. @luhmann1984soziale, Abs. 5]",
+    );
+  });
+
+  it("puts the period of a German quote behind the citation", () => {
+    const e = withText("Soziale Systeme bestehen.", "n");
+    expect(run(e, "direct", "de-DE")).toBe(
+      "„Soziale Systeme bestehen“ [@luhmann1984soziale, Abs. 5].",
+    );
+    expect(run(e, "direct", "de-DE", "text")).toBe(
+      "„Soziale Systeme bestehen“ (Luhmann, 1984, Abs. 5).",
+    );
+    expect(exportCard(e, { mode: "direct", format: "html", locale: "de-DE" }).html).toBe(
+      "<p>„Soziale Systeme bestehen“ (Luhmann, 1984, Abs. 5).</p>",
+    );
+  });
+
+  it("puts the period of an English quote behind the citation", () => {
+    const e = withText("Social systems exist.", "n");
+    expect(run(e, "direct", "en-US")).toBe(
+      "“Social systems exist” [@luhmann1984soziale, para. 5].",
+    );
+    expect(run(e, "direct", "en-US", "text")).toBe(
+      "“Social systems exist” (Luhmann, 1984, para. 5).",
+    );
+  });
+
+  it("keeps ! and ? inside the quote and adds the period after the citation", () => {
+    expect(run(withText("Gibt es Systeme?", "n"), "direct", "de-DE")).toBe(
+      "„Gibt es Systeme?“ [@luhmann1984soziale, Abs. 5].",
+    );
+    expect(run(withText("Systems exist!", "n"), "direct", "en-US")).toBe(
+      "“Systems exist!” [@luhmann1984soziale, para. 5].",
+    );
+  });
+
+  it("adds no period after a quote that stops mid-sentence or ends in an ellipsis", () => {
+    expect(run(withText("Soziale Systeme bestehen", "n"), "direct", "de-DE")).toBe(
+      "„Soziale Systeme bestehen“ [@luhmann1984soziale, Abs. 5]",
+    );
+    expect(run(withText("Social systems exist...", "n"), "direct", "en-US")).toBe(
+      "“Social systems exist...” [@luhmann1984soziale, para. 5]",
+    );
+    expect(run(withText("Soziale Systeme bestehen …", "n"), "direct", "de-DE")).toBe(
+      "„Soziale Systeme bestehen …“ [@luhmann1984soziale, Abs. 5]",
+    );
+  });
+
+  it("applies to LaTeX and Typst too and never to a bare citation", () => {
+    const e = withText("Soziale Systeme bestehen.", "n");
+    expect(run(e, "direct", "de-DE", "latex")).toBe(
+      "\\enquote{Soziale Systeme bestehen} \\parencite[Abs. 5]{luhmann1984soziale}.",
+    );
+    expect(run(e, "direct", "de-DE", "typst")).toBe(
+      "„Soziale Systeme bestehen“ @luhmann1984soziale[Abs. 5].",
+    );
+    expect(exportCard(e, { mode: "cite", format: "pandoc", locale: "de-DE" }).text).toBe(
+      "[@luhmann1984soziale, Abs. 5]",
+    );
   });
 });
 
