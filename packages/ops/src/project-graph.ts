@@ -97,13 +97,17 @@ function collapse(text: string, max: number): string {
 }
 
 /** The start of a note body as plain text: no headings, no wiki brackets, no embeds. */
-export function noteExcerpt(body: string, max = 280): string {
+export function noteExcerpt(
+  body: string,
+  max = 280,
+  name: (target: string) => string | undefined = () => undefined,
+): string {
   const text = body
     .split("\n")
     .filter((line) => !/^\s*#/.test(line) && !/^\s*!\[\[/.test(line))
     .join(" ")
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
-    .replace(/\[\[([^\]]+)\]\]/g, "$1")
+    .replace(/\[\[([^\]]+)\]\]/g, (_, target: string) => name(target.trim()) ?? target)
     .replace(/[*_`]/g, "");
   return collapse(text, max);
 }
@@ -362,7 +366,12 @@ export function buildSemanticGraph(
       {
         id: n.id,
         title: n.title,
-        excerpt: noteExcerpt(bodyOf(n)),
+        excerpt: noteExcerpt(bodyOf(n), 280, (target) => {
+          const item = items.get(target);
+          if (item) return item.short ?? item.title;
+          const note = notes.get(noteBySlug.get(target) ?? target);
+          return note?.title;
+        }),
         ...(n.by ? { by: n.by } : {}),
         absorbed: absorbed.has(n.id),
       },

@@ -201,7 +201,7 @@ describe("graph.project", () => {
       absorbed: true,
     });
     expect(g.explanations.find((x) => x.id === explainer.id)?.excerpt).toMatch(
-      /^Das Manifest \(williams2013accelerate\) widerspricht land2012dark/,
+      /^Das Manifest \(Williams 2013\) widerspricht Land 2012/,
     );
   });
 
@@ -229,9 +229,9 @@ describe("graph.project", () => {
 
   it("names a missing text", async () => {
     const { call } = await setup();
-    const err = await call({ project: "thesis", text: "kapitel-9" }).catch(
-      (e: unknown) => e as { detail: { code: string } },
-    );
+    const err = (await call({ project: "thesis", text: "kapitel-9" }).catch((e: unknown) => e)) as {
+      detail: { code: string };
+    };
     expect(err.detail.code).toBe("TEXT_NOT_FOUND");
   });
 
