@@ -112,7 +112,10 @@ describe("backend and worker steps", () => {
 
   it("runs in English when the saved language is English and can go back", async () => {
     const user = userEvent.setup();
-    renderWithSettingsCore(<OnboardingFlow onDone={() => {}} />, { uiLanguage: "en" });
+    renderWithSettingsCore(<OnboardingFlow onDone={() => {}} />, {
+      uiLanguage: "en",
+      backends: [offline("claude-code-cli")],
+    });
     expect(await screen.findByText("Step 2 of 3")).toBeVisible();
     expect(screen.getByRole("heading", { level: 2, name: "AI backend" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Later" }));
@@ -123,7 +126,9 @@ describe("backend and worker steps", () => {
 
   it("changes the language from the first screen of the flow", async () => {
     const user = userEvent.setup();
-    const { state } = renderWithSettingsCore(<OnboardingFlow onDone={() => {}} />);
+    const { state } = renderWithSettingsCore(<OnboardingFlow onDone={() => {}} />, {
+      backends: [offline("claude-code-cli")],
+    });
     await user.click(await screen.findByRole("button", { name: "English" }));
     expect(await screen.findByText("Step 2 of 3")).toBeVisible();
     expect(state.uiLanguage).toBe("en");
@@ -148,11 +153,12 @@ describe("OnboardingGate", () => {
     expect(isOnboardingDone()).toBe(true);
   });
 
-  it("shows the app at once when a backend works", async () => {
+  it("shows the app at once when a backend works and the worker is ready", async () => {
     renderWithSettingsCore(
       <OnboardingGate>
         <p>the app</p>
       </OnboardingGate>,
+      { worker: { ready: true, engines: { docling: "2.0" } } },
     );
     expect(await screen.findByText("the app")).toBeVisible();
     expect(screen.queryByText("Schritt 2 von 3")).toBeNull();
@@ -172,6 +178,16 @@ describe("OnboardingGate", () => {
     await user.click(screen.getByRole("button", { name: "Erneut prüfen" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Aktiv" })).toBeEnabled());
     expect(screen.getByText("Schritt 2 von 3")).toBeVisible();
+    expect(screen.queryByText("the app")).toBeNull();
+  });
+
+  it("opens at the worker step when a backend works but the worker is not ready", async () => {
+    renderWithSettingsCore(
+      <OnboardingGate>
+        <p>the app</p>
+      </OnboardingGate>,
+    );
+    expect(await screen.findByText("Schritt 3 von 3")).toBeVisible();
     expect(screen.queryByText("the app")).toBeNull();
   });
 

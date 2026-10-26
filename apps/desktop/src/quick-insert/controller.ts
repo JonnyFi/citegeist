@@ -1,3 +1,4 @@
+import { mt } from "../shared/text.js";
 import type { FrontApp } from "./system.js";
 
 export interface CitationPayload {
@@ -63,13 +64,10 @@ export class QuickInsertController {
       try {
         registered = this.deps.shortcuts.register(accelerator, () => void this.toggle());
       } catch {
-        return { ok: false, error: `"${accelerator}" is not a valid hotkey.` };
+        return { ok: false, error: mt("quickInsert.invalid", { key: accelerator }) };
       }
       if (!registered) {
-        return {
-          ok: false,
-          error: `${accelerator} is taken by another app or by macOS. Choose another hotkey.`,
-        };
+        return { ok: false, error: mt("quickInsert.taken", { key: accelerator }) };
       }
     }
     if (old !== undefined) this.deps.shortcuts.unregister(old);

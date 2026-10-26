@@ -20,7 +20,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
 import { ErrorState, Loading } from "../components/ui/states";
-import { type MessageKey, useI18n } from "../i18n";
+import { type Lang, type MessageKey, useI18n } from "../i18n";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { type AgentMessage, buildAgentMessage } from "./agent-message";
 import { CopyButton, ErrorLine, Fact, FieldLabel, Section, useGuarded } from "./parts";
@@ -197,8 +197,9 @@ const secretItem = (t: ReturnType<typeof useI18n>["t"], name: string, value: str
   value,
 });
 
-function agentMessage(hook: Hook, publicUrl: string | undefined, tokens?: FreshTokens) {
+function agentMessage(hook: Hook, publicUrl: string | undefined, lang: Lang, tokens?: FreshTokens) {
   return buildAgentMessage({
+    lang,
     name: hook.name,
     kind: hook.kind,
     ...(publicUrl ? { publicUrl } : {}),
@@ -363,7 +364,7 @@ function ConnectorCard({
         <p className="text-sm text-muted">{t("webhooks.secret.previous", { until })}</p>
       ) : null}
       <AgentSection
-        message={agentMessage(hook, publicUrl)}
+        message={agentMessage(hook, publicUrl, lang)}
         busy={setMcp.isPending || setToken.isPending}
         hasInboundToken={hook.hasInboundToken}
         onNewMcp={() => void changeMcp(true, hook.mcpScope ?? mcpScope)}
@@ -790,7 +791,7 @@ function hasTokens(tokens: FreshTokens): boolean {
 
 /** Webhooks section of the settings: connectors for external agents such as Grok. */
 export function WebhooksPanel() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const query = useOp(webhooksList, {});
   const [revealed, setRevealed] = useState<{
     name: string;
@@ -811,7 +812,7 @@ export function WebhooksPanel() {
   const freshHook = revealed ? webhooks.find((h) => h.name === revealed.name) : undefined;
   const freshMessage =
     freshHook && revealed && hasTokens(revealed.tokens)
-      ? agentMessage(freshHook, publicBaseUrl, revealed.tokens)
+      ? agentMessage(freshHook, publicBaseUrl, lang, revealed.tokens)
       : undefined;
 
   return (

@@ -63,4 +63,10 @@ The settings show the state of the Python worker: ready, not installed, installi
 
 ## Language and appearance
 
-The interface is available in German and English. The default is German. "Theme" switches between light, dark and system.
+The interface is available in German and English. It follows the preferred language of macOS (German or English, else English) until you choose one. "Theme" switches between light, dark and system.
+
+## Troubleshooting and About
+
+"About citegeist" in the citegeist menu shows the version, the commit of the build, the license (Apache-2.0), the repository, the folder of the open library and the folder with the log. Buttons open the log file and the bundled NOTICE file with the third-party licenses. Settings > General > Troubleshooting shows the same facts and has "Open log".
+
+The app and its core write to `~/Library/Logs/citegeist/core.log`. The file rotates at 5 MB and keeps three files. Tokens and API keys are removed before a line is written.

@@ -5,6 +5,8 @@ import type { UpdateState } from "./update-check.js";
 
 export interface Settings {
   lastLibrary?: string;
+  /** The language the window showed last, so menus and dialogs start in it. */
+  language?: "de" | "en";
   /** Result of the last check for a newer release. */
   update?: UpdateState;
 }
@@ -29,6 +31,7 @@ export function loadSettings(): Settings {
     const update = updateState(v.update);
     return {
       ...(typeof v.lastLibrary === "string" ? { lastLibrary: v.lastLibrary } : {}),
+      ...(v.language === "de" || v.language === "en" ? { language: v.language } : {}),
       ...(update ? { update } : {}),
     };
   } catch {

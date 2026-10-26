@@ -3,6 +3,7 @@ import { nodeRunner, type ProcessRunner, type UsageRecord } from "@citegeist/ai"
 import type { ConvertWorker } from "../ingest/worker.js";
 import type { JobQueue } from "../jobs/queue.js";
 import { BackendRegistry, type FetchFn } from "./backends.js";
+import { findExecutable } from "./executables.js";
 import { InMemoryKeychain, type Keychain, MacKeychain } from "./keychain.js";
 import type { SettingsDeps } from "./service.js";
 import { SettingsStore } from "./store.js";
@@ -23,6 +24,8 @@ export interface DefaultSettingsOptions {
   /** Receives the usage of the test call of `ai.testBackend`. */
   recordUsage?: (record: UsageRecord) => void;
   onChange?: SettingsDeps["onChange"];
+  /** Tells whether `uv` is installed. Default: look on PATH and in the usual install folders. */
+  uvAvailable?: () => boolean;
 }
 
 /**
@@ -45,6 +48,7 @@ export function createSettingsDeps(opts: DefaultSettingsOptions): SettingsDeps {
     queue: opts.queue,
     worker: opts.worker,
     workerConfig: { sourceDir: opts.workerSource, envDir: defaultEnvDir(opts.localBase) },
+    uvAvailable: opts.uvAvailable ?? (() => findExecutable("uv") !== undefined),
     runner,
     ...(opts.onChange ? { onChange: opts.onChange } : {}),
     ...(opts.recordUsage ? { recordUsage: opts.recordUsage } : {}),

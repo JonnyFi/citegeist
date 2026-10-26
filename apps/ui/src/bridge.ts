@@ -53,6 +53,33 @@ export interface UpdateBridge {
   onChange(listener: (info: UpdateInfo | null) => void): () => void;
 }
 
+/** What the About window and the troubleshooting section of the settings show. */
+export interface AboutInfo {
+  version: string;
+  /** Short commit of the build, absent in a build without git. */
+  commit?: string;
+  license: "Apache-2.0";
+  repositoryUrl: string;
+  /** Absolute path of the open library. */
+  libraryPath?: string;
+  /** Machine-local folder with settings, index and the Python environment. */
+  dataDir: string;
+  /** The rotating log file; its folder holds the older files. */
+  logFile: string;
+  /** The bundled NOTICE file, absent when the build has none. */
+  noticePath?: string;
+}
+
+export interface AboutBridge {
+  get(): Promise<AboutInfo>;
+  /** Opens the log file in the default app. */
+  openLog(): Promise<void>;
+  /** Opens the bundled NOTICE file. */
+  openNotice(): Promise<void>;
+  /** Opens the folder of the log file in Finder. */
+  revealLogFolder(): Promise<void>;
+}
+
 export interface CitegeistBridge {
   /** Null until a library is open. */
   connection: CoreConnection | null;
@@ -76,6 +103,13 @@ export interface CitegeistBridge {
    * renderer cannot read it from the `File`; items.add takes the path.
    */
   pathForFile?(file: File): string;
+  /**
+   * Tells the main process which language the window shows, so the native menu and dialogs use
+   * the same one. Absent in the browser preview.
+   */
+  setLanguage?(lang: "de" | "en"): void;
+  /** Version, license and paths for the About window, read from the main process. */
+  about?: AboutBridge;
   platform: string;
 }
 

@@ -253,6 +253,19 @@ export const settingsDe = {
     "Ruft der Agent dreimal hintereinander dasselbe Werkzeug mit denselben Angaben auf, endet der Auftrag immer.",
   "settings.research.save": "Grenzen speichern",
   "settings.research.invalid": "Trage ganze Zahlen ab null ein.",
+
+  "settings.about.title": "Fehlersuche",
+  "settings.about.desc": "Version, Ordner und die Log-Datei der App.",
+  "settings.about.version": "Version",
+  "settings.about.commit": "Commit",
+  "settings.about.license": "Lizenz",
+  "settings.about.repository": "Repository",
+  "settings.about.library": "Bibliotheksordner",
+  "settings.about.data": "Datenordner",
+  "settings.about.log": "Log-Datei",
+  "settings.about.openLog": "Log öffnen",
+  "settings.about.revealLog": "Im Finder zeigen",
+  "settings.about.openNotice": "NOTICE öffnen",
 };
 
 export const settingsEn: Record<keyof typeof settingsDe, string> = {
@@ -501,4 +514,17 @@ export const settingsEn: Record<keyof typeof settingsDe, string> = {
     "When the agent calls the same tool with the same arguments three times in a row, the job always ends.",
   "settings.research.save": "Save limits",
   "settings.research.invalid": "Enter whole numbers from zero.",
+
+  "settings.about.title": "Troubleshooting",
+  "settings.about.desc": "Version, folders and the log file of the app.",
+  "settings.about.version": "Version",
+  "settings.about.commit": "Commit",
+  "settings.about.license": "License",
+  "settings.about.repository": "Repository",
+  "settings.about.library": "Library folder",
+  "settings.about.data": "Data folder",
+  "settings.about.log": "Log file",
+  "settings.about.openLog": "Open log",
+  "settings.about.revealLog": "Show in Finder",
+  "settings.about.openNotice": "Open NOTICE",
 };

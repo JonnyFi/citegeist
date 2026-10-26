@@ -45,6 +45,8 @@ export interface SettingsDeps {
   recordUsage?: (record: UsageRecord) => void;
   /** Job kind for `worker.setup`. Default `worker-setup`. */
   jobKind?: JobKind;
+  /** False when the `uv` command cannot be found; the status then reads `uv-missing`. Default: assume it is there. */
+  uvAvailable?: () => boolean;
   /** How long a worker health answer is reused, in ms. Default 15000. */
   healthCacheMs?: number;
   /** Time limit of one worker health call, in ms. Default 8000. */
@@ -164,7 +166,7 @@ export class SettingsService {
       ...(stored.mailto ? { mailto: stored.mailto } : {}),
       ...(stored.unpaywallEmail ? { unpaywallEmail: stored.unpaywallEmail } : {}),
       ...(stored.ncbiTool ? { ncbiTool: stored.ncbiTool } : {}),
-      uiLanguage: stored.uiLanguage,
+      ...(stored.uiLanguage ? { uiLanguage: stored.uiLanguage } : {}),
       semantic: { ...stored.semantic, rerank: stored.semantic.rerank === true },
       connector: { ...stored.connector },
       webhooks: { ...stored.webhooks },
@@ -326,6 +328,9 @@ export class SettingsService {
   async workerStatus(): Promise<WorkerStatus> {
     const running = this.setupJob();
     if (running) return { ready: false, engines: {}, detail: "installing" };
+    if (this.deps.uvAvailable && !this.deps.uvAvailable()) {
+      return { ready: false, engines: {}, detail: "uv-missing" };
+    }
     if (!existsSync(this.deps.workerConfig.envDir)) {
       return { ready: false, engines: {}, detail: "not-installed" };
     }
@@ -372,7 +377,7 @@ export class SettingsService {
   async testBackend(id: string): Promise<z.input<typeof aiTestBackend.output>> {
     try {
       const backend = await this.deps.backends.get(id);
-      const language = this.deps.store.load().uiLanguage;
+      const language = this.deps.store.load().uiLanguage ?? "en";
       const result = await runTask(
         backend,
         "card.paraphrase",

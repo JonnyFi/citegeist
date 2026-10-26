@@ -31,10 +31,10 @@ The library and the settings live outside the app and survive updates.
 The setup has three steps, and you can skip each of them and return to it in the settings.
 
 1. **Library.** Choose a folder. When it is not a library yet, citegeist asks and creates `citegeist.json` and the subfolders. The app remembers the folder for the next start. To open a specific library from a shell, set `CITEGEIST_LIBRARY=/path/to/library`.
-2. **AI backend.** The list shows which command line tools citegeist found and whether you are logged in. If one is missing, the settings show the install command (`npm install -g @anthropic-ai/claude-code`, `npm install -g @openai/codex`) and the login command (`claude auth login`, `codex login`, `agent login`). Test the backend and choose it. API keys are optional and go into the macOS Keychain.
-3. **Conversion worker.** "Install" lets uv create the Python environment under `~/Library/Application Support/citegeist`. The first run takes a few minutes and needs a network connection. Without this environment citegeist cannot convert PDFs.
+2. **AI backend.** The list shows which command line tools citegeist found and whether you are logged in. When none works, the setup lists the options (Claude Code, Codex, Cursor, an API key, Ollama) with install and login commands that you can copy. Test the backend and choose it. API keys are optional and go into the macOS Keychain.
+3. **Conversion worker.** "Install" lets uv create the Python environment under `~/Library/Application Support/citegeist`. The first run takes a few minutes and needs a network connection. When uv is missing, the setup shows `brew install uv` and the curl installer with copy buttons and a "Check again" button. Without the worker you can still add and read PDFs, but citegeist cannot convert them to text.
 
-The interface is German by default. The language switch is in the settings (Settings > General > Language) and in the navigation rail.
+The interface starts in English and follows the preferred language of macOS: when it is German, citegeist is German. The language switch is in the settings (Settings > General > Language) and in the navigation rail, and a choice you make there always wins.
 
 Four features are off until you turn them on in the settings:
 
@@ -44,6 +44,8 @@ Four features are off until you turn them on in the settings:
 - **Quick insert** opens a card search with a global hotkey and pastes the citation into the app you are working in. It needs the Accessibility permission of macOS.
 
 ## Add the first paper
+
+An empty library shows three first actions (add a paper, highlight a passage, open the chat) and a button that adds a sample paper, the Docling Technical Report (CC-BY 4.0), which citegeist downloads from arXiv.
 
 Use the field at the top of the library screen. It accepts a DOI, an arXiv link or ID, an ISBN, a PubMed ID, a URL or a BibTeX snippet. You can also drop a PDF into the window, or use "Choose PDF".
 

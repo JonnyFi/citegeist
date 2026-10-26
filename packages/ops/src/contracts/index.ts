@@ -683,7 +683,8 @@ export const Settings = z.object({
   unpaywallEmail: z.string().optional(),
   /** `tool` parameter of NCBI E-utilities calls. Default "citegeist". The NCBI key is the API key slot "ncbi". */
   ncbiTool: z.string().optional(),
-  uiLanguage: z.enum(["de", "en"]).default("de"),
+  /** Chosen by the user. Unset until then, and the UI follows the system language. */
+  uiLanguage: z.enum(["de", "en"]).optional(),
   /**
    * Semantic search with a local embedding model. Off until the user turns it on. `rerank` adds a
    * local cross-encoder that re-sorts the best hits: slower (about a second per search) and a

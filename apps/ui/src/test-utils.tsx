@@ -16,11 +16,11 @@ export function createReflowFixtures(): MockData {
   return data;
 }
 
-/** Renders the whole app at `path` against a fresh mock core, in German unless `lang` says otherwise. */
+/** Renders the whole app at `path` against a fresh mock core, in German unless `lang` says otherwise ("system" leaves it to the system language). */
 export function renderApp(
   path = "/",
   data: MockData = createFixtures(),
-  options: MockOptions & { lang?: Lang } = {},
+  options: MockOptions & { lang?: Lang | "system" } = {},
 ) {
   const { lang = "de", ...mockOptions } = options;
   const core = createMockCore(data, { aiDelayMs: 50, ...mockOptions });
@@ -31,6 +31,8 @@ export function renderApp(
     return original(contract, input);
   }) as typeof core.call;
   const history = createMemoryHistory({ initialEntries: [path] });
-  const view = render(<App core={core} history={history} lang={lang} />);
+  const view = render(
+    <App core={core} history={history} {...(lang === "system" ? {} : { lang })} />,
+  );
   return { ...view, core, calls, history, data };
 }

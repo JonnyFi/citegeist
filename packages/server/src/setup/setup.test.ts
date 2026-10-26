@@ -32,6 +32,17 @@ describe("resolveWorkerSource", () => {
     ).toBe("/res/workers/convert");
     expect(resolveWorkerSource({ exists: () => false })).toMatch(/workers[/\\]convert$/);
   });
+
+  it("never reads the repo checkout in the packaged app", () => {
+    // protects: a packaged app on a machine that has a checkout of citegeist next to it
+    // fails_when: the missing resource silently falls back to the checkout
+    expect(
+      resolveWorkerSource({ packaged: true, resourcesPath: "/res", exists: () => false }),
+    ).toBe("/res/workers/convert");
+    expect(
+      resolveResearchSource({ packaged: true, resourcesPath: "/res", exists: () => false }),
+    ).toBe("/res/workers/research");
+  });
 });
 
 describe("resolveResearchSource", () => {

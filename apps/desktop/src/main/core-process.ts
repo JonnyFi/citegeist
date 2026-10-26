@@ -17,6 +17,10 @@ export interface EnsureCoreOptions {
   localBase?: string;
   /** Origins the core accepts browser calls from, besides the packaged app. */
   origins?: string[];
+  /** True in the packaged app; the core then never reads from a repository checkout. */
+  packaged?: boolean;
+  /** Receives every line the core writes to stdout or stderr (the app's log file). */
+  onOutput?(line: string): void;
 }
 
 type CoreMessage =
@@ -43,15 +47,21 @@ export async function ensureCore(opts: EnsureCoreOptions): Promise<RunningCore> 
 
   const child = utilityProcess.fork(opts.entry, [], {
     serviceName: "citegeist-core",
-    stdio: "inherit",
+    stdio: "pipe",
     env: {
       ...process.env,
       CITEGEIST_LIBRARY: opts.library,
       CITEGEIST_LOCAL_BASE: localBase,
       CITEGEIST_INIT: opts.init ? "1" : "0",
+      // the packaged app takes workers/convert and workers/research from Resources only
+      ...(opts.packaged ? { CITEGEIST_PACKAGED: "1" } : {}),
       CITEGEIST_ORIGINS: ["null", "file://", ...(opts.origins ?? [])].join(","),
     } as Record<string, string>,
   });
+
+  child.on("exit", (code) => opts.onOutput?.(`core process exited with code ${code}`));
+  forwardLines(child.stdout, opts.onOutput);
+  forwardLines(child.stderr, opts.onOutput);
 
   const message = await new Promise<CoreMessage>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -79,6 +89,24 @@ export async function ensureCore(opts: EnsureCoreOptions): Promise<RunningCore> 
   }
   child.kill();
   throw new Error(message.message);
+}
+
+/** Splits a stream into lines and hands each one on. */
+function forwardLines(
+  stream: NodeJS.ReadableStream | null | undefined,
+  sink?: (line: string) => void,
+): void {
+  if (!stream) return;
+  let rest = "";
+  stream.on("data", (chunk: Buffer | string) => {
+    rest += chunk.toString();
+    const lines = rest.split("\n");
+    rest = lines.pop() ?? "";
+    for (const line of lines) if (line.trim()) sink?.(line);
+  });
+  stream.on("end", () => {
+    if (rest.trim()) sink?.(rest);
+  });
 }
 
 /** Asks the core to close the library cleanly, then kills it if it hangs. */
