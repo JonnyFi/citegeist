@@ -82,7 +82,6 @@ describe("SettingsStore", () => {
     const store = new SettingsStore(join(dir, "settings.json"));
     expect(store.load()).toEqual({
       ai: { routing: { "*": "claude-code-cli" } },
-      uiLanguage: "de",
       semantic: { enabled: false },
       connector: { enabled: false, port: 23119 },
       webhooks: { port: 47321 },
@@ -90,7 +89,7 @@ describe("SettingsStore", () => {
       research: { maxMinutes: 20, maxTokens: 2_000_000, maxToolCalls: 200 },
     });
     writeFileSync(join(dir, "settings.json"), "{ nope");
-    expect(store.load().uiLanguage).toBe("de");
+    expect(store.load().uiLanguage).toBeUndefined();
     store.save({
       ai: { routing: { "*": "codex-exec" } },
       mailto: "a@b.org",
@@ -302,13 +301,13 @@ describe("settings operations", () => {
     });
     await t.keychain.set("xai", "xai-key-12345678");
     const out = (await t.registry.call("settings.get", human, {})) as {
-      settings: { ai: { routing: object; apiKeys: Record<string, boolean> }; uiLanguage: string };
+      settings: { ai: { routing: object; apiKeys: Record<string, boolean> }; uiLanguage?: string };
       backends: unknown[];
       worker: { ready: boolean; detail: string };
     };
     expect(out.settings.ai.routing).toEqual({ "*": "claude-code-cli" });
     expect(out.settings.ai.apiKeys).toMatchObject({ xai: true, openai: false });
-    expect(out.settings.uiLanguage).toBe("de");
+    expect(out.settings.uiLanguage).toBeUndefined();
     expect(out.backends).toHaveLength(1);
     expect(out.worker).toMatchObject({ ready: false, detail: "not-installed" });
     expect(JSON.stringify(out)).not.toContain("xai-key-12345678");

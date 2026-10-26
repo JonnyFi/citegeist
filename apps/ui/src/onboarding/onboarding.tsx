@@ -61,7 +61,7 @@ function Frame({
               {t("onb.step", { n: STEPS.indexOf(step) + 1, total: STEPS.length })}
             </p>
           </div>
-          <Segmented<Lang> label="Language" value={lang} options={LANGS} onChange={onLang} />
+          <Segmented<Lang> label={t("lang.label")} value={lang} options={LANGS} onChange={onLang} />
         </div>
         <h2 className="font-serif text-lg font-semibold">{t(`onb.step.${step}`)}</h2>
         {children}

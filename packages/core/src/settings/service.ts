@@ -164,7 +164,7 @@ export class SettingsService {
       ...(stored.mailto ? { mailto: stored.mailto } : {}),
       ...(stored.unpaywallEmail ? { unpaywallEmail: stored.unpaywallEmail } : {}),
       ...(stored.ncbiTool ? { ncbiTool: stored.ncbiTool } : {}),
-      uiLanguage: stored.uiLanguage,
+      ...(stored.uiLanguage ? { uiLanguage: stored.uiLanguage } : {}),
       semantic: { ...stored.semantic, rerank: stored.semantic.rerank === true },
       connector: { ...stored.connector },
       webhooks: { ...stored.webhooks },
@@ -372,7 +372,7 @@ export class SettingsService {
   async testBackend(id: string): Promise<z.input<typeof aiTestBackend.output>> {
     try {
       const backend = await this.deps.backends.get(id);
-      const language = this.deps.store.load().uiLanguage;
+      const language = this.deps.store.load().uiLanguage ?? "en";
       const result = await runTask(
         backend,
         "card.paraphrase",

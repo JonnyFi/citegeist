@@ -119,7 +119,7 @@ export function SettingsScreen({
   section?: SettingsSection;
   onSection?: (section: SettingsSection) => void;
 } = {}) {
-  const { t, setLang } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [local, setLocal] = useState<SettingsSection>("general");
   const section = shown ?? local;
   const pick = (next: SettingsSection) => {
@@ -176,7 +176,7 @@ export function SettingsScreen({
         <div>
           <Segmented<Lang>
             label={t("settings.language.title")}
-            value={settings.uiLanguage}
+            value={settings.uiLanguage ?? lang}
             options={[
               { value: "de", label: "Deutsch" },
               { value: "en", label: "English" },

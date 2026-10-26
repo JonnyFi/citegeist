@@ -19,8 +19,9 @@ export function createQueryClient() {
 }
 
 /**
- * Follows the UI language from the core's settings until the user picks one here. The mock core
- * has no settings, so the call fails and the default stays.
+ * Follows the UI language from the core's settings until the user picks one here. The core has
+ * no language until the user chose one, and then the system language stays. The mock core has no
+ * settings, so the call fails and the default stays.
  */
 export function LanguageSync() {
   const core = useCore();
@@ -29,7 +30,9 @@ export function LanguageSync() {
     if (explicit) return;
     core
       .call(settingsGet, {})
-      .then((out) => setLang(out.settings.uiLanguage, { persist: false }))
+      .then((out) => {
+        if (out.settings.uiLanguage) setLang(out.settings.uiLanguage, { persist: false });
+      })
       .catch(() => {});
   }, [core, explicit, setLang]);
   return null;
@@ -45,7 +48,7 @@ export function App({
   core: Core | null;
   bridge?: CitegeistBridge | undefined;
   history?: RouterHistory;
-  /** Initial UI language; without it the stored choice, else German. */
+  /** Initial UI language; without it the stored choice, else the system language. */
   lang?: Lang;
 }) {
   const queryClient = useMemo(createQueryClient, []);

@@ -127,4 +127,13 @@ describe("buildAgentMessage", () => {
     const out = text({ mcpScope: "write", hasInboundToken: true });
     expect(out).not.toContain(String.fromCharCode(0x2014));
   });
+
+  it("writes the message in English when asked to", () => {
+    const out = text({ kind: "both", mcpScope: "write", mcpToken: "whmcp_abc", lang: "en" });
+    expect(out).toContain("Header value: Bearer whmcp_abc");
+    expect(out).toContain("You can search the library, read it and create entries.");
+    expect(out).toContain("Answer every task with a POST");
+    expect(out).not.toContain("Header-Wert");
+    expect(out).not.toContain("Auftrag");
+  });
 });
