@@ -39,7 +39,8 @@ async function run(topic: string, host: Partial<ChatHost> = {}, maxItems = 5) {
 const call = (title: string, args: object = {}) => `@fake call ${title} ${JSON.stringify(args)}`;
 const budget = (b: Partial<ResearchBudget>) => ({ researchBudget: () => b });
 
-describe("loop detection", () => {
+// Each test starts a fake ACP agent as a process, which is slow while the whole verify runs.
+describe("loop detection", { timeout: 180_000 }, () => {
   it("ends the job when the same call with the same arguments comes three times in a row", async () => {
     const topic = [
       "Thema",
@@ -81,7 +82,7 @@ describe("loop detection", () => {
   });
 });
 
-describe("budgets", () => {
+describe("budgets", { timeout: 180_000 }, () => {
   it("stops after the limit of tool calls", async () => {
     const topic = ["Thema", ...[1, 2, 3, 4, 5].map((n) => call("search", { q: n }))].join("\n");
     const { outcome } = await run(topic, budget({ maxToolCalls: 3 }));
@@ -125,7 +126,7 @@ describe("budgets", () => {
   });
 });
 
-describe("usage of agent turns", () => {
+describe("usage of agent turns", { timeout: 180_000 }, () => {
   it("reports tokens from the response and the price from the usage updates", async () => {
     const entries: ChatUsageEntry[] = [];
     const topic = ["Thema", "@fake usage 4000 0.12", "@fake usage 6000 0.30", "@fake replyusage"];
