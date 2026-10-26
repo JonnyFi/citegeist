@@ -236,6 +236,65 @@ export interface ResolveDeps {
   resolver: MetadataLookup;
   /** Reads a web page the way items.add does. Without it, plain URLs cannot be resolved. */
   fromUrl?: (actor: Actor, url: string) => Promise<Lookup>;
+  /**
+   * Reads the page at the address of an item again, metadata only. Undefined when the page has
+   * nothing to merge; throws when it is a bot check or cannot be reached.
+   */
+  refetchUrl?: (
+    actor: Actor,
+    url: string,
+  ) => Promise<{ lookup: Lookup; viaIdentifier: boolean } | undefined>;
+}
+
+/**
+ * An item that has an address but no DOI, arXiv id, PMID or ISBN is read from its page again
+ * (JSON-LD, citation tags and the like), so that a web source is looked up by what it says and
+ * not by a guess from its title. An identifier the address itself carries (SSRN, doi.org) is
+ * tried through the sources first. Undefined means the page gave nothing: match by title.
+ */
+async function lookupFromAddress(
+  deps: ResolveDeps,
+  actor: Actor,
+  citekey: string,
+  fm: Fields,
+): Promise<{ found: Lookup; byIdentifier: boolean } | undefined> {
+  const url = typeof fm.URL === "string" ? fm.URL.trim() : "";
+  if (!url || !deps.refetchUrl || identifierOf(fm)) return undefined;
+  const id = detectIdentifier(url);
+  if (!id) return undefined;
+  if (id.kind !== "url") {
+    try {
+      const res = await deps.resolver.resolve(id);
+      if (res.status === "resolved" && res.fields.title) {
+        return { found: lookupFrom(res, citekey, id), byIdentifier: true };
+      }
+    } catch {
+      // the page itself may still say what the work is
+    }
+  }
+  const page = await deps.refetchUrl(actor, url);
+  return page ? { found: page.lookup, byIdentifier: page.viaIdentifier } : undefined;
+}
+
+/** Throws when another item already has an identifier the lookup brought. */
+function refuseTwin(lib: Library, citekey: string, found: Lookup): void {
+  const doi = found.fields.DOI;
+  const isbn = found.fields.ISBN;
+  const twin = findDuplicate(lib, {
+    doi: typeof doi === "string" ? doi : undefined,
+    isbn: typeof isbn === "string" ? isbn : undefined,
+    arxiv: found.ids.arxiv,
+    pmid: found.ids.pmid,
+    except: citekey,
+  });
+  if (!twin) return;
+  throw problem(
+    "IDENTIFIER_IN_USE",
+    `the page of ${citekey} names an identifier that already belongs to the item ${twin}`,
+    `Both items are the same work. Keep one: trash ${citekey} with items.trash (an agent may trash its own and incomplete items), or ask the user to remove the one they do not want.`,
+    { citekey, duplicateOf: twin },
+    "ask-human",
+  );
 }
 
 /**
@@ -300,10 +359,17 @@ export async function resolveItem(
       );
     }
   } else {
-    const looked = await lookup(deps.resolver, citekey, old);
-    found = lookupFrom(looked.result, citekey, looked.id);
     given = undefined;
-    byIdentifier = looked.id !== undefined;
+    const web = await lookupFromAddress(deps, actor, citekey, old);
+    if (web) {
+      refuseTwin(lib, citekey, web.found);
+      found = web.found;
+      byIdentifier = web.byIdentifier;
+    } else {
+      const looked = await lookup(deps.resolver, citekey, old);
+      found = lookupFrom(looked.result, citekey, looked.id);
+      byIdentifier = looked.id !== undefined;
+    }
   }
 
   const merged = mergeLookup(lib, actor, citekey, found, {
