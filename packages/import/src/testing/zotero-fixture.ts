@@ -1,5 +1,5 @@
 // Builds a small synthetic Zotero data directory (zotero.sqlite in WAL mode plus storage/) for
-// tests. The tables and columns follow userdata.sql of Zotero 10 (docs/research/zotero-parity.md
+// tests. The tables and columns follow userdata.sql of Zotero 10 (internal Zotero-parity research
 // section 1.2); only the tables the importer reads exist. No real Zotero library is involved.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

@@ -1,5 +1,5 @@
 /**
- * Retractions and corrections of a DOI (docs/research/metadata-sources.md section 2). Crossref
+ * Retractions and corrections of a DOI (internal metadata-sources research section 2). Crossref
  * carries the Retraction Watch data in production since January 2025: the original article lists
  * `updated-by`, the notice lists `update-to`, and each entry names its source (`publisher` or
  * `retraction-watch`). OpenAlex `is_retracted` is the backup for DOIs Crossref does not know.

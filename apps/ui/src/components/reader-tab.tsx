@@ -151,7 +151,7 @@ function ReaderLoaded({
   const stream = useMemo(() => buildBlockStream(data.blocks), [data.blocks]);
   const pageLabels = useMemo(() => data.pages?.pages.map((p) => p.label), [data.pages]);
 
-  // remember where Jonny stopped; "Weiterlesen" on the overview comes back to it
+  // remember where the user stopped; "Weiterlesen" on the overview comes back to it
   useEffect(
     () =>
       host ? trackReading(host, fm.citekey, (page) => pageLabels?.[page] ?? undefined) : undefined,

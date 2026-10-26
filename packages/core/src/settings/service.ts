@@ -75,7 +75,7 @@ function normalizePublicUrl(text: string): string {
   if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:") || !parsed.host) {
     throw invalid(
       "The public address is not a web address.",
-      "Enter the address of your tunnel, for example https://mac.tailnet-name.ts.net, or leave the field empty.",
+      "Enter the address of your tunnel, for example https://mac.example.ts.net, or leave the field empty.",
     );
   }
   return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;

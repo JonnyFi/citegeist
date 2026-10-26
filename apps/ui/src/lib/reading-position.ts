@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * Where Jonny stopped reading an item. Kept in localStorage per item until the core stores it
+ * Where the user stopped reading an item. Kept in localStorage per item until the core stores it
  * with the item (a contract of its own, see the W3.8 PR).
  */
 export interface ReadingPosition {

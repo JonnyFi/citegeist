@@ -6,7 +6,7 @@
  * - arXiv: the author-supplied `doi` and `journal_ref` name the published version.
  * - OpenAlex `locations`: one work lists the preprint and the publisher page together.
  *
- * OpenAlex can merge a famous work into a junk DOI (docs/research/metadata-sources.md section 4),
+ * OpenAlex can merge a famous work into a junk DOI (internal metadata-sources research section 4),
  * so its links are marked with their source and only ever used to connect two items the library
  * already holds.
  */

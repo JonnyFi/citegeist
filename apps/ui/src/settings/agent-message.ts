@@ -7,7 +7,7 @@ export const CALLBACK_PLACEHOLDER = "<CALLBACK-TOKEN: in citegeist neu erzeugen>
 export interface AgentMessageInput {
   name: string;
   kind: WebhookKind;
-  /** The public address of the tunnel, for example https://mac.tailnet.ts.net. */
+  /** The public address of the tunnel, for example https://mac.example.ts.net. */
   publicUrl?: string | undefined;
   /** Set when the connector has MCP access. */
   mcpScope?: "read" | "write";

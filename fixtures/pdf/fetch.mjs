@@ -27,7 +27,8 @@ const manifest = JSON.parse(readFileSync(join(here, "manifest.json"), "utf8"));
 const args = process.argv.slice(2);
 const verifyOnly = args.includes("--verify");
 const ids = args.filter((a) => !a.startsWith("--"));
-const UA = "citegeist-fixtures/0.1 (research library test corpus; contact jhf@jonnyfischer.de)";
+const UA =
+  "citegeist-fixtures/0.1 (research library test corpus; https://github.com/JonnyFi/citegeist)";
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 const fileFor = (f) => join(cacheDir, `${f.id}.pdf`);

@@ -1,6 +1,6 @@
 # Webhooks für externe Agents
 
-Mit Webhooks schickt ein externer Agent wie Jonnys Grok-Bot Paper und Notizen an citegeist, und citegeist schickt dem Agent Rechercheaufträge. Das Paket heißt `@citegeist/webhooks`. Die Entscheidungen dahinter stehen in D7 (Inbox als Standard) und D8 (allgemeine Webhooks, nicht nur Grok). Wie du einen Agent Schritt für Schritt anbindest, steht in [agents.md](agents.md). Dort und in Einstellungen > Webhooks > „An deinen Agent schicken“ findest du den fertigen Text zum Einfügen.
+Mit Webhooks schickt ein externer Agent wie ein Grok-Bot Paper und Notizen an citegeist, und citegeist schickt dem Agent Rechercheaufträge. Das Paket heißt `@citegeist/webhooks`. Die Entscheidungen dahinter stehen in D7 (Inbox als Standard) und D8 (allgemeine Webhooks, nicht nur Grok). Wie du einen Agent Schritt für Schritt anbindest, steht in [agents.md](agents.md). Dort und in Einstellungen > Webhooks > „An deinen Agent schicken“ findest du den fertigen Text zum Einfügen.
 
 ## Aufbau
 

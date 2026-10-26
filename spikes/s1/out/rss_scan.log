@@ -1,22 +1,0 @@
-W1023 14:55:30.262000 58082 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
-Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 12537.03it/s]
-warm-up (OCR pipeline, 1 page, includes model load): 4.3 s
-scan-boehmer-palatinat-1739               14 p     10.0 s    0.72 s/p    59 blocks  ConversionStatus.SUCCESS
-       18.11 real        14.81 user         2.38 sys
-          1486209024  maximum resident set size
-                   0  average shared memory size
-                   0  average unshared data size
-                   0  average unshared stack size
-              338456  page reclaims
-               18024  page faults
-                   0  swaps
-                   0  block input operations
-                   0  block output operations
-                  23  messages sent
-                  65  messages received
-                   0  signals received
-                8689  voluntary context switches
-               56345  involuntary context switches
-        205565634724  instructions retired
-         66931295091  cycles elapsed
-          4248079528  peak memory footprint

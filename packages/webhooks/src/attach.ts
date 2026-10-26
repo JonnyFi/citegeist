@@ -28,7 +28,7 @@ export interface AttachWebhooksOptions {
   /** Where secrets live: the macOS Keychain (`MacKeychain` from @citegeist/core) in the app. */
   secrets: SecretStore;
   /**
-   * Public address of this Mac, such as https://mac.tailnet-name.ts.net (Tailscale Funnel) or
+   * Public address of this Mac, such as https://mac.example.ts.net (Tailscale Funnel) or
    * https://hooks.example.com (Cloudflare Tunnel). No tunnel is started; this only tells the
    * connectors where to call.
    */

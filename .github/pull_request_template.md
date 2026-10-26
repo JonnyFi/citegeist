@@ -1,6 +1,6 @@
 ## Worum geht es
 
-<!-- Ein bis drei Sätze: was ändert sich und warum. Verweise auf das Issue (Fixes #n) oder den Workstream im Entwicklungsplan. -->
+<!-- Ein bis drei Sätze: was ändert sich und warum. Verweise auf das Issue (Fixes #n). -->
 
 ## Wie geprüft
 
@@ -14,6 +14,6 @@
 
 ## Offene Punkte
 
-<!-- Was bewusst nicht gemacht wurde, was der Lead verdrahten muss. -->
+<!-- Was bewusst nicht gemacht wurde, was die Maintainer noch verdrahten müssen. -->
 
-🤖 Mit gstack: `/review` vor dem PR, `/ship` zum Öffnen.
+Mit gstack (empfohlen): `/review` vor dem PR, `/ship` zum Öffnen.

@@ -1,4 +1,0 @@
-.venv/
-__pycache__/
-# raw Docling JSON is large and regenerable
-out/**/docling.json

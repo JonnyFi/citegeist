@@ -658,7 +658,7 @@ export const Settings = z.object({
   /**
    * Semantic search with a local embedding model. Off until the user turns it on. `rerank` adds a
    * local cross-encoder that re-sorts the best hits: slower (about a second per search) and a
-   * download of about 570 MB, so it is off by default (numbers in docs/decisions.md).
+   * download of about 570 MB, so it is off by default (numbers in the internal decision log).
    */
   semantic: z
     .object({

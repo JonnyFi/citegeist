@@ -212,7 +212,7 @@ export function bindTextsMock(
       const path = `projects/${input.project}/exports/${input.text}.${ext}`;
       return {
         path,
-        absolutePath: `/Users/jonny/Citegeist/${path}`,
+        absolutePath: `/Users/alex/Citegeist/${path}`,
         format: input.format,
         bytes: 24_000,
         style: input.style ?? settings.style,

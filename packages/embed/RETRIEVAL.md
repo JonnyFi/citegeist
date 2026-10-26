@@ -61,7 +61,7 @@ is downloaded by each user from Hugging Face and not redistributed by citegeist.
 
 The 20-query check above only separates a working model from a broken one. The golden set in
 `fixtures/retrieval/` (43 queries, 6 CC-BY documents, 943 chunks) is the regression gate in `pnpm
-verify`; see `docs/decisions.md` D24 for the numbers. In short, on that set the default model scores
+verify`; see the internal decision log D24 for the numbers. In short, on that set the default model scores
 hit@5 88.4% and MRR 0.738 in hybrid search. EmbeddingGemma 2 (text model, q8) scores 81.4% and 0.692
 at 768 dimensions and 81.4% and 0.674 at 256. The rerankers `mxbai-rerank-xsmall-v1`,
 `bge-reranker-base` and `bge-reranker-v2-m3` score 79.1%, 86.0% and 90.7% hit@5 at 0.34 s, 0.44 s

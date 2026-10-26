@@ -140,7 +140,7 @@ async function readText(abs: string): Promise<string | null> {
 
 /**
  * Puts the files of a turn back. A file nobody touched since the turn gets its old text back. A
- * file Jonny edited afterwards is merged line by line, and a change on the same lines stays as it
+ * file the user edited afterwards is merged line by line, and a change on the same lines stays as it
  * is and is reported as a conflict.
  */
 export async function revertEdits(

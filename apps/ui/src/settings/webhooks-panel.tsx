@@ -764,7 +764,7 @@ function ReachSection({ list }: { list: z.output<typeof webhooksList.output> }) 
           <Input
             id={urlId}
             value={urlText}
-            placeholder="https://mac.tailnet-name.ts.net"
+            placeholder="https://mac.example.ts.net"
             onChange={(e) => setUrlText(e.target.value)}
             className="w-96 max-w-full font-mono"
           />

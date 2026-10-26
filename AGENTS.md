@@ -69,7 +69,7 @@ cd workers/convert && uv run pytest       run the worker tests
 
 ## Workflow (gstack)
 
-gstack is required for all AI-assisted work in this repo, in every tool. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. Cursor and Codex users read the install check in `CLAUDE.md`.
+gstack is the workflow of the maintainers (required for them) and a recommendation for everyone else. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. Cursor and Codex users read the install check in `CLAUDE.md`.
 
 1. `/spec` turns the workstream into an executable spec.
 2. Build against fixtures and mocks, and run `pnpm verify` until green.
@@ -79,9 +79,8 @@ gstack is required for all AI-assisted work in this repo, in every tool. Install
 
 ## Docs
 
-- [docs/product.md](docs/product.md): product scope and open questions
 - [docs/architecture.md](docs/architecture.md): architecture, data model, tech stack, risks
-- [docs/decisions.md](docs/decisions.md): decision log
-- [docs/development-plan.md](docs/development-plan.md): waves, workstreams, repo structure
 - [docs/README.md](docs/README.md): index
+
+The development plan, the decision log and the research notes are kept in a private repository. Code comments and docs cite its decision ids (for example D24) as "internal decision log".
 

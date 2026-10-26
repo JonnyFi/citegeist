@@ -1,4 +1,4 @@
-// Port of the S3 bench (docs/spikes/s3-anchoring.md) onto synthetic fixture text:
+// Port of the S3 bench (internal S3 anchoring spike report) onto synthetic fixture text:
 // 200 selections over three fixture documents, anchors made on the PDF-like stream, resolved in a
 // reflow stream with and without simulated re-conversion. Ground truth comes from the origin maps.
 import { describe, expect, it } from "vitest";
