@@ -38,7 +38,7 @@ Projects
 Reading and quoting
 - read_document returns Markdown by printed page range, section or block ids, capped by maxChars. Page numbers are the printed ones, not PDF indexes.
 - create_card stores a quote. The quote is verbatim and never edited. The paraphrase and the kind (thesis, finding, method, definition, example, critique) are written by AI afterwards.
-- cite formats citations and bibliographies in a CSL style with locators.
+- cite formats citations and bibliographies in a CSL style with locators. A source without pages (web page, HTML, EPUB) is cited by paragraph: pass label "paragraph" with the paragraph number; its cards already carry that locator.
 
 Provenance
 - Everything you write is stamped "agent:<your client name>".

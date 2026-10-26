@@ -3,6 +3,7 @@ import { render } from "@testing-library/react";
 import { App } from "./app";
 import type { Lang } from "./i18n";
 import { createMockCore, type MockOptions } from "./mock/core";
+import { LUHMANN_PAGES, LUHMANN_PAGES_EN, mockWebDoc } from "./mock/doc";
 import { createFixtures, type MockData } from "./mock/fixtures";
 
 /**
@@ -13,6 +14,21 @@ export function createReflowFixtures(lang?: Lang): MockData {
   const data = createFixtures(lang);
   const doc = data.docs.get("luhmann1984soziale");
   if (doc) delete doc.pdfUrl;
+  return data;
+}
+
+/**
+ * Fixture library whose readable item is a converted web page: one placeholder page without a
+ * printed label, no PDF, and cards that cite a paragraph.
+ */
+export function createWebFixtures(lang?: Lang): MockData {
+  const data = createFixtures(lang);
+  const doc = data.docs.get("luhmann1984soziale");
+  if (doc) {
+    const { pdfUrl: _pdf, ...rest } = doc;
+    const web = mockWebDoc(lang === "en" ? LUHMANN_PAGES_EN : LUHMANN_PAGES, doc.source);
+    data.docs.set("luhmann1984soziale", { ...rest, ...web, paginated: false });
+  }
   return data;
 }
 

@@ -164,7 +164,7 @@ export async function retrievePassages(
   }
 
   for (const c of lib.listCards({ citekey, limit: 200 }).cards) {
-    const loc = c.frontmatter.locator;
+    const loc = c.frontmatter.locator?.label === "page" ? c.frontmatter.locator : undefined;
     cands.set(`card:${c.frontmatter.id}`, {
       ref: c.frontmatter.id,
       kind: "card",

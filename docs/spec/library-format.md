@@ -40,6 +40,20 @@ The schemas in `packages/schema/src` are authoritative. This page describes wher
 - Machine-local data (`index.sqlite`, `state.sqlite`, logs, models) lives under `~/Library/Application Support/citegeist/<library-id>/` and never in the library folder.
 - The core reports iCloud conflict copies (`<name> 2.md`) as a problem and does not adopt them silently.
 
+## Unpaginated sources
+
+A source is unpaginated when its conversion has neither printed page labels nor PDF pages: a web page, an HTML file, an EPUB, or arXiv HTML that was converted without its PDF. The core derives this and stores nothing extra (`isUnpaginated` in `packages/schema/src/paragraphs.ts`). A source is unpaginated if
+
+- its `kind` in the item is `web`, `html` or `epub`, or
+- its `manifest.json` has `path: web` or the flag `no-pages` or `no-pdf-for-page-mapping`, or
+- there is no manifest and `pages.json` holds one placeholder page of `textSource: html` without a label.
+
+A `pdf` source and arXiv HTML that is mapped to the pages of its PDF are paginated. `documents.assets` reports the result as `paginated`. The worker still writes a placeholder `pages.json` for an unpaginated source (one page, `label: null`), and the reader does not ask for page numbers.
+
+Cards of an unpaginated source carry a paragraph locator instead of a page: `locator: {label: paragraph, start: "4"}`, or with `end` when the quote spans several paragraphs. The paragraph number counts the blocks of type `paragraph`, `list-item` and `quote` in the body flow in reading order, from 1. Titles, headings, tables, figures, captions, equations, code, footnotes, references and page furniture are not counted. The label is the CSL locator term `paragraph`, so the citation style decides how it reads (APA: "para. 4", German locale "Abs. 4"). A card of a paginated source keeps `label: page`.
+
+Older cards of an unpaginated source have no locator or the placeholder `{label: page, start: "1"}`. The core derives the paragraph from the text anchor whenever such a card is read, and rewrites the file only when the card is saved. A locator that a person typed (any other page) stays as it is. A paragraph number follows the current conversion: after a re-conversion that adds or removes blocks, the number of an unsaved card can move, and a saved card keeps the number it was saved with.
+
 ## Texts
 
 A text ([ADR 0002](../decisions/0002-writing-in-markdown-with-pandoc.md)) is a Markdown file, for example `projects/phd-proposal/texts/kapitel-2.md`. The file name without `.md` is the slug of the text: lowercase letters, digits and hyphens, as for projects. The file lives in the library folder and is not indexed, like the documents of a plan.
@@ -59,6 +73,6 @@ die Plattform im Mittelpunkt [vgl. @luhmann1984soziale; -@habermas1981theorie].
 ```
 
 - `title` is required. `style` is a CSL style id (`apa`, `chicago-author-date`, `deutsche-gesellschaft-fur-psychologie`) and `lang` a BCP 47 tag. If `style` is missing, the style of the project applies. If `lang` is missing, the language of the project applies ([AI text language](../decisions/0016-ai-text-language.md)), otherwise its `locale`. The core sets `created` on creation and keeps other keys.
-- Citations follow the Pandoc syntax: `[@citekey]`, `[@citekey, S. 12]`, `[vgl. @a2020x; @b2021y]`, `[-@citekey]` and `@citekey` in running text. A citekey has to name an item of the library. An unknown one stays unresolved in the export, and the editor marks it. Nothing in code, comments, links, wiki links or frontmatter counts as a citation, and neither does an email address.
+- Citations follow the Pandoc syntax: `[@citekey]`, `[@citekey, S. 12]`, `[@citekey, Abs. 4]`, `[vgl. @a2020x; @b2021y]`, `[-@citekey]` and `@citekey` in running text. A citekey has to name an item of the library. An unknown one stays unresolved in the export, and the editor marks it. Nothing in code, comments, links, wiki links or frontmatter counts as a citation, and neither does an email address.
 - Images and other files the text refers to relatively live next to it. `texts.export` passes this folder to Pandoc as the resource path.
 - The export lands in `projects/<slug>/exports/<text>.docx`, `<text>.zip` (LaTeX: `main.tex` with biblatex and `references.bib` with the cited sources), `<text>.pdf` or `<text>.md`. Pandoc runs as a separate process for this ([ADR 0002](../decisions/0002-writing-in-markdown-with-pandoc.md)).

@@ -166,6 +166,51 @@ export function mockHtml(pages: readonly MockPage[]): string {
     .join("\n");
 }
 
+/**
+ * The same text as a converted web page: one placeholder page without a printed label, which is
+ * what the worker writes for a source without pages.
+ */
+export function mockWebDoc(
+  pages: readonly MockPage[],
+  source: string,
+): { html: string; blocks: Block[]; pages: Pages } {
+  const paras = pages.flatMap((p) => p.paras);
+  return {
+    html: `<section data-page="0">\n${paras
+      .map((p) => {
+        const tag = p.type === "heading" ? "h2" : "p";
+        return `<${tag} id="${p.id}">${escapeHtml(p.text)}</${tag}>`;
+      })
+      .join("\n")}\n</section>`,
+    blocks: paras.map(
+      (p): Block => ({
+        id: p.id,
+        type: p.type,
+        flow: "body",
+        text: p.text,
+        spans: [{ page: 0, label: null, start: 0, end: p.text.length }],
+        src: { engine: "mock" },
+      }),
+    ),
+    pages: {
+      source,
+      confirmed: false,
+      pages: [
+        {
+          index: 0,
+          label: null,
+          labelSource: "none",
+          width: 612,
+          height: 792,
+          rotation: 0,
+          textSource: "html",
+          labelConfidence: 0,
+        },
+      ],
+    },
+  };
+}
+
 function wrap(text: string, max: number): string[] {
   const lines: string[] = [];
   let line = "";

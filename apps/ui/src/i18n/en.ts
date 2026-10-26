@@ -403,7 +403,7 @@ export const en: Record<MessageKey, string> = {
   "editor.cardLoading": "Loading card",
   "editor.cardMissing": "Card not found",
   "editor.openCard": "Open card",
-  "editor.page": "p. {page}",
+  "editor.page": "{page}",
   "editor.sectionItem": "Sources",
   "editor.sectionNote": "Notes",
   "editor.sectionCard": "Cards",

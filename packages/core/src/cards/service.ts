@@ -20,6 +20,7 @@ import {
   type ModelStamp,
   type Pages,
   type ProjectFrontmatter,
+  paragraphLocator,
   TextAnchor,
 } from "@citegeist/schema";
 import type { z } from "zod";
@@ -29,9 +30,10 @@ import { writeFileAtomic } from "../fsutil.js";
 import { normalizeNewlines, quoteSha256 } from "../hash.js";
 import { newCardId } from "../ids.js";
 import type { Library } from "../library.js";
-import { DerivedStore } from "./derived.js";
+import type { DerivedStore } from "./derived.js";
 import { cardErrors } from "./errors.js";
 import { type CardJobQueue, DetachedJobs } from "./jobs.js";
+import { withParagraphLocator } from "./paragraphs.js";
 
 export interface CardDeps {
   /** Routes `card.paraphrase` and `card.verify` to the configured backend. */
@@ -80,7 +82,7 @@ export class CardService {
     private readonly lib: Library,
     private readonly deps: CardDeps,
   ) {
-    this.derived = new DerivedStore(lib.paths);
+    this.derived = lib.derived;
     if (deps.jobs) {
       this.jobs = deps.jobs;
       this.detached = undefined;
@@ -101,7 +103,8 @@ export class CardService {
   getCard(id: string): CardFile {
     const p = this.lib.readParsed(this.cardPath(id));
     if (p.kind !== "card") throw cardErrors.notFound(id);
-    return { frontmatter: p.fm, body: p.body };
+    // an older card of an unpaginated source shows its paragraph; the file stays as it is until saved
+    return { frontmatter: withParagraphLocator(this.lib, p.fm), body: p.body };
   }
 
   // Create ---------------------------------------------------------------------------------------
@@ -207,9 +210,19 @@ export class CardService {
       }
     }
 
-    const first = anchor.pdf?.page ?? loc?.first?.page;
-    const last = loc?.last?.page ?? first;
-    const locator = buildLocator(first, last, pages, loc);
+    const sourceEntry = item.sources.find((s) => s.hash === source);
+    const unpaginated =
+      !anchor.pdf && sourceEntry !== undefined && this.derived.isUnpaginated(citekey, sourceEntry);
+    let locator: Locator | undefined;
+    if (unpaginated && source) {
+      // no pages to cite: the paragraphs the selection covers
+      const numbers = this.derived.paragraphs(citekey, source);
+      locator = numbers ? paragraphLocator(numbers, loc?.blocks.map((b) => b.id) ?? []) : undefined;
+    } else {
+      const first = anchor.pdf?.page ?? loc?.first?.page;
+      const last = loc?.last?.page ?? first;
+      locator = buildLocator(first, last, pages, loc);
+    }
     return {
       ...(source ? { source } : {}),
       anchor: { ...(anchor.pdf ? { pdf: anchor.pdf } : {}), ...(text ? { text } : {}) },
@@ -393,6 +406,11 @@ export class CardService {
         "Fix the patch values so that they match the card schema.",
       );
     }
+    // saving a card writes the paragraph locator of an older card of an unpaginated source
+    if (fm.locator === undefined) {
+      const migrated = withParagraphLocator(this.lib, check.data);
+      if (migrated.locator !== check.data.locator) fm.locator = migrated.locator;
+    }
     file.patch({ ...fm, modified: stamp });
     file.setBody(serializeCardBody(body));
     this.lib.writeFile(rel, file.toString());
@@ -471,6 +489,9 @@ export class CardService {
     const next = { ...raw, pages, confirmed: true } as Pages;
     writeFileAtomic(file, `${JSON.stringify(next, null, 2)}\n`);
     this.derived.forgetPages(citekey, source);
+    // cards of an unpaginated source cite a paragraph, which page labels do not change
+    const entry = item.sources.find((s) => s.hash === source);
+    if (entry && this.derived.isUnpaginated(citekey, entry)) return { cardsUpdated: 0 };
     return { cardsUpdated: this.relocateCards(actor, citekey, source, next) };
   }
 

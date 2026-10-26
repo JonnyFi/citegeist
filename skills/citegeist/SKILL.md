@@ -23,7 +23,7 @@ The library is found through `--library <path>`, then the environment variable `
 ## Rules that always apply
 
 - Citekeys come from `search`, `get_item` or `add_item` results. Never invent one.
-- Page numbers are printed page numbers, not PDF indexes.
+- Page numbers are printed page numbers, not PDF indexes. A source without pages (web page, HTML, EPUB) is cited by paragraph (`label: "paragraph"`); its cards carry that locator.
 - The wording of a quote is verbatim. Never retype or "fix" it; copy it from `read_document` output.
 - Everything you add lands in the inbox first and is stamped with your name and the reason. Pass `target: "library"` only when the user named exactly this paper, or told you to put it straight into the library.
 - Fill `why` on every `add_item`. The user reads it next to the inbox item and decides from it.

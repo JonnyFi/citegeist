@@ -410,7 +410,7 @@ export const de = {
   "editor.cardLoading": "Karte lädt",
   "editor.cardMissing": "Karte nicht gefunden",
   "editor.openCard": "Karte öffnen",
-  "editor.page": "S. {page}",
+  "editor.page": "{page}",
   "editor.sectionItem": "Quellen",
   "editor.sectionNote": "Notizen",
   "editor.sectionCard": "Karten",

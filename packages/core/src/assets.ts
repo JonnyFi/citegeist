@@ -15,6 +15,7 @@ export interface AssetsResult {
   html?: string;
   blocks: Block[];
   pages?: Pages;
+  paginated: boolean;
 }
 
 /** File name below `sources/` that belongs to a source hash, whatever its extension. */
@@ -97,5 +98,6 @@ export function documentAssets(lib: Library, input: AssetsInput): AssetsResult {
     ...(existsSync(htmlPath) ? { html: readFileSync(htmlPath, "utf8") } : {}),
     blocks: readBlocks(lib.paths.blocks(citekey, hash)),
     ...(pages ? { pages } : {}),
+    paginated: !lib.derived.isUnpaginated(citekey, source),
   };
 }
