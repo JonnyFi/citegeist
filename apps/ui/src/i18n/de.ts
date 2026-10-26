@@ -134,6 +134,7 @@ export const de = {
   "item.noCardsDescription":
     "Markiere beim Lesen eine Passage, um sie als Zitatkarte zu speichern.",
   "item.pageCount": "{n} Seiten",
+  "item.pageCountOne": "1 Seite",
   "meta.type": "Typ",
   "meta.publishedIn": "Erschienen in",
   "meta.publisher": "Verlag",

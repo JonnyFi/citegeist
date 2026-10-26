@@ -296,17 +296,15 @@ function ldCreators(v: unknown, byId: Map<string, Json>): Creator[] {
     }
     if (typeof node === "string") {
       // a list of names in one string: "A. Smith; B. Jones"
-      for (const part of node.split(/\s*;\s*|\s+and\s+|\s*&\s*/)) {
-        const name = clean(part);
-        if (name) out.push(splitPersonName(name));
-      }
+      for (const name of splitNameList(node)) out.push(splitPersonName(name));
     } else if (isObject(node)) {
       const family = ldString(node.familyName);
       const given = ldString(node.givenName);
       const name = ldString(node.name);
       const isOrg = typesOf(node).some((t) => /Organization|Corporation|Institution/.test(t));
       if (family) out.push(given ? { family, given } : { family });
-      else if (name) out.push(isOrg ? { literal: name } : splitPersonName(name));
+      else if (name && isOrg) out.push({ literal: name });
+      else if (name) for (const one of splitNameList(name)) out.push(splitPersonName(one));
     }
   }
   return out.filter((c) => ("family" in c ? c.family : c.literal).length > 0);
@@ -477,17 +475,41 @@ export function parseDate(input: string): string | undefined {
 
 const NOT_A_NAME = /^(unknown|anonymous|admin|editor|staff|redaktion|n\/a|none)$/i;
 
+/**
+ * Splits one author string that may hold several people: "Alex Williams and Nick Srnicek",
+ * "A. Smith; B. Jones", "Ann Lee & Bo Kim". A comma separates people only when every part has at
+ * least two words, so "Srnicek, Nick" stays one inverted name.
+ */
+export function splitNameList(value: string): string[] {
+  const parts = value
+    .split(/\s*;\s*|\s+(?:and|und|&)\s+|\s*&\s*/i)
+    .map((p) => clean(p))
+    .filter((p): p is string => Boolean(p));
+  const out: string[] = [];
+  for (const part of parts) {
+    const byComma = part.split(/\s*,\s*/).filter(Boolean);
+    if (byComma.length > 1 && byComma.every((c) => c.trim().split(/\s+/).length >= 2)) {
+      out.push(...byComma);
+    } else {
+      out.push(part);
+    }
+  }
+  return out;
+}
+
 function personsFrom(values: string[]): Creator[] {
   const out: Creator[] = [];
   const seen = new Set<string>();
   for (const v of values) {
-    const name = clean(v);
-    if (!name || NOT_A_NAME.test(name) || /^https?:\/\//i.test(name)) continue;
-    const creator = splitPersonName(name);
-    const key = JSON.stringify(creator);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(creator);
+    const whole = clean(v);
+    if (!whole || NOT_A_NAME.test(whole) || /^https?:\/\//i.test(whole)) continue;
+    for (const name of splitNameList(whole)) {
+      const creator = splitPersonName(name);
+      const key = JSON.stringify(creator);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(creator);
+    }
   }
   return out;
 }

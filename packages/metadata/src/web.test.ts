@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { detectIdentifier } from "./identifiers.js";
-import { extractPageMetadata, isChallengePage, parseDate, stripSiteName } from "./web.js";
+import {
+  extractPageMetadata,
+  isChallengePage,
+  parseDate,
+  splitNameList,
+  stripSiteName,
+} from "./web.js";
 
 const fixture = (name: string): string =>
   readFileSync(new URL(`../../../fixtures/web/${name}`, import.meta.url), "utf8");
@@ -190,5 +196,38 @@ describe("helpers", () => {
     expect(stripSiteName("Order - Disorder: a study", "Example Essays")).toBe(
       "Order - Disorder: a study",
     );
+  });
+});
+
+describe("several authors in one name", () => {
+  it("splits a byline that names two people into two authors", () => {
+    // protects: web pages whose JSON-LD or meta author names several people in one string
+    // fails_when: "Alex Williams and Nick Srnicek" becomes family "Srnicek", given "Alex Williams and Nick"
+    // no_claim: names with particles (van, de) are covered by splitPersonName, not here
+    const ld = `<script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "#Accelerate Manifesto",
+      author: { "@type": "Person", name: "Alex Williams and Nick Srnicek" },
+    })}</script>`;
+    const meta = extractPageMetadata(`<html><head>${ld}</head></html>`);
+    expect(meta.fields.author).toEqual([
+      { family: "Williams", given: "Alex" },
+      { family: "Srnicek", given: "Nick" },
+    ]);
+    const tags = extractPageMetadata(
+      '<html><head><meta name="author" content="Ann Lee &amp; Bo Kim"></head></html>',
+    );
+    expect(tags.fields.author).toEqual([
+      { family: "Lee", given: "Ann" },
+      { family: "Kim", given: "Bo" },
+    ]);
+  });
+
+  it("keeps an inverted single name together", () => {
+    expect(splitNameList("Srnicek, Nick")).toEqual(["Srnicek, Nick"]);
+    expect(splitNameList("Ann Lee, Bo Kim")).toEqual(["Ann Lee", "Bo Kim"]);
+    expect(splitNameList("A. Smith; B. Jones")).toEqual(["A. Smith", "B. Jones"]);
+    expect(splitNameList("Max Weber und Marianne Weber")).toEqual(["Max Weber", "Marianne Weber"]);
   });
 });
