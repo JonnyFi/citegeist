@@ -146,6 +146,7 @@ describe("task registry", () => {
   it("registers the tasks with versioned prompts, model classes and fixtures", () => {
     expect(TASK_NAMES).toEqual([
       "card.paraphrase",
+      "card.suggestLinks",
       "card.verify",
       "concept.describe",
       "concept.name",
