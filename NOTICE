@@ -1,12 +1,45 @@
 citegeist
 Copyright 2026 the citegeist authors
 
-This file lists third-party material that citegeist ships or loads, and the attribution that
-material asks for. The license of citegeist itself (Apache-2.0) is in LICENSE. The audit behind
-this list is docs/licenses.md.
+citegeist is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This file lists third-party material that citegeist ships, loads or calls, and the attribution
+that material asks for. Section 1 covers the research-pipeline code that was contributed to
+citegeist. Sections 2 to 8 cover material that is bundled in the repository or in the app.
+Sections 9 to 11 cover material that is downloaded or installed on the user's machine at run
+time and that citegeist does not redistribute. The policy and the table of notable dependencies
+are in docs/licenses.md. `pnpm verify` runs scripts/check-licenses.mjs, which fails on GPL,
+AGPL, LGPL, SSPL and unknown licenses among the production dependencies.
+
+The app ships this file (Contents/Resources/NOTICE), LICENSE, the OFL texts of the fonts and the
+license text of citeproc-js (Contents/Resources/licenses).
 
 --------------------------------------------------------------------------------
-1. Citation Style Language styles and locales
+1. Research pipeline (workers/research)
+--------------------------------------------------------------------------------
+
+Files:    workers/research (except vendor/)
+Origin:   the research-pipeline project, https://github.com/nofreeWyfy/research-pipeline,
+          commit f94047a, contributed to citegeist by its author, Niels (GitHub nofreeWyfy),
+          and licensed under the Apache License 2.0 as part of citegeist. Changes against the
+          original are listed in workers/research/NOTICE.md.
+
+--------------------------------------------------------------------------------
+2. OpenDraft-derived workflow (workers/research/vendor/opendraft)
+--------------------------------------------------------------------------------
+
+Files:    workers/research/vendor/opendraft
+License:  Apache License 2.0 for the bundle (vendor/opendraft/LICENSE); the material derived
+          from OpenDraft keeps its MIT license and copyright notice
+          (Copyright (c) 2025 SCAILE Technologies GmbH), reproduced in
+          vendor/opendraft/THIRD_PARTY_NOTICES.md.
+Source:   https://github.com/federicodeponte/opendraft (commit 2b67aff)
+
+vendor/opendraft/DERIVATION.json maps each file to its upstream origin. The directory is not part
+of the packaged app yet; it stays in the repository and keeps its LICENSE and notices.
+
+--------------------------------------------------------------------------------
+3. Citation Style Language styles and locales
 --------------------------------------------------------------------------------
 
 Files:    packages/cite/src/vendor/*.csl and packages/cite/src/vendor/locales-*.xml
@@ -32,81 +65,159 @@ The files are redistributed unmodified and as separate data files. Each file kee
 A modified copy of one of these files must be released under the same license.
 
 --------------------------------------------------------------------------------
-2. citeproc-js
+4. citeproc-js
 --------------------------------------------------------------------------------
 
 Package:  citeproc 2.4.63 (npm), loaded through @citation-js/plugin-csl
 Author:   Frank Bennett, Copyright (c) 2009-2019
-License:  CPAL-1.0 OR AGPL-3.0-or-later (dual). citegeist uses the package under the CPAL option,
-          unmodified, as an npm dependency.
+License:  CPAL-1.0 OR AGPL-3.0-or-later (dual). citegeist uses the package under the Common
+          Public Attribution License 1.0 (CPAL-1.0), unmodified, as an npm dependency.
 Source:   https://github.com/Juris-M/citeproc-js
 
-The license text sits in the package (node_modules/citeproc/LICENSE) and is delivered with every
-build that contains the package. Changes to citeproc-js files must be published under the CPAL.
+The license text is in licenses/citeproc-js-LICENSE.txt (Contents/Resources/licenses in the
+app). Changes to citeproc-js files must be published under the CPAL.
 
 --------------------------------------------------------------------------------
-3. Fonts
+5. Fonts
 --------------------------------------------------------------------------------
 
-Packages: @fontsource-variable/inter, @fontsource-variable/jetbrains-mono,
-          @fontsource-variable/newsreader
+Packages: @fontsource-variable/inter, @fontsource-variable/newsreader,
+          @fontsource-variable/jetbrains-mono (Fontsource packaging of the fonts below)
 License:  SIL Open Font License 1.1, https://openfontlicense.org/
-Copyright: Inter, The Inter Project Authors; JetBrains Mono, The JetBrains Mono Project Authors;
-          Newsreader, The Newsreader Project Authors
+Fonts:    Inter, Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+          Newsreader, Copyright 2020 The Newsreader Project Authors
+            (https://github.com/productiontype/Newsreader)
+          JetBrains Mono, Copyright 2020 The JetBrains Mono Project Authors
+            (https://github.com/JetBrains/JetBrainsMono)
 
-The font files are bundled in the renderer build. The OFL text and the copyright lines travel with
-the packages (LICENSE files inside each package) and must stay with the font files.
-
---------------------------------------------------------------------------------
-4. libvips (through sharp)
---------------------------------------------------------------------------------
-
-Package:  @img/sharp-libvips-darwin-arm64 1.3.4 (optional dependency of @huggingface/transformers)
-License:  LGPL-3.0-or-later
-Source:   https://github.com/lovell/sharp-libvips and https://github.com/libvips/libvips
-
-The library is a separate shared object that sharp loads at run time. It is not modified and can
-be replaced by the user by swapping the file.
+The font files are bundled unmodified in the renderer build. The OFL texts with the copyright
+lines are shipped in Contents/Resources/licenses/fonts (Inter-OFL.txt, Newsreader-OFL.txt,
+JetBrainsMono-OFL.txt).
 
 --------------------------------------------------------------------------------
-5. Runtime downloads (not part of the repository or the app bundle)
+6. Test fixtures (fixtures/)
 --------------------------------------------------------------------------------
 
-These are fetched to the user's machine on first use, with a pinned revision or checksum.
-citegeist does not redistribute them.
+fixtures/pdf/manifest.json lists every fixture PDF with its source URL, license and the evidence
+for that license. The PDFs are not committed; fixtures/pdf/fetch.mjs downloads them from the
+source URLs into a local cache. The manifest records these licenses:
 
-  Docling models (docling-project/docling-layout-heron: Apache-2.0;
-    docling-project/docling-models: CDLA-Permissive-2.0 and Apache-2.0;
-    docling-project/CodeFormulaV2: CDLA-Permissive-2.0), from Hugging Face.
-  GROBID, Apache-2.0, https://github.com/grobidOrg/grobid, built from the release archive.
-  Eclipse Temurin JRE 21, GPL-2.0 with Classpath Exception, https://adoptium.net/, used by GROBID.
-  Qwen3-Embedding-0.6B, Apache-2.0, ONNX conversion from onnx-community on Hugging Face.
-  EmbeddingGemma 300M, Gemma Terms of Use, https://ai.google.dev/gemma/terms and the Gemma
-    Prohibited Use Policy, https://ai.google.dev/gemma/prohibited_use_policy. Gemma is provided
-    under and subject to the Gemma Terms of Use. The terms apply to whoever downloads the weights.
-  The Python packages of workers/convert/uv.lock, installed from PyPI by uv on first start.
+  CC BY 4.0           https://creativecommons.org/licenses/by/4.0/
+  CC BY-SA 4.0        https://creativecommons.org/licenses/by-sa/4.0/
+  Public domain       official works (par. 5 UrhG, 17 USC 105) and works whose author died
+                      before 1950
+
+The converted texts in fixtures/retrieval/corpus are adaptations of the following CC BY 4.0
+works (converted from PDF to text and split into sections). Authors are listed as in
+fixtures/retrieval/items.json; "et al." marks further authors of the original.
+
+  Kwiatkowski, Palomaki, Redfield et al.: Natural Questions: A Benchmark for Question Answering
+    Research. Transactions of the ACL, 2019. https://doi.org/10.1162/tacl_a_00276
+    Source: https://aclanthology.org/Q19-1026.pdf
+  Klein, Van de Sompel, Sanderson et al.: Scholarly Context Not Found: One in Five Articles
+    Suffers from Reference Rot. PLOS ONE, 2014. https://doi.org/10.1371/journal.pone.0115253
+    Source: https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0115253&type=printable
+  Jiang, Sablayrolles, Mensch et al.: Mistral 7B. arXiv:2310.06825, 2023.
+    https://doi.org/10.48550/arXiv.2310.06825  Source: https://arxiv.org/pdf/2310.06825v1
+  Auer, Lysak, Nassar et al.: Docling Technical Report. arXiv:2408.09869, 2024.
+    https://doi.org/10.48550/arXiv.2408.09869  Source: https://arxiv.org/pdf/2408.09869v5
+  Rieckmann, Marco: Bildung fuer nachhaltige Entwicklung: Ziele, didaktische Prinzipien und
+    Methoden. merz, 2021. https://doi.org/10.21240/merz/2021.4.7
+    Source: https://www.merz-zeitschrift.de/article/download/2097/1934
+  Lampert, Hoebel, Kuntz et al.: Gesundheitliche Ungleichheiten bei Kindern und Jugendlichen in
+    Deutschland: Zeitliche Entwicklung und Trends der KiGGS-Studie. Journal of Health
+    Monitoring, 2019. https://doi.org/10.25646/5867
+    Source: https://edoc.rki.de/bitstream/176904/5908/1/JoHM_01_2019_Gesundheitliche_Ungleichheiten.pdf
+
+The texts are licensed under CC BY 4.0, like the originals. The recorded HTTP responses in
+fixtures/metadata/http come from the public APIs of Crossref, arXiv, OpenAlex and similar
+services and contain bibliographic facts.
 
 --------------------------------------------------------------------------------
-6. Components the user installs, which citegeist only calls
+7. Claude Agent SDK
 --------------------------------------------------------------------------------
 
+Package:  @anthropic-ai/claude-agent-sdk 0.3.309 (npm), a dependency of the Agent Client Protocol
+          adapter @agentclientprotocol/claude-agent-acp (Apache-2.0)
+License:  Proprietary, published under Anthropic's legal agreements, not under an open source
+          license. https://code.claude.com/docs/en/legal-and-compliance
+Terms:    Use of the Agent SDK in a distributed product falls under Anthropic's Commercial
+          Terms. https://code.claude.com/docs/en/agent-sdk/overview
+
+citegeist ships the JavaScript of the SDK unchanged in the app. The Claude Code binary is not
+shipped; the user installs Claude Code and signs in with their own account. citegeist is not
+affiliated with Anthropic.
+
+--------------------------------------------------------------------------------
+8. Other bundled dependencies
+--------------------------------------------------------------------------------
+
+The remaining npm dependencies in the app are under permissive licenses (MIT, Apache-2.0, BSD,
+ISC, Unlicense, CC0 and similar). Their license files travel with the packages. The sharp image
+library, which would bring LGPL libvips into the app, is replaced by a stub (stubs/sharp). The
+Python sources of workers/convert and workers/research are bundled; their dependencies are not
+(section 11).
+
+The app also contains Electron and Chromium, whose notices are in
+Contents/Resources/LICENSE.electron.txt and Contents/Resources/LICENSES.chromium.html.
+
+--------------------------------------------------------------------------------
+9. Models downloaded at run time
+--------------------------------------------------------------------------------
+
+Model weights are fetched from Hugging Face to the user's machine at a pinned revision when the
+feature is used. citegeist does not redistribute them.
+
+  EmbeddingGemma 300M (onnx-community/embeddinggemma-300m-ONNX), the default model of the
+    semantic search. Gemma is provided under and subject to the Gemma Terms of Use,
+    https://ai.google.dev/gemma/terms, and the Gemma Prohibited Use Policy,
+    https://ai.google.dev/gemma/prohibited_use_policy. The terms apply to whoever downloads
+    the weights.
+  Qwen3-Embedding-0.6B (onnx-community/Qwen3-Embedding-0.6B-ONNX), Apache-2.0, optional model
+    of the semantic search.
+  bge-reranker-v2-m3 (onnx-community/bge-reranker-v2-m3-ONNX, from BAAI/bge-reranker-v2-m3),
+    Apache-2.0, used when the setting that re-ranks search hits is switched on.
+  Models used only by the evaluation command `pnpm eval:retrieval` in a development checkout:
+    Xenova/bge-reranker-base (MIT), mixedbread-ai/mxbai-rerank-xsmall-v1 (Apache-2.0),
+    onnx-community/embeddinggemma-2-ONNX (Apache-2.0).
+  Docling models: docling-project/docling-layout-heron (Apache-2.0),
+    docling-project/docling-models (CDLA-Permissive-2.0 and Apache-2.0),
+    docling-project/CodeFormulaV2 (CDLA-Permissive-2.0).
+
+--------------------------------------------------------------------------------
+10. Programs downloaded or installed on the user's machine
+--------------------------------------------------------------------------------
+
+These run as separate processes and are never linked into citegeist.
+
+  GROBID, Apache-2.0, https://github.com/grobidOrg/grobid. Built from the release archive when
+    the user installs it (pinned checksum), runs behind 127.0.0.1.
+  Eclipse Temurin JRE 21, GPL-2.0 with Classpath Exception, https://adoptium.net/. Downloaded
+    for GROBID (pinned checksum). The Classpath Exception permits use by programs under any
+    license.
+  Pandoc, GPL-2.0-or-later, https://github.com/jgm/pandoc (source code and license).
+    Downloaded from the upstream release when the user asks for text export (pinned checksum),
+    or taken from the user's own installation. citegeist starts it as a separate process with
+    command line arguments and files; it does not link to it and does not ship it.
   Claude Code, Codex CLI and Cursor CLI run as the user's own installations under the user's own
-  accounts and terms. citegeist starts them through the Agent Client Protocol adapters
-  @agentclientprotocol/claude-agent-acp and @agentclientprotocol/codex-acp (Apache-2.0).
-  The adapter for Claude Code depends on @anthropic-ai/claude-agent-sdk, which is published under
-  Anthropic's legal agreements (https://code.claude.com/docs/en/legal-and-compliance) and not
-  under an open source license. It is a proprietary component under Anthropic's terms. citegeist
-  ships its JavaScript unchanged in the app, and use of the Agent SDK in a distributed product is
-  covered by the Commercial Terms (https://code.claude.com/docs/en/agent-sdk/overview). The Claude
-  Code binary is not shipped: the user installs it. citegeist is not affiliated with Anthropic.
-  Zotero Connector: the user's browser extension, AGPL-3.0, talks to citegeist over the Connector
-  protocol. citegeist contains no Zotero code. "Zotero" is a trademark of the Corporation for
-  Digital Scholarship.
+    accounts and terms. citegeist starts them through the Agent Client Protocol adapters
+    @agentclientprotocol/claude-agent-acp and @agentclientprotocol/codex-acp (Apache-2.0).
+  Zotero Connector: the user's browser extension, AGPL-3.0, talks to citegeist over the
+    Connector protocol. citegeist contains no Zotero code. "Zotero" is a trademark of the
+    Corporation for Digital Scholarship.
 
 --------------------------------------------------------------------------------
-7. Other dependencies
+11. Python packages of the conversion worker
 --------------------------------------------------------------------------------
 
-The remaining npm and Python dependencies are under permissive licenses (MIT, Apache-2.0, BSD,
-ISC and similar). Their notices are in the packages themselves. The complete list with versions
-and licenses is in docs/licenses.md.
+uv installs the locked packages of workers/convert/uv.lock from PyPI on the user's machine at the
+first start. citegeist does not redistribute them. The main packages are Docling (MIT), PyTorch
+(BSD-style), NumPy (BSD-3-Clause), pypdf (BSD-3-Clause), pypdfium2 (BSD-3-Clause and Apache-2.0
+with bundled libraries), OpenCV (Apache-2.0; the wheel bundles FFmpeg libraries under the LGPL),
+trafilatura (Apache-2.0) and lxml (BSD-3-Clause). Packages under weak copyleft licenses:
+
+  certifi, MPL-2.0
+  tqdm, MPL-2.0 and MIT
+  tld, MPL-1.1 OR GPL-2.0-only OR LGPL-2.1-or-later; citegeist uses the MPL-1.1 option
+
+workers/research uses only the Python standard library.

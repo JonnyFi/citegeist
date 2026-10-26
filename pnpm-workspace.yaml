@@ -12,3 +12,7 @@ onlyBuiltDependencies:
   - esbuild
   - electron
   - onnxruntime-node
+
+overrides:
+  # sharp (and with it LGPL libvips) is only needed by image models; see stubs/sharp/package.json
+  sharp: link:./stubs/sharp

@@ -13,13 +13,21 @@ npmRebuild: false
 files:
   - out/**
   - package.json
+  # stand-in for the sharp image library (stubs/sharp/package.json): @huggingface/transformers
+  # imports it at load time, and the real package would bring LGPL libvips into the app. pnpm
+  # links the stub (overrides in pnpm-workspace.yaml), which the dependency walk of
+  # electron-builder does not follow, so it is added by hand.
+  - from: ../../stubs/sharp
+    to: node_modules/sharp
+    filter:
+      - package.json
+      - index.js
   # The Claude Code and Codex binaries (about 560 MB) do not ship with the app: the chat adapters
   # run the `claude` and `codex` the user installed. Only the JavaScript of the adapters and of
   # the Agent SDK stays.
   - "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**"
   - "!**/node_modules/@openai/codex-*/**"
   - "!**/node_modules/@napi-rs/canvas-{android-*,darwin-x64,linux-*,win32-*}/**"
-  - "!**/node_modules/@img/*{linux,win32,darwin-x64}*/**"
   - "!**/node_modules/sqlite-vec-{darwin-x64,linux-*,windows-*}/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/darwin/x64/**"
@@ -39,6 +47,21 @@ files:
   - "!**/node_modules/**/{README,CHANGELOG,HISTORY,CONTRIBUTING}{,.md,.markdown,.txt}"
   - "!**/node_modules/**/{test,tests,__tests__,docs,example,examples,.github}/**"
 extraResources:
+  # license and attribution files: LICENSE and NOTICE of citegeist, plus the license texts of
+  # material that is bundled into the JavaScript or the renderer and would otherwise lose them
+  # (the OFL texts of the fonts, the CPAL/AGPL text of citeproc-js)
+  - from: ../../LICENSE
+    to: LICENSE
+  - from: ../../NOTICE
+    to: NOTICE
+  - from: ../ui/node_modules/@fontsource-variable/inter/LICENSE
+    to: licenses/fonts/Inter-OFL.txt
+  - from: ../ui/node_modules/@fontsource-variable/newsreader/LICENSE
+    to: licenses/fonts/Newsreader-OFL.txt
+  - from: ../ui/node_modules/@fontsource-variable/jetbrains-mono/LICENSE
+    to: licenses/fonts/JetBrainsMono-OFL.txt
+  - from: ../../licenses/citeproc-js-LICENSE.txt
+    to: licenses/citeproc-LICENSE.txt
   # the `cg` launcher: runs out/main/cg.js with the app binary as Node. install.sh links
   # ~/.local/bin/cg to it and the chat puts its folder on the PATH of the agent.
   - from: resources/cg
