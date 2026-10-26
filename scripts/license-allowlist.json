@@ -1,0 +1,22 @@
+{
+  "description": "Packages that scripts/check-licenses.mjs accepts although their license is not permissive or not machine-readable. Each entry names the license string the check saw, so a license change fails the check again. A trailing * in name matches a prefix. The policy is in docs/licenses.md.",
+  "npm": [
+    {
+      "name": "@anthropic-ai/claude-agent-sdk",
+      "license": "Unknown",
+      "reason": "Proprietary, published under Anthropic's legal agreements. Its JavaScript ships unchanged; use in a distributed product falls under the Commercial Terms. Listed in NOTICE."
+    },
+    {
+      "name": "@anthropic-ai/claude-agent-sdk-*",
+      "license": "Unknown",
+      "reason": "Native Claude Code binaries. electron-builder.yml excludes them from the app; the user installs Claude Code."
+    }
+  ],
+  "python": [
+    {
+      "name": "pypdfium2",
+      "license": "BSD-3-Clause, Apache-2.0, dependency licenses",
+      "reason": "Wheel of PDFium (BSD-3-Clause, Apache-2.0) with its bundled libraries, which carry permissive licenses (see the licenses directory in the wheel). Installed by uv on the user's machine, not shipped by citegeist."
+    }
+  ]
+}
