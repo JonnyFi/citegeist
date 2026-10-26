@@ -18,7 +18,12 @@ const entry: CardExportEntry = {
 
 const FORMATS: CardExportFormat[] = ["html", "text", "pandoc", "latex", "typst"];
 
-function all(e: CardExportEntry, mode: "direct" | "indirect", locale: string, policy = {}) {
+function all(
+  e: CardExportEntry,
+  mode: "direct" | "indirect" | "cite",
+  locale: string,
+  policy = {},
+) {
   return Object.fromEntries(
     FORMATS.map((format) => [
       format,
@@ -26,6 +31,28 @@ function all(e: CardExportEntry, mode: "direct" | "indirect", locale: string, po
     ]),
   );
 }
+
+describe("citation only", () => {
+  it("renders the citation without quote, paraphrase or prefix in every format", () => {
+    const out = all(entry, "cite", "de-DE");
+    expect(out.pandoc?.text).toBe("[@luhmann1984soziale, S. 31]");
+    expect(out.text?.text).toBe("(Luhmann, 1984, S. 31)");
+    expect(out.html?.text).toBe("(Luhmann, 1984, S. 31)");
+    expect(out.html?.html).toBe("<p>(Luhmann, 1984, S. 31)</p>");
+    expect(out.latex?.text).toBe("\\parencite[31]{luhmann1984soziale}");
+    expect(out.typst?.text).toBe("@luhmann1984soziale[S. 31]");
+  });
+
+  it("uses the terms of the requested locale in the Pandoc form", () => {
+    expect(all(entry, "cite", "en-US").pandoc?.text).toBe("[@luhmann1984soziale, p. 31]");
+    const para = {
+      ...entry,
+      card: { locator: { label: "paragraph", start: "4", confirmed: true } },
+    };
+    expect(all(para, "cite", "en-US").pandoc?.text).toBe("[@luhmann1984soziale, para. 4]");
+    expect(all(para, "cite", "de-DE").pandoc?.text).toBe("[@luhmann1984soziale, Abs. 4]");
+  });
+});
 
 describe("direct quote", () => {
   it("renders German in every format", () => {
