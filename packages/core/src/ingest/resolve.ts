@@ -6,7 +6,9 @@ import {
 } from "@citegeist/metadata";
 import type { Actor } from "@citegeist/schema";
 import type { Library } from "../library.js";
+import { findDuplicate } from "./dupes.js";
 import { loadItem, problem, saveItem } from "./items.js";
+import { suggestCitekey } from "./placeholder.js";
 import type { MetadataLookup } from "./service.js";
 
 /** Provenance written by a person or an agent: `human@2026-10-24`, `agent:grok@2026-10-24`. */
@@ -47,7 +49,7 @@ async function lookup(
     throw problem(
       "ITEM_NOT_RESOLVABLE",
       `item ${citekey} has no DOI, arXiv id, PMID, ISBN or title to look up`,
-      "Add one of them with items.update, then call items.resolve again.",
+      "Pass a DOI, arXiv id or ISBN with items.add and the citekey of the item, or set a title with items.update.",
       { citekey },
     );
   }
@@ -73,7 +75,7 @@ async function lookup(
     throw problem(
       "ITEM_NOT_RESOLVABLE",
       `no confident match for the title of ${citekey} (${match.match.verdict})`,
-      "Add a DOI, arXiv id or ISBN with items.update, then call items.resolve again.",
+      "Pass a DOI, arXiv id or ISBN with items.add and the citekey of the item.",
       { citekey },
     );
   }
@@ -82,27 +84,132 @@ async function lookup(
 
 const sameValue = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
+/** What a lookup brings: fields in item shape, the other identifiers, and where each field is from. */
+export interface Lookup {
+  fields: Fields;
+  ids: Record<string, string>;
+  provenance: Record<string, string>;
+}
+
+export interface MergeOptions {
+  /**
+   * The identifier the caller gave. It is stored as a field the caller set (provenance names the
+   * actor), so that a later lookup keeps it.
+   */
+  identifier?: Identifier | undefined;
+  /** The lookup came from an identifier: a first-page guess (`proposal`) is settled. */
+  clearProposal?: boolean | undefined;
+}
+
+export interface MergeOutcome {
+  changed: string[];
+  /** The item had a placeholder citekey and now has what a real one needs. Nothing was renamed. */
+  suggestedCitekey?: string;
+}
+
+/** Provenance that a guess left behind and a lookup may replace. */
+const WEAK = /^(filename|pdf-text|grobid|web|html|ai-first-page)@/;
+
 /**
- * items.resolve: looks the item up again and merges the answer. A field whose provenance names a
- * person or an agent, or a field that has a value but no provenance, was edited by hand and stays.
- * Everything else (earlier lookups, guesses from a file name or a page) is replaced when the new
- * value differs. The citekey, tags, projects, sources and status are never touched.
+ * Merges a lookup into an item. A field whose provenance names a person or an agent, or a field
+ * that has a value but no provenance, was edited by hand and stays. Everything else (earlier
+ * lookups, guesses from a file name or a page) is replaced when the new value differs. The
+ * citekey, tags, projects, sources and status are never touched.
  */
-export async function resolveItem(
-  deps: { lib: Library; resolver: MetadataLookup },
+export function mergeLookup(
+  lib: Library,
   actor: Actor,
   citekey: string,
-): Promise<{ citekey: string; changed: string[] }> {
-  const { lib } = deps;
+  lookup: Lookup,
+  options: MergeOptions = {},
+): MergeOutcome {
   const item = loadItem(lib, citekey);
   const old = item.fm as unknown as Fields;
-  const { result, id } = await lookup(deps.resolver, citekey, old);
+  const provenance = { ...item.fm.provenance } as Record<string, string>;
+  const today = lib.stamp(actor).at.slice(0, 10);
+  const by = `${actor}@${today}`;
+  const patch: Fields = {};
+  const changed: string[] = [];
 
+  for (const [key, value] of Object.entries(lookup.fields)) {
+    if (key === "tags" || value === undefined) continue;
+    // The type comes from the same guess as the title.
+    const prov = key === "type" ? (provenance.type ?? provenance.title) : provenance[key];
+    const hasValue = old[key] !== undefined;
+    if (hasValue && (prov === undefined || EDITED_BY_ACTOR.test(prov))) continue;
+    if (sameValue(old[key], value)) continue;
+    patch[key] = value;
+    provenance[key] = lookup.provenance[key] ?? `metadata@${today}`;
+    changed.push(key);
+  }
+
+  // The host a web page guess put into the container title says nothing about a work that turned
+  // out to be a journal article or a book.
+  const containerProv = provenance["container-title"];
+  if (
+    patch["container-title"] === undefined &&
+    old["container-title"] !== undefined &&
+    (patch.type ?? old.type) !== "webpage" &&
+    old.type === "webpage" &&
+    containerProv !== undefined &&
+    WEAK.test(containerProv)
+  ) {
+    patch["container-title"] = undefined;
+    delete provenance["container-title"];
+    changed.push("container-title");
+  }
+
+  const mergedIds = { ...(old.ids as object | undefined), ...lookup.ids };
+  const given = options.identifier;
+  if (given) {
+    // The identifier the caller gave belongs to the item, whatever the lookup returned for it.
+    const value =
+      given.kind === "doi"
+        ? given.value
+        : given.kind === "isbn"
+          ? ((lookup.fields.ISBN as string | undefined) ?? given.value)
+          : given.kind === "url"
+            ? given.value
+            : undefined;
+    const field =
+      given.kind === "doi"
+        ? "DOI"
+        : given.kind === "isbn"
+          ? "ISBN"
+          : given.kind === "url"
+            ? "URL"
+            : undefined;
+    if (field && value !== undefined) {
+      if (!sameValue(old[field], value)) {
+        patch[field] = value;
+        if (!changed.includes(field)) changed.push(field);
+      }
+      provenance[field] = by;
+    }
+    if (given.kind === "arxiv") (mergedIds as Record<string, string>).arxiv = given.value;
+    if (given.kind === "pmid") (mergedIds as Record<string, string>).pmid = given.value;
+  }
+  if (!sameValue(old.ids ?? {}, mergedIds)) {
+    patch.ids = mergedIds;
+    changed.push("ids");
+  }
+  if (changed.length === 0 && patch.ids === undefined) return { changed };
+
+  // A lookup by identifier answers what an earlier first-page guess only proposed.
+  if (old.proposal !== undefined && options.clearProposal) patch.proposal = undefined;
+  patch.provenance = provenance;
+  saveItem(lib, actor, item, patch);
+  const suggestedCitekey = suggestCitekey(lib, item.fm, loadItem(lib, citekey).fm);
+  return { changed, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
+}
+
+/** A resolver answer in the shape of a lookup. Throws the error for an answer that has no title. */
+function lookupFrom(result: ResolveResult, citekey: string, id: Identifier | undefined): Lookup {
   if (result.status === "unsupported") {
     throw problem(
       "IDENTIFIER_UNSUPPORTED",
       `${id?.kind ?? "this"} identifiers cannot be resolved yet`,
-      "Add a DOI, arXiv id or ISBN with items.update.",
+      "Pass a DOI, arXiv id or ISBN with items.add and the citekey of the item.",
       { citekey },
     );
   }
@@ -112,38 +219,97 @@ export async function resolveItem(
       down ? "METADATA_UNAVAILABLE" : "METADATA_NOT_FOUND",
       down
         ? `no metadata source answered for ${citekey}: ${result.errors.map((e) => `${e.source}: ${e.message}`).join("; ")}`
-        : `no metadata found for ${citekey}`,
-      down ? "Try again in a minute." : "Check the DOI or arXiv id of the item for typos.",
+        : `no metadata found for ${id ? id.raw : citekey}`,
+      down
+        ? "Try again in a minute."
+        : "Check the identifier for typos, or pass another one (DOI, arXiv id, ISBN) with items.add and the citekey of the item.",
       { citekey },
       down ? "retry" : "fix-and-retry",
     );
   }
-
-  const provenance = { ...item.fm.provenance } as Record<string, string>;
-  const today = lib.stamp(actor).at.slice(0, 10);
-  const patch: Fields = {};
-  const changed: string[] = [];
   const { ids, ...fields } = result.fields;
-  for (const [key, value] of Object.entries(fields)) {
-    if (key === "tags" || value === undefined) continue;
-    const prov = provenance[key];
-    const hasValue = old[key] !== undefined;
-    if (hasValue && (prov === undefined || EDITED_BY_ACTOR.test(prov))) continue;
-    if (sameValue(old[key], value)) continue;
-    patch[key] = value;
-    provenance[key] = result.provenance[key] ?? `metadata@${today}`;
-    changed.push(key);
-  }
-  const mergedIds = { ...(old.ids as object | undefined), ...(ids ?? {}) };
-  if (!sameValue(old.ids ?? {}, mergedIds)) {
-    patch.ids = mergedIds;
-    changed.push("ids");
-  }
-  if (changed.length === 0) return { citekey, changed };
+  return { fields, ids: ids ?? {}, provenance: result.provenance };
+}
 
-  // A lookup by identifier answers what an earlier first-page guess only proposed.
-  if (id && old.proposal !== undefined) patch.proposal = undefined;
-  patch.provenance = provenance;
-  saveItem(lib, actor, item, patch);
-  return { citekey, changed };
+export interface ResolveDeps {
+  lib: Library;
+  resolver: MetadataLookup;
+  /** Reads a web page the way items.add does. Without it, plain URLs cannot be resolved. */
+  fromUrl?: (actor: Actor, url: string) => Promise<Lookup>;
+}
+
+/**
+ * items.resolve: looks the item up again and merges the answer (see `mergeLookup`). With
+ * `identifier` (a DOI, ISBN, arXiv id, PMID or a URL) the item gets that identifier first: the
+ * lookup runs with it, and it is stored together with the answer. A lookup that fails stores
+ * nothing, so that a typo does not stay in the item.
+ */
+export async function resolveItem(
+  deps: ResolveDeps,
+  actor: Actor,
+  citekey: string,
+  identifier?: string,
+): Promise<{ citekey: string; changed: string[]; suggestedCitekey?: string }> {
+  const { lib } = deps;
+  const item = loadItem(lib, citekey);
+  const old = item.fm as unknown as Fields;
+
+  let found: Lookup;
+  let given: Identifier | undefined;
+  let byIdentifier = false;
+  if (identifier !== undefined && identifier.trim() !== "") {
+    given = detectIdentifier(identifier.trim());
+    if (!given) {
+      throw problem(
+        "INVALID_IDENTIFIER",
+        `'${identifier.trim().slice(0, 80)}' is not a DOI, arXiv id, ISBN, PMID or URL`,
+        "Pass a DOI like 10.1038/s41586-020-2649-2, an arXiv id like 1706.03762, an ISBN, a PMID or a URL.",
+        { citekey },
+      );
+    }
+    if (given.kind === "url") {
+      if (!deps.fromUrl) {
+        throw problem(
+          "IDENTIFIER_UNSUPPORTED",
+          "this core cannot read web pages",
+          "Pass a DOI, arXiv id or ISBN.",
+          { citekey },
+        );
+      }
+      found = await deps.fromUrl(actor, given.value);
+    } else {
+      found = lookupFrom(await deps.resolver.resolve(given), citekey, given);
+    }
+    const doi =
+      (found.fields.DOI as string | undefined) ?? (given.kind === "doi" ? given.value : undefined);
+    const twin = findDuplicate(lib, {
+      doi,
+      isbn: given.kind === "isbn" ? given.value : (found.fields.ISBN as string | undefined),
+      arxiv: given.kind === "arxiv" ? given.value : found.ids.arxiv,
+      pmid: given.kind === "pmid" ? given.value : found.ids.pmid,
+      url: given.kind === "url" ? given.value : undefined,
+      except: citekey,
+    });
+    if (twin) {
+      throw problem(
+        "IDENTIFIER_IN_USE",
+        `${given.raw.slice(0, 80)} already belongs to the item ${twin}, so it cannot be added to ${citekey} as well`,
+        `Both items are the same work. Keep one: trash ${citekey} with items.trash (an agent may trash its own and incomplete items), or ask the user to remove the one they do not want.`,
+        { citekey, duplicateOf: twin },
+        "ask-human",
+      );
+    }
+  } else {
+    const looked = await lookup(deps.resolver, citekey, old);
+    found = lookupFrom(looked.result, citekey, looked.id);
+    given = undefined;
+    byIdentifier = looked.id !== undefined;
+  }
+
+  const merged = mergeLookup(lib, actor, citekey, found, {
+    identifier: given,
+    // A lookup by identifier answers what an earlier first-page guess only proposed.
+    clearProposal: byIdentifier || (given !== undefined && given.kind !== "url"),
+  });
+  return { citekey, ...merged };
 }

@@ -13,6 +13,7 @@ import {
   itemsAttach,
   itemsGet,
   itemsList,
+  itemsRename,
   itemsRestore,
   itemsTrash,
   itemsUpdate,
@@ -47,6 +48,7 @@ import {
   mockConflict,
 } from "../settings/mock";
 import { bindTextsMock } from "../texts/mock";
+import { suggestMockCitekey } from "./citekey";
 import { createFixtures, type MockData } from "./fixtures";
 
 export interface MockOptions {
@@ -352,9 +354,35 @@ export function createMockRegistry(
     .bind(itemsUpdate, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
       if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
-      item.frontmatter = { ...item.frontmatter, ...input.patch } as ItemFrontmatter;
+      const before = item.frontmatter;
+      const next: Record<string, unknown> = { ...before };
+      const today = new Date().toISOString().slice(0, 10);
+      const provenance = { ...before.provenance };
+      for (const [key, value] of Object.entries(input.patch)) {
+        if (value === null) delete next[key];
+        else next[key] = value;
+        provenance[key] = `human@${today}`;
+      }
+      next.provenance = provenance;
+      item.frontmatter = next as ItemFrontmatter;
       changed(`items/${input.citekey}/${input.citekey}.md`);
-      return { frontmatter: item.frontmatter };
+      const suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
+      return { frontmatter: item.frontmatter, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
+    })
+    .bind(itemsRename, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      if (data.items.has(input.to)) {
+        throw new Error(`CITEKEY_TAKEN: an item with citekey '${input.to}' exists already`);
+      }
+      data.items.delete(input.citekey);
+      data.items.set(input.to, {
+        ...item,
+        frontmatter: { ...item.frontmatter, citekey: input.to } as ItemFrontmatter,
+      });
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      changed(`items/${input.to}/${input.to}.md`);
+      return { rewritten: 0 };
     })
     .bind(itemsTrash, async (_ctx, input) => {
       const item = data.items.get(input.citekey);

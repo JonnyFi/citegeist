@@ -23,3 +23,4 @@ export type {
   SourceRecord,
 } from "./types.js";
 export { SourceError } from "./types.js";
+export * from "./web.js";

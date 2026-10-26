@@ -17,7 +17,6 @@ import {
 import { CitegeistError } from "@citegeist/schema";
 import { bindJobOperations } from "../jobs/index.js";
 import type { Library } from "../library.js";
-import { resolveItem } from "./resolve.js";
 import { type IngestDeps, IngestService } from "./service.js";
 
 export { parseDocMd, type ReadInput, type ReadResult, readDocument } from "./documents.js";
@@ -30,7 +29,7 @@ export {
   type PdfText,
   type PdfTextExtractor,
 } from "./pdf-text.js";
-export { resolveItem } from "./resolve.js";
+export { type Lookup, mergeLookup, resolveItem } from "./resolve.js";
 export {
   type AddInput,
   type AddResult,
@@ -86,6 +85,14 @@ export function bindIngestOperations(
   bindJobOperations(registry, svc.queue);
   registry
     .bind(itemsAdd, async (ctx, input) => {
+      if (input.citekey && ctx.egress === "scholarly") {
+        throw new CitegeistError({
+          code: "RESEARCH_REPAIR_FORBIDDEN",
+          message: "a research job adds papers to the inbox; it does not change items",
+          fix: "Call items.add with the DOI or arXiv id alone, without a citekey.",
+          recovery: "fix-and-retry",
+        });
+      }
       if (ctx.localFiles === false && svc.namesLocalFile(input.identifier)) {
         refuseLocalFiles("items.add with this identifier");
       }
@@ -105,7 +112,7 @@ export function bindIngestOperations(
     })
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
     .bind(itemsResolve, async (ctx, input) =>
-      resolveItem({ lib, resolver: svc.deps.resolver }, ctx.actor, input.citekey),
+      svc.resolveItem(ctx.actor, input.citekey, input.identifier),
     )
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
     .bind(itemsTrash, async (ctx, input) => {

@@ -2,12 +2,13 @@ import { cardsList, itemsGet, itemsResolve, projectsList } from "@citegeist/ops"
 import type { ItemFrontmatter } from "@citegeist/schema";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Quote } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ConnectionsPanel } from "../connections";
 import { useI18n } from "../i18n";
 import { itemCardsInput } from "../lib/cards";
 import { creatorName, statusLabel, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
+import { hasThinMetadata } from "../lib/metadata-form";
 import { useReadingPosition } from "../lib/reading-position";
 import { webUrl } from "../lib/safe-url";
 import { useTrashItem } from "../lib/trash";
@@ -17,6 +18,13 @@ import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
+import {
+  IdentifierForm,
+  MetadataEditor,
+  MetadataHint,
+  type Notice,
+  RenameOffer,
+} from "./metadata-tools";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
 import { Badge, Stamp, StatusSquare } from "./ui/badge";
@@ -41,29 +49,32 @@ function readNoFulltext(fm: ItemFrontmatter): { tried: string[] } | undefined {
 export type ItemTab = "overview" | "read";
 
 /**
- * Actions of the overview's sub bar: look the metadata up again, and pick the reading up where it
- * stopped. The position comes from localStorage until the core keeps it.
+ * Actions of the overview's sub bar: look the metadata up again (unless the hint on a thin item
+ * carries that action), and pick the reading up where it stopped. The position comes from
+ * localStorage until the core keeps it.
  */
-function OverviewActions({ citekey, onResume }: { citekey: string; onResume: () => void }) {
+function OverviewActions({
+  citekey,
+  onResume,
+  onFetch,
+  fetching,
+  showFetch,
+}: {
+  citekey: string;
+  onResume: () => void;
+  onFetch: () => void;
+  fetching: boolean;
+  showFetch: boolean;
+}) {
   const { t } = useI18n();
   const position = useReadingPosition(citekey);
-  const resolve = useOpMutation(itemsResolve);
-  const failure = resolve.error ? describeError(resolve.error).message : undefined;
-  const status = resolve.data
-    ? resolve.data.changed.length > 0
-      ? t("resolve.changed", { fields: resolve.data.changed.join(", ") })
-      : t("resolve.unchanged")
-    : failure;
   return (
     <div className="flex items-center gap-2">
-      {status ? (
-        <span role="status" className={cn("text-[12px]", failure ? "text-danger" : "text-muted")}>
-          {status}
-        </span>
+      {showFetch ? (
+        <Button size="sm" disabled={fetching} onClick={onFetch}>
+          {fetching ? t("resolve.running") : t("resolve.button")}
+        </Button>
       ) : null}
-      <Button size="sm" disabled={resolve.isPending} onClick={() => resolve.mutate({ citekey })}>
-        {resolve.isPending ? t("resolve.running") : t("resolve.button")}
-      </Button>
       <Button size="sm" variant="primary" onClick={onResume}>
         {position
           ? t("reading.resume", { page: position.label ?? String(position.page + 1) })
@@ -74,9 +85,22 @@ function OverviewActions({ citekey, onResume }: { citekey: string; onResume: () 
 }
 
 /** One block of the overview: a 140px label column and the content, separated by an ink rule. */
-function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+function Section({
+  title,
+  note,
+  id,
+  children,
+}: {
+  title: string;
+  note?: string;
+  id?: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="grid grid-cols-[140px_minmax(0,1fr)] gap-6 border-t border-line py-5">
+    <section
+      id={id}
+      className="grid grid-cols-[140px_minmax(0,1fr)] gap-6 border-t border-line py-5"
+    >
       <div className="flex flex-col gap-1 pt-1">
         <h2>
           <Label>{title}</Label>
@@ -124,6 +148,39 @@ export function ItemView({
   const projects = useOp(projectsList, {});
   const trash = useTrashItem();
   const navigate = useNavigate();
+  const resolve = useOpMutation(itemsResolve);
+  const [editor, setEditor] = useState<"none" | "metadata" | "identifier">("none");
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  // another item, or the same one under a new citekey: start without the last message
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the citekey changes
+  useEffect(() => {
+    setEditor("none");
+    setNotice(null);
+  }, [citekey]);
+  useEffect(() => {
+    if (editor !== "none") {
+      document.getElementById("item-metadata")?.scrollIntoView?.({ block: "start" });
+    }
+  }, [editor]);
+
+  const fetchMetadata = () => {
+    setNotice(null);
+    resolve.mutate(
+      { citekey },
+      {
+        onSuccess: (out) =>
+          setNotice({
+            text:
+              out.changed.length > 0
+                ? t("resolve.changed", { fields: out.changed.join(", ") })
+                : t("resolve.unchanged"),
+            ...(out.suggestedCitekey ? { suggested: out.suggestedCitekey } : {}),
+          }),
+        onError: (err) => setNotice({ text: describeError(err).message, error: true }),
+      },
+    );
+  };
 
   if (item.isPending) return <Loading label={t("item.loading")} />;
   if (item.isError) return <ErrorState error={item.error} />;
@@ -139,6 +196,7 @@ export function ItemView({
   const year = fm.issued !== undefined ? String(fm.issued).slice(0, 4) : undefined;
   const crumb = [first ? familyName(first) : undefined, year].filter(Boolean).join(" ");
 
+  const thin = hasThinMetadata(fm);
   const pageCount = fm.sources.find((s) => s.pages)?.pages;
   const metaLine = [
     typeLabel(i18n, fm.type),
@@ -300,6 +358,9 @@ export function ItemView({
           <OverviewActions
             citekey={citekey}
             onResume={() => onChange?.({ tab: "read", resume: true })}
+            onFetch={fetchMetadata}
+            fetching={resolve.isPending}
+            showFetch={!thin}
           />
         </SubBar>
         <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
@@ -317,6 +378,31 @@ export function ItemView({
                 >
                   {t("item.suggestedBy")}
                 </Provenance>
+              ) : null}
+              {notice ? (
+                <div className="mb-1 flex flex-col gap-2">
+                  <span
+                    role={notice.error ? "alert" : "status"}
+                    className={cn("text-[13px]", notice.error ? "text-danger" : "text-muted")}
+                  >
+                    {notice.text}
+                  </span>
+                  {notice.suggested ? (
+                    <RenameOffer
+                      citekey={citekey}
+                      suggested={notice.suggested}
+                      onClose={() => setNotice(null)}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+              {thin ? (
+                <MetadataHint
+                  fetching={resolve.isPending}
+                  onFetch={fetchMetadata}
+                  onAddIdentifier={() => setEditor("identifier")}
+                  onEdit={() => setEditor("metadata")}
+                />
               ) : null}
               {fm.incomplete ? (
                 <div
@@ -404,51 +490,84 @@ export function ItemView({
               <RelatedWorks citekey={citekey} />
             </Section>
 
-            <Section title={t("item.metadata")}>
-              <dl className="grid grid-cols-[110px_minmax(0,1fr)_110px_minmax(0,1fr)] gap-x-4 gap-y-1.5">
-                {meta
-                  .filter((row): row is [string, string] => Boolean(row[1]))
-                  .map(([label, value]) => (
-                    <div key={label} className="contents">
-                      <dt className="text-muted">{label}</dt>
-                      <dd
-                        className={
-                          mono.has(label)
-                            ? "min-w-0 break-words font-mono text-[12px]"
-                            : "min-w-0 break-words"
-                        }
-                      >
-                        {value}
+            <Section title={t("item.metadata")} id="item-metadata">
+              {editor === "identifier" ? (
+                <div className="mb-5">
+                  <IdentifierForm
+                    citekey={citekey}
+                    onCancel={() => setEditor("none")}
+                    onDone={(next) => {
+                      setNotice(next);
+                      setEditor("none");
+                    }}
+                  />
+                </div>
+              ) : null}
+              {editor === "metadata" ? (
+                <MetadataEditor
+                  fm={fm}
+                  onCancel={() => setEditor("none")}
+                  onDone={(next) => {
+                    setNotice(next);
+                    setEditor("none");
+                  }}
+                />
+              ) : (
+                <dl className="grid grid-cols-[110px_minmax(0,1fr)_110px_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+                  {meta
+                    .filter((row): row is [string, string] => Boolean(row[1]))
+                    .map(([label, value]) => (
+                      <div key={label} className="contents">
+                        <dt className="text-muted">{label}</dt>
+                        <dd
+                          className={
+                            mono.has(label)
+                              ? "min-w-0 break-words font-mono text-[12px]"
+                              : "min-w-0 break-words"
+                          }
+                        >
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  {fm.URL ? (
+                    <div className="contents">
+                      <dt className="text-muted">URL</dt>
+                      <dd className="min-w-0 break-all">
+                        {webUrl(fm.URL) ? (
+                          <a
+                            href={webUrl(fm.URL)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 underline"
+                          >
+                            {fm.URL}
+                            <ExternalLink className="size-3" />
+                          </a>
+                        ) : (
+                          fm.URL
+                        )}
                       </dd>
                     </div>
+                  ) : null}
+                  {fm.sources.map((s) => (
+                    <div key={s.hash} className="contents">
+                      <dt className="text-muted">{t("item.file")}</dt>
+                      <dd className="min-w-0 break-all font-mono text-[12px]">{s.filename}</dd>
+                    </div>
                   ))}
-                {fm.URL ? (
-                  <div className="contents">
-                    <dt className="text-muted">URL</dt>
-                    <dd className="min-w-0 break-all">
-                      {webUrl(fm.URL) ? (
-                        <a
-                          href={webUrl(fm.URL)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 underline"
-                        >
-                          {fm.URL}
-                          <ExternalLink className="size-3" />
-                        </a>
-                      ) : (
-                        fm.URL
-                      )}
-                    </dd>
-                  </div>
-                ) : null}
-                {fm.sources.map((s) => (
-                  <div key={s.hash} className="contents">
-                    <dt className="text-muted">{t("item.file")}</dt>
-                    <dd className="min-w-0 break-all font-mono text-[12px]">{s.filename}</dd>
-                  </div>
-                ))}
-              </dl>
+                </dl>
+              )}
+              {!thin && editor === "none" ? (
+                <div className="mt-5 flex items-center gap-2">
+                  <Button size="sm" onClick={() => setEditor("metadata")}>
+                    {t("metaform.edit")}
+                  </Button>
+                  <Button size="sm" onClick={() => setEditor("identifier")}>
+                    {t("metahint.addId")}
+                  </Button>
+                </div>
+              ) : null}
             </Section>
           </article>
         </div>
