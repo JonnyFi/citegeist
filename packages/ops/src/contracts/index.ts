@@ -56,7 +56,7 @@ const ItemSummary = z.object({
   type: z.string(),
   status: z.string(),
   inbox: z.boolean(),
-  /** Who added an inbox item and why (D7). */
+  /** Who added an inbox item and why (docs/decisions/0014-agent-content-goes-to-inbox.md). */
   inboxBy: z.string().optional(),
   inboxWhy: z.string().optional(),
   /** Ingest did not finish: no working source. Retry, attach a file or trash the item. */
@@ -116,7 +116,7 @@ export const itemsAdd = defineContract({
     identifier: z.string().min(1),
     projects: z.array(ProjectSlug).default([]),
     tags: z.array(z.string()).default([]),
-    /** D7: agents land in the inbox unless they pass "library". Humans always land in the library. */
+    /** Agents land in the inbox unless they pass "library". Humans always land in the library. */
     target: z.enum(["inbox", "library"]).default("inbox"),
     why: z.string().optional(),
   }),
@@ -629,7 +629,7 @@ export const EMBEDDING_MODEL_KEYS = ["embeddinggemma-300m", "qwen3-embedding-0.6
 export const EmbeddingModelKey = z.enum(EMBEDDING_MODEL_KEYS);
 export type EmbeddingModelKey = z.infer<typeof EmbeddingModelKey>;
 
-/** Limits of a research job (W5.2). Zero switches a limit off. */
+/** Limits of a research job. Zero switches a limit off. */
 export const DEFAULT_RESEARCH_LIMITS = {
   maxMinutes: 20,
   maxTokens: 2_000_000,
@@ -658,7 +658,7 @@ export const Settings = z.object({
   /**
    * Semantic search with a local embedding model. Off until the user turns it on. `rerank` adds a
    * local cross-encoder that re-sorts the best hits: slower (about a second per search) and a
-   * download of about 570 MB, so it is off by default (numbers in the internal decision log).
+   * download of about 570 MB, so it is off by default (numbers in docs/decisions/0026-retrieval-benchmark.md).
    */
   semantic: z
     .object({
@@ -686,7 +686,7 @@ export const Settings = z.object({
     })
     .default({ port: DEFAULT_HOOKS_PORT }),
   /**
-   * A11: chat agents run in the user's own environment (shell, the user's MCP servers and
+   * Chat agents run in the user's own environment (shell, the user's MCP servers and
    * settings) unless this is on. "Isolierter Agent" restores the sandbox: no shell, no user
    * settings, only the citegeist tools.
    */

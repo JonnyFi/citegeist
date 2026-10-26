@@ -38,7 +38,7 @@ function pandocSpecDeps(deps: TextsOperationDeps) {
 }
 
 /**
- * Binds texts.* and pandoc.* (D20) and registers the `pandoc-setup` job. Texts are plain files
+ * Binds texts.* and pandoc.* (docs/decisions/0002-writing-in-markdown-with-pandoc.md) and registers the `pandoc-setup` job. Texts are plain files
  * under projects/<project>/texts/, so the chat turn journal covers them like every other note.
  */
 export function bindTextsOperations(

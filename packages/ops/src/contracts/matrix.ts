@@ -2,7 +2,7 @@ import { CardId, Citekey, JobId, Matrix, MatrixId, ProjectSlug } from "@citegeis
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Literature matrix (W4.4). Every operation takes the project and the matrix id. A column is named
+// Literature matrix. Every operation takes the project and the matrix id. A column is named
 // by its id (mc_...) or by its name. None of these is an MCP tool: the tool budget is full and a
 // matrix is edited in the app.
 

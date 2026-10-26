@@ -96,7 +96,7 @@ function pdfFile(name: string, pages: string[][]): string {
   return path;
 }
 
-describe("#34 fetching a URL that names a file", () => {
+describe("fetching a URL that names a file", () => {
   it("adds a PDF behind a .pdf URL as a PDF, whatever the content type says", async () => {
     const net = network({
       [URL_PDF]: () =>
@@ -180,7 +180,7 @@ describe("#34 fetching a URL that names a file", () => {
   });
 });
 
-describe("#35 a failed ingest leaves a marked item, and better data renames a placeholder key", () => {
+describe("a failed ingest leaves a marked item, and better data renames a placeholder key", () => {
   it("marks the item incomplete in the file, items.list and the problem list", async () => {
     const e = await env({ deps: { worker: flakyWorker(1) } });
     const out = await e.call<AddOut>("items.add", {
@@ -328,7 +328,7 @@ describe("#35 a failed ingest leaves a marked item, and better data renames a pl
   });
 });
 
-describe("#36 duplicates", () => {
+describe("duplicates", () => {
   it("attaches the file and converts when the matched item has no working source", async () => {
     const e = await env({ deps: { worker: flakyWorker(1) } });
     const path = pdfFile("paper.pdf", [["The Strength of Weak Ties", "Granovetter", "1973"]]);
@@ -409,7 +409,7 @@ describe("#36 duplicates", () => {
   });
 });
 
-describe("#38 items.trash by an agent (D7)", () => {
+describe("items.trash by an agent", () => {
   const BIB = "@book{k, title={Trash target}, author={Nobody, Nina}, year={2001}}";
 
   it("lets an agent trash what an agent added, and records who did it", async () => {

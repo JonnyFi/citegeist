@@ -67,7 +67,7 @@ const noteOf = (title: string, by: string) => ({
 
 /**
  * An in-memory registry with believable data, bound to the real contracts. It exists for tests of
- * the MCP server and the CLI until the core (W1.1) provides the real handlers. Operations the
+ * the MCP server and the CLI until the core provides the real handlers. Operations the
  * fixture does not simulate fail with FIXTURE_NOT_IMPLEMENTED.
  */
 export function createFixtureRegistry(): Registry {

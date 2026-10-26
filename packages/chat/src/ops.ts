@@ -22,7 +22,7 @@ export interface ChatOperationsDeps {
 
 /**
  * Binds the chat operations, and `research.start` when a job queue is given, to a registry. The
- * core's runtime calls this once per library (see the change requests of W3.3).
+ * core's runtime calls this once per library (see the change requests of the chat package).
  */
 export function bindChatOperations<R extends Registry>(registry: R, deps: ChatOperationsDeps): R {
   const { service, queue } = deps;

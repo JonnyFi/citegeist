@@ -274,7 +274,7 @@ export class AcpDriver implements AgentDriver {
     string,
     { title: string; kind: string; tool?: string; input?: unknown; search?: boolean }
   >();
-  /** Addresses of web search results: what a research job may fetch besides scholarly hosts (L9). */
+  /** Addresses of web search results: what a research job may fetch besides scholarly hosts. */
   private readonly seenUrls = new Set<string>();
   private sink: ((event: DriverEvent) => void) | undefined;
   private cancelled = false;

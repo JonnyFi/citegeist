@@ -45,7 +45,7 @@ async function identifierOf(w: GraphWork, lookup: GraphLookup): Promise<string |
 }
 
 /**
- * Adds works of the citation graph to the inbox (D7). A human who asks for it gets the same
+ * Adds works of the citation graph to the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md). A human who asks for it gets the same
  * inbox as an agent: the works wait for review, whoever found them. items.add puts a human's
  * additions straight into the library, so the call runs as "system" for a human and keeps the
  * agent's own name otherwise.

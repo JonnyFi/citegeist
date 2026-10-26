@@ -9,7 +9,7 @@ export interface QuickInsertConnection {
   library: string;
 }
 
-/** What the palette hands to the main process: a citation as HTML plus plain text (D2). */
+/** What the palette hands to the main process: a citation as HTML plus plain text. */
 export interface CitationPayload {
   html?: string | undefined;
   text: string;

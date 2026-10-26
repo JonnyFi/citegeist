@@ -2,7 +2,7 @@ import { type ReactNode, useId } from "react";
 import type { LanguageOption } from "./types.js";
 
 export interface ReaderToolbarProps {
-  /** Currently selected language of AI texts for this source (D9). Controlled. */
+  /** Currently selected language of AI texts for this source (docs/decisions/0016-ai-text-language.md). Controlled. */
   language?: string | undefined;
   /** Options of the dropdown. Without options no dropdown is rendered. */
   languages?: LanguageOption[] | undefined;
@@ -14,7 +14,7 @@ export interface ReaderToolbarProps {
 }
 
 /**
- * Toolbar of the reader with the language dropdown slot (D9). The component holds no state: the
+ * Toolbar of the reader with the language dropdown slot. The component holds no state: the
  * app owns the value and decides how the chain source, project, library default resolves.
  */
 export function ReaderToolbar({

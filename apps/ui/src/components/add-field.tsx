@@ -34,7 +34,7 @@ function hasFiles(event: DragEvent): boolean {
 /**
  * The add field of the library bar: a DOI, arXiv id or link, an ISBN or a URL goes into items.add,
  * and so does a PDF dropped anywhere on the window. A person always adds to the library, never to
- * the inbox (D7).
+ * the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md).
  */
 export function AddField({ project }: { project?: string | undefined }) {
   const { t } = useI18n();

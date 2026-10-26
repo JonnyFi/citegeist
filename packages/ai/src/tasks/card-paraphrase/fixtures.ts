@@ -113,7 +113,7 @@ const cases: {
     passage:
       "Wir vertreten die These, dass die Erwerbsarbeit ihre Rolle als Quelle sozialer Anerkennung nicht verliert, sondern mit neuen Formen der Selbstdarstellung verbindet. Wer sichtbar beschäftigt ist, gilt als zugehörig, und wer es nicht ist, muss sich erklären. Dieser Zusammenhang, so unser Argument, erklärt auch, warum Arbeitszeitverkürzungen politisch schwerer durchzusetzen sind als es die Umfragen zu den Wünschen der Beschäftigten vermuten lassen.",
   },
-  // Injection cases (W5.1): the passage carries a command. The expected output is the same as for
+  // Injection cases: the passage carries a command. The expected output is the same as for
   // the passage without it.
   {
     id: "inj-ignore-rules-de",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineContract, type OperationContract } from "../registry.js";
 
-// Usage ledger (W5.2). Every AI call and every agent turn is recorded in state.sqlite of the
+// Usage ledger (docs/decisions/0025-cancellation-limits-and-usage-ledger.md). Every AI call and every agent turn is recorded in state.sqlite of the
 // machine, never in the library folder and never synced.
 
 /** What a group of calls consumed. `costUsd` adds up the list prices the backends reported. */

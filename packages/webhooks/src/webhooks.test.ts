@@ -370,7 +370,7 @@ describe("inbound payloads", () => {
     expect(new Set(h.calls.actors)).toEqual(new Set(["agent:grok"]));
   });
 
-  it("passes target library, projects and tags through (D7)", async () => {
+  it("passes target library, projects and tags through", async () => {
     const { h, secret } = await connected();
     await deliver(h, "grok", secret, {
       event: "papers.add",
