@@ -1,12 +1,24 @@
-import { jobsList } from "@citegeist/ops";
+import { jobsList, parseFallbackNote } from "@citegeist/ops";
 import type { Job } from "@citegeist/schema";
 import { useQuery } from "@tanstack/react-query";
-import { type MessageKey, useI18n } from "../i18n";
+import { type MessageKey, type Translator, useI18n } from "../i18n";
+import { backendShortName } from "../lib/backend-names";
 import { useCore } from "../lib/hooks";
 import { summarizeJobs } from "../lib/jobs";
 import { JobSlot } from "./ui/job-slot";
 
 const RECENT = 30;
+
+/** The message of a job as text: a backend switch becomes "weiter mit Cursor, Claude-Limit erreicht". */
+export function jobMessage(t: Translator["t"], message: string): string {
+  const note = parseFallbackNote(message);
+  return note
+    ? t(`job.fallback.${note.reason}` as MessageKey, {
+        from: backendShortName(note.from),
+        to: backendShortName(note.to),
+      })
+    : message;
+}
 
 function JobRows({ jobs }: { jobs: readonly Job[] }) {
   const { t } = useI18n();
@@ -20,7 +32,9 @@ function JobRows({ jobs }: { jobs: readonly Job[] }) {
         >
           <span className="min-w-0 flex-1 truncate">
             {t(`job.kind.${job.kind}` as MessageKey)}
-            {job.message ? <span className="ml-2 text-muted">{job.message}</span> : null}
+            {job.message ? (
+              <span className="ml-2 text-muted">{jobMessage(t, job.message)}</span>
+            ) : null}
           </span>
           <span className="font-mono text-[12px] text-muted">{job.by.replace(/^human$/, "")}</span>
           <span className="w-20 text-right text-[12px] text-muted">

@@ -16,6 +16,8 @@ type TestResult = z.input<typeof aiTestBackend.output>;
 
 export interface SettingsMockState {
   routing: Record<string, string>;
+  /** Fallback order in effect. The default is every backend that is not local, as in the core. */
+  fallback: string[];
   apiKeys: Record<string, boolean>;
   mailto?: string;
   unpaywallEmail?: string;
@@ -52,6 +54,7 @@ export interface SettingsMockState {
 export function createSettingsMockState(over: Partial<SettingsMockState> = {}): SettingsMockState {
   return {
     routing: { "*": "claude-code-cli" },
+    fallback: ["claude-code-cli", "codex-exec", "cursor-cli", "openai", "anthropic"],
     apiKeys: {
       openai: false,
       anthropic: false,
@@ -131,7 +134,11 @@ export function bindSettingsMock(
   let polls = 0;
   let jobStarted = false;
   const settings = () => ({
-    ai: { routing: { ...state.routing }, apiKeys: { ...state.apiKeys } },
+    ai: {
+      routing: { ...state.routing },
+      fallback: [...state.fallback],
+      apiKeys: { ...state.apiKeys },
+    },
     ...(state.mailto ? { mailto: state.mailto } : {}),
     ...(state.unpaywallEmail ? { unpaywallEmail: state.unpaywallEmail } : {}),
     ...(state.ncbiTool ? { ncbiTool: state.ncbiTool } : {}),
@@ -199,7 +206,8 @@ export function bindSettingsMock(
     }))
     .bind(settingsUpdate, async (_ctx, input) => {
       const { patch, apiKey } = input;
-      if (patch.ai) state.routing = { ...patch.ai.routing };
+      if (patch.ai?.routing) state.routing = { ...patch.ai.routing };
+      if (patch.ai?.fallback) state.fallback = [...patch.ai.fallback];
       for (const [provider, keep] of Object.entries(patch.ai?.apiKeys ?? {})) {
         if (!keep) setKey(state, provider, false);
       }

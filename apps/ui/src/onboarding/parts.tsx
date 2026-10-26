@@ -11,7 +11,7 @@ import type { z } from "zod";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { lookup, type MessageKey, type Translator, useI18n } from "../i18n";
+import { type Lang, lookup, type MessageKey, type Translator, useI18n } from "../i18n";
 import { useCore } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
 import { UvHelp } from "./help";
@@ -45,6 +45,26 @@ export function statusText(tr: Translator, backend: BackendInfo): string {
   return code === "ready" && models
     ? `${base} (${t("backend.models", { n: models[1] ?? "0" })})`
     : base;
+}
+
+/** "14:30" for a time today, "Do. 14:30" for a later day. */
+export function formatUntil(iso: string, lang: Lang, now: Date = new Date()): string {
+  const at = new Date(iso);
+  const time = at.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+  return at.toDateString() === now.toDateString()
+    ? time
+    : `${at.toLocaleDateString(lang, { weekday: "short" })} ${time}`;
+}
+
+/** "Pausiert bis 14:30, Limit erreicht" for a paused backend, otherwise undefined. */
+export function usePausedText(): (backend: BackendInfo) => string | undefined {
+  const { t, lang } = useI18n();
+  return (backend) =>
+    backend.paused
+      ? `${t("backend.paused", { time: formatUntil(backend.paused.until, lang) })}, ${t(
+          `backend.paused.${backend.paused.kind}` as MessageKey,
+        )}`
+      : undefined;
 }
 
 export type TestState =
@@ -104,6 +124,7 @@ export function BackendRow({
   const tr = useI18n();
   const { t } = tr;
   const { code } = splitDetail(backend.detail);
+  const pausedText = usePausedText()(backend);
   // the translated hint names the install and login commands; an error from the core stands in
   // for backends without a translation
   const hint = lookup(tr, `backend.hint.${backend.id}.${code}`) ?? backend.error?.fix;
@@ -140,6 +161,7 @@ export function BackendRow({
               className={cn("size-1.5", backend.available ? "bg-accent" : "bg-danger")}
             />
             {statusText(tr, backend)}
+            {pausedText ? <span data-testid="backend-paused">{`· ${pausedText}`}</span> : null}
           </p>
           {hint && !backend.available ? <p className="mt-1 text-sm">{hint}</p> : null}
         </div>

@@ -85,10 +85,11 @@ describe("settings screen", () => {
   it("changes the routing of a task and clears it again", async () => {
     const user = userEvent.setup();
     const { state } = renderWithSettingsCore(<SettingsScreen />);
+    await user.click(await screen.findByText("Pro Aufgabe"));
     await user.click(await screen.findByRole("combobox", { name: "Zitate prüfen" }));
-    await user.click(await screen.findByRole("option", { name: "Ollama" }));
+    await user.click(await screen.findByRole("option", { name: "Claude Code CLI" }));
     await waitFor(() =>
-      expect(state.routing).toEqual({ "*": "claude-code-cli", "card.verify": "ollama" }),
+      expect(state.routing).toEqual({ "*": "claude-code-cli", "card.verify": "claude-code-cli" }),
     );
     await user.click(await screen.findByRole("combobox", { name: "Zitate prüfen" }));
     await user.click(await screen.findByRole("option", { name: "Standard" }));
