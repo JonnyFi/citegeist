@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { notesBacklinks, notesList, Registry } from "@citegeist/ops";
+import { notesBacklinks, notesList, notesTrash, Registry } from "@citegeist/ops";
 import { afterEach, describe, expect, it } from "vitest";
 import { Library } from "../library.js";
 import { cardData, cleanTmpDirs, itemData, noteData, noteFile, tmpDir } from "../test-helpers.js";
@@ -229,5 +229,77 @@ describe("notes.update", () => {
     const same = lib.updateNote("human", { id: n.frontmatter.id, title: "beobachtung!" });
     expect(same.path).toBe(lib.paths.noteFile("beobachtung-2"));
     expect(same.frontmatter.title).toBe("beobachtung!");
+  });
+});
+
+describe("notes.trash and notes.restore", () => {
+  it("moves a note into the trash and puts it back where it was", async () => {
+    const { lib, call } = await setup();
+    const note = lib.createNote("human", {
+      title: "Weg damit",
+      body: "Text",
+      type: "permanent",
+      projects: [],
+    });
+    const id = note.frontmatter.id;
+
+    expect(await call("notes.trash", { id })).toEqual({ ok: true });
+    expect(existsSync(note.path)).toBe(false);
+    expect((await call("notes.list", {})).notes).toHaveLength(0);
+    expect(() => lib.getNote(id)).toThrow(/no note/);
+
+    const back = (await call("notes.restore", { id })) as unknown as { body: string; path: string };
+    expect(back.path).toBe(note.path);
+    expect(back.body).toBe("Text");
+    expect((await call("notes.list", {})).notes.map((n) => n.title)).toEqual(["Weg damit"]);
+    await expect(call("notes.restore", { id })).rejects.toThrow(/is in the library/);
+  });
+
+  it("refuses to restore over a file that took the old name", async () => {
+    const { lib, call } = await setup();
+    const note = lib.createNote("human", {
+      title: "Ort",
+      body: "",
+      type: "permanent",
+      projects: [],
+    });
+    await call("notes.trash", { id: note.frontmatter.id });
+    lib.createNote("human", { title: "Ort", body: "", type: "permanent", projects: [] });
+    await expect(call("notes.restore", { id: note.frontmatter.id })).rejects.toThrow(
+      /exists again/,
+    );
+  });
+
+  it("lets an agent trash only notes an agent created", async () => {
+    const { lib } = await setup();
+    const registry = bindNoteOperations(new Registry(), lib);
+    const agent = { actor: "agent:claude-code" as const };
+    const mine = lib.createNote("human", {
+      title: "Meins",
+      body: "",
+      type: "permanent",
+      projects: [],
+    });
+    const theirs = lib.createNote("agent:claude-code", {
+      title: "Vom Agenten",
+      body: "",
+      type: "permanent",
+      projects: [],
+    });
+    await expect(registry.call("notes.trash", agent, { id: mine.frontmatter.id })).rejects.toThrow(
+      /may not trash/,
+    );
+    await expect(
+      registry.call("notes.trash", agent, { id: theirs.frontmatter.id }),
+    ).resolves.toEqual({ ok: true });
+    expect(readFileSync(mine.path, "utf8")).toContain("Meins");
+  });
+
+  it("rejects an unknown id", async () => {
+    const { call } = await setup();
+    await expect(call("notes.restore", { id: "n_0000000000000000" })).rejects.toThrow(
+      /no trashed note/,
+    );
+    expect(notesTrash.name).toBe("notes.trash");
   });
 });
