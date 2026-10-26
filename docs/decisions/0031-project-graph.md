@@ -1,0 +1,22 @@
+# ADR 0031: The graph shows a project and its arguments
+
+Status: accepted. Date: 2026-10-26.
+
+## Context
+
+The graph view drew the stored links around one node with a depth of one to three steps. In real use around the source "#Accelerate" it showed every card of the source as a star of quote snippets, the literature note "Reading notes (williams2013accelerate)" that stores the card connections since [ADR 0028](0028-connections-from-cards.md), and an agent note that explains why a critique card opposes Land as a separate node on the source. The connection itself ran from the card to Land, and nothing tied the explaining note to it. Only the third step showed the argument, and a graph around a single note had little to say. The question a reader brings to the graph is how the sources of a project, or of one chapter, relate to each other.
+
+## Decision
+
+- The graph draws meaning, not storage. A literature note that names an item (on its `Item: [[citekey]]` line, else through its first wiki link to an item) is a container. It is no node, and its links start at the card named in `from`, else at the item. Notes of the types permanent, claim, concept and question are nodes. Literature, project and daily notes are not.
+- A typed link is an edge with the label of its relation in the UI language and one look per relation from the design tokens: "opposes" red and dashed, "supports" green and solid, the origin relations in their own colours, "related" grey and dashed, plain wiki links faint and dotted. A click on an edge opens a panel with the two ends, the relation, the `why` of the links, the evidence cards and the notes that explain the connection.
+- A note explains a typed link when the link's `why` names it with a wiki link, or when the note's own links (wiki links, typed links and their evidence) reach both ends, a card end also through its source. Such a note is listed on the edge. It is absorbed, and so no node of its own, when all its links stay within the ends of the links it explains and no other link points at it. A note that reaches further stays a node and is still listed on the edge.
+- The graph opens on a project: the last scope chosen, else the first active project. The whole library is an option of the same menu. Each source is a node sized by its number of cards, and the edges between sources count the card and note links behind them ("Luhmann 1984 opposes Habermas 1981 (1 card)"). Cards are folded into their source. A click on a source shows its cards around it, and the edges then start at the cards. Sources and notes outside the project that a link reaches come along in a lighter colour.
+- One compact row holds the filters: connection type (with "Show proposals", off by default), card kind, and a text of the project. The text filter keeps the sources the text cites, whether or not they belong to the project, and the notes linked to them. A card counts as cited when its source is, because a text cites citekeys and not cards.
+- The depth control is gone. The menu of a node offers "Show from here" (everything within two steps, where a source and its cards count as one step) and "Open".
+- `graph.project` returns the nodes, the links with their evidence cards and explaining notes, the explanations, and the edges with cards folded unless their source is in `expand`. It takes `project`, `text`, `around` with `depth`, and `proposed`. The rules live once in `buildSemanticGraph` and `aggregateGraph` in `@citegeist/ops`, which the core and the mock core of the UI both call; the UI folds and unfolds sources with `aggregateGraph` and does not ask the core again. `graph.neighbors` stays as it was for the connections panel and agents.
+- The canvas stays calm. Source nodes carry author and year, cards a short quote and only while their source is open. Edge labels show for the edges between sources as long as there are at most twelve of them, otherwise on hover. Positions stay where they are when a source opens or a filter changes; new nodes start next to their neighbours.
+
+## Consequences
+
+A literature note never appears in the graph, so a Zotero literature note with its own text is reachable only from its source. A note that an agent writes to explain a connection should link to both ends or be named in the link's `why`; then it shows on the edge. Large libraries produce a large `graph.project` answer, because the cards come along so that a source can open without a second request.

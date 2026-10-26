@@ -6,6 +6,8 @@
 //                                                      (the ones committed to docs/design/screens)
 //   pnpm --filter @citegeist/ui design-check            German screenshots with German file names
 //                                                      (not committed; the mock library is German too)
+//   pnpm --filter @citegeist/ui design-check --lang=en --only=graph
+//                                                      only the named screens
 //   DESIGN_BOARDS_DIR=<dir> pnpm --filter @citegeist/ui design-check --boards
 //                                                      also screenshots of the board files
 //
@@ -26,6 +28,11 @@ const url = `http://localhost:${port}`;
 const boardsDir = process.env.DESIGN_BOARDS_DIR;
 const withBoards = process.argv.includes("--boards") && Boolean(boardsDir);
 const lang = process.argv.includes("--lang=en") ? "en" : "de";
+// --only=graph,graph-edge takes only the screens with these (English or German) names
+const only = process.argv
+  .find((a) => a.startsWith("--only="))
+  ?.slice("--only=".length)
+  .split(",");
 
 /** UI texts the shots look for, German and English. */
 const TEXT = {
@@ -63,6 +70,12 @@ const TEXT = {
   agentNoted: [
     "Notiert in 2, Luhmanns Kommunikationsbegriff.",
     "Noted in 2, Luhmann's concept of communication.",
+  ],
+  nodes: ["Knoten", "Nodes"],
+  showCards: ["Karten zeigen", "Show cards"],
+  edgeOpposes: [
+    /Luhmann 1984 widerspricht .* Habermas 1981/,
+    /Luhmann 1984 opposes .* Habermas 1981/,
   ],
   bibFile: ["/Users/alex/Zotero/export/bibliothek.bib", "/Users/alex/Zotero/export/library.bib"],
 };
@@ -338,6 +351,49 @@ const screens = [
       await page.getByText(tx("retracted")).first().waitFor();
     },
   },
+  {
+    name: "graph-projekt",
+    enName: "graph",
+    hash: "#/graph",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("graph-canvas").waitFor();
+    },
+  },
+  {
+    name: "graph-karten",
+    enName: "graph-cards",
+    hash: "#/graph",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("graph-canvas").waitFor();
+      await page.getByText(tx("nodes"), { exact: true }).click();
+      await page.getByTestId("graph-nodes").getByRole("button", { name: "Luhmann 1984" }).click();
+      await page.getByRole("menuitem", { name: tx("showCards") }).click();
+    },
+  },
+  {
+    name: "graph-verbindung",
+    enName: "graph-edge",
+    hash: "#/graph",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("graph-canvas").waitFor();
+      await page
+        .getByTestId("graph-edges")
+        .getByRole("button", { name: tx("edgeOpposes") })
+        .click();
+    },
+  },
+  {
+    name: "graph-von-hier",
+    enName: "graph-from-here",
+    hash: "#/graph?project=phd-proposal&node=habermas1981theorie",
+    board: false,
+    async setup(page) {
+      await page.getByTestId("graph-canvas").waitFor();
+    },
+  },
 ];
 
 async function newMatrix(page) {
@@ -384,7 +440,9 @@ mkdirSync(out, { recursive: true });
 const server = await startServer();
 const browser = await chromium.launch();
 try {
-  for (const screen of screens) {
+  for (const screen of screens.filter(
+    (s) => !only || only.includes(s.name) || only.includes(s.enName),
+  )) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 820 } });
     await context.addInitScript(
       ([theme, rail, local, lang]) => {

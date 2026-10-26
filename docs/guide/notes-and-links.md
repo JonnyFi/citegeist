@@ -30,7 +30,14 @@ The connections panel in the right column of a source or note shows outgoing lin
 
 ## Graph
 
-The graph view joins the typed links of notes, wiki links and citation relations (from the reference lists of converted files and from OpenAlex). Choose a centre node and a depth, and filter by relation type and node kind. "Show proposals" adds proposed links. The graph needs WebGL. Without it the node list next to the canvas still works.
+The graph opens on a project: each source is a node, sized by the number of its cards, and the connections of its cards and notes are edges between the sources. An edge carries the relation and the number of cards behind it, such as "Luhmann 1984 opposes Habermas 1981 (1 card)". Each relation has its own colour and line: a contradiction is red and dashed, support is green and solid, a plain wiki link is faint and dotted. The menu next to the title switches to another project or to the whole library, and the graph remembers the choice.
+
+- Click a source to show its cards around it. The edges then start at the cards. Click the source again to fold them.
+- Click an edge, or a connection in the list on the right, to see what it rests on: the reason, the cards that support it and the notes that explain it.
+- Right-click a node for "Show from here", which shows everything within two steps of it, and for "Open".
+- The filter row narrows the graph by connection type, by card kind, and to the sources a text of the project cites. "Show proposals" in the connection type menu adds proposed links.
+
+Literature notes are not nodes: they hold the connections of their source's cards, and those connections start at the card. Permanent notes, claims, concepts and questions are nodes. A note that only explains one connection, because it links to both ends or is named in the connection's reason, appears on that edge instead of as a node. Sources and notes outside the project that a connection reaches appear in a lighter colour. The graph needs WebGL. Without it the list of connections next to the canvas still works. See [ADR 0031](../decisions/0031-project-graph.md).
 
 ## Concepts
 
