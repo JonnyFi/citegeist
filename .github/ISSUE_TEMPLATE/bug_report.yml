@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in citegeist does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [documentation](https://github.com/JonnyFi/citegeist/tree/main/docs) first. Report security problems privately, see the [security policy](https://github.com/JonnyFi/citegeist/security/policy).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe what you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add a paper by DOI ...
+        2. Open the reading tab ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: citegeist version
+      description: The app version, or the commit when you build from source.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+      placeholder: macOS 15.1, MacBook Pro M3
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Import and metadata
+        - PDF conversion
+        - Reader and cards
+        - Notes and links
+        - Projects and planning
+        - Writing and export
+        - Literature search and alerts
+        - Agents, MCP or cg
+        - Chat
+        - Sync
+        - Install or update
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: AI backend in use
+      options:
+        - None
+        - Claude Code CLI
+        - Codex CLI
+        - Cursor CLI
+        - Anthropic API
+        - OpenAI API
+        - OpenRouter
+        - xAI API
+        - Ollama
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages and logs
+      description: Paste error text, or the output of `cg --json` for the failing command. Remove anything private.
+      render: shell

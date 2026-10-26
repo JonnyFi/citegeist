@@ -7,29 +7,36 @@ The core is TypeScript on Node, conversion runs in a Python worker, and the UI s
 
 ## Module map
 
-| Path                 | Purpose                                                    | Owner workstream |
-| -------------------- | ---------------------------------------------------------- | ---------------- |
-| `packages/schema`    | Zod schemas, JSON Schema export (hotspot)                  | W0.2             |
-| `packages/ops`       | Operations registry and contracts (hotspot)                | W0.2             |
-| `packages/core`      | Store, index, watcher, jobs, services                      | W1.1             |
-| `packages/metadata`  | Resolvers and merge                                        | W1.2             |
-| `packages/cite`      | CSL, BibTeX, RIS, citekeys, citation export                | W1.4             |
-| `packages/ai`        | Inference backends, tasks, evals                           | W1.5             |
-| `packages/mcp`       | MCP server built on ops                                    | W1.8             |
-| `packages/chat`      | Agent chat over ACP, turn undo, research jobs              | W3.3             |
-| `packages/server`    | Core process: HTTP/oRPC/WebSocket, lockfile, chat wiring   | Lead             |
-| `packages/anchoring` | Anchor library (pure TypeScript)                           | W1.6             |
-| `packages/reader`    | PDF and text view with highlight layer                     | W1.6             |
-| `apps/cli`           | `cg` command, including `cg mcp`                           | W1.8             |
-| `apps/ui`            | React renderer, also runs in a browser against a mock core | W1.7             |
-| `apps/desktop`       | Electron main and preload                                  | W1.7             |
-| `workers/convert`    | Python (uv): Docling, GROBID, OCR, arXiv, web              | W1.3             |
-| `fixtures/`          | CC-BY PDFs, recorded HTTP, expected outputs                | W0.3             |
-| `docs/`              | Product, architecture, decisions, plan                     | Lead             |
+| Path                 | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `packages/schema`    | Zod schemas, JSON Schema export                            |
+| `packages/ops`       | Operations registry and contracts                          |
+| `packages/core`      | Store, index, watcher, jobs, services                      |
+| `packages/metadata`  | Resolvers and merge                                        |
+| `packages/cite`      | CSL, BibTeX, RIS, citekeys, citation export                |
+| `packages/import`    | Zotero, BibTeX, RIS and CSL-JSON importers                 |
+| `packages/embed`     | Local embedding models and reranker                        |
+| `packages/ai`        | Inference backends, tasks, evals                           |
+| `packages/mcp`       | MCP server built on ops                                    |
+| `packages/chat`      | Agent chat over ACP, turn undo, research jobs              |
+| `packages/webhooks`  | Webhook signing, payloads, connectors                      |
+| `packages/server`    | Core process: HTTP/oRPC/WebSocket, lockfile, chat wiring   |
+| `packages/anchoring` | Anchor library (pure TypeScript)                           |
+| `packages/reader`    | PDF and text view with highlight layer                     |
+| `packages/editor`    | Markdown editor with citation completion                   |
+| `apps/cli`           | `cg` command, including `cg mcp`                           |
+| `apps/ui`            | React renderer, also runs in a browser against a mock core |
+| `apps/desktop`       | Electron main and preload                                  |
+| `workers/convert`    | Python (uv): Docling, GROBID, OCR, arXiv, web              |
+| `workers/research`   | Python (uv): literature search scripts                     |
+| `skills/citegeist`   | Agent skill and `.mcpb` bundle                             |
+| `fixtures/`          | CC-BY PDFs, recorded HTTP, expected outputs                |
+| `docs/`              | Handbook, specs, architecture, decisions                   |
 
-## Hotspots
+## Maintainer-owned files
 
-Only the lead session changes these. Other workstreams ask for a change instead of making it.
+These files shape every package, so only maintainers change them. If your change needs one of them, say so in the issue or the pull request and a maintainer makes the change or agrees to it in your PR.
+
 - `packages/schema`
 - `packages/ops/src/contracts`
 - root `package.json`
@@ -39,7 +46,7 @@ Only the lead session changes these. Other workstreams ask for a change instead 
 - `CLAUDE.md`
 - `.github/workflows`
 
-If your workstream needs a new dependency, add it to your own package's `package.json` and report it to the lead, who updates the lockfile.
+If you need a new dependency, add it to the `package.json` of your own package and mention it in the pull request. A maintainer updates the lockfile. [docs/maintainers.md](docs/maintainers.md) has the details.
 
 ## Commands
 
@@ -50,28 +57,31 @@ pnpm package                              build the unsigned arm64 citegeist.app
 pnpm lint                                 biome check .
 pnpm format                               biome format --write .
 pnpm typecheck                            tsc --noEmit in every package via turbo
-pnpm test                                 vitest run in every package via turbo
+pnpm test                                 vitest run in every package
 pnpm --filter @citegeist/<name> test      one package only
 cd workers/convert && uv sync             set up the Python worker
 cd workers/convert && uv run pytest       run the worker tests
 ```
 
+[docs/development.md](docs/development.md) describes running the app from source, tests, evals and releases.
+
 ## Conventions
 
-- Code, comments, file names and commit messages are English. The docs in `docs/` are German.
+- Code, comments, file names, commit messages and docs are English.
 - Never use em dashes in any text: code, comments, docs, commit messages, chat.
 - TypeScript is strict (`tsconfig.base.json`). Each package has its own `tsconfig.json` extending it.
 - Package names are `@citegeist/<name>`. Packages export TypeScript source from `src/index.ts`.
 - Tests sit next to the code as `*.test.ts`. Python tests live in `workers/convert/tests`.
-- Stay inside the directories your workstream owns. Never edit hotspots.
-- Coding agents default to Sonnet. Use a larger model only when the lead says so.
-- Commit on your own branch. End commit messages with the Co-Authored-By line given by the session.
+- Stay inside the directories your change needs. Do not edit maintainer-owned files without agreement.
+- Work on your own branch and open a pull request against `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- End commit messages with the Co-Authored-By line given by your session when an agent wrote the change.
+- Documentation changes follow the same rules as code: record a decision in `docs/decisions/` when you change one.
 
 ## Workflow (gstack)
 
-gstack is the workflow of the maintainers (required for them) and a recommendation for everyone else. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. Cursor and Codex users read the install check in `CLAUDE.md`.
+gstack is required for AI-assisted work in this repo, in every tool. Install it once with `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup --team`, then restart your tool. The Claude Code hook in `.claude/` enforces the install. Cursor and Codex users read the install check in `CLAUDE.md`.
 
-1. `/spec` turns the workstream into an executable spec.
+1. `/spec` turns the change into an executable spec.
 2. Build against fixtures and mocks, and run `pnpm verify` until green.
 3. `/review` checks the diff before landing.
 4. `/qa` exercises the running app or CLI.
@@ -79,8 +89,9 @@ gstack is the workflow of the maintainers (required for them) and a recommendati
 
 ## Docs
 
-- [docs/architecture.md](docs/architecture.md): architecture, data model, tech stack, risks
-- [docs/README.md](docs/README.md): index
-
-The development plan, the decision log and the research notes are kept in a private repository. Code comments and docs cite its decision ids (for example D24) as "internal decision log".
-
+- [docs/README.md](docs/README.md): index of the handbook
+- [docs/getting-started.md](docs/getting-started.md): install and first run
+- [docs/architecture.md](docs/architecture.md): architecture, data model, tech stack
+- [docs/decisions/README.md](docs/decisions/README.md): decision records
+- [docs/development.md](docs/development.md): repo layout, tests, evals, releases
+- [docs/maintainers.md](docs/maintainers.md): maintainer-owned files and the model policy
