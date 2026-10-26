@@ -239,5 +239,14 @@ describe.skipIf(!pandoc || !typst)("a real PDF export with Typst", () => {
     expect(words).toContain("Luhmann, N. (1984). Soziale Systeme. Suhrkamp.");
     expect(words).not.toContain("Never cited");
     expect(words).not.toContain("@luhmann1984soziale");
+    // APA has entry spacing 0; the entries must still stand on lines of their own
+    const boxes = execFileSync(pdftotext, ["-bbox", copy, "-"], { encoding: "utf8" });
+    const lastY = (word: string) => {
+      const found = [...boxes.matchAll(/yMin="([\d.]+)"[^>]*>([^<]*)</g)].filter(
+        (m) => m[2] === word,
+      );
+      return Number(found.at(-1)?.[1]);
+    };
+    expect(lastY("Luhmann,") - lastY("Gillespie,")).toBeGreaterThan(12);
   });
 });

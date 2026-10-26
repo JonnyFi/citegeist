@@ -507,8 +507,8 @@ describe("cards.export", () => {
       html?: string;
       text: string;
     };
-    expect(direct.text).toBe("„Kommunikation ist ihre Operation.“ (Luhmann, 1984, S. 213)");
-    expect(direct.html).toBe("<p>„Kommunikation ist ihre Operation.“ (Luhmann, 1984, S. 213)</p>");
+    expect(direct.text).toBe("„Kommunikation ist ihre Operation“ (Luhmann, 1984, S. 213).");
+    expect(direct.html).toBe("<p>„Kommunikation ist ihre Operation“ (Luhmann, 1984, S. 213).</p>");
 
     const indirect = (await reg.call("cards.export", human, {
       ids: [id],
@@ -517,7 +517,7 @@ describe("cards.export", () => {
       format: "text",
     })) as { text: string };
     expect(indirect.text).toBe(
-      "Systeme erzeugen sich selbst. [KI-generierte Paraphrase] (vgl. Luhmann, 1984, S. 213)",
+      "Systeme erzeugen sich selbst [KI-generierte Paraphrase] (vgl. Luhmann, 1984, S. 213).",
     );
 
     // the note wins under own-else-ai and drop the label
@@ -528,7 +528,7 @@ describe("cards.export", () => {
       mode: "indirect",
       format: "pandoc",
     })) as { text: string };
-    expect(own.text).toBe("Gesellschaft ist Kommunikation. [vgl. @luhmann1984soziale, S. 213]");
+    expect(own.text).toBe("Gesellschaft ist Kommunikation [vgl. @luhmann1984soziale, S. 213].");
 
     // identical to calling cite directly
     const { frontmatter, body } = cards.getCard(id);

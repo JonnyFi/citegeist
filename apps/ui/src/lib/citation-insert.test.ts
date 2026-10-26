@@ -46,9 +46,9 @@ describe("renderCitation", () => {
     const indirect = await renderCitation(core, subject, "indirect", target);
     const cite = await renderCitation(core, subject, "cite", target);
     expect(direct.text).toMatch(
-      /^„Soziale Systeme bestehen aus Kommunikationen.*“ \[@luhmann1984soziale, S\. 31\]$/,
+      /^„Soziale Systeme bestehen aus Kommunikationen.*[^.]“ \[@luhmann1984soziale, S\. 31\]\.$/,
     );
-    expect(indirect.text).toMatch(/ \[vgl\. @luhmann1984soziale, S\. 31\]$/);
+    expect(indirect.text).toMatch(/[^.] \[vgl\. @luhmann1984soziale, S\. 31\]\.$/);
     expect(cite.text).toBe("[@luhmann1984soziale, S. 31]");
     expect(calls.filter((c) => c.name === "cards.export").map((c) => c.input)).toEqual([
       expect.objectContaining({
@@ -60,6 +60,26 @@ describe("renderCitation", () => {
       expect.objectContaining({ mode: "indirect", format: "pandoc", locale: "de-DE" }),
       expect.objectContaining({ mode: "cite", format: "pandoc", locale: "de-DE" }),
     ]);
+  });
+
+  it("puts the sentence period behind the citation, in German and English", async () => {
+    const { core } = setup();
+    const id = await firstCard(core);
+    const subject = { type: "card", id } as const;
+    const de = { type: "text", project: "phd-proposal", lang: "de-DE" } as const;
+    const en = { type: "text", project: "phd-proposal", lang: "en-US" } as const;
+    const german = await renderCitation(core, subject, "direct", de);
+    expect(german.text).toContain("Umwelt“ [@luhmann1984soziale, S. 31].");
+    expect(german.text).not.toContain(".“");
+    const english = await renderCitation(core, subject, "direct", en);
+    expect(english.text).toContain("Umwelt” [@luhmann1984soziale, p. 31].");
+    expect(english.text).not.toContain(".”");
+    for (const lang of [de, en]) {
+      const paraphrase = await renderCitation(core, subject, "indirect", lang);
+      expect(paraphrase.text).toMatch(
+        /[^.] \[(?:(?:vgl|cf)\. )?@luhmann1984soziale, (?:S|p)\. 31\]\.$/,
+      );
+    }
   });
 
   it("uses the terms of an English text", async () => {
@@ -91,6 +111,8 @@ describe("renderCitation", () => {
     const direct = await renderCitation(core, { type: "card", id }, "direct", { type: "external" });
     expect(direct.html).toContain("<blockquote>„Soziale Systeme bestehen aus Kommunikationen");
     expect(direct.text).toContain("Luhmann 1984, S. 31");
+    expect(direct.text).toMatch(/Umwelt“ \(Luhmann 1984, S\. 31\)\.$/);
+    expect(direct.html).toContain("<p>(Luhmann 1984, S. 31).</p>");
     const cite = await renderCitation(core, { type: "card", id }, "cite", { type: "external" });
     expect(cite.text).toBe("(Luhmann 1984, S. 31)");
   });

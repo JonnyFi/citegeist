@@ -152,7 +152,7 @@ describe("the Texte tab", () => {
       withInsertKind("indirect", () => apply(instance.view, option, result.from, head));
     });
     await waitFor(() =>
-      expect(instance.getValue()).toMatch(/Siehe \S[^\n]*\[vgl\. @luhmann1984soziale, S\. 31\]$/),
+      expect(instance.getValue()).toMatch(/Siehe \S[^\n]*\[vgl\. @luhmann1984soziale, S\. 31\]\.$/),
     );
     expect(calls.find((c) => c.name === "cards.export")?.input).toMatchObject({
       mode: "indirect",
@@ -549,7 +549,7 @@ describe("quote cards", () => {
     expect(await within(card).findByText("Eingefügt in „Kapitel 2“")).toBeVisible();
     const { instance } = await editor();
     expect(instance.getValue()).toMatch(
-      /Soziale Systeme bestehen aus Kommunikationen[^\n]*\[@luhmann1984soziale, S\. 31\]\n$/,
+      /Soziale Systeme bestehen aus Kommunikationen[^\n]*\[@luhmann1984soziale, S\. 31\]\.\n$/,
     );
     await waitFor(() => expect(pieces()).toBe(4));
   });
@@ -570,7 +570,7 @@ describe("quote cards", () => {
       format: "pandoc",
       project: "phd-proposal",
     });
-    expect(instance.getValue()).toMatch(/\[vgl\. @luhmann1984soziale, S\. 31\]Plattformen/);
+    expect(instance.getValue()).toMatch(/\[vgl\. @luhmann1984soziale, S\. 31\]\.Plattformen/);
   });
 
   it("inserts the citation alone from the menu of the card", async () => {

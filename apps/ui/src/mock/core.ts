@@ -145,6 +145,18 @@ const LOCATOR_TERMS = {
   de: { page: "S.", paragraph: "Abs." },
 } as const;
 
+/** Mirrors the sentence punctuation of the real card export (packages/cite/src/cardexport.ts). */
+function sentenceEnd(text: string, kind: "quote" | "paraphrase"): { text: string; tail: string } {
+  const trimmed = text.trim();
+  if (/(\.{2,}|\u2026)$/.test(trimmed)) return { text: trimmed, tail: "" };
+  if (kind === "paraphrase") {
+    const mark = /[.!?]+$/.exec(trimmed)?.[0] ?? "";
+    return { text: trimmed.slice(0, trimmed.length - mark.length).trimEnd(), tail: mark };
+  }
+  if (trimmed.endsWith(".")) return { text: trimmed.slice(0, -1).trimEnd(), tail: "." };
+  return { text: trimmed, tail: /[!?]$/.test(trimmed) ? "." : "" };
+}
+
 /** "p. 31" or "Abs. 4": the locator term of a language (mock of the CSL terms). */
 function locatorTerm(label: string | undefined, lang: Lang): string {
   const terms = LOCATOR_TERMS[lang];
@@ -795,15 +807,19 @@ export function createMockRegistry(
         const en = lang === "en";
         const [open, close] = en ? ["\u201c", "\u201d"] : ["\u201e", "\u201c"];
         const cf = en ? "cf." : "vgl.";
-        const own = card.body.note || card.body.paraphrase || quote;
+        const quoted = sentenceEnd(quote, "quote");
+        const paraphrased = sentenceEnd(
+          card.body.note || card.body.paraphrase || quote,
+          "paraphrase",
+        );
         const term = locatorTerm(locator?.label, lang);
         if (input.format === "pandoc") {
           const at = `@${item.frontmatter.citekey}${loc ? `, ${term} ${loc}` : ""}`;
           lines.push(
             input.mode === "direct"
-              ? `${open}${quote}${close} [${at}]`
+              ? `${open}${quoted.text}${close} [${at}]${quoted.tail}`
               : input.mode === "indirect"
-                ? `${own} [${cf} ${at}]`
+                ? `${paraphrased.text} [${cf} ${at}]${paraphrased.tail}`
                 : `[${at}]`,
           );
           continue;
@@ -813,11 +829,13 @@ export function createMockRegistry(
           lines.push(`(${label})`);
           htmls.push(`<p>(${label})</p>`);
         } else if (input.mode === "direct") {
-          lines.push(`${open}${quote}${close} (${label})`);
-          htmls.push(`<blockquote>${open}${quote}${close}</blockquote><p>(${label})</p>`);
+          lines.push(`${open}${quoted.text}${close} (${label})${quoted.tail}`);
+          htmls.push(
+            `<blockquote>${open}${quoted.text}${close}</blockquote><p>(${label})${quoted.tail}</p>`,
+          );
         } else {
-          lines.push(`${own} (${cf} ${label})`);
-          htmls.push(`<p>${own} (${cf} ${label})</p>`);
+          lines.push(`${paraphrased.text} (${cf} ${label})${paraphrased.tail}`);
+          htmls.push(`<p>${paraphrased.text} (${cf} ${label})${paraphrased.tail}</p>`);
         }
       }
       return {

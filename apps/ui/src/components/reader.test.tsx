@@ -270,7 +270,7 @@ describe("copy as citation", () => {
     const item = written[0] as Record<string, Blob>;
     expect(Object.keys(item).sort()).toEqual(["text/html", "text/plain"]);
     expect(await item["text/plain"]?.text()).toBe(
-      "„Soziale Systeme bestehen aus Kommunikationen und nur aus Kommunikationen. Menschen sind in ihrer Umwelt.“ (Luhmann 1984, S. 31)",
+      "„Soziale Systeme bestehen aus Kommunikationen und nur aus Kommunikationen. Menschen sind in ihrer Umwelt“ (Luhmann 1984, S. 31).",
     );
     expect(await item["text/html"]?.text()).toContain("<blockquote>");
   });
@@ -283,7 +283,7 @@ describe("copy as citation", () => {
       mode: "indirect",
     });
     const item = written[0] as Record<string, Blob>;
-    expect(await item["text/plain"]?.text()).toMatch(/\(vgl\. Luhmann 1984, S\. 31\)$/);
+    expect(await item["text/plain"]?.text()).toMatch(/\(vgl\. Luhmann 1984, S\. 31\)\.$/);
   });
 
   it("builds the indirect citation from the note when the card has one", async () => {
@@ -292,7 +292,7 @@ describe("copy as citation", () => {
     await within(editor).findByText("Sinngemäßes Zitat kopiert.");
     const item = written[0] as Record<string, Blob>;
     expect(await item["text/plain"]?.text()).toMatch(
-      /^Compare with Maturana's autopoiesis before using this in chapter 2\. \(vgl\. Luhmann 1984, S\. 58\)$/,
+      /^Compare with Maturana's autopoiesis before using this in chapter 2 \(vgl\. Luhmann 1984, S\. 58\)\.$/,
     );
   });
 

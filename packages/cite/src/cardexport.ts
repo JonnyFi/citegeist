@@ -77,6 +77,36 @@ function renderQuote(
     : `${esc(terms.openQuote)}${out}${esc(terms.closeQuote)}`;
 }
 
+// Sentence punctuation ------------------------------------------------------------------------------
+
+/** A trailing ellipsis ("...", "…") is part of the text and never moves behind the citation. */
+const ELLIPSIS_END = /(\.{2,}|…)$/;
+
+/**
+ * Splits the closing sentence mark of a paraphrase off, so it can follow the citation:
+ * "Das ist wesentlich." plus "(vgl. Luhmann, 1984)" reads "Das ist wesentlich (vgl. Luhmann, 1984)."
+ */
+function splitSentenceEnd(text: string): { text: string; tail: string } {
+  const trimmed = text.trim();
+  if (ELLIPSIS_END.test(trimmed)) return { text: trimmed, tail: "" };
+  const mark = /[.!?]+$/.exec(trimmed)?.[0];
+  if (!mark) return { text: trimmed, tail: "" };
+  return { text: trimmed.slice(0, -mark.length).trimEnd(), tail: mark };
+}
+
+/**
+ * Splits a quote that closes a sentence: a final period stays out of the quotation marks, and
+ * the sentence ends with a period after the citation. "!" and "?" belong to the quote and stay
+ * inside, the period after the citation follows anyway. A quote that stops mid-sentence keeps
+ * its end as it is and gets no period.
+ */
+function splitQuoteEnd(quote: string): { text: string; tail: string } {
+  const trimmed = quote.trim();
+  if (ELLIPSIS_END.test(trimmed)) return { text: trimmed, tail: "" };
+  if (trimmed.endsWith(".")) return { text: trimmed.slice(0, -1).trimEnd(), tail: "." };
+  return { text: trimmed, tail: /[!?]$/.test(trimmed) ? "." : "" };
+}
+
 // Locators and prefixes -------------------------------------------------------------------------------
 
 function isGerman(locale: string | undefined): boolean {
@@ -212,7 +242,8 @@ function paraphraseText(
 /**
  * Renders one card as a direct quote ("„Wortlaut“ (Luhmann 1984, S. 31)"), as an indirect
  * citation (paraphrase plus citation, with "vgl." when the locale is German) or as the citation
- * alone (mode "cite", no prefix). The project's
+ * alone (mode "cite", no prefix). The sentence mark of a quote or paraphrase that closes a
+ * sentence moves behind the citation ("„Wortlaut“ (Luhmann 1984, S. 31)."). The project's
  * ExportPolicy decides which paraphrase is used and whether an AI paraphrase is labeled.
  * When the policy yields no paraphrase, an indirect export contains the citation only.
  */
@@ -231,12 +262,17 @@ export function exportCard(entry: CardExportEntry, opts: CardExportOptions = {})
   const build = (fmt: CardExportFormat): string => {
     const esc = escapers[fmt];
     const pieces: string[] = [];
+    let tail = "";
     if (mode === "direct") {
-      pieces.push(renderQuote(entry.body.quote, resolved.terms, fmt, esc));
+      const quote = splitQuoteEnd(entry.body.quote);
+      tail = quote.tail;
+      pieces.push(renderQuote(quote.text, resolved.terms, fmt, esc));
     } else if (mode === "indirect") {
       const para = paraphraseText(entry.body, policy);
       if (para) {
-        pieces.push(esc(para.text.replace(/\s*\n\s*/g, " ")));
+        const sentence = splitSentenceEnd(para.text.replace(/\s*\n\s*/g, " "));
+        tail = sentence.tail;
+        pieces.push(esc(sentence.text));
         if (para.ai && policy.labelAi) {
           pieces.push(
             esc(isGerman(locale) ? "[KI-generierte Paraphrase]" : "[AI-generated paraphrase]"),
@@ -261,7 +297,7 @@ export function exportCard(entry: CardExportEntry, opts: CardExportOptions = {})
         pieces.push(csl(entry, prefix, resolved, "text"));
         break;
     }
-    return pieces.join(" ");
+    return `${pieces.join(" ")}${tail}`;
   };
 
   if (format === "html") return { text: build("text"), html: `<p>${build("html")}</p>` };
