@@ -4,14 +4,19 @@ import {
   pandocStatus,
   type TextExportFormat,
   textsExport,
+  typstSetup,
+  typstStatus,
 } from "@citegeist/ops";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { z } from "zod";
 import { Button, ButtonGroup } from "../components/ui/button";
 import { type MessageKey, useI18n } from "../i18n";
 import { useCore, useOp } from "../lib/hooks";
 import { describeError } from "../lib/utils";
+import { localizedError } from "./errors";
+
+const POLL_MS = 600;
 
 const FORMATS: readonly TextExportFormat[] = ["docx", "latex", "pdf", "md"];
 
@@ -19,7 +24,8 @@ type Exported = z.output<typeof textsExport.output>;
 
 /** Pandoc missing: the way to get it, either the pinned download or the Homebrew command. */
 export function PandocBanner() {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const core = useCore();
   const queryClient = useQueryClient();
   const status = useOp(pandocStatus, {});
@@ -44,6 +50,11 @@ export function PandocBanner() {
   const installing =
     job !== null && (state === undefined || state === "running" || state === "queued");
   const failed = state === "failed" || failure !== null;
+  const shown = localizedError(
+    i18n,
+    failure !== null ? describeError(failure) : (watch.data?.error ?? { message: "" }),
+  );
+  const failureText = [shown.message, shown.fix].filter(Boolean).join(" ");
 
   const install = async () => {
     setFailure(null);
@@ -69,8 +80,7 @@ export function PandocBanner() {
       <span className="text-muted">{t("texts.pandoc.manual")}</span>
       {failed ? (
         <span role="alert" className="text-danger">
-          {t("texts.pandoc.failed")}{" "}
-          {failure !== null ? describeError(failure).message : (watch.data?.error?.message ?? "")}
+          {t("texts.pandoc.failed")} {failureText}
         </span>
       ) : null}
     </div>
@@ -88,11 +98,26 @@ export function ExportBar({
   /** Saves pending edits, so the export holds what is on screen. */
   beforeExport: () => Promise<void>;
 }) {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const core = useCore();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<TextExportFormat | null>(null);
   const [result, setResult] = useState<Exported | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
+  // "ask": PDF was chosen and Typst is missing. "loading": the download runs.
+  const [typst, setTypst] = useState<{ phase: "idle" | "ask" | "loading"; sizeMb: number }>({
+    phase: "idle",
+    sizeMb: 0,
+  });
+  const [progress, setProgress] = useState(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const run = async (format: TextExportFormat) => {
     setBusy(format);
@@ -108,7 +133,54 @@ export function ExportBar({
     }
   };
 
-  const failed = failure === null ? undefined : describeError(failure);
+  /** PDF needs Typst: ask before the download starts, otherwise export right away. */
+  const choose = async (format: TextExportFormat) => {
+    setTypst({ phase: "idle", sizeMb: 0 });
+    if (format === "pdf") {
+      try {
+        const status = await core.call(typstStatus, {});
+        if (!status.found && status.installable) {
+          setFailure(null);
+          setResult(null);
+          setTypst({ phase: "ask", sizeMb: status.sizeMb });
+          return;
+        }
+      } catch (err) {
+        setFailure(err);
+        return;
+      }
+    }
+    await run(format);
+  };
+
+  const install = async () => {
+    setFailure(null);
+    setProgress(0);
+    setTypst((prev) => ({ ...prev, phase: "loading" }));
+    try {
+      const started = await core.call(typstSetup, {});
+      for (;;) {
+        const job = await core.call(jobsGet, { job: started.job });
+        if (!mounted.current) return;
+        setProgress(job.progress);
+        if (job.status === "succeeded") break;
+        if (job.status === "failed" || job.status === "cancelled") {
+          throw job.error ? { data: job.error } : new Error(t("texts.typst.failed"));
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+      }
+      void queryClient.invalidateQueries({ queryKey: ["op"] });
+      setTypst({ phase: "idle", sizeMb: 0 });
+      await run("pdf");
+    } catch (err) {
+      if (!mounted.current) return;
+      setTypst({ phase: "idle", sizeMb: 0 });
+      setFailure(err);
+    }
+  };
+
+  const failed = failure === null ? undefined : localizedError(i18n, describeError(failure));
+  const loading = typst.phase === "loading";
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
@@ -118,9 +190,9 @@ export function ExportBar({
             <Button
               key={format}
               size="sm"
-              disabled={busy !== null}
+              disabled={busy !== null || loading}
               title={t(`texts.export.${format}.hint` as MessageKey)}
-              onClick={() => void run(format)}
+              onClick={() => void choose(format)}
             >
               {t(`texts.export.${format}` as MessageKey)}
             </Button>
@@ -128,6 +200,30 @@ export function ExportBar({
         </ButtonGroup>
       </div>
       <div aria-live="polite" className="max-w-[560px] text-right text-[12px]">
+        {typst.phase === "ask" ? (
+          <div data-testid="typst-ask" className="flex flex-wrap items-center justify-end gap-2">
+            <span>{t("texts.typst.ask", { size: typst.sizeMb })}</span>
+            <Button size="sm" variant="primary" onClick={() => void install()}>
+              {t("texts.typst.load")}
+            </Button>
+            <Button size="sm" onClick={() => setTypst({ phase: "idle", sizeMb: 0 })}>
+              {t("texts.typst.cancel")}
+            </Button>
+          </div>
+        ) : null}
+        {loading ? (
+          <div data-testid="typst-progress" className="flex items-center justify-end gap-2">
+            <span className="text-muted">
+              {t("texts.typst.loading", { percent: Math.round(progress * 100) })}
+            </span>
+            <progress
+              className="h-1 w-24"
+              max={1}
+              value={progress}
+              aria-label={t("job.kind.typst-setup")}
+            />
+          </div>
+        ) : null}
         {busy ? <span className="text-muted">{t("texts.export.running")}</span> : null}
         {result ? (
           <div data-testid="export-result">

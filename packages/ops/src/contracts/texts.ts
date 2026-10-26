@@ -100,7 +100,7 @@ export const textsUpdate = defineContract({
 export const textsExport = defineContract({
   name: "texts.export",
   summary:
-    "Export a text through Pandoc: docx (Word), latex (ZIP with main.tex and references.bib), pdf (needs a LaTeX engine or Typst) or md (citations resolved). The bibliography holds the cited sources only, in the style of the text, else of the project. Files go to projects/<project>/exports/ unless a person passes output.",
+    "Export a text through Pandoc: docx (Word), latex (ZIP with main.tex and references.bib), pdf (through Typst, which typst.setup downloads; a LaTeX engine is the fallback) or md (citations resolved). The bibliography holds the cited sources only, in the style of the text, else of the project. Files go to projects/<project>/exports/ unless a person passes output.",
   access: "write",
   input: TextRef.extend({
     format: TextExportFormat,
@@ -158,6 +158,35 @@ export const pandocSetup = defineContract({
   output: z.object({ job: JobId }),
 });
 
+export const typstStatus = defineContract({
+  name: "typst.status",
+  summary:
+    "Where Typst is (the copy citegeist downloaded, PATH or Homebrew) and its version. Typst makes the PDF of texts.export",
+  access: "read",
+  input: z.object({}),
+  output: z.object({
+    found: z.boolean(),
+    path: z.string().optional(),
+    version: z.string().optional(),
+    source: z.enum(["path", "managed"]).optional(),
+    /** The release `typst.setup` downloads. */
+    pinned: z.string(),
+    /** False off macOS on Apple silicon, where a person installs Typst themselves. */
+    installable: z.boolean(),
+    /** Size of the download in MB, for the question before it starts. */
+    sizeMb: z.number().int().positive(),
+  }),
+});
+
+export const typstSetup = defineContract({
+  name: "typst.setup",
+  summary:
+    "Download the pinned Typst release (official GitHub release, fixed sha256) into the machine-local folder. A person runs it; Typst stays a separate process.",
+  access: "admin",
+  input: z.object({}),
+  output: z.object({ job: JobId }),
+});
+
 export const TEXTS_CONTRACTS: readonly OperationContract[] = [
   textsList,
   textsGet,
@@ -166,4 +195,6 @@ export const TEXTS_CONTRACTS: readonly OperationContract[] = [
   textsExport,
   pandocStatus,
   pandocSetup,
+  typstStatus,
+  typstSetup,
 ];

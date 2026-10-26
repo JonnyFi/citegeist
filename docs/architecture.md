@@ -55,6 +55,7 @@ The UI is available in English (default) and German and follows the system langu
 | Convert worker (`workers/convert`) | Python 3.12 under `uv`: Docling, GROBID, Apple Vision OCR, arXiv HTML, web pages. Environment in `<local base>/worker/venv`, models downloaded on first use | Started by the core, exits after 600 seconds idle |
 | Research worker (`workers/research`) | Python scripts for the literature search (OpenAlex, arXiv, Semantic Scholar, DBLP, OpenReview, Unpaywall, ORCID). Environment in `<local base>/research/venv` | One process per run or check |
 | Pandoc | Export of texts to Word, LaTeX, PDF and Markdown ([Markdown with Pandoc](decisions/0002-writing-in-markdown-with-pandoc.md)). GPL-2.0, so it runs only as a separate process. Found in `PATH` and Homebrew, or downloaded as a pinned release by `pandoc.setup` | Per export |
+| Typst | PDF engine that Pandoc starts for the PDF export. Apache-2.0, separate process. Downloaded as a pinned release by `typst.setup`, or found in `PATH` and Homebrew | Per PDF export |
 | Agent CLIs | `claude`, `codex` and `agent` (Cursor) installed by the user. Inference runs on the user's subscription ([open source and own subscription](decisions/0001-open-source-and-own-subscription.md)) | Per AI call, or per chat session through an ACP adapter |
 
 One core runs per library. `<local base>/<library-id>/core.lock` holds PID and port, and `core.token` (mode 0600) holds the token for the HTTP endpoint. `<local base>` is `~/Library/Application Support/citegeist`. A starting process checks the lock first and attaches to a running core.
@@ -285,7 +286,7 @@ Plans, outlines, plan documents and insights are specified in [spec/research-pla
 
 ### Texts
 
-A text is a Markdown file under `projects/<slug>/texts/` ([Markdown with Pandoc](decisions/0002-writing-in-markdown-with-pandoc.md)). The format is in [spec/library-format.md](spec/library-format.md). The core reads citations with the scanner in `packages/schema` (`scanCitations`), which the editor (`packages/editor`, CodeMirror 6) also uses for its markers. `texts.export` writes the text, the CSL file of the style and the cited sources as CSL-JSON and as `.bib` into a working folder, calls Pandoc and puts the result into `exports/`. Word, PDF and Markdown use `--citeproc`. LaTeX keeps the citations as biblatex commands and comes as a ZIP with `references.bib`. For PDF the core looks for xelatex, lualatex, tectonic, pdflatex or Typst. It finds Pandoc in `PATH`, in Homebrew or in `<local base>/pandoc/<version>/`, where `pandoc.setup` downloads the pinned release (3.12.1).
+A text is a Markdown file under `projects/<slug>/texts/` ([Markdown with Pandoc](decisions/0002-writing-in-markdown-with-pandoc.md)). The format is in [spec/library-format.md](spec/library-format.md). The core reads citations with the scanner in `packages/schema` (`scanCitations`), which the editor (`packages/editor`, CodeMirror 6) also uses for its markers. `texts.export` writes the text, the CSL file of the style and the cited sources as CSL-JSON and as `.bib` into a working folder, calls Pandoc and puts the result into `exports/`. Word, PDF and Markdown use `--citeproc`. LaTeX keeps the citations as biblatex commands and comes as a ZIP with `references.bib`. For PDF the core uses Typst (`pandoc --pdf-engine=<typst>` with A4, 11 pt, New York and margins of 2.5 cm) and falls back to xelatex, lualatex, tectonic or pdflatex only where Typst is missing. It finds Pandoc in `PATH`, in Homebrew or in `<local base>/pandoc/<version>/`, where `pandoc.setup` downloads the pinned release (3.12.1), and Typst in `<local base>/typst/<version>/`, where `typst.setup` downloads the pinned release (0.15.1), or in `PATH` and Homebrew.
 
 ## Ingest
 
@@ -306,7 +307,7 @@ A duplicate is a hit on DOI, ISBN, arXiv ID, PMID, URL or file hash, or else on 
 
 What an agent adds lands in the inbox first, where the user accepts or discards it. With `target: "library"` an agent puts a paper directly into the library. What the user adds lands directly in the library ([agent content goes to the inbox](decisions/0014-agent-content-goes-to-inbox.md)).
 
-Every step is a job in `state.sqlite` with status, progress and retry. The job kinds are `ingest`, `resolve-metadata`, `fetch-source`, `convert`, `enrich`, `embed`, `ai-task`, `research`, `import`, `export`, `alerts`, `worker-setup`, `litsearch.run`, `litsearch.preprints` and `pandoc-setup`. Slow work returns a job handle at once over MCP, and `jobs_get` reports the status.
+Every step is a job in `state.sqlite` with status, progress and retry. The job kinds are `ingest`, `resolve-metadata`, `fetch-source`, `convert`, `enrich`, `embed`, `ai-task`, `research`, `import`, `export`, `alerts`, `worker-setup`, `litsearch.run`, `litsearch.preprints`, `pandoc-setup` and `typst-setup`. Slow work returns a job handle at once over MCP, and `jobs_get` reports the status.
 
 ### Importers
 

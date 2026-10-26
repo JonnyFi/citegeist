@@ -1,19 +1,8 @@
-import { createHash } from "node:crypto";
-import {
-  chmodSync,
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  renameSync,
-  rmSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { nodeRunner, type ProcessRunner } from "@citegeist/ai";
-import { CitegeistError } from "@citegeist/schema";
 import { extendedPath, findExecutable } from "../settings/executables.js";
+import { downloadChecked, type Progress, setupError, type ToolNames } from "./download.js";
 
 /**
  * The Pandoc release `pandoc.setup` downloads (docs/decisions/0002-writing-in-markdown-with-pandoc.md). Pandoc is GPL-2.0, so citegeist never links
@@ -40,8 +29,11 @@ export type PandocSpec = {
 /** `--citeproc` is built in from this version on. */
 export const MIN_PANDOC: readonly [number, number] = [2, 11];
 
-/** PDF engines in the order citegeist prefers them: Unicode-capable LaTeX engines first. */
-export const PDF_ENGINES = ["xelatex", "lualatex", "tectonic", "pdflatex", "typst"] as const;
+/**
+ * LaTeX engines in the order citegeist prefers them: Unicode-capable ones first. They are only
+ * the fallback for a PDF; Typst comes first (see `choosePdfEngine`).
+ */
+export const PDF_ENGINES = ["xelatex", "lualatex", "tectonic", "pdflatex"] as const;
 
 export interface PandocLocation {
   path: string;
@@ -134,7 +126,7 @@ export async function locatePandoc(opts: LocateOptions): Promise<PandocLookup> {
   return { rejected };
 }
 
-/** The first PDF engine that is installed, in the order of `PDF_ENGINES`. */
+/** The first LaTeX engine that is installed, in the order of `PDF_ENGINES`. */
 export function findPdfEngine(
   opts: {
     pathEnv?: string | undefined;
@@ -160,22 +152,6 @@ export function pandocInstallable(
   return platform === "darwin" && arch === "arm64";
 }
 
-function setupError(
-  code: string,
-  message: string,
-  fix: string,
-  recovery: "do-first" | "fix-and-retry",
-): CitegeistError {
-  // A job error carries only code and message, so the fix travels inside the message too.
-  return new CitegeistError({
-    code,
-    message: `${message} ${fix}`,
-    fix,
-    recovery,
-    sideEffects: "none",
-  });
-}
-
 export interface InstallDeps {
   localBase: string;
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
@@ -186,10 +162,14 @@ export interface InstallDeps {
   unzip?: string;
 }
 
-export interface InstallProgress {
-  progress(value: number, message?: string): void;
-  signal?: AbortSignal | undefined;
-}
+export type InstallProgress = Progress;
+
+const NAMES: ToolNames = {
+  label: "Pandoc",
+  prefix: "PANDOC",
+  brew: "pandoc",
+  pinFile: "pandoc.ts",
+};
 
 /**
  * Downloads the pinned Pandoc release into `<localBase>/pandoc/<version>/`, checks the sha256
@@ -214,46 +194,8 @@ export async function installPandoc(
   mkdirSync(base, { recursive: true });
   const work = mkdtempSync(join(base, ".download-"));
   try {
-    ctx.progress(0.02, `Downloading Pandoc ${spec.version} (about ${spec.sizeMb} MB)`);
-    let response: Response;
-    try {
-      response = await doFetch(spec.url, { ...(ctx.signal ? { signal: ctx.signal } : {}) });
-    } catch (err) {
-      throw setupError(
-        "PANDOC_DOWNLOAD_FAILED",
-        `The download of Pandoc failed: ${err instanceof Error ? err.message : String(err)}.`,
-        "Check the network connection and run the Pandoc setup again.",
-        "fix-and-retry",
-      );
-    }
-    if (!response.ok || !response.body) {
-      throw setupError(
-        "PANDOC_DOWNLOAD_FAILED",
-        `GitHub answered ${response.status} for ${spec.url}.`,
-        "Run the Pandoc setup again later, or install Pandoc yourself (`brew install pandoc`).",
-        "fix-and-retry",
-      );
-    }
     const zip = join(work, "pandoc.zip");
-    const hash = createHash("sha256");
-    const total = Number(response.headers.get("content-length")) || spec.sizeMb * 1024 * 1024;
-    let received = 0;
-    const body = Readable.fromWeb(response.body as import("node:stream/web").ReadableStream);
-    body.on("data", (chunk: Buffer) => {
-      hash.update(chunk);
-      received += chunk.length;
-      ctx.progress(0.02 + 0.8 * Math.min(received / total, 1));
-    });
-    await pipeline(body, createWriteStream(zip));
-    const digest = hash.digest("hex");
-    if (digest !== spec.sha256) {
-      throw setupError(
-        "PANDOC_CHECKSUM",
-        `The download has sha256 ${digest}, expected ${spec.sha256}.`,
-        "Run the Pandoc setup again. If it fails again, the pinned release changed and the pin in packages/core/src/texts/pandoc.ts needs an update.",
-        "fix-and-retry",
-      );
-    }
+    await downloadChecked(ctx, doFetch, spec, zip, NAMES);
 
     ctx.progress(0.85, "Unpacking Pandoc");
     const extracted = join(work, "unpacked");

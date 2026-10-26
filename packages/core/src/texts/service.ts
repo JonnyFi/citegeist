@@ -36,6 +36,14 @@ import {
   PINNED_PANDOC,
   pandocInstallable,
 } from "./pandoc.js";
+import {
+  choosePdfEngine,
+  locateTypst,
+  type PdfEngine,
+  PINNED_TYPST,
+  type TypstLookup,
+  typstInstallable,
+} from "./typst.js";
 import { createZip } from "./zip.js";
 
 export interface TextsDeps {
@@ -45,8 +53,10 @@ export interface TextsDeps {
   now?: () => Date;
   /** Replaces the search for Pandoc, for tests. */
   locate?: () => Promise<PandocLookup>;
-  /** Replaces the search for a PDF engine, for tests. */
-  pdfEngine?: () => { name: string; path: string } | undefined;
+  /** Replaces the search for Typst, for tests. */
+  locateTypst?: () => Promise<TypstLookup>;
+  /** Replaces the whole choice of a PDF engine (Typst, else LaTeX), for tests. */
+  pdfEngine?: () => PdfEngine | undefined;
   pathEnv?: string | undefined;
   home?: string | undefined;
   exists?: LocateOptions["exists"];
@@ -287,18 +297,34 @@ export class TextsService {
     });
   }
 
-  private engine() {
-    if (this.deps.pdfEngine) return this.deps.pdfEngine();
-    return findPdfEngine({
+  private async locateTypst(): Promise<TypstLookup> {
+    if (this.deps.locateTypst) return this.deps.locateTypst();
+    return locateTypst({
+      localBase: this.deps.localBase,
+      runner: this.runner,
       pathEnv: this.deps.pathEnv,
       ...(this.deps.home ? { home: this.deps.home } : {}),
       ...(this.deps.exists ? { exists: this.deps.exists } : {}),
     });
   }
 
+  /** Typst when it is there, else a LaTeX engine (`choosePdfEngine`). */
+  private async engine(): Promise<PdfEngine | undefined> {
+    if (this.deps.pdfEngine) return this.deps.pdfEngine();
+    const { location } = await this.locateTypst();
+    return choosePdfEngine({
+      typst: location,
+      latex: findPdfEngine({
+        pathEnv: this.deps.pathEnv,
+        ...(this.deps.home ? { home: this.deps.home } : {}),
+        ...(this.deps.exists ? { exists: this.deps.exists } : {}),
+      }),
+    });
+  }
+
   async status() {
     const { location } = await this.locate();
-    const engine = this.engine();
+    const engine = await this.engine();
     return {
       found: location !== undefined,
       ...(location
@@ -307,6 +333,19 @@ export class TextsService {
       pinned: PINNED_PANDOC.version,
       installable: pandocInstallable(),
       ...(engine ? { pdfEngine: engine.name } : {}),
+    };
+  }
+
+  async typstStatus() {
+    const { location } = await this.locateTypst();
+    return {
+      found: location !== undefined,
+      ...(location
+        ? { path: location.path, version: location.version, source: location.source }
+        : {}),
+      pinned: PINNED_TYPST.version,
+      installable: typstInstallable(),
+      sizeMb: PINNED_TYPST.sizeMb,
     };
   }
 
@@ -380,15 +419,17 @@ export class TextsService {
       .map((k) => this.lib.getItem(k).frontmatter);
 
     const pandoc = await this.requirePandoc();
-    let engine: { name: string; path: string } | undefined;
+    let engine: PdfEngine | undefined;
     if (input.format === "pdf") {
-      engine = this.engine();
+      engine = await this.engine();
       if (!engine) {
         throw fail(
           "PDF_ENGINE_MISSING",
-          "A PDF needs a LaTeX engine or Typst, and none was found.",
-          "Install BasicTeX (`brew install --cask basictex`) or Typst (`brew install typst`), or export docx or latex instead.",
-          {},
+          "A PDF needs Typst or a LaTeX engine, and none was found.",
+          typstInstallable()
+            ? "Run typst.setup to download the pinned Typst release (in the app: export as PDF and confirm the download), or install it with `brew install typst`. Or export docx or latex instead."
+            : "Install Typst (`brew install typst`) or BasicTeX (`brew install --cask basictex`), or export docx or latex instead.",
+          { installable: typstInstallable() },
           "ask-human",
         );
       }
@@ -423,9 +464,11 @@ export class TextsService {
             ? `Pandoc took too long to export ${file.path}.`
             : `Pandoc could not export ${file.path}: ${tail}`,
           input.format === "pdf"
-            ? "Fix the problem named above (often a missing LaTeX package), or export docx or latex instead."
+            ? engine?.name === "typst"
+              ? "Fix the problem named above in the text, or export docx or latex instead."
+              : "Fix the problem named above (often a missing LaTeX package), or export docx or latex instead."
             : "Fix the problem named above in the text and export again.",
-          { exitCode: ran.exitCode },
+          { exitCode: ran.exitCode, detail: tail },
         );
       }
       const produced = readFileSync(join(work, plan.output));

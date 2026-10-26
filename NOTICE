@@ -199,6 +199,11 @@ These run as separate processes and are never linked into citegeist.
     Downloaded from the upstream release when the user asks for text export (pinned checksum),
     or taken from the user's own installation. citegeist starts it as a separate process with
     command line arguments and files; it does not link to it and does not ship it.
+  Typst, Apache-2.0, https://github.com/typst/typst (source code and license). Downloaded from
+    the upstream release when the user exports a PDF for the first time (pinned checksum), or
+    taken from the user's own installation. Pandoc starts it as a separate process to typeset
+    the PDF. citegeist does not link to it and does not ship it; the downloaded folder keeps
+    the LICENSE and NOTICE files of the release.
   Claude Code, Codex CLI and Cursor CLI run as the user's own installations under the user's own
     accounts and terms. citegeist starts them through the Agent Client Protocol adapters
     @agentclientprotocol/claude-agent-acp and @agentclientprotocol/codex-acp (Apache-2.0).

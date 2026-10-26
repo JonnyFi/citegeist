@@ -509,6 +509,7 @@ export const de = {
   "job.kind.export": "Wird exportiert",
   "job.kind.worker-setup": "Umgebung wird installiert",
   "job.kind.pandoc-setup": "Pandoc wird geladen",
+  "job.kind.typst-setup": "Typst wird geladen",
   "job.status.queued": "wartet",
   "job.status.running": "läuft",
   "job.status.succeeded": "fertig",

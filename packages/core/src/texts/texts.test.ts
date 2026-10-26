@@ -5,11 +5,17 @@ import { inflateRawSync } from "node:zlib";
 import type { ProcessRunner, RunResult, RunSpec } from "@citegeist/ai";
 import { Registry } from "@citegeist/ops";
 import { CitegeistError } from "@citegeist/schema";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobQueue } from "../jobs/queue.js";
 import { Library } from "../library.js";
 import { cleanTmpDirs, itemData, tmpDir } from "../test-helpers.js";
-import { biblatexStyle, buildPandocArgs, referenceTitle } from "./args.js";
+import {
+  biblatexStyle,
+  buildPandocArgs,
+  LATEX_LAYOUT,
+  referenceTitle,
+  TYPST_LAYOUT,
+} from "./args.js";
 import { bindTextsOperations } from "./ops.js";
 import {
   findPdfEngine,
@@ -19,6 +25,14 @@ import {
   PINNED_PANDOC,
   parsePandocVersion,
 } from "./pandoc.js";
+import {
+  choosePdfEngine,
+  installTypst,
+  locateTypst,
+  managedTypstPath,
+  PINNED_TYPST,
+  parseTypstVersion,
+} from "./typst.js";
 import { createZip } from "./zip.js";
 
 type Handler = (spec: RunSpec) => Partial<RunResult>;
@@ -105,21 +119,64 @@ describe("buildPandocArgs", () => {
     expect(plan.needs).toEqual(["references.bib"]);
   });
 
-  it("names the PDF engine and sets the margins for LaTeX engines only", () => {
+  it("sets the page for a LaTeX engine: A4, 11 pt, margins of 2.5 cm", () => {
     const tex = buildPandocArgs({
       ...common,
       format: "pdf",
       pdfEngine: "/Library/TeX/texbin/xelatex",
     });
+    expect(tex.output).toBe("main.pdf");
     expect(tex.args).toContain("--pdf-engine=/Library/TeX/texbin/xelatex");
+    expect(tex.args).toEqual(expect.arrayContaining([...LATEX_LAYOUT, "--citeproc"]));
     expect(tex.args).toContain("geometry:margin=2.5cm");
+    expect(tex.args).not.toContain("margin.x=2.5cm");
+  });
+
+  it("sets the page for Typst: A4, 11 pt, serif font, margins of 2.5 cm, page numbers", () => {
     const typst = buildPandocArgs({
       ...common,
       format: "pdf",
+      pdfEngine: "/Users/a/Library/Application Support/citegeist/typst/0.15.1/typst",
+    });
+    expect(typst.args).toContain(
+      "--pdf-engine=/Users/a/Library/Application Support/citegeist/typst/0.15.1/typst",
+    );
+    expect(typst.args).toEqual(expect.arrayContaining([...TYPST_LAYOUT]));
+    for (const v of [
+      "papersize=a4",
+      "margin.x=2.5cm",
+      "margin.y=2.5cm",
+      "fontsize=11pt",
+      "mainfont=New York",
+      "page-numbering=1",
+    ]) {
+      expect(typst.args).toContain(v);
+    }
+    expect(typst.args).not.toContain("geometry:margin=2.5cm");
+  });
+
+  it("formats the PDF citations through citeproc and takes the language for hyphenation", () => {
+    const typst = buildPandocArgs({
+      ...common,
+      format: "pdf",
+      lang: "en-GB",
       pdfEngine: "/opt/homebrew/bin/typst",
     });
-    expect(typst.args).toContain("--pdf-engine=/opt/homebrew/bin/typst");
-    expect(typst.args).not.toContain("geometry:margin=2.5cm");
+    expect(typst.args).toEqual(
+      expect.arrayContaining([
+        "-s",
+        "pdf",
+        "--citeproc",
+        "--bibliography",
+        "references.json",
+        "--csl",
+        "style.csl",
+        "lang=en-GB",
+        "reference-section-title=References",
+        "link-citations=true",
+      ]),
+    );
+    expect(typst.needs).toEqual(["references.json", "style.csl"]);
   });
 
   it("writes plain Markdown with the citations resolved", () => {
@@ -217,7 +274,7 @@ describe("locatePandoc", () => {
     expect(broken.rejected).toHaveLength(1);
   });
 
-  it("finds the first PDF engine in the preferred order", () => {
+  it("finds the first LaTeX engine in the preferred order and leaves Typst to its own search", () => {
     const exists = (p: string) =>
       p === "/opt/homebrew/bin/typst" || p === "/Library/TeX/texbin/lualatex";
     expect(findPdfEngine({ pathEnv: "/usr/bin", home: "/home/x", exists })).toEqual({
@@ -318,6 +375,199 @@ describe("installPandoc", () => {
   });
 });
 
+describe("Typst", () => {
+  const found = (versions: Record<string, string | null>) =>
+    fakeRunner((spec) => {
+      const v = versions[spec.command];
+      if (v === undefined) return { exitCode: null, spawnError: "ENOENT" };
+      if (v === null) return { exitCode: 1 };
+      return { stdout: `typst ${v} (9dfd3a08)\n` };
+    });
+
+  it("parses the version line", () => {
+    expect(parseTypstVersion("typst 0.15.1 (9dfd3a08)")).toBe("0.15.1");
+    expect(parseTypstVersion("something else")).toBeUndefined();
+  });
+
+  it("prefers the downloaded copy over one on PATH", async () => {
+    const managed = managedTypstPath("/local");
+    const out = await locateTypst({
+      localBase: "/local",
+      runner: found({ [managed]: "0.15.1", "/opt/homebrew/bin/typst": "0.13.0" }),
+      pathEnv: "/usr/bin",
+      home: "/home/x",
+      exists: (p) => p === managed || p === "/opt/homebrew/bin/typst",
+    });
+    expect(out.location).toEqual({ path: managed, version: "0.15.1", source: "managed" });
+  });
+
+  it("falls back to Homebrew's copy and rejects one that is too old or broken", async () => {
+    const managed = managedTypstPath("/local");
+    const exists = (p: string) => p === managed || p === "/opt/homebrew/bin/typst";
+    const ok = await locateTypst({
+      localBase: "/local",
+      runner: found({ [managed]: null, "/opt/homebrew/bin/typst": "0.13.0" }),
+      pathEnv: "/usr/bin",
+      home: "/home/x",
+      exists,
+    });
+    expect(ok.location).toMatchObject({ path: "/opt/homebrew/bin/typst", source: "path" });
+    expect(ok.rejected).toHaveLength(1);
+    const old = await locateTypst({
+      localBase: "/local",
+      runner: found({ "/opt/homebrew/bin/typst": "0.9.0" }),
+      pathEnv: "/usr/bin",
+      home: "/home/x",
+      exists,
+    });
+    expect(old.location).toBeUndefined();
+    expect(old.rejected.find((r) => r.version)).toMatchObject({ version: "0.9.0" });
+  });
+
+  it("finds nothing when no copy exists", async () => {
+    const out = await locateTypst({
+      localBase: "/local",
+      runner: found({}),
+      pathEnv: "",
+      home: "/h",
+      exists: () => false,
+    });
+    expect(out).toEqual({ rejected: [] });
+  });
+
+  it("chooses Typst over a LaTeX engine, the engine without Typst, and nothing without both", () => {
+    const latex = { name: "xelatex", path: "/Library/TeX/texbin/xelatex" };
+    expect(choosePdfEngine({ typst: { path: "/t/typst" }, latex })).toEqual({
+      name: "typst",
+      path: "/t/typst",
+    });
+    expect(choosePdfEngine({ latex })).toEqual(latex);
+    expect(choosePdfEngine({ typst: { path: "/t/typst" } })).toEqual({
+      name: "typst",
+      path: "/t/typst",
+    });
+    expect(choosePdfEngine({})).toBeUndefined();
+  });
+
+  it("pins an official GitHub release with a sha256", () => {
+    expect(PINNED_TYPST.url).toMatch(
+      /^https:\/\/github\.com\/typst\/typst\/releases\/download\/v[\d.]+\/typst-aarch64-apple-darwin\.tar\.xz$/,
+    );
+    expect(PINNED_TYPST.url).toContain(`v${PINNED_TYPST.version}/`);
+    expect(PINNED_TYPST.sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  describe("installTypst", () => {
+    const bytes = Buffer.from("pretend this is a tar.xz archive");
+    const spec = { ...PINNED_TYPST, sha256: createHash("sha256").update(bytes).digest("hex") };
+    const respond =
+      (body: Buffer, status = 200) =>
+      async () =>
+        new Response(body, { status, headers: { "content-length": String(body.length) } });
+    const deps = (base: string, extra: Record<string, unknown> = {}) => ({
+      localBase: base,
+      spec,
+      platform: "darwin",
+      arch: "arm64",
+      ...extra,
+    });
+
+    /** A runner whose "tar" lays out the archive folder with a typst binary. */
+    const tarRunner = (version = "0.15.1") =>
+      fakeRunner((run) => {
+        if (run.command.endsWith("tar")) {
+          const target = run.args[run.args.indexOf("-C") + 1] as string;
+          mkdirSync(join(target, spec.folder), { recursive: true });
+          writeFileSync(join(target, spec.folder, "typst"), "#!/bin/sh\n");
+          writeFileSync(join(target, spec.folder, "LICENSE"), "Apache");
+          return {};
+        }
+        if (run.command.endsWith("xattr")) return {};
+        return { stdout: `typst ${version} (9dfd3a08)\n` };
+      });
+
+    it("downloads, checks the sha256, unpacks, clears the quarantine flag and verifies the binary", async () => {
+      const base = tmpDir("cg-typst-");
+      const runner = tarRunner();
+      const steps: number[] = [];
+      const out = await installTypst(
+        { progress: (v) => steps.push(v) },
+        { ...deps(base), fetch: respond(bytes), runner },
+      );
+      expect(out).toEqual({ path: managedTypstPath(base, spec), version: "0.15.1" });
+      expect(statSync(out.path).mode & 0o111).not.toBe(0);
+      expect(readdirSync(join(base, "typst"))).toEqual([spec.version]);
+      expect(readdirSync(join(base, "typst", spec.version)).sort()).toEqual(["LICENSE", "typst"]);
+      expect(steps.at(-1)).toBe(1);
+      const xattr = runner.calls.find((c) => c.command.endsWith("xattr"));
+      expect(xattr?.args).toEqual([
+        "-dr",
+        "com.apple.quarantine",
+        join(base, "typst", spec.version),
+      ]);
+      // order: unpack, then clear the flag, then run the binary once
+      expect(runner.calls.map((c) => c.command.split("/").pop())).toEqual([
+        "tar",
+        "xattr",
+        "typst",
+      ]);
+    });
+
+    it("refuses a download whose sha256 differs and unpacks nothing", async () => {
+      const base = tmpDir("cg-typst-");
+      const runner = tarRunner();
+      const err = await installTypst(
+        { progress: () => undefined },
+        { ...deps(base), fetch: respond(Buffer.from("tampered")), runner },
+      ).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(CitegeistError);
+      expect((err as CitegeistError).detail.code).toBe("TYPST_CHECKSUM");
+      expect(runner.calls).toHaveLength(0);
+      expect(existsSync(managedTypstPath(base, spec))).toBe(false);
+      expect(readdirSync(join(base, "typst"))).toEqual([]);
+    });
+
+    it("reports a failed download with a fix", async () => {
+      const err = await installTypst(
+        { progress: () => undefined },
+        { ...deps(tmpDir("cg-typst-")), fetch: respond(Buffer.alloc(0), 404), runner: tarRunner() },
+      ).catch((e: unknown) => e);
+      expect((err as CitegeistError).detail.code).toBe("TYPST_DOWNLOAD_FAILED");
+      expect((err as CitegeistError).detail.fix).toContain("brew install typst");
+    });
+
+    it("removes a download whose binary does not run", async () => {
+      const base = tmpDir("cg-typst-");
+      const runner = fakeRunner((run) =>
+        run.command.endsWith("tar")
+          ? (() => {
+              const target = run.args[run.args.indexOf("-C") + 1] as string;
+              mkdirSync(join(target, spec.folder), { recursive: true });
+              writeFileSync(join(target, spec.folder, "typst"), "x");
+              return {};
+            })()
+          : run.command.endsWith("xattr")
+            ? {}
+            : { exitCode: 126, spawnError: "bad CPU type" },
+      );
+      const err = await installTypst(
+        { progress: () => undefined },
+        { ...deps(base), fetch: respond(bytes), runner },
+      ).catch((e: unknown) => e);
+      expect((err as CitegeistError).detail.code).toBe("TYPST_UNUSABLE");
+      expect(existsSync(join(base, "typst", spec.version))).toBe(false);
+    });
+
+    it("does not download for platforms the pin does not cover", async () => {
+      const err = await installTypst(
+        { progress: () => undefined },
+        { localBase: tmpDir("cg-typst-"), platform: "linux", arch: "x64" },
+      ).catch((e: unknown) => e);
+      expect((err as CitegeistError).detail.code).toBe("TYPST_NOT_INSTALLABLE");
+    });
+  });
+});
+
 // Service ---------------------------------------------------------------------------------------
 
 async function setup(
@@ -348,7 +598,11 @@ async function setup(
       location: { path: "/usr/bin/pandoc", version: "3.12.1", source: "path" },
       rejected: [],
     }),
-    pdfEngine: () => undefined,
+    // no Typst and no LaTeX engine unless a test says otherwise
+    locateTypst: async () => ({ rejected: [] }),
+    pathEnv: "",
+    home: "/nowhere",
+    exists: () => false,
     ...extra,
   });
   const call = <T>(name: string, input: unknown, actor = "human") =>
@@ -569,7 +823,7 @@ describe("texts.export with a mocked Pandoc", () => {
     expect(out.style).toBe("apa");
   });
 
-  it("explains how to get a PDF engine when none is installed", async () => {
+  it("explains how to get Typst when no PDF engine is installed", async () => {
     const { call } = await setup(pandoc().runner);
     await call("texts.create", { project: "phd", title: "K", slug: "k" });
     await expect(
@@ -577,16 +831,21 @@ describe("texts.export with a mocked Pandoc", () => {
     ).rejects.toMatchObject({
       detail: {
         code: "PDF_ENGINE_MISSING",
-        fix: expect.stringContaining("basictex"),
+        message: expect.stringContaining("Typst"),
+        fix: expect.stringContaining("typst.setup"),
         recovery: "ask-human",
       },
     });
   });
 
-  it("passes the engine to Pandoc for a PDF", async () => {
+  it("runs Pandoc with Typst for a PDF and sets the page", async () => {
     const { runner, seen } = pandoc();
+    const typst = "/support/citegeist/typst/0.15.1/typst";
     const { call } = await setup(runner, {
-      pdfEngine: () => ({ name: "xelatex", path: "/Library/TeX/texbin/xelatex" }),
+      locateTypst: async () => ({
+        location: { path: typst, version: "0.15.1", source: "managed" },
+        rejected: [],
+      }),
     });
     await call("texts.create", { project: "phd", title: "K", slug: "k" });
     const out = await call<{ engine: string; path: string }>("texts.export", {
@@ -594,9 +853,43 @@ describe("texts.export with a mocked Pandoc", () => {
       text: "k",
       format: "pdf",
     });
-    expect(out.engine).toBe("xelatex");
+    expect(out.engine).toBe("typst");
     expect(out.path).toBe("projects/phd/exports/k.pdf");
-    expect(seen[0]?.args).toContain("--pdf-engine=/Library/TeX/texbin/xelatex");
+    expect(seen[0]?.args).toContain(`--pdf-engine=${typst}`);
+    expect(seen[0]?.args).toContain("--citeproc");
+    expect(seen[0]?.args).toContain("margin.x=2.5cm");
+    expect(seen[0]?.args).toContain("papersize=a4");
+  });
+
+  it("prefers Typst although a LaTeX engine is installed, and uses the engine without Typst", async () => {
+    const latex = (p: string) => p === "/Library/TeX/texbin/xelatex";
+    const withTypst = pandoc();
+    const a = await setup(withTypst.runner, {
+      exists: latex,
+      locateTypst: async () => ({
+        location: { path: "/opt/homebrew/bin/typst", version: "0.15.1", source: "path" },
+        rejected: [],
+      }),
+    });
+    await a.call("texts.create", { project: "phd", title: "K", slug: "k" });
+    const first = await a.call<{ engine: string }>("texts.export", {
+      project: "phd",
+      text: "k",
+      format: "pdf",
+    });
+    expect(first.engine).toBe("typst");
+
+    const without = pandoc();
+    const b = await setup(without.runner, { exists: latex });
+    await b.call("texts.create", { project: "phd", title: "K", slug: "k" });
+    const second = await b.call<{ engine: string }>("texts.export", {
+      project: "phd",
+      text: "k",
+      format: "pdf",
+    });
+    expect(second.engine).toBe("xelatex");
+    expect(without.seen[0]?.args).toContain("--pdf-engine=/Library/TeX/texbin/xelatex");
+    expect(without.seen[0]?.args).toContain("geometry:margin=2.5cm");
   });
 
   it("tells a person how to get Pandoc when it is missing", async () => {
@@ -664,7 +957,10 @@ describe("texts.export with a mocked Pandoc", () => {
 describe("pandoc operations", () => {
   it("reports where Pandoc is and which PDF engine exists", async () => {
     const { call } = await setup(undefined, {
-      pdfEngine: () => ({ name: "typst", path: "/opt/homebrew/bin/typst" }),
+      locateTypst: async () => ({
+        location: { path: "/opt/homebrew/bin/typst", version: "0.15.1", source: "path" },
+        rejected: [],
+      }),
     });
     const status = await call<Record<string, unknown>>("pandoc.status", {});
     expect(status).toMatchObject({
@@ -715,6 +1011,62 @@ describe("pandoc operations", () => {
   it("is a human operation", async () => {
     const { call } = await setup();
     await expect(call("pandoc.setup", {}, "agent:grok")).rejects.toMatchObject({
+      detail: { code: "FORBIDDEN_ADMIN" },
+    });
+  });
+});
+
+describe("typst operations", () => {
+  it("reports where Typst is and what the download would be", async () => {
+    const missing = await setup();
+    expect(await missing.call("typst.status", {})).toEqual({
+      found: false,
+      pinned: PINNED_TYPST.version,
+      installable: process.platform === "darwin" && process.arch === "arm64",
+      sizeMb: PINNED_TYPST.sizeMb,
+    });
+    const there = await setup(undefined, {
+      locateTypst: async () => ({
+        location: { path: "/t/typst", version: "0.15.1", source: "managed" },
+        rejected: [],
+      }),
+    });
+    expect(await there.call("typst.status", {})).toMatchObject({
+      found: true,
+      path: "/t/typst",
+      version: "0.15.1",
+      source: "managed",
+    });
+  });
+
+  it("queues a setup job for a person, once", async () => {
+    const { call, queue } = await setup();
+    const first = await call<{ job: string }>("typst.setup", {});
+    const second = await call<{ job: string }>("typst.setup", {});
+    expect(second.job).toBe(first.job);
+    expect(queue.get(first.job)?.kind).toBe("typst-setup");
+  });
+
+  it("runs the setup job through the queue and refuses a wrong checksum", async () => {
+    const { call, queue } = await setup(undefined, {
+      fetch: async () => new Response(Buffer.from("tampered"), { status: 200 }),
+    });
+    const { job } = await call<{ job: string }>("typst.setup", {});
+    queue.start();
+    await vi.waitFor(() => expect(queue.get(job)?.status).toBe("failed"), { timeout: 5000 });
+    // the installable check comes first, so off Apple silicon the code differs
+    const code = queue.get(job)?.error?.code;
+    expect(code).toBe(
+      process.platform === "darwin" && process.arch === "arm64"
+        ? "TYPST_CHECKSUM"
+        : "TYPST_NOT_INSTALLABLE",
+    );
+    await queue.close();
+  });
+
+  it("is a human operation", async () => {
+    const { call } = await setup();
+    await expect(call("typst.setup", {}, "agent:grok")).rejects.toMatchObject({
       detail: { code: "FORBIDDEN_ADMIN" },
     });
   });

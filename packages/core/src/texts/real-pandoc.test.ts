@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { Registry } from "@citegeist/ops";
@@ -8,9 +9,12 @@ import { Library } from "../library.js";
 import { cleanTmpDirs, itemData, tmpDir } from "../test-helpers.js";
 import { bindTextsOperations } from "./ops.js";
 import { locatePandoc } from "./pandoc.js";
+import { locateTypst } from "./typst.js";
 
 // One real export per format against a fixture library. It runs when Pandoc is installed (PATH,
-// Homebrew, or CITEGEIST_TEST_PANDOC pointing at a binary) and is skipped otherwise.
+// Homebrew, or CITEGEIST_TEST_PANDOC pointing at a binary) and is skipped otherwise. The PDF
+// export also needs Typst (CITEGEIST_TEST_TYPST). The check of its text uses pdftotext when
+// that is installed.
 
 const pinned = process.env.CITEGEIST_TEST_PANDOC;
 const located = await locatePandoc({
@@ -18,6 +22,22 @@ const located = await locatePandoc({
   ...(pinned ? { pathEnv: join(pinned, "..") } : {}),
 });
 const pandoc = located.location;
+const typstAt = process.env.CITEGEIST_TEST_TYPST;
+const typstLookup = await locateTypst({
+  localBase: tmpDir("cg-none-"),
+  ...(typstAt ? { pathEnv: join(typstAt, "..") } : {}),
+});
+const typst = typstLookup.location;
+const pdftotext = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"]
+  .filter((p) => {
+    try {
+      execFileSync(p, ["-v"], { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  })
+  .at(0);
 
 const open: Library[] = [];
 afterEach(async () => {
@@ -76,7 +96,9 @@ async function library() {
     localBase: tmpDir("cg-base-"),
     queue: new JobQueue({ dbPath: join(tmpDir("cg-jobs-"), "state.sqlite") }),
     locate: async () => (pandoc ? { location: pandoc, rejected: [] } : { rejected: [] }),
-    pdfEngine: () => undefined,
+    locateTypst: async () => typstLookup,
+    pathEnv: "",
+    exists: () => false,
   });
   const call = <T>(name: string, input: unknown) =>
     registry.call(name, { actor: "human" }, input) as Promise<T>;
@@ -187,5 +209,35 @@ describe.skipIf(!pandoc)("a real Pandoc export", () => {
     expect(out.warnings.join(" ")).toContain("nobody2020none");
     const docx = readZip(readFileSync(join(lib.root, out.path)));
     expect(text(docx["word/document.xml"]?.toString("utf8") ?? "")).toContain("nobody2020none?");
+  });
+});
+
+describe.skipIf(!pandoc || !typst)("a real PDF export with Typst", () => {
+  it("sets the citations and the bibliography in the style of the project", async () => {
+    const { lib, call } = await library();
+    const out = await call<{ path: string; engine: string; bytes: number }>("texts.export", {
+      project: "phd",
+      text: "kapitel-2",
+      format: "pdf",
+    });
+    expect(out.engine).toBe("typst");
+    const file = join(lib.root, out.path);
+    const pdf = readFileSync(file);
+    expect(pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(out.bytes).toBeGreaterThan(5_000);
+    if (!pdftotext) return;
+    const copy = join(tmpDir("cg-pdftext-"), "out.pdf");
+    writeFileSync(copy, pdf);
+    // Typst hyphenates by the language of the text; pdftotext shows the break as a soft hyphen
+    const words = execFileSync(pdftotext, ["-layout", copy, "-"], { encoding: "utf8" })
+      .replace(/\u00ad\s*/g, "")
+      .replace(/\s+/g, " ");
+    expect(words).toContain("Kommunikation");
+    expect(words).toContain("(Luhmann, 1984, S. 12; vgl. Gillespie, 2018)");
+    expect(words).toContain("Gillespie (2018)");
+    expect(words).toContain("Literaturverzeichnis");
+    expect(words).toContain("Luhmann, N. (1984). Soziale Systeme. Suhrkamp.");
+    expect(words).not.toContain("Never cited");
+    expect(words).not.toContain("@luhmann1984soziale");
   });
 });
