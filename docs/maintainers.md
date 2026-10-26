@@ -24,14 +24,7 @@ A maintainer reviews every pull request (`.github/CODEOWNERS`). The merge happen
 
 ## gstack
 
-gstack is required for AI-assisted work in this repository, for maintainers and contributors alike. Install it once:
-
-```sh
-git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
-cd ~/.claude/skills/gstack && ./setup --team
-```
-
-The Claude Code hook in `.claude/` enforces the install, and `CLAUDE.md` runs the same check for other tools. The workflow is `/spec`, build, `/review`, `/qa` and `/ship`.
+gstack is required for AI-assisted work in this repository, for maintainers and contributors alike and in every coding agent. `CONTRIBUTING.md` has the install command per tool (`./setup --team --host <tool>`). Claude Code enforces it through the hook in `.claude/`; Codex, Cursor and the other hosts run the install check in `AGENTS.md`, because gstack marks those hosts as advisory and they have no blocking hook.
 
 ## Agent models
 
