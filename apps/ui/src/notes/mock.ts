@@ -6,6 +6,8 @@ import {
   notesCreate,
   notesGet,
   notesList,
+  notesRestore,
+  notesTrash,
   notesUpdate,
   type Registry,
 } from "@citegeist/ops";
@@ -163,6 +165,7 @@ export function bindNotesMock(
   };
   const changed = (n: MockNote) =>
     emit({ type: "change", path: `notes/${n.slug}.md`, external: false });
+  const trashed = new Map<string, MockNote>();
 
   return registry
     .bind(notesList, async (_ctx, input) => {
@@ -209,6 +212,21 @@ export function bindNotesMock(
         ...note.frontmatter,
         modified: { at: new Date().toISOString(), by: "human" },
       };
+      changed(note);
+      return toNote(note);
+    })
+    .bind(notesTrash, async (_ctx, input) => {
+      const note = find(input.id);
+      store.delete(input.id);
+      trashed.set(input.id, note);
+      changed(note);
+      return { ok: true as const };
+    })
+    .bind(notesRestore, async (_ctx, input) => {
+      const note = trashed.get(input.id);
+      if (!note) throw new Error(`NOT_IN_TRASH: no trashed note with id '${input.id}'`);
+      trashed.delete(input.id);
+      store.set(input.id, note);
       changed(note);
       return toNote(note);
     })

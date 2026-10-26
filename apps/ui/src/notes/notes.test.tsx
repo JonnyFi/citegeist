@@ -66,6 +66,24 @@ describe("notes list and navigation", () => {
     expect(screen.getByRole("searchbox", { name: "Notizen filtern" })).toHaveValue("plattformen");
   });
 
+  it("deletes a note and brings it back with undo", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp(`/notes/${ZETTEL}`);
+    await screen.findByRole("textbox", { name: "Titel der Notiz" });
+    await user.click(screen.getByRole("button", { name: "Löschen" }));
+    expect(calls.find((c) => c.name === "notes.trash")?.input).toEqual({ id: ZETTEL });
+    expect(await screen.findByText("„Das Zettelkasten-Prinzip“ gelöscht.")).toBeVisible();
+    await waitFor(() => expect(screen.getAllByTestId("note-row")).toHaveLength(2));
+    expect(screen.getByText("Wähle eine Notiz")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Rückgängig" }));
+    expect(await screen.findByRole("textbox", { name: "Titel der Notiz" })).toHaveValue(
+      "Das Zettelkasten-Prinzip",
+    );
+    expect(calls.find((c) => c.name === "notes.restore")?.input).toEqual({ id: ZETTEL });
+    expect(await screen.findAllByTestId("note-row")).toHaveLength(3);
+  });
+
   it("creates a note, opens it and puts the cursor into the title", async () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/notes");

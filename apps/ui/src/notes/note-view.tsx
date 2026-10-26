@@ -11,6 +11,7 @@ import { type Draft, type SaveState, useNoteAutosave } from "./autosave";
 import { BacklinksPanel } from "./backlinks-panel";
 import { EditorField } from "./editor-field";
 import { useLibraryLinks } from "./library-links";
+import { useTrashNote } from "./trash";
 
 const STATE_KEY: Record<SaveState, MessageKey> = {
   saved: "notes.saved",
@@ -26,6 +27,7 @@ function NoteBody({ id, initial, type }: { id: string; initial: Draft; type: str
   const titleRef = useRef<HTMLInputElement>(null);
 
   const autosave = useNoteAutosave(id, initial, draft, { onExternal: setDraft });
+  const trash = useTrashNote();
 
   // A note that was just created is empty: put the cursor into the title so it can be named.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once, when the note opens
@@ -60,6 +62,18 @@ function NoteBody({ id, initial, type }: { id: string; initial: Draft; type: str
             t(STATE_KEY[autosave.state])
           )}
         </span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto"
+          onClick={async () => {
+            // Pending edits go out first, so an undo brings back the latest text.
+            await autosave.flush();
+            await trash(id, draft.title.trim() || initial.title);
+          }}
+        >
+          {t("notes.delete")}
+        </Button>
       </div>
       <EditorField
         value={draft.body}

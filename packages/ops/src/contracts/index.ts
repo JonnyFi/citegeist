@@ -417,6 +417,22 @@ export const notesUpdate = defineContract({
   }),
   output: Note,
 });
+export const notesTrash = defineContract({
+  name: "notes.trash",
+  summary:
+    "Move a note to the library trash. An agent may only trash notes an agent created; the file stays in the library trash and records who removed it. Wiki links to the note stay in place",
+  access: "write",
+  input: z.object({ id: NoteFrontmatter.shape.id }),
+  output: Ok,
+});
+export const notesRestore = defineContract({
+  name: "notes.restore",
+  summary:
+    "Put the most recently trashed note with this id back where it was, for example right after notes.trash. Fails when its file name is in use again",
+  access: "write",
+  input: z.object({ id: NoteFrontmatter.shape.id }),
+  output: Note,
+});
 export const notesGet = defineContract({
   name: "notes.get",
   summary: "Read a note",
@@ -848,6 +864,8 @@ export const CONTRACTS: readonly OperationContract[] = [
   cardsExport,
   notesCreate,
   notesUpdate,
+  notesTrash,
+  notesRestore,
   notesGet,
   notesList,
   notesBacklinks,

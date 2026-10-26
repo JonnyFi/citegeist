@@ -3,9 +3,12 @@ import {
   type NoteSummary,
   notesBacklinks,
   notesList,
+  notesRestore,
+  notesTrash,
   type Registry,
 } from "@citegeist/ops";
 import type { Library } from "../library.js";
+import { restoreNote, trashNote } from "./trash.js";
 
 interface NoteRow {
   id: string;
@@ -121,10 +124,19 @@ export function noteBacklinks(lib: Library, id: string): Backlink[] {
 }
 
 export { freeNoteSlug, renameNoteFile } from "./rename.js";
+export { restoreNote, trashNote } from "./trash.js";
 
-/** Binds notes.list and notes.backlinks. The runtime calls it next to bindCoreOperations. */
+/**
+ * Binds notes.list, notes.backlinks, notes.trash and notes.restore. The runtime calls it next to
+ * bindCoreOperations.
+ */
 export function bindNoteOperations(registry: Registry, lib: Library): Registry {
   return registry
     .bind(notesList, async (_ctx, input) => ({ notes: listNotes(lib, input) }))
-    .bind(notesBacklinks, async (_ctx, input) => ({ backlinks: noteBacklinks(lib, input.id) }));
+    .bind(notesBacklinks, async (_ctx, input) => ({ backlinks: noteBacklinks(lib, input.id) }))
+    .bind(notesTrash, async (ctx, input) => {
+      trashNote(lib, input.id, ctx.actor);
+      return { ok: true as const };
+    })
+    .bind(notesRestore, async (_ctx, input) => restoreNote(lib, input.id));
 }
