@@ -60,6 +60,22 @@ export const noteTheme = EditorView.theme({
     textDecoration: "underline wavy",
     textDecorationColor: danger,
   },
+  ".cm-cite-chip": {
+    color: accent,
+    backgroundColor: accentSoft,
+    borderRadius: "3px",
+    padding: "0 4px",
+    fontSize: "0.92em",
+    cursor: "pointer",
+  },
+  ".cm-cite-keys-hint": {
+    display: "none",
+    whiteSpace: "normal",
+    color: muted,
+    fontSize: "0.78em",
+    paddingTop: "2px",
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected] .cm-cite-keys-hint": { display: "block" },
   ".cm-wikilink-raw": { backgroundColor: accentSoft, fontFamily: mono, fontSize: "0.9em" },
 
   ".cm-frontmatter": {

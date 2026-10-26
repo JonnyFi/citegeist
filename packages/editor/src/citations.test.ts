@@ -158,13 +158,13 @@ describe("citation marks", () => {
 });
 
 describe("accepting a completion", () => {
-  it("replaces the typed part with the citekey and leaves the brackets alone", async () => {
+  it("replaces the typed part with the citekey and keeps what follows in the cluster", async () => {
     const editor = mount("Siehe [@luh, S. 3]");
     editor.view.dispatch({ selection: { anchor: 11 } });
     const result = await citationSource(new CompletionContext(editor.view.state, 11, true));
     const option = result?.options[0];
-    if (!result || !option || typeof option.apply !== "string") throw new Error("no option");
-    editor.view.dispatch({ changes: { from: result.from, to: 11, insert: option.apply } });
+    if (!result || !option || typeof option.apply !== "function") throw new Error("no option");
+    option.apply(editor.view, option, result.from, 11);
     expect(editor.getValue()).toBe("Siehe [@luhmann1984soziale, S. 3]");
   });
 });

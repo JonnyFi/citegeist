@@ -1,13 +1,7 @@
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
-import {
-  type EditorState,
-  type Extension,
-  type Range,
-  StateEffect,
-  StateField,
-} from "@codemirror/state";
+import { type EditorState, type Extension, type Range, StateField } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
-import { configFacet, refreshEffect, toggleFrontmatterEffect } from "./config";
+import { configFacet, refreshEffect, setFocusEffect, toggleFrontmatterEffect } from "./config";
 import { frontmatterEnd, scanWikiLinks, type WikiMatch } from "./scan";
 import {
   BulletWidget,
@@ -28,7 +22,7 @@ export const frontmatterOpen = StateField.define<boolean>({
 });
 
 /** Whether the editor has focus. Without focus the whole note is shown rendered, cursor or not. */
-export const setFocusEffect = StateEffect.define<boolean>();
+export { setFocusEffect };
 export const editorFocused = StateField.define<boolean>({
   create: () => false,
   update(value, tr) {

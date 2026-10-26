@@ -31,3 +31,6 @@ export const refreshEffect = StateEffect.define<null>();
 
 /** Open or close the folded frontmatter block. */
 export const toggleFrontmatterEffect = StateEffect.define<boolean>();
+
+/** Tells the editor state whether the view has focus. */
+export const setFocusEffect = StateEffect.define<boolean>();

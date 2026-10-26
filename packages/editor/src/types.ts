@@ -1,3 +1,5 @@
+import type { ClusterRef } from "./clusters";
+
 export type LinkKind = "item" | "card" | "note";
 
 /** One entry of the wiki-link autocomplete. */
@@ -47,15 +49,23 @@ export interface WikiLinkProvider {
   card?(id: string): CardEmbed | undefined | Promise<CardEmbed | undefined>;
 }
 
-/** One source offered after `@` in a text, written as a Pandoc citation. */
+/** What a chosen quote card writes: the quote with its citation, a paraphrase with its citation, or the citation alone. */
+export type CitationInsertKind = "direct" | "indirect" | "cite";
+
+/** One entry offered after `@` in a text: a source, or a quote card of a source. */
 export interface CitationSuggestion {
-  /** The citekey written after `@`. */
+  /** The citekey written after `@`. For a card: the citekey of its source. */
   key: string;
+  /** The title of the source. For a card: the quote on a single line (the menu truncates it). */
   title: string;
-  /** Authors and year, such as "Luhmann 1984". */
+  /** Authors and year, such as "Luhmann 1984". For a card: with the place, "Luhmann 1984, S. 31". */
   detail?: string;
   /** Sources of the open project are listed before the rest of the library. */
   group?: "project" | "library";
+  /** A source (default) or a quote card. Cards are listed after the sources. */
+  kind?: "source" | "card";
+  /** The card id when `kind` is "card". */
+  id?: string;
 }
 
 /** Everything the editor needs to complete and check Pandoc citations such as `[@key, S. 12]`. */
@@ -64,6 +74,13 @@ export interface CitationProvider {
   suggest(query: string): CitationSuggestion[] | Promise<CitationSuggestion[]>;
   /** Synchronous lookup so unknown citekeys can be marked while typing. */
   resolve(key: string): { title: string } | undefined;
+  /** The finished text to write for a chosen card, already in Pandoc syntax. */
+  insertCard?(id: string, kind: CitationInsertKind): Promise<string>;
+  /**
+   * The in-text form of a citation cluster, such as "(Williams & Srnicek, 2013, Abs. 2)". Return
+   * undefined while it is not available; the host calls `editor.refresh()` once it is.
+   */
+  format?(refs: ClusterRef[]): string | undefined;
 }
 
 /** Strings shown inside widgets; the host passes translations. */
@@ -79,6 +96,9 @@ export interface EditorLabels {
   citationUnknown: string;
   sectionProject: string;
   sectionLibrary: string;
+  /** Shown under the selected card in the `@` menu. */
+  citationKeysHint: string;
+  citationCardFailed: string;
 }
 
 export const DEFAULT_LABELS: EditorLabels = {
@@ -93,4 +113,6 @@ export const DEFAULT_LABELS: EditorLabels = {
   citationUnknown: "Unknown citekey",
   sectionProject: "This project",
   sectionLibrary: "Library",
+  citationKeysHint: "Enter: verbatim, Shift+Enter: paraphrase, Alt+Enter: citation only",
+  citationCardFailed: "The citation could not be inserted",
 };
