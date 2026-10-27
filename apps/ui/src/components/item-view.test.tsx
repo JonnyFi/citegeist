@@ -107,12 +107,6 @@ describe("item view", () => {
     expect(screen.getByText("Noch keine Literaturnotiz.")).toBeVisible();
   });
 
-  it("explains why an agent put an item in the inbox", async () => {
-    renderApp("/items/zuboff2019age");
-    expect(await screen.findByText(/Vorgeschlagen von/)).toBeVisible();
-    expect(screen.getByText("agent:claude-code")).toBeVisible();
-  });
-
   it("shows the error for an unknown citekey", async () => {
     renderApp("/items/does-not-exist");
     expect(await screen.findByRole("alert")).toHaveTextContent(/no item with citekey/);

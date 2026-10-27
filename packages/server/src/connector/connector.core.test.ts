@@ -113,7 +113,7 @@ describe("Connector against a real core", () => {
     });
     expect(res.status).toBe(201);
 
-    const list = await call("items.list", { limit: 100 });
+    const list = await call("items.list", { limit: 100, includeInbox: true });
     // Only the article was added: the PDF did not become an inbox item of its own.
     expect(list.items.filter((i: any) => i.title !== undefined && i.inbox)).toEqual([
       expect.objectContaining({ title: "The Age of Surveillance Capitalism" }),

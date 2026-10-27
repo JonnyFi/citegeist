@@ -83,7 +83,7 @@ Operations are grouped in namespaces:
 
 | Namespace | Operations |
 |---|---|
-| `library`, `items`, `inbox` | status, reindex; add, attach, get, list, update, resolve, rename, trash, restore; accept, reject |
+| `library`, `items`, `inbox` | status, reindex; add, attach, get, list, update, resolve, merge, rename, trash, restore; accept, reject |
 | `documents`, `cards` | read, convert, confirmPages, assets; create, update, list, regenerate, export |
 | `notes`, `links`, `graph` | create, update, get, list, backlinks; create, propose, decide; neighbors, references, citing, related, addCandidates (plus `items.checkRetractions`) |
 | `concepts`, `matrix` | list, get, create, update, merge, describe, propose; create, list, get, update, fillCell, fill, export |

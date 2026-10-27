@@ -104,7 +104,7 @@ export async function findCitables(core: Core, query: string): Promise<Citable[]
   if (q === "") {
     const [cardList, itemList] = await Promise.all([
       core.call(cardsList, { limit: RECENT_CARDS }),
-      core.call(itemsList, { limit: RECENT_SOURCE_POOL }),
+      core.call(itemsList, { includeInbox: true, limit: RECENT_SOURCE_POOL }),
     ]);
     const pool = await Promise.all(itemList.items.map((i) => loadItem(core, i.citekey)));
     const newest = pool
@@ -117,6 +117,7 @@ export async function findCitables(core: Core, query: string): Promise<Citable[]
     q,
     kinds: ["item", "card"],
     limit: RESULT_LIMIT,
+    includeInbox: true,
   });
   const keysOf = (kind: "item" | "card") => [
     ...new Set(hits.flatMap((h) => (h.kind === kind && h.citekey ? [h.citekey] : []))),

@@ -39,7 +39,15 @@ The item view lets you correct the metadata of an existing item: edit fields, ad
 
 ## The inbox
 
-Everything an agent or an alert adds lands in the inbox first, with the sender and a reason. You accept or discard items one by one, in a selection or all at once. What you add yourself goes straight into the library. An agent can bypass the inbox only with `target: "library"`, which the skill allows only when you named the paper or told the agent to do it.
+Everything an agent or an alert adds lands in the inbox first, with the sender and a reason. What you add yourself goes straight into the library. An agent can bypass the inbox only with `target: "library"`, which the skill allows only when you named the paper or told the agent to do it.
+
+Only "Annehmen" moves an item into the library. Adding the same work again does not: the add field answers "Liegt in der Inbox" and offers "Annehmen", and a new PDF for an inbox item stays with that item in the inbox. You accept or discard items one by one, in a selection or all at once, in the inbox or in the item view.
+
+The item view shows an inbox item as one. The path reads "Inbox / title", and a banner at the top says who suggested the item and why, with "Annehmen" and "Verwerfen". After "Annehmen" the view becomes the library view in place.
+
+The library list, the search, the reading lists of a project and the project graph show accepted items only. The filter "Inklusive Inbox" in the library list adds the inbox items, marked "Inbox"; `cg items list --includeInbox` does the same on the command line. Agents search the inbox as well, so they find their own proposals, marked as inbox hits.
+
+When you add an identifier (a DOI, an ISBN, an arXiv id) to an item and an item on the other side of the inbox holds it already, citegeist offers "Zusammenführen mit dem Inbox-Eintrag <citekey>". The merge moves the files of the inbox item into your item, fills empty fields, keeps what you edited, unites tags and projects and moves the inbox item to the trash, where `cg items restore` finds it. Working on an inbox item whose identifier a library item holds, the same button merges it into the library item. On the command line this is `cg items merge --from <inbox> --into <library>`.
 
 ## Importing a collection
 

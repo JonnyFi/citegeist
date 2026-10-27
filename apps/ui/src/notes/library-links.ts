@@ -25,7 +25,11 @@ async function loadItems(core: Core) {
   const out = [];
   let cursor: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await core.call(itemsList, { limit: PAGE, ...(cursor ? { cursor } : {}) });
+    const res = await core.call(itemsList, {
+      includeInbox: true,
+      limit: PAGE,
+      ...(cursor ? { cursor } : {}),
+    });
     out.push(...res.items);
     cursor = res.next;
     if (!cursor) break;

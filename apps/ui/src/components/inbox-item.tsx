@@ -124,6 +124,7 @@ export function MergeOfferNote({
       </span>
       <div className="flex flex-wrap items-center gap-2">
         <Button
+          type="button"
           size="sm"
           variant="primary"
           disabled={merge.isPending}
