@@ -11,6 +11,7 @@ import {
   inboxReject,
   itemsAdd,
   itemsAttach,
+  itemsFindFulltext,
   itemsGet,
   itemsList,
   itemsRename,
@@ -72,6 +73,11 @@ export interface MockOptions {
    * the new item disappears and the job result names this one, as after a late PDF merge.
    */
   mergeNewInto?: string;
+  /**
+   * What items.findFulltext answers. "missing" (default) finds nothing, "found" attaches a PDF,
+   * "error" fails. The answer takes `aiDelayMs`, like the real search takes a few seconds.
+   */
+  findFulltext?: "found" | "missing" | "error";
 }
 
 function authorsOf(fm: ItemFrontmatter): string | undefined {
@@ -97,8 +103,57 @@ function summary(fm: ItemFrontmatter) {
       ? { incomplete: true, incompleteReason: `${fm.incomplete.code}: ${fm.incomplete.message}` }
       : {}),
     ...(fm.fulltext ? { fulltext: fm.fulltext.status } : {}),
+    added: fm.created.at,
     ...(retraction ? { retraction } : {}),
   };
+}
+
+const COLLATOR = new Intl.Collator(["de", "en"], { sensitivity: "base", numeric: true });
+const STATUS_RANK: Record<string, number> = { unread: 0, reading: 1, read: 2 };
+
+/** The order items.list gives with a sort: missing values last, ties by citekey. */
+function sortedItems(
+  all: ItemFrontmatter[],
+  sort: "added" | "title" | "authors" | "year" | "type" | "status",
+  order: "asc" | "desc" | undefined,
+): ItemFrontmatter[] {
+  const dir = (order ?? (sort === "added" ? "desc" : "asc")) === "desc" ? -1 : 1;
+  const key = (fm: ItemFrontmatter): string | number | undefined => {
+    switch (sort) {
+      case "added":
+        return fm.created.at;
+      case "title":
+        return fm.title;
+      case "authors": {
+        const first = fm.author?.[0];
+        return first ? ("family" in first ? first.family : first.literal) : undefined;
+      }
+      case "year":
+        return fm.issued !== undefined ? Number.parseInt(String(fm.issued), 10) : undefined;
+      case "type":
+        return fm.type;
+      case "status":
+        return STATUS_RANK[fm.status] ?? 0;
+    }
+  };
+  return [...all].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    if (ka === undefined || kb === undefined) {
+      if (ka !== kb) return ka === undefined ? 1 : -1;
+    } else if (ka !== kb) {
+      const c =
+        typeof ka === "number" && typeof kb === "number"
+          ? ka - kb
+          : sort === "added"
+            ? String(ka) < String(kb)
+              ? -1
+              : 1
+            : COLLATOR.compare(String(ka), String(kb));
+      if (c !== 0) return c * dir;
+    }
+    return a.citekey.localeCompare(b.citekey);
+  });
 }
 
 function snippetAround(text: string, needle: string): string {
@@ -371,14 +426,18 @@ export function createMockRegistry(
         .filter((fm) => (input.tags ? input.tags.every((t) => fm.tags.includes(t)) : true))
         .filter((fm) =>
           input.inbox === undefined ? true : (fm.inbox !== undefined) === input.inbox,
-        )
-        .sort((a, b) => a.citekey.localeCompare(b.citekey))
-        .filter((fm) => (input.cursor ? fm.citekey > input.cursor : true));
-      const page = all.slice(0, input.limit);
+        );
+      const sorted = input.sort
+        ? sortedItems(all, input.sort, input.order)
+        : all.sort((a, b) => a.citekey.localeCompare(b.citekey));
+      // the cursor is the last citekey of the previous page, in the order of the view
+      const from = input.cursor ? sorted.findIndex((fm) => fm.citekey === input.cursor) + 1 : 0;
+      const rest = sorted.slice(from);
+      const page = rest.slice(0, input.limit);
       const last = page[page.length - 1];
       return {
         items: page.map(summary),
-        ...(all.length > input.limit && last ? { next: last.citekey } : {}),
+        ...(rest.length > input.limit && last ? { next: last.citekey } : {}),
       };
     })
     .bind(itemsAdd, async (_ctx, input) => {
@@ -581,6 +640,81 @@ export function createMockRegistry(
         source: hash,
         added: !have,
         ...(have ? {} : { job: job.id }),
+      };
+    })
+    .bind(itemsFindFulltext, async (_ctx, input) => {
+      const item = data.items.get(input.citekey);
+      if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      if (item.frontmatter.sources.length > 0) {
+        return { citekey: input.citekey, found: true, tried: [], alreadyHadFile: true };
+      }
+      await new Promise((resolve) => setTimeout(resolve, Math.min(aiDelayMs, 400)));
+      const outcome = options.findFulltext ?? "missing";
+      if (outcome === "error") {
+        throw new Error("FULLTEXT_FAILED: the full text search for the item failed");
+      }
+      const none = [
+        { source: "unpaywall", outcome: "none" as const, detail: "no PDF location" },
+        {
+          source: "openalex",
+          outcome: "none" as const,
+          url: "https://repo.example.org/handle/1/2",
+          detail: "repo.example.org: html-no-link (named by openalex)",
+        },
+        {
+          source: "publisher",
+          outcome: "failed" as const,
+          url: "https://publisher.example.com/article/1",
+          detail: "publisher.example.com: HTTP 403",
+        },
+      ];
+      const stamp = new Date().toISOString();
+      if (outcome === "missing") {
+        item.frontmatter = {
+          ...item.frontmatter,
+          fulltext: { status: "missing", tried: none, checked_at: stamp },
+        } as ItemFrontmatter;
+        changed(`items/${input.citekey}/${input.citekey}.md`);
+        return { citekey: input.citekey, found: false, tried: none };
+      }
+      const { fulltext: _marker, ...rest } = item.frontmatter;
+      item.frontmatter = {
+        ...rest,
+        sources: [
+          {
+            hash: "0123456789ab",
+            kind: "pdf",
+            filename: `${input.citekey}.pdf`,
+            role: "main",
+            added: { at: stamp, by: "human" },
+          },
+        ],
+      } as ItemFrontmatter;
+      changed(`items/${input.citekey}/${input.citekey}.md`);
+      const job: MockJob = {
+        id: randomId("j_"),
+        status: "running",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      jobs.set(job.id, job);
+      setTimeout(() => {
+        job.status = "succeeded";
+        job.updatedAt = new Date().toISOString();
+      }, aiDelayMs);
+      return {
+        citekey: input.citekey,
+        found: true,
+        tried: [
+          ...none.slice(0, 2),
+          {
+            source: "openalex",
+            outcome: "ok" as const,
+            url: "https://zenodo.org/records/1/files/paper.pdf",
+            detail: "zenodo.org: pdf (named by openalex)",
+          },
+        ],
+        job: job.id,
       };
     })
     .bind(inboxAccept, async (_ctx, input) => {

@@ -1,6 +1,6 @@
 import { itemsAttach } from "@citegeist/ops";
 import { FileUp } from "lucide-react";
-import { type DragEvent, useRef, useState } from "react";
+import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { useI18n } from "../i18n";
 import { useCore, useOpMutation } from "../lib/hooks";
 import { cn, describeError } from "../lib/utils";
@@ -16,9 +16,12 @@ type Outcome = { kind: "ok" | "error"; text: string };
 export function AttachPdf({
   citekey,
   variant = "block",
+  alongside,
 }: {
   citekey: string;
   variant?: "block" | "button";
+  /** Another action next to the attach button, such as searching the full text again. */
+  alongside?: ReactNode;
 }) {
   const { t } = useI18n();
   const core = useCore();
@@ -121,8 +124,9 @@ export function AttachPdf({
     >
       <span className="font-medium">{t("attach.title")}</span>
       <span className="text-muted">{t("attach.text")}</span>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {button}
+        {alongside}
         <span className="text-[12px] text-muted">{t("attach.drop")}</span>
       </div>
       {status}

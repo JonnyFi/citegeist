@@ -1,6 +1,7 @@
 import type { OperationContract } from "@citegeist/ops";
 import { itemsList } from "@citegeist/ops";
 import {
+  keepPreviousData,
   type Query,
   type UseQueryResult,
   useInfiniteQuery,
@@ -75,5 +76,8 @@ export function useItemPages(input: Omit<ItemsListInput, "cursor">) {
     queryFn: ({ pageParam }) =>
       core.call(itemsList, pageParam ? { ...input, cursor: pageParam } : input),
     getNextPageParam: (last) => last.next,
+    // a new sort or filter keeps the old rows on screen until the new ones are there, so that the
+    // column header that was clicked stays in the page and keeps the keyboard focus
+    placeholderData: keepPreviousData,
   });
 }

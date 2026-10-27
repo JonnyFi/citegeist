@@ -2,7 +2,11 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // the library remembers its sort; a test must not inherit the one of the test before
+  localStorage.clear();
+});
 
 // The UI follows the system language and falls back to English. The tests were written against
 // German, so jsdom's system speaks German unless a test sets another list.

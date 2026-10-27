@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { summarizeRetraction } from "@citegeist/ops";
+import { type ItemSort, summarizeRetraction } from "@citegeist/ops";
 import {
   type Actor,
   type CardBody,
@@ -73,6 +73,74 @@ function problem(
   context: Record<string, unknown> = {},
 ) {
   return new CitegeistError({ code, message, fix, recovery: "fix-and-retry", context });
+}
+
+interface ItemRow {
+  citekey: string;
+  title: string;
+  year: string | null;
+  authors: string | null;
+  type: string;
+  status: string;
+  inbox: number;
+  created: string;
+  inbox_by: string | null;
+  inbox_why: string | null;
+  incomplete_code: string | null;
+  incomplete_message: string | null;
+  retraction_json: string | null;
+  fulltext_status: string | null;
+  projects_json: string | null;
+}
+
+function summaryOfRow(r: ItemRow) {
+  const retraction = summarizeRetraction(
+    r.retraction_json ? JSON.parse(r.retraction_json) : undefined,
+  );
+  const projects: string[] = r.projects_json ? JSON.parse(r.projects_json) : [];
+  return {
+    citekey: r.citekey,
+    title: r.title,
+    ...(projects.length > 0 ? { projects } : {}),
+    ...(r.year ? { year: r.year } : {}),
+    ...(r.authors ? { authors: r.authors } : {}),
+    type: r.type,
+    status: r.status,
+    inbox: r.inbox === 1,
+    ...(r.created ? { added: r.created } : {}),
+    ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
+    ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
+    ...(r.incomplete_code
+      ? {
+          incomplete: true,
+          incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
+        }
+      : {}),
+    ...(r.fulltext_status === "found" ? { fulltext: "found" as const } : {}),
+    ...(r.fulltext_status === "missing" ? { fulltext: "missing" as const } : {}),
+    ...(retraction ? { retraction } : {}),
+  };
+}
+
+/** Reading order, not alphabetical: unread, reading, read. */
+const STATUS_RANK: Record<string, number> = { unread: 0, reading: 1, read: 2 };
+/** Umlauts sort with their base letter, case is ignored, numbers sort by value. */
+const COLLATOR = new Intl.Collator(["de", "en"], { sensitivity: "base", numeric: true });
+
+function encodeCursor(at: { citekey: string; key: string | number | null }): string {
+  return Buffer.from(JSON.stringify([at.key, at.citekey])).toString("base64url");
+}
+
+function decodeCursor(
+  cursor: string,
+): { citekey: string; key: string | number | null } | undefined {
+  try {
+    const [key, citekey] = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (typeof citekey !== "string") return undefined;
+    return { citekey, key: typeof key === "string" || typeof key === "number" ? key : null };
+  } catch {
+    return undefined;
+  }
 }
 
 /** An open citegeist library: folder, index and watcher. */
@@ -386,7 +454,14 @@ export class Library extends EventEmitter {
     return { frontmatter: p.fm, note: p.body, cards, path: this.paths.abs(row.path) };
   }
 
-  listItems(input: Scope & { limit: number; cursor?: string | undefined }) {
+  listItems(
+    input: Scope & {
+      limit: number;
+      cursor?: string | undefined;
+      sort?: ItemSort | undefined;
+      order?: "asc" | "desc" | undefined;
+    },
+  ) {
     const sc = scopeClauses(input, {
       ownerKind: "'item'",
       ownerRef: "i.citekey",
@@ -398,27 +473,112 @@ export class Library extends EventEmitter {
       where.push("i.inbox = ?");
       params.push(input.inbox ? 1 : 0);
     }
+    if (input.sort) return this.listItemsSorted(input, input.sort, where, params);
     if (input.cursor) {
       where.push("i.citekey > ?");
       params.push(input.cursor);
     }
-    const rows = this.index.all<{
+    const rows = this.itemRows(where, params, "ORDER BY i.citekey LIMIT ?", [input.limit + 1]);
+    const page = rows.slice(0, input.limit);
+    const next = rows.length > input.limit ? page[page.length - 1]?.citekey : undefined;
+    return { items: page.map(summaryOfRow), ...(next ? { next } : {}) };
+  }
+
+  /**
+   * Sorted pages. The order covers the whole scope, not the page: the sort keys of every matching
+   * item are read, ordered with a locale-aware collator (SQLite has none), and the page is cut
+   * out of that order. The cursor carries the sort key and citekey of the last item, so a page
+   * continues the order even when items change between two requests.
+   */
+  private listItemsSorted(
+    input: { limit: number; cursor?: string | undefined; order?: "asc" | "desc" | undefined },
+    sort: ItemSort,
+    where: string[],
+    params: unknown[],
+  ) {
+    const dir = (input.order ?? (sort === "added" ? "desc" : "asc")) === "desc" ? -1 : 1;
+    const light = this.index.all<{
       citekey: string;
       title: string;
       year: string | null;
-      authors: string | null;
       type: string;
       status: string;
-      inbox: number;
-      inbox_by: string | null;
-      inbox_why: string | null;
-      incomplete_code: string | null;
-      incomplete_message: string | null;
-      retraction_json: string | null;
-      fulltext_status: string | null;
-      projects_json: string | null;
+      created: string;
+      first_author: string | null;
     }>(
-      `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox,
+      `SELECT i.citekey, i.title, i.year, i.type, i.status, i.created,
+         (SELECT COALESCE(NULLIF(c.family, ''), c.literal) FROM creators c
+            WHERE c.path = i.path AND c.role = 'author' ORDER BY c.pos LIMIT 1) AS first_author
+       FROM items i ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}`,
+      ...params,
+    );
+    type Keyed = { citekey: string; key: string | number | null };
+    const keyOf = (r: (typeof light)[number]): string | number | null => {
+      switch (sort) {
+        case "added":
+          return r.created || null;
+        case "title":
+          return r.title || null;
+        case "authors":
+          return r.first_author || null;
+        case "year": {
+          const y = Number.parseInt(r.year ?? "", 10);
+          return Number.isNaN(y) ? null : y;
+        }
+        case "type":
+          return r.type || null;
+        case "status":
+          return STATUS_RANK[r.status] ?? STATUS_RANK.unread ?? 0;
+      }
+    };
+    const compare = (a: Keyed, b: Keyed): number => {
+      // an item without a value comes last in both directions
+      if (a.key === null || b.key === null) {
+        if (a.key !== b.key) return a.key === null ? 1 : -1;
+      } else if (a.key !== b.key) {
+        const c =
+          typeof a.key === "number" && typeof b.key === "number"
+            ? a.key - b.key
+            : sort === "added"
+              ? a.key < b.key
+                ? -1
+                : 1
+              : COLLATOR.compare(String(a.key), String(b.key));
+        if (c !== 0) return c * dir;
+      }
+      return a.citekey < b.citekey ? -1 : a.citekey > b.citekey ? 1 : 0;
+    };
+    const all: Keyed[] = light.map((r) => ({ citekey: r.citekey, key: keyOf(r) }));
+    all.sort(compare);
+    let start = 0;
+    if (input.cursor) {
+      const at = decodeCursor(input.cursor);
+      if (at) {
+        start = all.findIndex((r) => compare(r, at) > 0);
+        if (start < 0) start = all.length;
+      }
+    }
+    const page = all.slice(start, start + input.limit);
+    const rows = new Map(
+      this.itemRows(
+        [`i.citekey IN (${page.map(() => "?").join(", ")})`],
+        page.map((p) => p.citekey),
+        "",
+        [],
+      ).map((r) => [r.citekey, r]),
+    );
+    const items = page.flatMap((p) => {
+      const r = rows.get(p.citekey);
+      return r ? [summaryOfRow(r)] : [];
+    });
+    const last = page[page.length - 1];
+    const more = start + input.limit < all.length;
+    return { items, ...(more && last ? { next: encodeCursor(last) } : {}) };
+  }
+
+  private itemRows(where: string[], params: unknown[], tail: string, tailParams: unknown[]) {
+    return this.index.all<ItemRow>(
+      `SELECT i.citekey, i.title, i.year, i.authors, i.type, i.status, i.inbox, i.created,
          json_extract(i.frontmatter_json, '$.retraction') AS retraction_json,
          json_extract(i.frontmatter_json, '$.fulltext.status') AS fulltext_status,
          json_extract(i.frontmatter_json, '$.projects') AS projects_json,
@@ -427,40 +587,10 @@ export class Library extends EventEmitter {
          json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
          json_extract(i.frontmatter_json, '$.incomplete.message') AS incomplete_message
        FROM items i
-       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY i.citekey LIMIT ?`,
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""} ${tail}`,
       ...params,
-      input.limit + 1,
+      ...tailParams,
     );
-    const page = rows.slice(0, input.limit);
-    const items = page.map((r) => {
-      const retraction = summarizeRetraction(
-        r.retraction_json ? JSON.parse(r.retraction_json) : undefined,
-      );
-      const projects: string[] = r.projects_json ? JSON.parse(r.projects_json) : [];
-      return {
-        citekey: r.citekey,
-        title: r.title,
-        ...(projects.length > 0 ? { projects } : {}),
-        ...(r.year ? { year: r.year } : {}),
-        ...(r.authors ? { authors: r.authors } : {}),
-        type: r.type,
-        status: r.status,
-        inbox: r.inbox === 1,
-        ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
-        ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
-        ...(r.incomplete_code
-          ? {
-              incomplete: true,
-              incompleteReason: `${r.incomplete_code}: ${r.incomplete_message ?? ""}`.trim(),
-            }
-          : {}),
-        ...(r.fulltext_status === "found" ? { fulltext: "found" as const } : {}),
-        ...(r.fulltext_status === "missing" ? { fulltext: "missing" as const } : {}),
-        ...(retraction ? { retraction } : {}),
-      };
-    });
-    const next = rows.length > input.limit ? page[page.length - 1]?.citekey : undefined;
-    return { items, ...(next ? { next } : {}) };
   }
 
   listCards(
