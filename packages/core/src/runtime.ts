@@ -180,7 +180,7 @@ function resolverConfig(s: ResolverSettings): MetadataConfig {
 }
 
 /** Metadata resolver that follows the contact address, Unpaywall address and NCBI settings. */
-function followingResolver(initial: ResolverSettings): {
+export function followingResolver(initial: ResolverSettings): {
   lookup: MetadataLookup;
   graph: GraphLookup;
   alerts: AlertLookup;
@@ -193,6 +193,10 @@ function followingResolver(initial: ResolverSettings): {
     lookup: {
       resolve: (input, options) => current.resolve(input, options),
       resolveByTitle: (query, options) => current.resolveByTitle(query, options),
+      // The full text cascade asks these two for PDF addresses. Without them it only had the PDF
+      // link the metadata lookup happened to bring.
+      findOpenAccess: (doi) => current.findOpenAccess(doi),
+      findOpenAlexPdfs: (doi) => current.findOpenAlexPdfs(doi),
     },
     graph: {
       crossrefReferences: (doi, limit) => current.crossrefReferences(doi, limit),

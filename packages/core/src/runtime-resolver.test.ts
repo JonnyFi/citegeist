@@ -123,3 +123,15 @@ describe("resolver settings", () => {
     ).rejects.toThrow(/not an email address/);
   });
 });
+
+describe("the resolver the runtime hands to the pipeline", () => {
+  it("forwards the open-access lookups that the full text search uses", async () => {
+    // protects: full text lookup through Unpaywall and OpenAlex in the running app
+    // fails_when: the facade only forwards resolve/resolveByTitle, so both lookups look absent
+    // no_claim: the network answers of Unpaywall and OpenAlex are tested in @citegeist/metadata
+    const { followingResolver } = await import("./runtime.js");
+    const { lookup } = followingResolver({});
+    expect(typeof lookup.findOpenAccess).toBe("function");
+    expect(typeof lookup.findOpenAlexPdfs).toBe("function");
+  });
+});
