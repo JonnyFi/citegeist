@@ -30,6 +30,7 @@ import {
   type FetchLike,
   type Identifier,
   type PageMetadata,
+  type PdfLocation,
   type ResolveOptions,
   type ResolveResult,
   type TitleQuery,
@@ -53,6 +54,17 @@ import { readDocument } from "./documents.js";
 import { findDuplicate, findEnrichable } from "./dupes.js";
 import { enrichAfterConvert, splitName } from "./enrich.js";
 import {
+  findPdfLinks,
+  hostOf,
+  MAX_CANDIDATES,
+  MAX_REQUESTS,
+  mergeCandidates,
+  type OpenAccessSource,
+  orderCandidates,
+  type PdfCandidate,
+  rewriteRepositoryUrl,
+} from "./fulltext.js";
+import {
   acceptInbox,
   assertMayTrash,
   isCited,
@@ -75,10 +87,12 @@ import type { ConvertParams, ConvertWorker } from "./worker.js";
 export interface MetadataLookup {
   resolve(input: string | Identifier, options?: ResolveOptions): Promise<ResolveResult>;
   resolveByTitle(query: TitleQuery, options?: ResolveOptions): Promise<TitleResolveResult>;
-  /** Unpaywall: open-access status and PDF url of a DOI. */
-  findOpenAccess?(doi: string): Promise<{ pdfUrl?: string | undefined } | undefined>;
-  /** OpenAlex: PDF urls of all open-access locations of a DOI, best first. */
-  findOpenAlexPdfs?(doi: string): Promise<string[]>;
+  /** Unpaywall: open-access status, the best PDF url and every PDF location of a DOI. */
+  findOpenAccess?(
+    doi: string,
+  ): Promise<{ pdfUrl?: string | undefined; pdfLocations?: PdfLocation[] | undefined } | undefined>;
+  /** OpenAlex: PDF locations of a DOI (best, primary, all others, oa_url), best first. */
+  findOpenAlexPdfs?(doi: string): Promise<(string | PdfLocation)[]>;
 }
 
 export interface IngestDeps {
@@ -152,13 +166,22 @@ interface RemotePlan {
   pdfUrl?: string;
 }
 
-/** One step of the full text lookup for a DOI. */
+/**
+ * One entry of the full text lookup log for a DOI: a source that failed or had no location, or one
+ * address that was tried. `source` is the one that named the address, `detail` starts with its
+ * host and says what came back (pdf, html-no-link, HTTP status, blocked).
+ */
 export interface FulltextAttempt {
   source: "unpaywall" | "openalex" | "arxiv" | "publisher";
   outcome: "ok" | "none" | "failed";
   url?: string;
   detail?: string;
 }
+
+type Fetched =
+  | { kind: "ok"; buf: Buffer; contentType: string; url: string }
+  | { kind: "status"; status: number }
+  | { kind: "large" };
 
 interface LocalFile {
   buf: Buffer;
@@ -1139,6 +1162,17 @@ export class IngestService {
     accept: string,
     actor: Actor,
   ): Promise<{ buf: Buffer; contentType: string; url: string } | undefined> {
+    const res = await this.fetchOnce(url, signal, accept, actor);
+    return res.kind === "ok" ? res : undefined;
+  }
+
+  /** Like get, but says why nothing came back: an HTTP status that refuses us, or a file too big. */
+  private async fetchOnce(
+    url: string,
+    signal: AbortSignal | undefined,
+    accept: string,
+    actor: Actor,
+  ): Promise<Fetched> {
     const guarded = actor !== "human";
     let current = url;
     let res: Response | undefined;
@@ -1166,13 +1200,21 @@ export class IngestService {
       if (hop >= MAX_REDIRECTS) throw new TransientError(`too many redirects for ${url}`);
       current = new URL(location, current).href;
     }
-    if ([401, 403, 404, 410].includes(res.status)) return undefined;
+    if ([401, 403, 404, 410].includes(res.status)) {
+      await res.body?.cancel().catch(() => {});
+      return { kind: "status", status: res.status };
+    }
     if (!res.ok) throw new TransientError(`HTTP ${res.status} for ${current}`);
     const length = Number(res.headers.get("content-length") ?? 0);
-    if (length > this.maxDownload) return undefined;
+    if (length > this.maxDownload) return { kind: "large" };
     const buf = await readLimited(res, this.maxDownload);
-    if (!buf) return undefined;
-    return { buf, contentType: res.headers.get("content-type") ?? "", url: res.url || current };
+    if (!buf) return { kind: "large" };
+    return {
+      kind: "ok",
+      buf,
+      contentType: res.headers.get("content-type") ?? "",
+      url: res.url || current,
+    };
   }
 
   private addSource(
@@ -1358,9 +1400,11 @@ export class IngestService {
   }
 
   /**
-   * Full text for a work with a DOI. Tries Unpaywall, the open-access locations of OpenAlex, arXiv
-   * and the citation_pdf_url tag of the publisher page, in this order, and stops at the first one
-   * that delivers a file. Every attempt is recorded, a failing source never stops the next one.
+   * Full text for a work with a DOI. Collects every PDF address Unpaywall and OpenAlex name, orders
+   * them (published version first, repositories before aggregators), tries up to MAX_CANDIDATES
+   * of them, then arXiv, then the landing page of the publisher. The first file that is a PDF
+   * wins. The log has one entry per address tried, so "no PDF location" only appears when a source
+   * really named none. A failing source never stops the next one.
    */
   private async lookupFulltext(
     ctx: JobContext,
@@ -1372,6 +1416,7 @@ export class IngestService {
     const tried: FulltextAttempt[] = [];
     const actor = ctx.job.by;
     const seen = new Set<string>();
+    let requests = 0;
     const guard = async <T>(source: FulltextAttempt["source"], run: () => Promise<T>) => {
       try {
         return await run();
@@ -1381,56 +1426,159 @@ export class IngestService {
         return undefined;
       }
     };
-    const download = async (
+    const log = (
       source: FulltextAttempt["source"],
-      urls: string[],
-    ): Promise<boolean> => {
-      const fresh = urls.filter((u) => !seen.has(u));
-      if (fresh.length === 0) {
-        tried.push({ source, outcome: "none", detail: "no PDF location" });
-        return false;
-      }
-      let failure: string | undefined;
-      for (const url of fresh) {
-        seen.add(url);
-        try {
-          const pdf = await this.get(url, ctx.signal, "application/pdf", actor);
-          if (pdf && isPdf(pdf.buf)) {
-            this.addSource(actor, citekey, {
-              buf: pdf.buf,
-              kind: "pdf",
-              ext: "pdf",
-              filename: `${citekey}.pdf`,
-              url,
-            });
-            tried.push({ source, outcome: "ok", url });
-            return true;
-          }
-        } catch (err) {
-          if (ctx.signal.aborted) throw err;
-          failure = (err as Error).message;
-        }
-      }
+      outcome: FulltextAttempt["outcome"],
+      url: string,
+      what: string,
+      by: string,
+    ): void => {
       tried.push({
         source,
-        outcome: failure ? "failed" : "none",
-        detail: failure ?? "the location did not deliver a PDF",
+        outcome,
+        url,
+        detail: `${hostOf(url)}: ${what}${by ? ` (${by})` : ""}`,
       });
+    };
+    const save = (url: string, buf: Buffer): void => {
+      this.addSource(actor, citekey, {
+        buf,
+        kind: "pdf",
+        ext: "pdf",
+        filename: `${citekey}.pdf`,
+        url,
+      });
+    };
+
+    /**
+     * One address: a known repository rewrite first, then the address itself. A page that answers
+     * with HTML is searched for a PDF link, which is tried once (level 1, no further pages).
+     */
+    const tryAddress = async (
+      source: FulltextAttempt["source"],
+      address: string,
+      by: string,
+      level: 0 | 1,
+    ): Promise<boolean> => {
+      const rewrite = rewriteRepositoryUrl(address);
+      const targets = rewrite
+        ? [
+            { url: rewrite.url, by: `${by}; rewritten by ${rewrite.rule}` },
+            { url: address, by },
+          ]
+        : [{ url: address, by }];
+      for (const target of targets) {
+        if (seen.has(target.url)) continue;
+        if (requests >= MAX_REQUESTS) {
+          log(source, "none", target.url, "skipped, request limit reached", target.by);
+          continue;
+        }
+        seen.add(target.url);
+        requests++;
+        let res: Fetched;
+        try {
+          res = await this.fetchOnce(target.url, ctx.signal, ACCEPT_ANY, actor);
+        } catch (err) {
+          if (ctx.signal.aborted) throw err;
+          log(source, "failed", target.url, (err as Error).message, target.by);
+          continue;
+        }
+        if (res.kind === "status") {
+          const blocked = res.status === 401 || res.status === 403;
+          log(
+            source,
+            "none",
+            target.url,
+            blocked ? `blocked (HTTP ${res.status})` : `HTTP ${res.status}`,
+            target.by,
+          );
+          continue;
+        }
+        if (res.kind === "large") {
+          log(source, "none", target.url, "file too large", target.by);
+          continue;
+        }
+        const kind = sniffContent(res.buf, res.contentType);
+        if (kind === "pdf" && isPdf(res.buf)) {
+          save(target.url, res.buf);
+          log(source, "ok", target.url, "pdf", target.by);
+          return true;
+        }
+        if (kind !== "html") {
+          log(
+            source,
+            "none",
+            target.url,
+            `not a PDF (${res.contentType || "unknown type"})`,
+            target.by,
+          );
+          continue;
+        }
+        const links =
+          level === 0
+            ? findPdfLinks(res.buf.toString("utf8"), res.url).filter((l) => !seen.has(l))
+            : [];
+        if (links.length === 0) {
+          log(source, "none", target.url, "html-no-link", target.by);
+          continue;
+        }
+        log(
+          source,
+          "none",
+          target.url,
+          `html, ${links.length} PDF link(s) found in the page`,
+          target.by,
+        );
+        for (const link of links) {
+          if (await tryAddress(source, link, `link in the page of ${hostOf(target.url)}`, 1)) {
+            return true;
+          }
+        }
+      }
       return false;
     };
 
     const resolver = this.deps.resolver;
-    // 1. Unpaywall. A resolver without that lookup hands over what the metadata cascade found.
-    const unpaywall = await guard("unpaywall", async () =>
-      resolver.findOpenAccess ? (await resolver.findOpenAccess(doi))?.pdfUrl : remote.pdfUrl,
-    );
-    if (unpaywall !== undefined || !tried.some((t) => t.source === "unpaywall")) {
-      if (await download("unpaywall", unpaywall ? [unpaywall] : [])) return { notes, tried };
+    // 1. Unpaywall and OpenAlex name addresses. A resolver without the Unpaywall lookup hands over
+    //    what the metadata cascade found.
+    const named: { source: OpenAccessSource; locations: (string | PdfLocation)[] }[] = [];
+    const unpaywall = await guard("unpaywall", async () => {
+      if (!resolver.findOpenAccess) return remote.pdfUrl ? [remote.pdfUrl] : [];
+      const oa = await resolver.findOpenAccess(doi);
+      const all: (string | PdfLocation)[] = [...(oa?.pdfLocations ?? [])];
+      if (oa?.pdfUrl && !all.some((l) => typeof l !== "string" && l.url === oa.pdfUrl)) {
+        all.unshift(oa.pdfUrl);
+      }
+      return all;
+    });
+    if (unpaywall) {
+      if (unpaywall.length === 0) {
+        tried.push({ source: "unpaywall", outcome: "none", detail: "no PDF location" });
+      }
+      named.push({ source: "unpaywall", locations: unpaywall });
     }
-    // 2. OpenAlex open-access locations.
     const alex = await guard("openalex", async () => resolver.findOpenAlexPdfs?.(doi) ?? []);
-    if (alex !== undefined && (await download("openalex", alex))) return { notes, tried };
-    // 3. arXiv.
+    if (alex) {
+      if (alex.length === 0) {
+        tried.push({ source: "openalex", outcome: "none", detail: "no PDF location" });
+      }
+      named.push({ source: "openalex", locations: alex });
+    }
+    const ordered = orderCandidates(mergeCandidates(named));
+    const candidates: PdfCandidate[] = ordered.slice(0, MAX_CANDIDATES);
+    for (const c of candidates) {
+      const by = `named by ${c.sources.join(", ")}`;
+      if (await tryAddress(c.sources[0] ?? "unpaywall", c.url, by, 0)) return { notes, tried };
+    }
+    for (const c of ordered.slice(MAX_CANDIDATES)) {
+      tried.push({
+        source: c.sources[0] ?? "unpaywall",
+        outcome: "none",
+        url: c.url,
+        detail: `${hostOf(c.url)}: not tried, limit of ${MAX_CANDIDATES} locations reached`,
+      });
+    }
+    // 2. arXiv.
     const arxiv = remote.arxiv ?? arxivFromDoi(doi);
     if (!arxiv) tried.push({ source: "arxiv", outcome: "none", detail: "no arXiv id" });
     else {
@@ -1441,16 +1589,50 @@ export class IngestService {
       }
       if (got === false) tried.push({ source: "arxiv", outcome: "none", detail: notes.join("; ") });
     }
-    // 4. The publisher page: its citation_pdf_url meta tag.
+    // 3. The landing page of the publisher: PDF links it names (citation_pdf_url and the like).
     const landing = remote.landing ?? `https://doi.org/${doi}`;
     const page = await guard("publisher", async () => {
-      const res = await this.get(landing, ctx.signal, ACCEPT_ANY, actor);
-      if (!res) return [] as string[];
-      if (sniffContent(res.buf, res.contentType) === "pdf") return [res.url];
-      return citationPdfUrls(res.buf.toString("utf8"), res.url);
+      requests++;
+      const res = await this.fetchOnce(landing, ctx.signal, ACCEPT_ANY, actor);
+      if (res.kind === "status") {
+        const blocked = res.status === 401 || res.status === 403;
+        log(
+          "publisher",
+          "none",
+          landing,
+          blocked ? `blocked (HTTP ${res.status})` : `HTTP ${res.status}`,
+          "landing page",
+        );
+        return [];
+      }
+      if (res.kind === "large") {
+        log("publisher", "none", landing, "file too large", "landing page");
+        return [];
+      }
+      const kind = sniffContent(res.buf, res.contentType);
+      if (kind === "pdf") return [res.url];
+      const links = kind === "html" ? findPdfLinks(res.buf.toString("utf8"), res.url) : [];
+      if (links.length === 0) {
+        log(
+          "publisher",
+          "none",
+          res.url,
+          kind === "html" ? "html-no-link" : "not a PDF or a page",
+          "landing page",
+        );
+      }
+      return links;
     });
-    if (page !== undefined && (await download("publisher", page))) return { notes, tried };
-    notes.push(`no full text (tried ${tried.map((t) => t.source).join(", ")})`);
+    for (const link of page ?? []) {
+      if (seen.has(link)) {
+        log("publisher", "none", link, "already tried", "landing page");
+        continue;
+      }
+      if (await tryAddress("publisher", link, "link in the landing page", 1)) {
+        return { notes, tried };
+      }
+    }
+    notes.push(`no full text (tried ${tried.filter((t) => t.url).length} locations)`);
     return { notes, tried };
   }
 
@@ -1812,22 +1994,7 @@ export class IngestService {
     rejectInbox(this.lib, citekeys, actor);
 }
 
-/** PDF links a publisher page names in its citation_pdf_url meta tags, as absolute URLs. */
-export function citationPdfUrls(html: string, base: string): string[] {
-  const out: string[] = [];
-  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
-    if (!/\bname\s*=\s*["']citation_pdf_url["']/i.test(tag)) continue;
-    const content = /\bcontent\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
-    if (!content) continue;
-    try {
-      const url = new URL(content.replace(/&amp;/g, "&"), base).toString();
-      if (/^https?:/i.test(url) && !out.includes(url)) out.push(url);
-    } catch {
-      // not a URL
-    }
-  }
-  return out;
-}
+export { citationPdfUrls } from "./fulltext.js";
 
 function isFatal(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError";

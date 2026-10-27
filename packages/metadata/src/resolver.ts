@@ -46,6 +46,7 @@ import type {
   FieldName,
   MetadataConfig,
   MetadataFields,
+  PdfLocation,
   SourceRecord,
 } from "./types.js";
 
@@ -235,7 +236,7 @@ export class MetadataResolver implements GraphLookup, AlertLookup {
   }
 
   /** PDF links of all open-access locations OpenAlex lists for a DOI, best first. */
-  findOpenAlexPdfs(doi: string): Promise<string[]> {
+  findOpenAlexPdfs(doi: string): Promise<PdfLocation[]> {
     return fetchOpenAlexPdfUrls(this.ctx, doi);
   }
 

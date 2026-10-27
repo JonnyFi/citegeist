@@ -44,7 +44,8 @@ function readNoFulltext(fm: ItemFrontmatter): { tried: string[] } | undefined {
     arxiv: "arXiv",
     publisher: "Verlagsseite",
   };
-  return { tried: marker.tried.map((a) => names[a.source] ?? a.source) };
+  // One entry per address tried: a source that named several shows once.
+  return { tried: [...new Set(marker.tried.map((a) => names[a.source] ?? a.source))] };
 }
 
 export type ItemTab = "overview" | "read";

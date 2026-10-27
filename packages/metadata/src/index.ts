@@ -10,15 +10,16 @@ export * from "./replay.js";
 export * from "./resolver.js";
 export { arxivSearchQuery, openAlexAuthorFilter, openAlexTopicId } from "./sources/alerts.js";
 export { arxivFromDoi, mapCrossrefReference, mapOpenAlexRef } from "./sources/citations.js";
-export { openAccessPdfUrls } from "./sources/openalex.js";
+export { openAccessPdfLocations, openAccessPdfUrls } from "./sources/openalex.js";
 export { parsePubmedXml, pubmedUrl } from "./sources/pubmed.js";
-export { mapUnpaywall } from "./sources/unpaywall.js";
+export { mapUnpaywall, unpaywallPdfLocations } from "./sources/unpaywall.js";
 export type {
   Creator,
   Enrichment,
   FieldName,
   MetadataConfig,
   MetadataFields,
+  PdfLocation,
   SourceName,
   SourceRecord,
 } from "./types.js";

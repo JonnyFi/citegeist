@@ -1,0 +1,53 @@
+{
+  "best_oa_location": {
+    "is_oa": true,
+    "landing_page_url": "https://hdl.handle.net/10125/109635",
+    "pdf_url": "https://scholarspace.manoa.hawaii.edu/bitstreams/0f3766c3-5aa4-4ef9-bb6c-37ff2188a131/download",
+    "version": "publishedVersion",
+    "source": {
+      "display_name": "ScholarSpace (University of Hawaii at Manoa)",
+      "type": "repository"
+    }
+  },
+  "primary_location": {
+    "is_oa": true,
+    "landing_page_url": "https://aisel.aisnet.org/hicss-58/1739",
+    "pdf_url": "https://aisel.aisnet.org/context/hicss-58/article/1739/viewcontent/download.pdf",
+    "version": "publishedVersion",
+    "source": {
+      "display_name": "Hawaii International Conference on System Sciences",
+      "type": "conference"
+    }
+  },
+  "locations": [
+    {
+      "is_oa": true,
+      "landing_page_url": "https://hdl.handle.net/10125/109635",
+      "pdf_url": "https://scholarspace.manoa.hawaii.edu/bitstreams/0f3766c3-5aa4-4ef9-bb6c-37ff2188a131/download",
+      "version": "publishedVersion",
+      "source": {
+        "display_name": "ScholarSpace (University of Hawaii at Manoa)",
+        "type": "repository"
+      }
+    },
+    {
+      "is_oa": true,
+      "landing_page_url": "https://aisel.aisnet.org/hicss-58/1739",
+      "pdf_url": "https://aisel.aisnet.org/context/hicss-58/article/1739/viewcontent/download.pdf",
+      "version": "publishedVersion",
+      "source": { "display_name": "AIS Electronic Library", "type": "repository" }
+    },
+    {
+      "is_oa": false,
+      "landing_page_url": "https://doi.org/10.24251/hicss.2025.787",
+      "pdf_url": null,
+      "version": "publishedVersion",
+      "source": { "display_name": "HICSS", "type": "conference" }
+    }
+  ],
+  "open_access": {
+    "is_oa": true,
+    "oa_status": "diamond",
+    "oa_url": "https://scholarspace.manoa.hawaii.edu/bitstreams/0f3766c3-5aa4-4ef9-bb6c-37ff2188a131/download"
+  }
+}

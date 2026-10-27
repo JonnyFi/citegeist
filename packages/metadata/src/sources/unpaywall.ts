@@ -1,6 +1,6 @@
 import { asString } from "../csl.js";
 import { compact } from "../text.js";
-import { type Enrichment, SourceError, type SourceRecord } from "../types.js";
+import { type Enrichment, type PdfLocation, SourceError, type SourceRecord } from "../types.js";
 import { doiPath, makeRecord, type SourceContext } from "./context.js";
 
 type Json = Record<string, unknown>;
@@ -57,8 +57,31 @@ export function mapUnpaywall(body: Json): Enrichment {
     openAccess: compact({
       isOa: body.is_oa === true,
       pdfUrl: asString(withPdf?.url_for_pdf),
+      pdfLocations: unpaywallPdfLocations(body),
       landingUrl: asString(pdf?.url),
       license: asString(pdf?.license),
     }),
   };
+}
+
+/** Every PDF address of the best location and of all open-access locations, without duplicates. */
+export function unpaywallPdfLocations(body: Json): PdfLocation[] {
+  const best = (body.best_oa_location ?? undefined) as Json | undefined;
+  const locations = Array.isArray(body.oa_locations) ? (body.oa_locations as Json[]) : [];
+  const out: PdfLocation[] = [];
+  for (const l of [best, ...locations]) {
+    const url = l ? asString(l.url_for_pdf) : undefined;
+    if (!url || !/^https?:\/\//i.test(url) || out.some((o) => o.url === url)) continue;
+    const version = asString(l?.version);
+    const hostType = asString(l?.host_type);
+    out.push(
+      compact<PdfLocation>({
+        url,
+        version:
+          version && version in VERSION_RANK ? (version as PdfLocation["version"]) : undefined,
+        hostType: hostType === "publisher" || hostType === "repository" ? hostType : undefined,
+      }),
+    );
+  }
+  return out;
 }
