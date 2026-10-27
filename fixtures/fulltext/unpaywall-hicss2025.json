@@ -1,0 +1,34 @@
+{
+  "doi": "10.24251/hicss.2025.787",
+  "is_oa": true,
+  "best_oa_location": {
+    "host_type": "repository",
+    "version": "publishedVersion",
+    "url": "https://hdl.handle.net/10125/109635",
+    "url_for_pdf": "https://scholarspace.manoa.hawaii.edu/bitstreams/0f3766c3-5aa4-4ef9-bb6c-37ff2188a131/download",
+    "is_best": true
+  },
+  "oa_locations": [
+    {
+      "host_type": "repository",
+      "version": "publishedVersion",
+      "url": "https://hdl.handle.net/10125/109635",
+      "url_for_pdf": "https://scholarspace.manoa.hawaii.edu/bitstreams/0f3766c3-5aa4-4ef9-bb6c-37ff2188a131/download",
+      "is_best": true
+    },
+    {
+      "host_type": "repository",
+      "version": "publishedVersion",
+      "url": "https://aisel.aisnet.org/hicss-58/1739",
+      "url_for_pdf": "https://aisel.aisnet.org/context/hicss-58/article/1739/viewcontent/download.pdf",
+      "is_best": false
+    },
+    {
+      "host_type": "repository",
+      "version": "submittedVersion",
+      "url": "https://core.ac.uk/display/123",
+      "url_for_pdf": null,
+      "is_best": false
+    }
+  ]
+}

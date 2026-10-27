@@ -4,6 +4,7 @@ import {
   type Creator,
   type Enrichment,
   type MetadataFields,
+  type PdfLocation,
   SourceError,
   type SourceRecord,
 } from "../types.js";
@@ -61,12 +62,15 @@ export async function fetchOpenAlexWork(
 }
 
 /**
- * Direct PDF links of every open-access location OpenAlex lists for a DOI, best location first.
+ * PDF addresses of every open-access location OpenAlex lists for a DOI, best location first.
  * Empty when OpenAlex does not know the DOI or lists no PDF.
  */
-export async function fetchOpenAlexPdfUrls(ctx: SourceContext, doi: string): Promise<string[]> {
+export async function fetchOpenAlexPdfUrls(
+  ctx: SourceContext,
+  doi: string,
+): Promise<PdfLocation[]> {
   const url = new URL(`${BASE}/works/doi:${doiPath(doi)}`);
-  url.searchParams.set("select", "best_oa_location,locations,open_access");
+  url.searchParams.set("select", "best_oa_location,primary_location,locations,open_access");
   if (ctx.config.mailto) url.searchParams.set("mailto", ctx.config.mailto);
   if (ctx.config.openalexApiKey) url.searchParams.set("api_key", ctx.config.openalexApiKey);
   const res = await ctx.http.get({
@@ -82,18 +86,58 @@ export async function fetchOpenAlexPdfUrls(ctx: SourceContext, doi: string): Pro
   } catch {
     throw new SourceError("openalex", `response for ${doi} is not JSON`);
   }
-  return openAccessPdfUrls(work);
+  return openAccessPdfLocations(work);
 }
 
 /** PDF links of the best location and of all listed locations, without duplicates. */
 export function openAccessPdfUrls(work: Json): string[] {
+  return openAccessPdfLocations(work).map((l) => l.url);
+}
+
+const SOURCE_HOST_TYPES: Record<string, PdfLocation["hostType"]> = {
+  repository: "repository",
+  journal: "publisher",
+  conference: "publisher",
+  "ebook platform": "publisher",
+};
+
+/**
+ * Every PDF address OpenAlex names: best_oa_location, primary_location, all locations, and the
+ * open_access.oa_url (which can also be a landing page; the full text lookup copes with that).
+ * Locations that OpenAlex marks as not open access are left out.
+ */
+export function openAccessPdfLocations(work: Json): PdfLocation[] {
   const locations = Array.isArray(work.locations) ? (work.locations as Json[]) : [];
-  const all = [(work.best_oa_location ?? undefined) as Json | undefined, ...locations];
-  const out: string[] = [];
+  const all = [
+    (work.best_oa_location ?? undefined) as Json | undefined,
+    (work.primary_location ?? undefined) as Json | undefined,
+    ...locations,
+  ];
+  const out: PdfLocation[] = [];
+  const add = (loc: PdfLocation): void => {
+    if (/^https?:\/\//i.test(loc.url) && !out.some((o) => o.url === loc.url)) out.push(loc);
+  };
   for (const l of all) {
-    const pdf = l && l.is_oa !== false ? asString(l.pdf_url) : undefined;
-    if (pdf && /^https?:\/\//i.test(pdf) && !out.includes(pdf)) out.push(pdf);
+    const url = l && l.is_oa !== false ? asString(l.pdf_url) : undefined;
+    if (!url) continue;
+    const version = asString(l?.version);
+    const type = asString(((l?.source ?? undefined) as Json | undefined)?.type);
+    add(
+      compact<PdfLocation>({
+        url,
+        version:
+          version === "publishedVersion" ||
+          version === "acceptedVersion" ||
+          version === "submittedVersion"
+            ? version
+            : undefined,
+        hostType: type ? SOURCE_HOST_TYPES[type] : undefined,
+      }),
+    );
   }
+  const oa = (work.open_access ?? undefined) as Json | undefined;
+  const oaUrl = oa && oa.is_oa !== false ? asString(oa.oa_url) : undefined;
+  if (oaUrl) add({ url: oaUrl });
   return out;
 }
 

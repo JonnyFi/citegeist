@@ -45,6 +45,14 @@ export type SourceName =
   | "user";
 
 /** Data beyond the item frontmatter that callers may store elsewhere (index, derived files). */
+/** One place a source says a PDF of a work can be fetched from. */
+export interface PdfLocation {
+  url: string;
+  /** Unpaywall and OpenAlex use the same three names (the OpenAlex ones come from Crossref). */
+  version?: "publishedVersion" | "acceptedVersion" | "submittedVersion";
+  hostType?: "publisher" | "repository";
+}
+
 export interface Enrichment {
   /** OpenAlex topics, kept apart from user tags (machine tags). */
   topics?: string[];
@@ -52,7 +60,14 @@ export interface Enrichment {
   /** Referenced works as DOIs (lowercase) where known, otherwise OpenAlex ids ("W123"). */
   references?: string[];
   citedByCount?: { value: number; source: SourceName; fetchedAt: string };
-  openAccess?: { isOa: boolean; pdfUrl?: string; landingUrl?: string; license?: string };
+  openAccess?: {
+    isOa: boolean;
+    pdfUrl?: string;
+    landingUrl?: string;
+    license?: string;
+    /** Every PDF address the source lists, for a full text lookup that tries more than one. */
+    pdfLocations?: PdfLocation[];
+  };
   isRetracted?: boolean;
   /** arXiv only: the author-supplied journal reference and published DOI. */
   journalRef?: string;
