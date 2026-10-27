@@ -131,3 +131,183 @@ describe("library table", () => {
     ).toBeVisible();
   });
 });
+
+describe("library sorting", () => {
+  /** The sortable header of a column (the narrow status icon column has no button). */
+  const header = (name: string) => {
+    const found = screen
+      .getAllByRole("columnheader", { name: new RegExp(name) })
+      .find((h) => within(h).queryByRole("button"));
+    if (!found) throw new Error(`no sortable header ${name}`);
+    return found;
+  };
+  const order = async () =>
+    (await rows()).map((r) => r.querySelector("span.font-mono")?.textContent ?? "");
+  const lastListCall = (calls: Array<{ name: string; input: unknown }>) =>
+    calls
+      .filter((c) => c.name === "items.list" && (c.input as { inbox?: boolean }).inbox === false)
+      .at(-1)?.input as { sort?: string; order?: string; inbox?: boolean };
+
+  /** Library items with distinct days added, so that "newest first" has a visible effect. */
+  function datedFixtures() {
+    const data = createFixtures();
+    let day = 1;
+    for (const item of data.items.values()) {
+      item.frontmatter = ItemFrontmatter.parse({
+        ...item.frontmatter,
+        created: { at: `2026-10-${String(day++).padStart(2, "0")}T10:00:00.000Z`, by: "human" },
+      });
+    }
+    return data;
+  }
+
+  it("starts with date added, newest first, and says so in aria-sort", async () => {
+    const data = datedFixtures();
+    const { calls } = renderApp("/", data);
+    await rows();
+    expect(lastListCall(calls)).toMatchObject({ sort: "added", order: "desc", inbox: false });
+    expect(header("Hinzugefügt")).toHaveAttribute("aria-sort", "descending");
+    expect(header("Titel")).toHaveAttribute("aria-sort", "none");
+    const keys = await order();
+    const created = keys.map((k) => data.items.get(k)?.frontmatter.created.at ?? "");
+    expect(created).toEqual([...created].sort().reverse());
+  });
+
+  it("sorts by title when its header is clicked and turns the order on a second click", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/", datedFixtures());
+    await rows();
+    await user.click(within(header("Titel")).getByRole("button"));
+    await waitFor(() => expect(header("Titel")).toHaveAttribute("aria-sort", "ascending"));
+    expect(lastListCall(calls)).toMatchObject({ sort: "title", order: "asc" });
+    await waitFor(async () => expect((await order())[0]).toBe("bush1945think"));
+    expect((await order()).at(-1)).toBe("habermas1981theorie");
+    expect(header("Hinzugefügt")).toHaveAttribute("aria-sort", "none");
+
+    await user.click(within(header("Titel")).getByRole("button"));
+    await waitFor(() => expect(header("Titel")).toHaveAttribute("aria-sort", "descending"));
+    await waitFor(async () => expect((await order())[0]).toBe("habermas1981theorie"));
+    expect(lastListCall(calls)).toMatchObject({ sort: "title", order: "desc" });
+  });
+
+  it("sorts every column: authors, year, type, status and date added", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/", datedFixtures());
+    await rows();
+    for (const [name, sort] of [
+      ["Autoren", "authors"],
+      ["Jahr", "year"],
+      ["Typ", "type"],
+      ["Status", "status"],
+      ["Hinzugefügt", "added"],
+    ] as const) {
+      await user.click(within(header(name)).getByRole("button"));
+      // the date view was loaded at the start and comes from the cache
+      if (sort !== "added") {
+        await waitFor(() => expect(lastListCall(calls)).toMatchObject({ sort }));
+      }
+      // a column starts A to Z, the date starts with the newest
+      await waitFor(() =>
+        expect(header(name)).toHaveAttribute(
+          "aria-sort",
+          sort === "added" ? "descending" : "ascending",
+        ),
+      );
+    }
+    // another click on the active date column flips newest first to oldest first
+    await user.click(within(header("Hinzugefügt")).getByRole("button"));
+    await waitFor(() => expect(lastListCall(calls)).toMatchObject({ sort: "added", order: "asc" }));
+  });
+
+  it("orders authors by family name and puts the oldest year first", async () => {
+    const user = userEvent.setup();
+    renderApp("/", datedFixtures());
+    await rows();
+    await user.click(within(header("Autoren")).getByRole("button"));
+    await waitFor(async () => expect((await order())[0]).toBe("ahrens2017how"));
+    await user.click(within(header("Jahr")).getByRole("button"));
+    await waitFor(async () => expect((await order())[0]).toBe("bush1945think"));
+  });
+
+  it("works from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderApp("/", datedFixtures());
+    await rows();
+    const button = within(header("Jahr")).getByRole("button");
+    button.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(header("Jahr")).toHaveAttribute("aria-sort", "ascending"));
+    // the header button stays in the page and keeps focus while the sorted rows load
+    expect(within(header("Jahr")).getByRole("button")).toHaveFocus();
+    await user.keyboard(" ");
+    await waitFor(() => expect(header("Jahr")).toHaveAttribute("aria-sort", "descending"));
+  });
+
+  it("keeps the chosen sort for the next start", async () => {
+    const user = userEvent.setup();
+    const first = renderApp("/", datedFixtures());
+    await rows();
+    await user.click(within(header("Jahr")).getByRole("button"));
+    await waitFor(() => expect(header("Jahr")).toHaveAttribute("aria-sort", "ascending"));
+    expect(JSON.parse(localStorage.getItem("citegeist.librarySort") ?? "null")).toEqual({
+      sort: "year",
+      order: "asc",
+    });
+    first.unmount();
+
+    const { calls } = renderApp("/", datedFixtures());
+    await rows();
+    expect(lastListCall(calls)).toMatchObject({ sort: "year", order: "asc" });
+    expect(header("Jahr")).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("falls back to date added when the stored sort is unreadable", async () => {
+    localStorage.setItem("citegeist.librarySort", '{"sort":"nonsense","order":"up"}');
+    const { calls } = renderApp("/", datedFixtures());
+    await rows();
+    expect(lastListCall(calls)).toMatchObject({ sort: "added", order: "desc" });
+  });
+
+  it("sorts the whole library, so the second page continues the sorted view", async () => {
+    const user = userEvent.setup();
+    const data = createFixtures();
+    const template = data.items.get("kuhn1962structure");
+    if (!template) throw new Error("fixture missing");
+    // 60 more items whose citekey order is the reverse of their title order
+    for (let i = 0; i < 60; i++) {
+      const citekey = `extra${String(59 - i).padStart(3, "0")}`;
+      data.items.set(citekey, {
+        frontmatter: ItemFrontmatter.parse({
+          ...template.frontmatter,
+          citekey,
+          title: `Zz title ${String(i).padStart(3, "0")}`,
+        }),
+        note: "",
+      });
+    }
+    renderApp("/", data);
+    await rows();
+    await user.click(within(header("Titel")).getByRole("button"));
+    await waitFor(async () => expect((await rows()).length).toBe(50));
+    await waitFor(async () => expect((await order())[0]).toBe("bush1945think"));
+    await user.click(screen.getByRole("button", { name: "Mehr laden" }));
+    await waitFor(async () => expect((await rows()).length).toBe(71));
+    const titles = (await rows()).map((r) => within(r).getAllByRole("link")[0]?.textContent ?? "");
+    const collator = new Intl.Collator(["de", "en"], { sensitivity: "base", numeric: true });
+    expect(titles).toEqual([...titles].sort(collator.compare));
+  });
+
+  it("sorts the reading list of a project with the same choice", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderApp("/projects/rag-evaluation?tab=list", datedFixtures());
+    await screen.findAllByTestId("item-row");
+    await user.click(within(header("Titel")).getByRole("button"));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.name === "items.list").at(-1)?.input).toMatchObject({
+        project: "rag-evaluation",
+        sort: "title",
+        order: "asc",
+      }),
+    );
+  });
+});

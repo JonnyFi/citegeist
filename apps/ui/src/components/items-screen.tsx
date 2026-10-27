@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useItemPages, useOp } from "../lib/hooks";
+import { useLibrarySort } from "../lib/library-sort";
 import { AddField } from "./add-field";
 import { FirstSteps } from "./first-steps";
 import { SelectableItemsTable } from "./item-selection";
@@ -27,9 +28,12 @@ export function ItemsScreen({
 }) {
   const { t, tn } = useI18n();
   const projects = useOp(projectsList, {});
+  const [sort, setSort] = useLibrarySort();
   const pages = useItemPages({
     inbox: false,
     limit: 50,
+    sort: sort.sort,
+    order: sort.order,
     ...(filters.project ? { project: filters.project } : {}),
     ...(filters.status ? { status: filters.status } : {}),
   });
@@ -129,7 +133,11 @@ export function ItemsScreen({
           )
         ) : (
           <>
-            <SelectableItemsTable items={items} project={filters.project} />
+            <SelectableItemsTable
+              items={items}
+              project={filters.project}
+              sort={{ value: sort, onChange: setSort }}
+            />
             {pages.hasNextPage ? (
               <div className="px-8 py-4">
                 <Button

@@ -2,6 +2,7 @@ import { BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "../i18n";
 import { useItemPages } from "../lib/hooks";
+import { useLibrarySort } from "../lib/library-sort";
 import { AddSources } from "./add-sources";
 import { SelectableItemsTable } from "./item-selection";
 import { Button } from "./ui/button";
@@ -10,7 +11,14 @@ import { EmptyState, ErrorState, Loading } from "./ui/states";
 /** The reading list inside a project: the library table, filtered by the project. */
 export function ProjectReadingList({ slug }: { slug: string }) {
   const { t } = useI18n();
-  const pages = useItemPages({ inbox: false, limit: 50, project: slug });
+  const [sort, setSort] = useLibrarySort();
+  const pages = useItemPages({
+    inbox: false,
+    limit: 50,
+    project: slug,
+    sort: sort.sort,
+    order: sort.order,
+  });
   const [adding, setAdding] = useState(false);
   const items = pages.data?.pages.flatMap((p) => p.items) ?? [];
   const addButton = (
@@ -37,7 +45,11 @@ export function ProjectReadingList({ slug }: { slug: string }) {
         />
       ) : (
         <>
-          <SelectableItemsTable items={items} project={slug} />
+          <SelectableItemsTable
+            items={items}
+            project={slug}
+            sort={{ value: sort, onChange: setSort }}
+          />
           {pages.hasNextPage ? (
             <div className="px-8 py-4">
               <Button

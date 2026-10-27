@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useI18n } from "../i18n";
-import { type ItemSummary, ItemsTable, type RowSelection } from "./items-table";
+import { type ItemSummary, ItemsTable, type RowSelection, type SortControl } from "./items-table";
 import { ProjectPicker, useProjectMembership } from "./project-membership";
 import { Button } from "./ui/button";
 
@@ -85,10 +85,12 @@ export function SelectionBar({
 export function SelectableItemsTable({
   items,
   project,
+  sort,
 }: {
   items: readonly ItemSummary[];
   /** The project the list is filtered by, if any. */
   project?: string | undefined;
+  sort?: SortControl | undefined;
 }) {
   const { selection, chosen, clear } = useRowSelection(items);
   return (
@@ -96,7 +98,7 @@ export function SelectableItemsTable({
       {chosen.length > 0 ? (
         <SelectionBar citekeys={chosen} project={project} onDone={clear} />
       ) : null}
-      <ItemsTable items={items} selection={selection} />
+      <ItemsTable items={items} selection={selection} sort={sort} />
     </>
   );
 }
