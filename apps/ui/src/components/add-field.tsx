@@ -1,4 +1,4 @@
-import { itemsAdd, jobsGet } from "@citegeist/ops";
+import { inboxAccept, itemsAdd, jobsGet } from "@citegeist/ops";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { FileUp } from "lucide-react";
@@ -12,6 +12,9 @@ import { Menu } from "./ui/menu";
 type Outcome =
   | { kind: "added"; citekey: string }
   | { kind: "duplicate"; citekey: string }
+  /** The work is in the inbox. Adding does not accept it; the person decides. */
+  | { kind: "inbox"; citekey: string }
+  | { kind: "accepted"; citekey: string }
   | { kind: "error"; message: string };
 
 const KIND_KEY = {
@@ -40,6 +43,7 @@ export function AddField({ project }: { project?: string | undefined }) {
   const { t } = useI18n();
   const core = useCore();
   const add = useOpMutation(itemsAdd);
+  const accept = useOpMutation(inboxAccept);
   const id = useId();
   const [value, setValue] = useState("");
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -60,13 +64,18 @@ export function AddField({ project }: { project?: string | undefined }) {
   const followedResult = followedJob.data;
   useEffect(() => {
     if (!followed || followedResult?.status !== "succeeded") return;
-    const result = followedResult.result as { citekey?: unknown; merged?: unknown } | undefined;
+    const result = followedResult.result as
+      | { citekey?: unknown; merged?: { inInbox?: unknown } }
+      | undefined;
     setFollowed(null);
     if (typeof result?.citekey !== "string" || result.citekey === followed.citekey) return;
     const citekey = result.citekey;
     setOutcome((current) =>
       current?.kind === "added" && current.citekey === followed.citekey
-        ? { kind: result.merged ? "duplicate" : "added", citekey }
+        ? {
+            kind: result.merged ? (result.merged.inInbox ? "inbox" : "duplicate") : "added",
+            citekey,
+          }
         : current,
     );
   }, [followed, followedResult]);
@@ -88,7 +97,7 @@ export function AddField({ project }: { project?: string | undefined }) {
         onSuccess: (out) => {
           setOutcome(
             out.duplicateOf
-              ? { kind: "duplicate", citekey: out.duplicateOf }
+              ? { kind: out.inInbox ? "inbox" : "duplicate", citekey: out.duplicateOf }
               : { kind: "added", citekey: out.citekey },
           );
           if (!out.duplicateOf) setFollowed({ job: out.job, citekey: out.citekey });
@@ -235,7 +244,13 @@ export function AddField({ project }: { project?: string | undefined }) {
             outcome.message
           ) : (
             <>
-              {outcome.kind === "added" ? t("add.added") : t("add.duplicate")}{" "}
+              {outcome.kind === "added"
+                ? t("add.added")
+                : outcome.kind === "inbox"
+                  ? t("add.inInbox")
+                  : outcome.kind === "accepted"
+                    ? t("add.accepted")
+                    : t("add.duplicate")}{" "}
               <Link
                 to="/items/$citekey"
                 params={{ citekey: outcome.citekey }}
@@ -243,6 +258,27 @@ export function AddField({ project }: { project?: string | undefined }) {
               >
                 {outcome.citekey}
               </Link>
+              {outcome.kind === "inbox" ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    disabled={accept.isPending}
+                    onClick={() =>
+                      accept.mutate(
+                        { citekeys: [outcome.citekey] },
+                        {
+                          onSuccess: () =>
+                            setOutcome({ kind: "accepted", citekey: outcome.citekey }),
+                        },
+                      )
+                    }
+                  >
+                    {t("add.accept")}
+                  </button>
+                </>
+              ) : null}
             </>
           )}
         </div>

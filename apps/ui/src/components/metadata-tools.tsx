@@ -18,6 +18,7 @@ import {
   validateForm,
 } from "../lib/metadata-form";
 import { cn, describeError } from "../lib/utils";
+import { MergeOfferNote, mergeOfferOf } from "./inbox-item";
 import { Stamp } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input, Textarea } from "./ui/input";
@@ -28,6 +29,8 @@ export interface Notice {
   error?: boolean;
   /** Citekey the formula would give the item now; shown with the offer to rename. */
   suggested?: string;
+  /** The identifier belongs to the same work on the other side of the inbox boundary. */
+  merge?: { from: string; into: string };
 }
 
 /** The hint on an item without author or year, with the actions that repair it. */
@@ -160,7 +163,8 @@ export function IdentifierForm({
       },
     );
   };
-  const shown = problem ?? (resolve.error ? describeError(resolve.error).message : null);
+  const offer = resolve.error ? mergeOfferOf(resolve.error) : undefined;
+  const shown = problem ?? (resolve.error && !offer ? describeError(resolve.error).message : null);
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2" aria-label={t("metahint.addId")}>
@@ -188,6 +192,9 @@ export function IdentifierForm({
         <p role="alert" className="text-[12px] text-danger">
           {shown}
         </p>
+      ) : null}
+      {offer ? (
+        <MergeOfferNote citekey={citekey} offer={offer} onMerged={(text) => onDone({ text })} />
       ) : null}
     </form>
   );
@@ -488,10 +495,17 @@ export function MetadataEditor({
         )}
       </Field>
 
-      {update.error ? (
+      {update.error && !mergeOfferOf(update.error) ? (
         <p role="alert" className="text-[12px] text-danger">
           {t("metaform.failed", { message: describeError(update.error).message })}
         </p>
+      ) : null}
+      {update.error && mergeOfferOf(update.error) ? (
+        <MergeOfferNote
+          citekey={fm.citekey}
+          offer={mergeOfferOf(update.error) as { from: string; into: string }}
+          onMerged={(text) => onDone({ text })}
+        />
       ) : null}
       <div className="flex items-center gap-2">
         <Button type="submit" variant="primary" disabled={update.isPending}>

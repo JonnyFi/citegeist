@@ -9,6 +9,7 @@ import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
+import { inboxItemDe } from "./inbox";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
 import { membershipDe } from "./membership";
@@ -455,6 +456,7 @@ export const de = {
   ...relatedDe,
   ...membershipDe,
   ...metadataDe,
+  ...inboxItemDe,
   ...matrixDe,
   ...conceptsDe,
   ...modelsDe,

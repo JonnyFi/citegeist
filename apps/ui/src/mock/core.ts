@@ -13,6 +13,7 @@ import {
   itemsAttach,
   itemsGet,
   itemsList,
+  itemsMerge,
   itemsRename,
   itemsRestore,
   itemsTrash,
@@ -61,6 +62,7 @@ import {
 import { bindTextsMock } from "../texts/mock";
 import { suggestMockCitekey } from "./citekey";
 import { createFixtures, type MockData } from "./fixtures";
+import { mockMergeOffer } from "./inbox";
 
 export interface MockOptions {
   /** How long the mock AI needs for the paraphrase. The real one takes a few seconds. */
@@ -369,9 +371,10 @@ export function createMockRegistry(
         .filter((fm) => (input.project ? fm.projects.includes(input.project) : true))
         .filter((fm) => (input.status ? fm.status === input.status : true))
         .filter((fm) => (input.tags ? input.tags.every((t) => fm.tags.includes(t)) : true))
-        .filter((fm) =>
-          input.inbox === undefined ? true : (fm.inbox !== undefined) === input.inbox,
-        )
+        .filter((fm) => {
+          const wanted = input.inbox ?? (input.includeInbox ? undefined : false);
+          return wanted === undefined ? true : (fm.inbox !== undefined) === wanted;
+        })
         .sort((a, b) => a.citekey.localeCompare(b.citekey))
         .filter((fm) => (input.cursor ? fm.citekey > input.cursor : true));
       const page = all.slice(0, input.limit);
@@ -429,7 +432,12 @@ export function createMockRegistry(
       }, aiDelayMs);
       if (duplicate) {
         const key = duplicate.frontmatter.citekey;
-        return { citekey: key, job: job.id, duplicateOf: key };
+        return {
+          citekey: key,
+          job: job.id,
+          duplicateOf: key,
+          ...(duplicate.frontmatter.inbox ? { inInbox: true } : {}),
+        };
       }
       const stem = value
         .split(/[\\/]/)
@@ -484,6 +492,10 @@ export function createMockRegistry(
     .bind(itemsUpdate, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
       if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${input.citekey}'`);
+      if (typeof input.patch.DOI === "string") {
+        const offer = mockMergeOffer(data.items, input.citekey, input.patch.DOI);
+        if (offer) throw offer;
+      }
       const before = item.frontmatter;
       const next: Record<string, unknown> = { ...before };
       const today = new Date().toISOString().slice(0, 10);
@@ -498,6 +510,60 @@ export function createMockRegistry(
       changed(`items/${input.citekey}/${input.citekey}.md`);
       const suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
       return { frontmatter: item.frontmatter, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
+    })
+    .bind(itemsMerge, async (_ctx, input) => {
+      const from = data.items.get(input.from);
+      const into = data.items.get(input.into);
+      if (!from || !into) {
+        throw new Error(`ITEM_NOT_FOUND: no item with citekey '${from ? input.into : input.from}'`);
+      }
+      if (!from.frontmatter.inbox) {
+        throw new Error(`NOT_IN_INBOX: item ${input.from} is in the library, not in the inbox`);
+      }
+      const filled: string[] = [];
+      const fill: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(from.frontmatter)) {
+        if (
+          ["id", "citekey", "created", "modified", "tags", "projects", "status", "inbox"].includes(
+            key,
+          )
+        )
+          continue;
+        if (key === "sources" || key === "provenance" || key === "ids") continue;
+        if (
+          (into.frontmatter as Record<string, unknown>)[key] === undefined &&
+          value !== undefined
+        ) {
+          fill[key] = value;
+          filled.push(key);
+        }
+      }
+      const moved = from.frontmatter.sources
+        .filter((s) => !into.frontmatter.sources.some((h) => h.hash === s.hash))
+        .map((s) => s.hash);
+      into.frontmatter = {
+        ...into.frontmatter,
+        ...fill,
+        tags: [...new Set([...into.frontmatter.tags, ...from.frontmatter.tags])],
+        projects: [...new Set([...into.frontmatter.projects, ...from.frontmatter.projects])],
+        sources: [
+          ...into.frontmatter.sources,
+          ...from.frontmatter.sources.filter((s) => moved.includes(s.hash)),
+        ],
+      } as ItemFrontmatter;
+      data.items.delete(input.from);
+      trashed.push({ citekey: input.from, item: from });
+      changed(`items/${input.from}/${input.from}.md`);
+      changed(`items/${input.into}/${input.into}.md`);
+      const stamp = new Date().toISOString();
+      const job: MockJob = {
+        id: randomId("j_"),
+        status: "succeeded",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      jobs.set(job.id, job);
+      return { citekey: input.into, job: job.id, filled, moved };
     })
     .bind(itemsRename, async (_ctx, input) => {
       const item = data.items.get(input.citekey);
@@ -915,12 +981,15 @@ export function createMockRegistry(
         kind: "item" | "card";
         id: string;
         citekey: string;
+        inbox?: true;
         title: string;
         snippet: string;
         page?: string;
         score: number;
       }> = [];
+      const withInbox = input.includeInbox ?? false;
       for (const { frontmatter: fm, note } of data.items.values()) {
+        if (fm.inbox && !withInbox) continue;
         if (input.project && !fm.projects.includes(input.project)) continue;
         if (input.status && fm.status !== input.status) continue;
         const haystack = `${fm.title} ${authorsOf(fm) ?? ""} ${fm.abstract ?? ""} ${note}`;
@@ -929,6 +998,7 @@ export function createMockRegistry(
             kind: "item",
             id: fm.id,
             citekey: fm.citekey,
+            ...(fm.inbox ? { inbox: true as const } : {}),
             title: fm.title,
             snippet: snippetAround(haystack, q),
             score: fm.title.toLowerCase().includes(q) ? 2 : 1,
