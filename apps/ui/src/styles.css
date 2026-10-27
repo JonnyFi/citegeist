@@ -236,6 +236,24 @@ input[type="radio"] {
   ) {
   -webkit-app-region: no-drag;
 }
+/*
+ * Popups (selects, menus, popovers, dialogs, toasts) are portaled to the body and can lie over the
+ * top bar. Electron hands every click inside a drag region to the window unless the element on top
+ * opts out, so the first option of a menu near the top only reacted in its lower part.
+ */
+[role="listbox"],
+[role="option"],
+[role="menu"],
+[role="menuitem"],
+[role="menuitemradio"],
+[role="menuitemcheckbox"],
+[role="dialog"],
+[role="alertdialog"],
+[role="tooltip"],
+[role="status"],
+[data-side] {
+  -webkit-app-region: no-drag;
+}
 
 :focus-visible {
   outline: 2px solid var(--ink);
