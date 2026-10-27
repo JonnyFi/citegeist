@@ -7,6 +7,7 @@ import {
   isScholarlyUrl,
   itemsAdd,
   itemsAttach,
+  itemsFindFulltext,
   itemsMerge,
   itemsRename,
   itemsResolve,
@@ -125,6 +126,7 @@ export function bindIngestOperations(
       if (ctx.localFiles === false) refuseLocalFiles("items.attach");
       return svc.attachFile(ctx.actor, input);
     })
+    .bind(itemsFindFulltext, async (ctx, input) => svc.findFulltext(ctx.actor, input.citekey))
     .bind(itemsUpdate, async (ctx, input) => svc.updateItem(ctx.actor, input.citekey, input.patch))
     .bind(itemsResolve, async (ctx, input) =>
       svc.resolveItem(ctx.actor, input.citekey, input.identifier),

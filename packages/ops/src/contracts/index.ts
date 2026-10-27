@@ -6,6 +6,7 @@ import {
   CardKind,
   Citekey,
   DerivedManifest,
+  FulltextAttempt,
   ItemFrontmatter,
   Job,
   JobId,
@@ -69,6 +70,8 @@ const ItemSummary = z.object({
   incompleteReason: z.string().optional(),
   /** Outcome of the full text lookup: "missing" shows as "ohne Volltext" in the library table. */
   fulltext: z.enum(["found", "missing"]).optional(),
+  /** When the item was added to the library (ISO timestamp). */
+  added: z.string().optional(),
   /** Set when items.checkRetractions found a retraction, withdrawal, concern or correction. */
   retraction: RetractionSummary.optional(),
 });
@@ -195,6 +198,23 @@ export const itemsAttach = defineContract({
   }),
   mcp: { tool: "attach_file", readOnly: false },
 });
+export const itemsFindFulltext = defineContract({
+  name: "items.findFulltext",
+  summary:
+    "Look for an open-access full text of one item that has no file: Unpaywall and OpenAlex locations, arXiv, then the publisher's landing page, by the item's DOI. A PDF that is found is attached and converted. The attempts are recorded in the item's fulltext marker (tried). Runs for this one item only, on request; nothing starts it automatically",
+  access: "write",
+  input: ItemRef,
+  output: z.object({
+    citekey: Citekey,
+    found: z.boolean(),
+    /** One entry per source or address tried, in order. */
+    tried: z.array(FulltextAttempt),
+    /** Conversion of the file that was found. Absent when nothing was found. */
+    job: JobId.optional(),
+    /** The item already had a file; nothing was looked up. */
+    alreadyHadFile: z.boolean().optional(),
+  }),
+});
 export const itemsGet = defineContract({
   name: "items.get",
   summary: "Metadata, sources, literature note and card count of one item",
@@ -208,16 +228,23 @@ export const itemsGet = defineContract({
   }),
   mcp: { tool: "get_item", readOnly: true },
 });
+/** Columns that items.list can sort by. `authors` sorts by the family name of the first author. */
+export const ITEM_SORTS = ["added", "title", "authors", "year", "type", "status"] as const;
+export type ItemSort = (typeof ITEM_SORTS)[number];
+
 export const itemsList = defineContract({
   name: "items.list",
   summary:
-    "List the items of the library in a scope. Items that wait in the inbox are left out unless inbox is true (only those) or includeInbox is true (both)",
+    "List the items of the library in a scope. Items that wait in the inbox are left out unless inbox is true (only those) or includeInbox is true (both). Without sort the items come in citekey order. With sort the whole scope is ordered (added: date added, newest first unless order says otherwise; title, authors by the first author's family name, year, type; status: unread, reading, read) and the cursor continues that order, so every page belongs to the sorted view. Items without a value for the column come last in both directions.",
   access: "read",
   input: Scope.extend({
     /** True: only the items in the inbox. False: only accepted items. Default: accepted items. */
     inbox: z.boolean().optional(),
     /** Accepted items and inbox items together. Ignored when inbox is set. */
     includeInbox: z.boolean().optional(),
+    sort: z.enum(ITEM_SORTS).optional(),
+    /** Default: desc for added, asc for every other column. */
+    order: z.enum(["asc", "desc"]).optional(),
   }).merge(Paged),
   output: z.object({ items: z.array(ItemSummary), next: z.string().optional() }),
 });
@@ -1091,6 +1118,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   libraryReindex,
   itemsAdd,
   itemsAttach,
+  itemsFindFulltext,
   itemsGet,
   itemsList,
   itemsUpdate,

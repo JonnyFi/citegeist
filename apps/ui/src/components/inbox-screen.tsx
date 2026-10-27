@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useI18n } from "../i18n";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { cn } from "../lib/utils";
+import { FulltextMarker } from "./fulltext-marker";
 import { HeaderSlot, SubBar } from "./layout";
 import { Button, ButtonGroup } from "./ui/button";
 import { Provenance } from "./ui/provenance";
@@ -197,6 +198,11 @@ export function InboxScreen() {
                     <div className="text-muted">
                       {[item.authors, item.year].filter(Boolean).join(", ")}
                       <span className="ml-2 font-mono text-[12px]">{item.citekey}</span>
+                      {item.fulltext === "missing" && !item.incomplete ? (
+                        <span className="ml-3">
+                          <FulltextMarker item={item} />
+                        </span>
+                      ) : null}
                     </div>
                     {item.projects ? (
                       <p className="text-[12px] text-muted">

@@ -1653,14 +1653,95 @@ export class IngestService {
     return { notes, tried };
   }
 
+  // items.findFulltext --------------------------------------------------------------------------
+
+  /**
+   * Runs the full text lookup of one item that has no file: the same cascade items.add runs after
+   * a DOI (lookupFulltext), as an ingest job so that progress, cancellation and egress limits work
+   * the same way. A file that is found is attached and its conversion queued; the answer does not
+   * wait for the conversion. Without a file, `fulltext` records the attempts.
+   */
+  async findFulltext(
+    actor: Actor,
+    citekey: string,
+  ): Promise<{
+    citekey: string;
+    found: boolean;
+    tried: FulltextAttempt[];
+    job?: string;
+    alreadyHadFile?: boolean;
+  }> {
+    const item = loadItem(this.lib, citekey);
+    if (item.fm.sources.length > 0) {
+      return { citekey, found: true, tried: [], alreadyHadFile: true };
+    }
+    const doi = item.fm.DOI;
+    if (!doi) {
+      throw problem(
+        "FULLTEXT_NEEDS_DOI",
+        `${citekey} has no DOI, so there is no place to look for a full text`,
+        "Add the DOI with items.resolve (identifier) or items.update, then search again. Or attach the PDF with items.attach.",
+        { citekey },
+      );
+    }
+    const remote: RemotePlan = { doi, ...(item.fm.URL ? { landing: item.fm.URL } : {}) };
+    const job = this.queue.enqueue({
+      kind: "ingest",
+      by: actor,
+      input: { citekey, remote, fulltextOnly: true },
+    });
+    const done = await this.queue.waitFor(job.id);
+    if (done.status === "cancelled") throw new Error("The operation was cancelled");
+    if (done.status === "failed") {
+      throw problem(
+        done.error?.code ?? "FULLTEXT_FAILED",
+        `the full text search for ${citekey} failed: ${done.error?.message ?? "unknown error"}`,
+        "Try again later, or attach the PDF with items.attach.",
+        { citekey, job: job.id },
+      );
+    }
+    const out = done.result as {
+      found: boolean;
+      tried: FulltextAttempt[];
+      convertJob?: string;
+    };
+    return {
+      citekey,
+      found: out.found,
+      tried: out.tried,
+      ...(out.convertJob ? { job: out.convertJob } : {}),
+    };
+  }
+
   // Jobs ---------------------------------------------------------------------------------------
 
   private async runIngest(ctx: JobContext): Promise<unknown> {
-    const input = ctx.job.input as { citekey: string; remote?: RemotePlan; convert?: boolean };
+    const input = ctx.job.input as {
+      citekey: string;
+      remote?: RemotePlan;
+      convert?: boolean;
+      /** items.findFulltext: look for a file and queue its conversion, but do not wait for it. */
+      fulltextOnly?: boolean;
+    };
     const { citekey } = input;
-    ctx.progress(0.05, "fetching sources");
+    ctx.progress(0.05, input.fulltextOnly ? "looking for a full text" : "fetching sources");
     const { notes, tried } = await this.fetchSources(ctx, citekey, input.remote ?? {});
     const item = loadItem(this.lib, citekey);
+    if (input.fulltextOnly) {
+      if (item.fm.sources.length === 0) {
+        saveItem(this.lib, ctx.job.by, item, {
+          fulltext: { status: "missing", tried, checked_at: this.lib.stamp("system").at },
+        });
+        return { citekey, found: false, tried, notes };
+      }
+      // addSource cleared the missing marker; the conversion runs as its own job.
+      const convert = this.queue.enqueue({
+        kind: "convert",
+        by: ctx.job.by,
+        input: { citekey, force: false },
+      });
+      return { citekey, found: true, tried, convertJob: convert.id, notes };
+    }
     if (item.fm.sources.length === 0) {
       // Not a failure: the metadata is fine, the file is missing. The item says so and keeps
       // the record of where it looked, so that the user can attach a PDF.

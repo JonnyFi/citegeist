@@ -1,6 +1,8 @@
+import { ItemFrontmatter } from "@citegeist/schema";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { createFixtures } from "../mock/fixtures";
 import { renderApp } from "../test-utils";
 
 const rows = () => screen.findAllByTestId("inbox-row");
@@ -97,5 +99,40 @@ describe("inbox", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Custodians of the Internet" }),
     ).toBeVisible();
+  });
+
+  it("marks an inbox item whose full text lookup found nothing, like the library does", async () => {
+    const data = createFixtures();
+    const item = data.items.get("zuboff2019age");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      fulltext: { status: "missing", checked_at: "2026-10-24T10:00:00.000Z", tried: [] },
+    });
+    renderApp("/inbox", data);
+    const list = await rows();
+    const zuboff = list.find((r) => r.textContent?.includes("zuboff2019age")) as HTMLElement;
+    expect(within(zuboff).getByText("ohne Volltext")).toBeVisible();
+    expect(screen.getAllByText("ohne Volltext")).toHaveLength(1);
+  });
+
+  it("shows no marker for inbox items that have a file or no lookup result", async () => {
+    renderApp("/inbox");
+    await rows();
+    expect(screen.queryByText("ohne Volltext")).toBeNull();
+  });
+
+  it("does not stamp 'ohne Volltext' on an item whose import failed", async () => {
+    const data = createFixtures();
+    const item = data.items.get("zuboff2019age");
+    if (!item) throw new Error("fixture missing");
+    item.frontmatter = ItemFrontmatter.parse({
+      ...item.frontmatter,
+      fulltext: { status: "missing", checked_at: "2026-10-24T10:00:00.000Z", tried: [] },
+      incomplete: { code: "CONVERT_FAILED", message: "no text", at: "2026-10-24T10:00:00.000Z" },
+    });
+    renderApp("/inbox", data);
+    await rows();
+    expect(screen.queryByText("ohne Volltext")).toBeNull();
   });
 });

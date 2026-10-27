@@ -17,6 +17,7 @@ import { markerOf, RelatedWorks, RetractionBadge, RetractionNote } from "../rela
 import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
+import { FindFulltextButton, FindFulltextResult, useFindFulltext } from "./find-fulltext";
 import { InboxBanner, MergeOfferNote, mergeOfferOf } from "./inbox-item";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import {
@@ -156,6 +157,7 @@ export function ItemView({
   const trash = useTrashItem();
   const navigate = useNavigate();
   const resolve = useOpMutation(itemsResolve);
+  const fulltextSearch = useFindFulltext(citekey);
   const [editor, setEditor] = useState<"none" | "metadata" | "identifier">("none");
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -464,7 +466,22 @@ export function ItemView({
               ) : null}
               {fm.sources.length === 0 ? (
                 <div className="mb-3">
-                  <AttachPdf citekey={citekey} />
+                  <AttachPdf
+                    citekey={citekey}
+                    alongside={
+                      fm.fulltext?.status === "missing" ? (
+                        <FindFulltextButton
+                          state={fulltextSearch.state}
+                          onSearch={fulltextSearch.search}
+                        />
+                      ) : undefined
+                    }
+                  />
+                </div>
+              ) : null}
+              {fulltextSearch.state.phase !== "idle" ? (
+                <div className="mb-3">
+                  <FindFulltextResult state={fulltextSearch.state} />
                 </div>
               ) : null}
               <h1 className="font-serif text-[34px] font-medium leading-[1.15] tracking-[-0.01em]">
