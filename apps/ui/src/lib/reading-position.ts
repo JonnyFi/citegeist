@@ -80,6 +80,44 @@ export function measureReading(
   return { page, ratio: room > 0 ? scroller.scrollTop / room : 0, ...(label ? { label } : {}) };
 }
 
+/** The share of a document that counts as its end when it has no pages to go by. */
+const END_SHARE = 0.1;
+
+/**
+ * True when the reader has scrolled to the end of the document: the last page is in view, or
+ * the view reaches into the last tenth of the scrollable height. A document that fits the view
+ * has no end to scroll to.
+ */
+export function isNearEnd(scroller: HTMLElement): boolean {
+  const room = scroller.scrollHeight - scroller.clientHeight;
+  if (room <= 0) return false;
+  const pages = scroller.querySelectorAll<HTMLElement>("[data-page]");
+  const last = pages[pages.length - 1];
+  if (pages.length > 1 && last) {
+    if (last.getBoundingClientRect().top < scroller.getBoundingClientRect().bottom - 8) return true;
+  }
+  return scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight * (1 - END_SHARE);
+}
+
+const DISMISSED = "citegeist.endPrompt.";
+
+/** True once the person has dismissed the "Fertig gelesen?" line for this item. */
+export function endPromptDismissed(citekey: string): boolean {
+  try {
+    return localStorage.getItem(DISMISSED + citekey) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function dismissEndPrompt(citekey: string): void {
+  try {
+    localStorage.setItem(DISMISSED + citekey, "1");
+  } catch {
+    // storage unavailable: the line comes back the next time the reader is opened
+  }
+}
+
 /**
  * Records the reading position of `host` (the container of a PDF or reflow view) while it is
  * scrolled. Scroll events do not bubble, so the listener sits on the capture phase.
@@ -89,6 +127,8 @@ export function trackReading(
   citekey: string,
   labelOf?: (page: number) => string | undefined,
   delayMs = 400,
+  /** Called with the scroll container after each stored position. */
+  onScrolled?: (scroller: HTMLElement) => void,
 ): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const onScroll = (event: Event) => {
@@ -101,6 +141,7 @@ export function trackReading(
         ...measureReading(scroller, labelOf),
         at: new Date().toISOString(),
       });
+      onScrolled?.(scroller);
     }, delayMs);
   };
   host.addEventListener("scroll", onScroll, true);

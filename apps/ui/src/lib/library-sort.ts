@@ -11,11 +11,19 @@ export interface LibrarySort {
 export const DEFAULT_SORT: LibrarySort = { sort: "added", order: "desc" };
 
 const KEY = "citegeist.librarySort";
-const SORTS: readonly ItemSort[] = ["added", "title", "authors", "year", "type", "status"];
+const SORTS: readonly ItemSort[] = [
+  "added",
+  "title",
+  "authors",
+  "year",
+  "type",
+  "status",
+  "readAt",
+];
 
 /** The order a column starts with when it is clicked: newest first for dates, A to Z otherwise. */
 export function firstOrder(sort: ItemSort): LibrarySort["order"] {
-  return sort === "added" ? "desc" : "asc";
+  return sort === "added" || sort === "readAt" ? "desc" : "asc";
 }
 
 /** The sort after a click on a column header: the same column flips, another one starts fresh. */

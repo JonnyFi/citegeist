@@ -8,6 +8,7 @@ import {
   DerivedManifest,
   FulltextAttempt,
   ItemFrontmatter,
+  ItemStatus,
   Job,
   JobId,
   Language,
@@ -72,6 +73,8 @@ const ItemSummary = z.object({
   fulltext: z.enum(["found", "missing"]).optional(),
   /** When the item was added to the library (ISO timestamp). */
   added: z.string().optional(),
+  /** Date (YYYY-MM-DD) on which the item was marked as read. See ItemFrontmatter.read_at. */
+  readAt: z.string().optional(),
   /** Set when items.checkRetractions found a retraction, withdrawal, concern or correction. */
   retraction: RetractionSummary.optional(),
 });
@@ -229,13 +232,21 @@ export const itemsGet = defineContract({
   mcp: { tool: "get_item", readOnly: true },
 });
 /** Columns that items.list can sort by. `authors` sorts by the family name of the first author. */
-export const ITEM_SORTS = ["added", "title", "authors", "year", "type", "status"] as const;
+export const ITEM_SORTS = [
+  "added",
+  "title",
+  "authors",
+  "year",
+  "type",
+  "status",
+  "readAt",
+] as const;
 export type ItemSort = (typeof ITEM_SORTS)[number];
 
 export const itemsList = defineContract({
   name: "items.list",
   summary:
-    "List the items of the library in a scope. Items that wait in the inbox are left out unless inbox is true (only those) or includeInbox is true (both). Without sort the items come in citekey order. With sort the whole scope is ordered (added: date added, newest first unless order says otherwise; title, authors by the first author's family name, year, type; status: unread, reading, read) and the cursor continues that order, so every page belongs to the sorted view. Items without a value for the column come last in both directions.",
+    "List the items of the library in a scope. Items that wait in the inbox are left out unless inbox is true (only those) or includeInbox is true (both). Without sort the items come in citekey order. With sort the whole scope is ordered (added: date added, newest first unless order says otherwise; title, authors by the first author's family name, year, type; status: unread, reading, read; readAt: the date the item was marked as read, newest first unless order says otherwise) and the cursor continues that order, so every page belongs to the sorted view. Items without a value for the column come last in both directions.",
   access: "read",
   input: Scope.extend({
     /** True: only the items in the inbox. False: only accepted items. Default: accepted items. */
@@ -243,7 +254,7 @@ export const itemsList = defineContract({
     /** Accepted items and inbox items together. Ignored when inbox is set. */
     includeInbox: z.boolean().optional(),
     sort: z.enum(ITEM_SORTS).optional(),
-    /** Default: desc for added, asc for every other column. */
+    /** Default: desc for added and readAt, asc for every other column. */
     order: z.enum(["asc", "desc"]).optional(),
   }).merge(Paged),
   output: z.object({ items: z.array(ItemSummary), next: z.string().optional() }),
@@ -261,6 +272,19 @@ export const itemsUpdate = defineContract({
      */
     suggestedCitekey: Citekey.optional(),
   }),
+});
+export const itemsSetStatus = defineContract({
+  name: "items.setStatus",
+  summary:
+    "Set the reading status (unread, reading, read) of one or many items in one call. Becoming read stores the date as read_at, going back to unread removes it, and going from read to reading keeps it. Items that have the status already are left alone, so the call can be repeated. With from, only items whose current status is in the list change (the app uses ['unread'] to mark an item as reading when it is opened for the first time). Fails before any change when a citekey does not exist",
+  access: "write",
+  input: z.object({
+    citekeys: z.array(Citekey).min(1).max(500),
+    status: ItemStatus,
+    /** Only items with one of these statuses change; the others are reported as unchanged. */
+    from: z.array(ItemStatus).min(1).optional(),
+  }),
+  output: z.object({ changed: z.array(Citekey), unchanged: z.array(Citekey) }),
 });
 export const itemsResolve = defineContract({
   name: "items.resolve",
@@ -1122,6 +1146,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   itemsGet,
   itemsList,
   itemsUpdate,
+  itemsSetStatus,
   itemsResolve,
   itemsMerge,
   itemsRename,

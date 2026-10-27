@@ -63,6 +63,8 @@ interface ItemSeed {
   doi?: string;
   abstract?: string;
   status?: "unread" | "reading" | "read";
+  /** Date the item was marked as read (read_at). */
+  readAt?: string;
   projects?: string[];
   tags?: string[];
   inboxWhy?: string;
@@ -98,6 +100,7 @@ const ITEMS: ItemSeed[] = [
     year: 1981,
     publisher: "Suhrkamp",
     status: "read",
+    readAt: "2026-10-12",
     projects: ["phd-proposal"],
     tags: ["communication", "critical-theory"],
     abstract:
@@ -145,6 +148,7 @@ const ITEMS: ItemSeed[] = [
     container: "Advances in Neural Information Processing Systems 30",
     doi: "10.48550/arXiv.1706.03762",
     status: "read",
+    readAt: "2026-10-05",
     projects: ["rag-evaluation"],
     tags: ["transformers"],
     abstract:
@@ -235,6 +239,7 @@ const ITEMS: ItemSeed[] = [
     year: 1945,
     container: "The Atlantic Monthly",
     status: "read",
+    readAt: "2026-09-20",
     tags: ["memex"],
     note: "# As We May Think\n\nThe memex as an associative personal archive.",
   },
@@ -246,6 +251,7 @@ const ITEMS: ItemSeed[] = [
     year: 2017,
     publisher: "CreateSpace",
     status: "read",
+    readAt: "2026-10-19",
     tags: ["zettelkasten"],
     note: "",
   },
@@ -257,6 +263,7 @@ const ITEMS: ItemSeed[] = [
     year: 1962,
     publisher: "University of Chicago Press",
     status: "read",
+    readAt: "2026-08-30",
     tags: ["philosophy-of-science"],
     note: "",
   },
@@ -482,6 +489,7 @@ export function createFixtures(
       tags: s.tags ?? [],
       projects: s.projects ?? [],
       status: s.status ?? "unread",
+      ...(s.readAt ? { read_at: s.readAt } : {}),
       ...(s.inboxWhy ? { inbox: { by: "agent:claude-code", why: s.inboxWhy } } : {}),
       sources: s.pages
         ? [

@@ -1,4 +1,5 @@
 import { Menu as BaseMenu } from "@base-ui/react/menu";
+import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
@@ -7,6 +8,8 @@ export interface MenuEntry {
   onSelect: () => void;
   /** Destructive entries show in the danger color. */
   danger?: boolean;
+  /** Marks the entry that is the current choice. */
+  checked?: boolean;
 }
 
 /** Menu on Base UI: a trigger that opens a short list of actions. */
@@ -36,12 +39,14 @@ export function Menu({
               <BaseMenu.Item
                 key={entry.label}
                 onClick={entry.onSelect}
+                {...(entry.checked ? { "aria-current": true as const } : {})}
                 className={cn(
                   "flex h-8 cursor-default items-center px-2.5 text-[12px] data-[highlighted]:bg-ink data-[highlighted]:text-bg",
                   entry.danger && "text-danger",
                 )}
               >
-                {entry.label}
+                <span className="flex-1">{entry.label}</span>
+                {entry.checked ? <Check aria-hidden="true" className="ml-3 size-3.5" /> : null}
               </BaseMenu.Item>
             ))}
           </BaseMenu.Popup>

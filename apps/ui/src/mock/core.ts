@@ -7,6 +7,7 @@ import {
   citeFormat,
   documentsAssets,
   documentsConfirmPages,
+  type ItemSort,
   inboxAccept,
   inboxReject,
   itemsAdd,
@@ -17,6 +18,7 @@ import {
   itemsMerge,
   itemsRename,
   itemsRestore,
+  itemsSetStatus,
   itemsTrash,
   itemsUpdate,
   jobsGet,
@@ -34,10 +36,13 @@ import {
 import {
   CardFrontmatter,
   ItemFrontmatter,
+  ItemStatus,
   type Job,
+  localDateOf,
   ProjectFrontmatter,
   paragraphLocator,
   paragraphNumbers,
+  statusPatch,
 } from "@citegeist/schema";
 import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
 import { bindChatMock } from "../chat/mock";
@@ -106,6 +111,7 @@ function summary(fm: ItemFrontmatter) {
       : {}),
     ...(fm.fulltext ? { fulltext: fm.fulltext.status } : {}),
     added: fm.created.at,
+    ...(fm.read_at ? { readAt: fm.read_at } : {}),
     ...(retraction ? { retraction } : {}),
   };
 }
@@ -116,10 +122,11 @@ const STATUS_RANK: Record<string, number> = { unread: 0, reading: 1, read: 2 };
 /** The order items.list gives with a sort: missing values last, ties by citekey. */
 function sortedItems(
   all: ItemFrontmatter[],
-  sort: "added" | "title" | "authors" | "year" | "type" | "status",
+  sort: ItemSort,
   order: "asc" | "desc" | undefined,
 ): ItemFrontmatter[] {
-  const dir = (order ?? (sort === "added" ? "desc" : "asc")) === "desc" ? -1 : 1;
+  const dir =
+    (order ?? (sort === "added" || sort === "readAt" ? "desc" : "asc")) === "desc" ? -1 : 1;
   const key = (fm: ItemFrontmatter): string | number | undefined => {
     switch (sort) {
       case "added":
@@ -136,6 +143,8 @@ function sortedItems(
         return fm.type;
       case "status":
         return STATUS_RANK[fm.status] ?? 0;
+      case "readAt":
+        return fm.read_at;
     }
   };
   return [...all].sort((a, b) => {
@@ -147,7 +156,7 @@ function sortedItems(
       const c =
         typeof ka === "number" && typeof kb === "number"
           ? ka - kb
-          : sort === "added"
+          : sort === "added" || sort === "readAt"
             ? String(ka) < String(kb)
               ? -1
               : 1
@@ -559,7 +568,13 @@ export function createMockRegistry(
       const next: Record<string, unknown> = { ...before };
       const today = new Date().toISOString().slice(0, 10);
       const provenance = { ...before.provenance };
-      for (const [key, value] of Object.entries(input.patch)) {
+      const patch: Record<string, unknown> = { ...input.patch };
+      const status = ItemStatus.safeParse(patch.status);
+      if (status.success && !("read_at" in patch)) {
+        const change = statusPatch(before, status.data, localDateOf(new Date()));
+        if ("read_at" in change) patch.read_at = change.read_at ?? null;
+      }
+      for (const [key, value] of Object.entries(patch)) {
         if (value === null) delete next[key];
         else next[key] = value;
         provenance[key] = `human@${today}`;
@@ -569,6 +584,31 @@ export function createMockRegistry(
       changed(`items/${input.citekey}/${input.citekey}.md`);
       const suggestedCitekey = suggestMockCitekey(before, item.frontmatter, data.items);
       return { frontmatter: item.frontmatter, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
+    })
+    .bind(itemsSetStatus, async (_ctx, input) => {
+      const items = input.citekeys.map((citekey) => {
+        const item = data.items.get(citekey);
+        if (!item) throw new Error(`ITEM_NOT_FOUND: no item with citekey '${citekey}'`);
+        return item;
+      });
+      const out = { changed: [] as string[], unchanged: [] as string[] };
+      for (const item of new Set(items)) {
+        const fm = item.frontmatter;
+        const change =
+          input.from && !input.from.includes(fm.status)
+            ? {}
+            : statusPatch(fm, input.status, localDateOf(new Date()));
+        if (Object.keys(change).length === 0) {
+          out.unchanged.push(fm.citekey);
+          continue;
+        }
+        const next: Record<string, unknown> = { ...fm, ...change };
+        if (next.read_at === undefined) delete next.read_at;
+        item.frontmatter = next as ItemFrontmatter;
+        changed(`items/${fm.citekey}/${fm.citekey}.md`);
+        out.changed.push(fm.citekey);
+      }
+      return out;
     })
     .bind(itemsMerge, async (_ctx, input) => {
       const from = data.items.get(input.from);

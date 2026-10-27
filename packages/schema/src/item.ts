@@ -79,6 +79,34 @@ export const DateValue = z.union([
 ]);
 
 export const ItemStatus = z.enum(["unread", "reading", "read"]);
+export type ItemStatus = z.infer<typeof ItemStatus>;
+
+/** A calendar date without time, such as "2026-10-26". */
+export const ReadDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** The local calendar date of `at` as YYYY-MM-DD. */
+export function localDateOf(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+/**
+ * The frontmatter keys that change when an item's status becomes `next` (a value of `undefined`
+ * removes the key). Becoming `read` stores `today` as `read_at`, also when the item was read
+ * before: finishing a second reading moves the date. Going back to `unread` removes `read_at`.
+ * Going from `read` to `reading` keeps it, as the date the item was last finished. The same
+ * status again changes nothing.
+ */
+export function statusPatch(
+  current: { status: ItemStatus; read_at?: string | undefined },
+  next: ItemStatus,
+  today: string,
+): Record<string, unknown> {
+  if (current.status === next) return {};
+  if (next === "read") return { status: next, read_at: today };
+  if (next === "unread") return { status: next, read_at: undefined };
+  return { status: next };
+}
 
 /** A file attached to an item, stored as sources/<hash>.<ext>. */
 export const Source = z.object({
@@ -207,6 +235,11 @@ export const ItemFrontmatter = z
     tags: z.array(z.string()).default([]),
     projects: z.array(ProjectSlug).default([]),
     status: ItemStatus.default("unread"),
+    /**
+     * Local date (YYYY-MM-DD) on which the item was marked as read. Set when the status becomes
+     * `read`, removed when it goes back to `unread`, kept while it is `reading` again.
+     */
+    read_at: ReadDate.optional(),
     /** Language for AI texts on this item, overrides the project setting. */
     ai_language: Language.optional(),
     /**

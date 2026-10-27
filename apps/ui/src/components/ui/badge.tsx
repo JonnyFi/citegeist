@@ -6,7 +6,7 @@ import { cn } from "../../lib/utils";
  * Chip: 1px border, 3px 8px padding. "outline" is a first-order chip (ink border), "neutral" a
  * tag of second order (line-faint border), "accent" the inverted active chip.
  */
-const badgeVariants = cva(
+export const badgeVariants = cva(
   "inline-flex items-center gap-1.5 border px-2 py-[3px] text-[12px] leading-[1.2]",
   {
     variants: {

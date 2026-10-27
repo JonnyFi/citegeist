@@ -6,6 +6,7 @@ import {
   graphProject,
   itemsGet,
   itemsList,
+  itemsSetStatus,
   libraryStatus,
   linksCreate,
   notesCreate,
@@ -23,6 +24,7 @@ import {
 import { documentAssets } from "./assets.js";
 import { formatCitations } from "./cite-ops.js";
 import { neighbors, projectGraph } from "./graph.js";
+import { setItemStatus } from "./item-status.js";
 import type { Library } from "./library.js";
 import { createLink } from "./links.js";
 import { changeProjectItems } from "./project-items.js";
@@ -69,6 +71,9 @@ export function bindCoreOperations(
     .bind(projectsGet, async (_ctx, input) => lib.getProject(input.slug))
     .bind(projectsList, async () => lib.listProjects())
     .bind(projectsUpdate, async (_ctx, input) => lib.updateProject(input))
+    .bind(itemsSetStatus, async (ctx, input) =>
+      setItemStatus(lib, ctx.actor, input.citekeys, input.status, input.from),
+    )
     .bind(projectsAddItems, async (ctx, input) => {
       const r = changeProjectItems(lib, ctx.actor, "add", input.slug, input.citekeys);
       return { added: r.changed, unchanged: r.unchanged };
