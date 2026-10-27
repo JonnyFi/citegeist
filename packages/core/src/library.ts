@@ -394,10 +394,6 @@ export class Library extends EventEmitter {
     });
     const where = [...sc.sql];
     const params = [...sc.params];
-    if (input.inbox !== undefined) {
-      where.push("i.inbox = ?");
-      params.push(input.inbox ? 1 : 0);
-    }
     if (input.cursor) {
       where.push("i.citekey > ?");
       params.push(input.cursor);

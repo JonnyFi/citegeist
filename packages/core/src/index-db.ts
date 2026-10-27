@@ -646,5 +646,12 @@ export function scopeClauses(
     sql.push(`EXISTS (SELECT 1 FROM items si WHERE si.citekey = ${e.citekey} AND si.status = ?)`);
     params.push(scope.status);
   }
+  // true: only what belongs to an inbox item; false: nothing that belongs to one. Rows that
+  // belong to no item (notes) pass the second filter.
+  if (scope.inbox !== undefined) {
+    sql.push(
+      `${scope.inbox ? "" : "NOT "}EXISTS (SELECT 1 FROM items ii WHERE ii.citekey = ${e.citekey} AND ii.inbox = 1)`,
+    );
+  }
   return { sql, params };
 }
