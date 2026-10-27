@@ -3,8 +3,9 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, MoreHorizontal } from "lucide-react";
 import type { z } from "zod";
 import { useI18n } from "../i18n";
-import { statusLabel, typeLabel } from "../lib/format";
+import { formatDay, statusLabel, typeLabel } from "../lib/format";
 import { type LibrarySort, nextSort } from "../lib/library-sort";
+import { asStatus, nextStatus, useSetStatus } from "../lib/read-status";
 import { useTrashItem } from "../lib/trash";
 import { RetractionBadge } from "../related";
 import { FulltextMarker } from "./fulltext-marker";
@@ -51,6 +52,9 @@ export function ItemsTable({
   const { t } = i18n;
   const navigate = useNavigate();
   const trash = useTrashItem();
+  const setStatus = useSetStatus();
+  // the column is for wide windows, and always there while the table is sorted by it
+  const readAtCell = sort?.value.sort === "readAt" ? "table-cell" : "hidden xl:table-cell";
   /** A column header: a button that sorts by the column, with aria-sort on the cell. */
   const head = (column: ItemSort, label: string, className: string) => {
     const active = sort?.value.sort === column ? sort.value.order : undefined;
@@ -110,6 +114,7 @@ export function ItemsTable({
           {head("type", t("table.type"), `${TH} hidden w-[110px] lg:table-cell`)}
           {head("status", t("table.status"), `${TH} w-[150px]`)}
           {head("added", t("table.added"), `${TH} hidden w-[110px] lg:table-cell`)}
+          {head("readAt", t("table.readAt"), `${TH} w-[110px] ${readAtCell}`)}
           <th scope="col" className={`${TH} w-14 pr-8`}>
             <span className="sr-only">{t("table.actions")}</span>
           </th>
@@ -150,7 +155,22 @@ export function ItemsTable({
                 </td>
               ) : null}
               <td className={`${TD} ${selection ? "pl-0" : "pl-8"}`}>
-                <StatusSquare filled={item.status !== "unread"} />
+                <button
+                  type="button"
+                  data-testid="status-cycle"
+                  aria-label={t("readStatus.cycle", {
+                    title: item.title,
+                    status: statusLabel(i18n, item.status),
+                    next: statusLabel(i18n, nextStatus(item.status)),
+                  })}
+                  title={t("readStatus.cycleTitle", {
+                    next: statusLabel(i18n, nextStatus(item.status)),
+                  })}
+                  onClick={() => void setStatus([item.citekey], nextStatus(item.status))}
+                  className="-ml-1.5 inline-flex size-6 items-center justify-center hover:bg-sunken"
+                >
+                  <StatusSquare filled={asStatus(item.status) !== "unread"} />
+                </button>
               </td>
               <td className={`${TD} max-w-0`}>
                 <div className="flex items-baseline gap-3">
@@ -192,6 +212,9 @@ export function ItemsTable({
               </td>
               <td className={`${TD} hidden font-mono text-[12px] text-muted lg:table-cell`}>
                 {item.added ? shortDate(item.added, i18n.lang) : ""}
+              </td>
+              <td className={`${TD} font-mono text-[12px] text-muted ${readAtCell}`}>
+                {item.readAt ? formatDay(item.readAt, i18n.lang) : ""}
               </td>
               <td className={`${TD} pr-8 text-right`}>
                 <Menu

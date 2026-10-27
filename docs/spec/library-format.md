@@ -40,6 +40,18 @@ The schemas in `packages/schema/src` are authoritative. This page describes wher
 - Machine-local data (`index.sqlite`, `state.sqlite`, logs, models) lives under `~/Library/Application Support/citegeist/<library-id>/` and never in the library folder.
 - The core reports iCloud conflict copies (`<name> 2.md`) as a problem and does not adopt them silently.
 
+## Reading status
+
+Item frontmatter carries the reading status as `status` (`unread`, `reading`, `read`; default `unread`) and, when the item was marked as read, the date as `read_at`.
+
+- `read_at` is a local calendar date without a time (`2026-10-26`). The core writes the date of the day on which the status became `read`.
+- A status that becomes `read` stores `read_at`, also for an item that was read before: finishing a second reading moves the date. Setting `read` on an item that is `read` already changes nothing.
+- A status that becomes `unread` removes `read_at`.
+- A status that goes from `read` to `reading` keeps `read_at`, as the date the item was last finished. The app shows it as "Gelesen am" next to the status.
+- `items.update` with a `status` in the patch applies the same rules. A patch that carries `read_at` itself wins over them. `items.setStatus` sets the status of many items in one call.
+- `read_at` is not bibliographic data, so it is not recorded in `provenance`.
+- Files from before this field have `status: read` without `read_at`. Nothing is added to them; the date appears the next time the status changes. `items.list` can sort by `readAt`: newest first by default, items without a date come last in both directions.
+
 ## Unpaginated sources
 
 A source is unpaginated when its conversion has neither printed page labels nor PDF pages: a web page, an HTML file, an EPUB, or arXiv HTML that was converted without its PDF. The core derives this and stores nothing extra (`isUnpaginated` in `packages/schema/src/paragraphs.ts`). A source is unpaginated if

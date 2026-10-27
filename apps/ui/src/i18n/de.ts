@@ -16,6 +16,7 @@ import { matrixDe } from "./matrix";
 import { membershipDe } from "./membership";
 import { metadataDe } from "./metadata";
 import { modelsDe } from "./models";
+import { readStatusDe } from "./read-status";
 import { relatedDe } from "./related";
 
 /**
@@ -457,6 +458,7 @@ export const de = {
   ...relatedDe,
   ...membershipDe,
   ...libraryViewDe,
+  ...readStatusDe,
   ...metadataDe,
   ...inboxItemDe,
   ...matrixDe,

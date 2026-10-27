@@ -46,3 +46,17 @@ export function withCardLocator(
   if (!where || !TRAILING_LOCATOR.test(label)) return label;
   return `${label.replace(TRAILING_LOCATOR, "")}, ${where}`;
 }
+
+/**
+ * A calendar date such as "2026-10-26" in the UI language ("26.10.2026" in German). It is read
+ * as a local date: a date without a time must not move to the day before in a zone behind UTC.
+ */
+export function formatDay(day: string, lang: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(y, m - 1, d).toLocaleDateString(lang, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}

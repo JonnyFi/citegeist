@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  dismissEndPrompt,
+  endPromptDismissed,
+  isNearEnd,
   loadReadingPosition,
   measureReading,
   restoreReading,
@@ -108,5 +111,56 @@ describe("tracking and restoring", () => {
     restoreReading(host, { page: 2, ratio: 0.5, at: "" }, 3, 100);
     vi.advanceTimersByTime(400);
     expect(scroller.scrollTop).toBe(100);
+  });
+});
+
+describe("end of the document", () => {
+  it("is reached when the last page is in view", () => {
+    const { scroller, layout } = reader(0);
+    expect(isNearEnd(scroller)).toBe(false);
+    // 300px of text in a 100px view: scrolled to 150 the last page starts at 50 and is in view
+    layout(150);
+    expect(isNearEnd(scroller)).toBe(true);
+  });
+
+  it("is reached in the last tenth of a document without pages", () => {
+    const { scroller, pages } = reader(0);
+    for (const p of pages) p.remove();
+    scroller.scrollTop = 150;
+    expect(isNearEnd(scroller)).toBe(false);
+    scroller.scrollTop = 169;
+    expect(isNearEnd(scroller)).toBe(false);
+    scroller.scrollTop = 170;
+    expect(isNearEnd(scroller)).toBe(true);
+  });
+
+  it("is never reached by a document that fits the view", () => {
+    const { scroller } = reader(0);
+    Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 100 });
+    expect(isNearEnd(scroller)).toBe(false);
+  });
+
+  it("reports the end after the position is stored", () => {
+    vi.useFakeTimers();
+    const { host, scroller, layout } = reader(0);
+    const seen: boolean[] = [];
+    const stop = trackReading(host, "a2020", undefined, 400, (el) => seen.push(isNearEnd(el)));
+    scroller.scrollTop = 20;
+    layout(20);
+    scroller.dispatchEvent(new Event("scroll"));
+    vi.advanceTimersByTime(400);
+    scroller.scrollTop = 190;
+    layout(190);
+    scroller.dispatchEvent(new Event("scroll"));
+    vi.advanceTimersByTime(400);
+    stop();
+    expect(seen).toEqual([false, true]);
+  });
+
+  it("remembers that the question was dismissed, per item", () => {
+    expect(endPromptDismissed("a2020")).toBe(false);
+    dismissEndPrompt("a2020");
+    expect(endPromptDismissed("a2020")).toBe(true);
+    expect(endPromptDismissed("other")).toBe(false);
   });
 });

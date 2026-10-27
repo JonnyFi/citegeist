@@ -13,8 +13,11 @@ import {
   type Actor,
   CitegeistError,
   ItemFrontmatter,
+  ItemStatus,
   legacyItemPatch,
+  localDateOf,
   migrateItemData,
+  statusPatch,
 } from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
 import type { ChangeEvent, Library } from "../library.js";
@@ -121,7 +124,7 @@ const PROTECTED = new Set([
   "provenance",
 ]);
 /** Keys that are not bibliographic data, so a change does not become field provenance. */
-const NO_PROVENANCE = new Set(["tags", "projects", "status", "ai_language"]);
+const NO_PROVENANCE = new Set(["tags", "projects", "status", "read_at", "ai_language"]);
 
 const REVIEWS_PROPOSAL = ["title", "author", "editor", "issued", "DOI", "ISBN"];
 
@@ -237,6 +240,12 @@ export function updateItem(
   const today = lib.stamp(actor).at.slice(0, 10);
   const provenance: Record<string, string> = { ...(item.fm.provenance ?? {}) };
   const filePatch: Record<string, unknown> = {};
+  // A new status carries its read date along, unless the patch sets the date itself.
+  const status = ItemStatus.safeParse(patch.status);
+  if (status.success && !("read_at" in patch)) {
+    const change = statusPatch(item.fm, status.data, localDateOf(new Date(lib.stamp(actor).at)));
+    if ("read_at" in change) patch.read_at = change.read_at === undefined ? null : change.read_at;
+  }
   for (const [k, v] of Object.entries(patch)) {
     if (v === null) delete merged[k];
     else merged[k] = v;

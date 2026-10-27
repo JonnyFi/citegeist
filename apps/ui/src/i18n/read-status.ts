@@ -1,0 +1,38 @@
+/** Strings for changing the reading status of an item. Spread into `de.ts` and `en.ts`. */
+export const readStatusDe = {
+  "table.readAt": "Gelesen am",
+  "readStatus.change": "Lesestatus ändern, aktuell: {status}",
+  "readStatus.cycle": "Lesestatus von {title}: {status}. Auf „{next}“ setzen.",
+  "readStatus.cycleTitle": "Auf „{next}“ setzen",
+  "readStatus.readOn": "Gelesen am {date}",
+  "readStatus.markRead": "Als gelesen markieren",
+  "readStatus.markUnread": "Als ungelesen markieren",
+  "readStatus.markedRead.one": "{n} Quelle als gelesen markiert.",
+  "readStatus.markedRead.other": "{n} Quellen als gelesen markiert.",
+  "readStatus.markedUnread.one": "{n} Quelle als ungelesen markiert.",
+  "readStatus.markedUnread.other": "{n} Quellen als ungelesen markiert.",
+  "readStatus.markedOne": "Als gelesen markiert.",
+  "readStatus.unchanged": "Der Lesestatus war schon so gesetzt.",
+  "readStatus.failed": "Der Lesestatus ließ sich nicht ändern: {message}",
+  "readStatus.endPrompt": "Fertig gelesen?",
+  "readStatus.endDismiss": "Ausblenden",
+} as const;
+
+export const readStatusEn: Record<keyof typeof readStatusDe, string> = {
+  "table.readAt": "Read on",
+  "readStatus.change": "Change reading status, currently: {status}",
+  "readStatus.cycle": "Reading status of {title}: {status}. Set to “{next}”.",
+  "readStatus.cycleTitle": "Set to “{next}”",
+  "readStatus.readOn": "Read on {date}",
+  "readStatus.markRead": "Mark as read",
+  "readStatus.markUnread": "Mark as unread",
+  "readStatus.markedRead.one": "{n} item marked as read.",
+  "readStatus.markedRead.other": "{n} items marked as read.",
+  "readStatus.markedUnread.one": "{n} item marked as unread.",
+  "readStatus.markedUnread.other": "{n} items marked as unread.",
+  "readStatus.markedOne": "Marked as read.",
+  "readStatus.unchanged": "The reading status was set already.",
+  "readStatus.failed": "The reading status could not be changed: {message}",
+  "readStatus.endPrompt": "Finished reading?",
+  "readStatus.endDismiss": "Dismiss",
+};

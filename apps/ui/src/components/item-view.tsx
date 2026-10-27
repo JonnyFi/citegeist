@@ -6,7 +6,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { ConnectionsPanel } from "../connections";
 import { useI18n } from "../i18n";
 import { itemCardsInput } from "../lib/cards";
-import { creatorName, statusLabel, typeLabel } from "../lib/format";
+import { creatorName, formatDay, typeLabel } from "../lib/format";
 import { useOp, useOpMutation } from "../lib/hooks";
 import { hasThinMetadata } from "../lib/metadata-form";
 import { useReadingPosition } from "../lib/reading-position";
@@ -30,7 +30,8 @@ import {
 import { ProjectChips } from "./project-membership";
 import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
-import { Badge, Stamp, StatusSquare } from "./ui/badge";
+import { StatusControl } from "./status-control";
+import { Badge, Stamp } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
@@ -498,13 +499,12 @@ export function ItemView({
               </p>
               <p className="text-muted">{metaLine.join(" · ")}</p>
               <div className="flex flex-wrap items-center gap-2 pt-1.5">
-                <Badge tone={fm.status === "unread" ? "outline" : "accent"}>
-                  <StatusSquare
-                    filled={fm.status !== "unread"}
-                    className={fm.status === "unread" ? "" : "border-bg bg-bg"}
-                  />
-                  {statusLabel(i18n, fm.status)}
-                </Badge>
+                <StatusControl citekey={citekey} status={fm.status} />
+                {fm.read_at ? (
+                  <span className="text-[12px] text-muted">
+                    {t("readStatus.readOn", { date: formatDay(fm.read_at, i18n.lang) })}
+                  </span>
+                ) : null}
                 <ProjectChips citekey={citekey} projects={fm.projects} />
                 {fm.tags.map((tag) => (
                   <Badge key={tag}>{tag}</Badge>

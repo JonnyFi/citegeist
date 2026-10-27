@@ -10,8 +10,8 @@ import {
 } from "@citegeist/reader";
 import type { ItemFrontmatter } from "@citegeist/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileX } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { FileX, X } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
 import { publishChatSelection } from "../chat";
 import { useI18n } from "../i18n";
@@ -19,7 +19,15 @@ import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
 import { anchorFromSelection, type CardsListOutput, itemCardsInput, kindColor } from "../lib/cards";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
-import { loadReadingPosition, restoreReading, trackReading } from "../lib/reading-position";
+import { useSetStatus } from "../lib/read-status";
+import {
+  dismissEndPrompt,
+  endPromptDismissed,
+  isNearEnd,
+  loadReadingPosition,
+  restoreReading,
+  trackReading,
+} from "../lib/reading-position";
 import { describeError } from "../lib/utils";
 import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
@@ -29,6 +37,7 @@ import { PageBanner } from "./page-banner";
 import { hideReaderPopover, SelectionActions } from "./selection-actions";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, Loading } from "./ui/states";
+import { useToast } from "./ui/toast";
 
 type DocumentAssets = z.output<typeof documentsAssets.output>;
 
@@ -151,10 +160,36 @@ function ReaderLoaded({
   const stream = useMemo(() => buildBlockStream(data.blocks), [data.blocks]);
   const pageLabels = useMemo(() => data.pages?.pages.map((p) => p.label), [data.pages]);
 
+  // Opening an item of the library for the first time marks it as being read. An item in the
+  // inbox is not accepted yet, so looking at it changes nothing. Only an unread item changes:
+  // the core checks `from` too, so that a status set a moment ago is not taken back.
+  const setStatus = useSetStatus();
+  const toast = useToast();
+  const opened = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (fm.inbox || fm.status !== "unread" || opened.current === fm.citekey) return;
+    opened.current = fm.citekey;
+    void setStatus([fm.citekey], "reading", ["unread"]);
+  }, [fm.citekey, fm.inbox, fm.status, setStatus]);
+
+  // At the end of the document the reader asks once whether the item is finished. It never
+  // marks the item as read by itself.
+  const [atEnd, setAtEnd] = useState(false);
+  const [dismissed, setDismissed] = useState(() => endPromptDismissed(fm.citekey));
+  const askAtEnd = atEnd && !dismissed && !fm.inbox && fm.status !== "read";
+
   // remember where the user stopped; "Weiterlesen" on the overview comes back to it
   useEffect(
     () =>
-      host ? trackReading(host, fm.citekey, (page) => pageLabels?.[page] ?? undefined) : undefined,
+      host
+        ? trackReading(
+            host,
+            fm.citekey,
+            (page) => pageLabels?.[page] ?? undefined,
+            400,
+            (scroller) => setAtEnd(isNearEnd(scroller)),
+          )
+        : undefined,
     [host, fm.citekey, pageLabels],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: picks up once per opened view
@@ -304,7 +339,7 @@ function ReaderLoaded({
         {data.pages && !data.pages.confirmed && data.paginated !== false ? (
           <PageBanner citekey={fm.citekey} pages={data.pages} />
         ) : null}
-        <div ref={setHost} className="min-h-0 flex-1">
+        <div ref={setHost} className="relative min-h-0 flex-1">
           {view === "pdf" ? (
             pdf.data ? (
               <PdfView data={pdf.data} source={data.source} pageLabels={pageLabels} {...shared} />
@@ -322,6 +357,40 @@ function ReaderLoaded({
           ) : (
             <EmptyState icon={<FileX />} title={t("reader.noView")} />
           )}
+          {askAtEnd ? (
+            <div
+              role="status"
+              className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center"
+            >
+              <p className="pointer-events-auto flex h-8 items-center gap-3 border border-line bg-surface pl-3 pr-1 text-[12px]">
+                <span className="text-muted">{t("readStatus.endPrompt")}</span>
+                <button
+                  type="button"
+                  data-testid="end-prompt-mark"
+                  className="font-medium underline underline-offset-2 hover:no-underline"
+                  onClick={async () => {
+                    if ((await setStatus([fm.citekey], "read")) !== undefined) {
+                      toast.show({ message: t("readStatus.markedOne") });
+                    }
+                  }}
+                >
+                  {t("readStatus.markRead")}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("readStatus.endDismiss")}
+                  title={t("readStatus.endDismiss")}
+                  className="inline-flex size-6 items-center justify-center text-muted hover:bg-sunken hover:text-ink"
+                  onClick={() => {
+                    dismissEndPrompt(fm.citekey);
+                    setDismissed(true);
+                  }}
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
       {renderColumn(

@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { useI18n } from "../i18n";
+import { useSetStatus } from "../lib/read-status";
 import { type ItemSummary, ItemsTable, type RowSelection, type SortControl } from "./items-table";
 import { ProjectPicker, useProjectMembership } from "./project-membership";
 import { Button } from "./ui/button";
+import { useToast } from "./ui/toast";
 
 /** Selection of table rows. Rows that left the list drop out of it by themselves. */
 export function useRowSelection(items: readonly ItemSummary[]) {
@@ -47,6 +49,22 @@ export function SelectionBar({
 }) {
   const { t, tn } = useI18n();
   const change = useProjectMembership();
+  const setStatus = useSetStatus();
+  const toast = useToast();
+  const mark = async (status: "read" | "unread") => {
+    const changed = await setStatus(citekeys, status);
+    if (changed === undefined) return;
+    toast.show({
+      message:
+        changed.length === 0
+          ? t("readStatus.unchanged")
+          : tn(
+              status === "read" ? "readStatus.markedRead" : "readStatus.markedUnread",
+              changed.length,
+            ),
+    });
+    onDone();
+  };
   return (
     <div
       role="toolbar"
@@ -73,6 +91,12 @@ export function SelectionBar({
           {t("membership.removeFromProject")}
         </Button>
       ) : null}
+      <Button size="sm" onClick={() => void mark("read")}>
+        {t("readStatus.markRead")}
+      </Button>
+      <Button size="sm" onClick={() => void mark("unread")}>
+        {t("readStatus.markUnread")}
+      </Button>
       <span className="flex-1" />
       <Button size="sm" variant="ghost" onClick={onDone}>
         {t("membership.clear")}

@@ -91,6 +91,7 @@ interface ItemRow {
   retraction_json: string | null;
   fulltext_status: string | null;
   projects_json: string | null;
+  read_at: string | null;
 }
 
 function summaryOfRow(r: ItemRow) {
@@ -108,6 +109,7 @@ function summaryOfRow(r: ItemRow) {
     status: r.status,
     inbox: r.inbox === 1,
     ...(r.created ? { added: r.created } : {}),
+    ...(r.read_at ? { readAt: r.read_at } : {}),
     ...(r.inbox === 1 && r.inbox_by ? { inboxBy: r.inbox_by } : {}),
     ...(r.inbox === 1 && r.inbox_why ? { inboxWhy: r.inbox_why } : {}),
     ...(r.incomplete_code
@@ -492,7 +494,8 @@ export class Library extends EventEmitter {
     where: string[],
     params: unknown[],
   ) {
-    const dir = (input.order ?? (sort === "added" ? "desc" : "asc")) === "desc" ? -1 : 1;
+    const dir =
+      (input.order ?? (sort === "added" || sort === "readAt" ? "desc" : "asc")) === "desc" ? -1 : 1;
     const light = this.index.all<{
       citekey: string;
       title: string;
@@ -500,9 +503,11 @@ export class Library extends EventEmitter {
       type: string;
       status: string;
       created: string;
+      read_at: string | null;
       first_author: string | null;
     }>(
       `SELECT i.citekey, i.title, i.year, i.type, i.status, i.created,
+         json_extract(i.frontmatter_json, '$.read_at') AS read_at,
          (SELECT COALESCE(NULLIF(c.family, ''), c.literal) FROM creators c
             WHERE c.path = i.path AND c.role = 'author' ORDER BY c.pos LIMIT 1) AS first_author
        FROM items i ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}`,
@@ -525,6 +530,8 @@ export class Library extends EventEmitter {
           return r.type || null;
         case "status":
           return STATUS_RANK[r.status] ?? STATUS_RANK.unread ?? 0;
+        case "readAt":
+          return r.read_at || null;
       }
     };
     const compare = (a: Keyed, b: Keyed): number => {
@@ -535,7 +542,7 @@ export class Library extends EventEmitter {
         const c =
           typeof a.key === "number" && typeof b.key === "number"
             ? a.key - b.key
-            : sort === "added"
+            : sort === "added" || sort === "readAt"
               ? a.key < b.key
                 ? -1
                 : 1
@@ -578,6 +585,7 @@ export class Library extends EventEmitter {
          json_extract(i.frontmatter_json, '$.retraction') AS retraction_json,
          json_extract(i.frontmatter_json, '$.fulltext.status') AS fulltext_status,
          json_extract(i.frontmatter_json, '$.projects') AS projects_json,
+         json_extract(i.frontmatter_json, '$.read_at') AS read_at,
          json_extract(i.frontmatter_json, '$.inbox.by') AS inbox_by,
          json_extract(i.frontmatter_json, '$.inbox.why') AS inbox_why,
          json_extract(i.frontmatter_json, '$.incomplete.code') AS incomplete_code,
