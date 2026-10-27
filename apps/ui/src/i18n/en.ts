@@ -10,6 +10,7 @@ import { settingsEn } from "../settings/strings";
 import { textsEn } from "../texts/strings";
 import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
+import { inboxItemEn } from "./inbox";
 import { libraryViewEn } from "./library-view";
 import { manageEn } from "./manage";
 import { matrixEn } from "./matrix";
@@ -450,6 +451,7 @@ export const en: Record<MessageKey, string> = {
   ...membershipEn,
   ...libraryViewEn,
   ...metadataEn,
+  ...inboxItemEn,
   ...matrixEn,
   ...conceptsEn,
   ...modelsEn,

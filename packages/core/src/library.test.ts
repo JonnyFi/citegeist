@@ -260,30 +260,38 @@ describe("operations", () => {
       /ITEM_NOT_FOUND/,
     );
 
-    const all = (await reg.call("items.list", human, {})) as {
+    // the library lists accepted items; the inbox item joins only on request
+    const all = (await reg.call("items.list", human, { includeInbox: true })) as {
       items: { citekey: string; authors?: string; year?: string; inbox: boolean }[];
     };
     expect(all.items.map((i) => i.citekey)).toEqual(["a1xx", "b2xx", "c3xx"]);
     expect(all.items[0]).toMatchObject({ authors: "Luhmann", year: "1984" });
+    expect(all.items[1]).toMatchObject({ inbox: true });
     expect(all.items[2]).toMatchObject({ authors: "OECD", year: "2021" });
 
     const q = async (input: object) =>
       ((await reg.call("items.list", human, input)) as { items: { citekey: string }[] }).items.map(
         (i) => i.citekey,
       );
+    expect(await q({})).toEqual(["a1xx", "c3xx"]);
     expect(await q({ project: "p1" })).toEqual(["a1xx"]);
-    expect(await q({ tags: ["sys"] })).toEqual(["a1xx", "b2xx"]);
-    expect(await q({ tags: ["sys", "x"] })).toEqual(["b2xx"]);
+    expect(await q({ tags: ["sys"], includeInbox: true })).toEqual(["a1xx", "b2xx"]);
+    expect(await q({ tags: ["sys"] })).toEqual(["a1xx"]);
+    expect(await q({ tags: ["sys", "x"], includeInbox: true })).toEqual(["b2xx"]);
     expect(await q({ status: "read" })).toEqual(["a1xx"]);
     expect(await q({ inbox: true })).toEqual(["b2xx"]);
 
-    const page1 = (await reg.call("items.list", human, { limit: 2 })) as {
+    const page1 = (await reg.call("items.list", human, { limit: 2, includeInbox: true })) as {
       items: unknown[];
       next?: string;
     };
     expect(page1.items).toHaveLength(2);
     expect(page1.next).toBe("b2xx");
-    const page2 = (await reg.call("items.list", human, { limit: 2, cursor: page1.next })) as {
+    const page2 = (await reg.call("items.list", human, {
+      limit: 2,
+      cursor: page1.next,
+      includeInbox: true,
+    })) as {
       items: { citekey: string }[];
       next?: string;
     };

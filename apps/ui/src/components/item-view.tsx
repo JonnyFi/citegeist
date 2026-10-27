@@ -18,6 +18,7 @@ import { AttachPdf } from "./attach-pdf";
 import { CardList } from "./card-list";
 import { CardColumnBar } from "./card-panel";
 import { FindFulltextButton, FindFulltextResult, useFindFulltext } from "./find-fulltext";
+import { InboxBanner, MergeOfferNote, mergeOfferOf } from "./inbox-item";
 import { HeaderSlot, Label, RightColumn, SubBar } from "./layout";
 import {
   IdentifierForm,
@@ -31,7 +32,6 @@ import { Prose } from "./prose";
 import { ReaderTab } from "./reader-tab";
 import { Badge, Stamp, StatusSquare } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Provenance } from "./ui/provenance";
 import { Segmented } from "./ui/segmented";
 import { EmptyState, ErrorState, Loading } from "./ui/states";
 
@@ -62,12 +62,15 @@ function OverviewActions({
   onFetch,
   fetching,
   showFetch,
+  showResume,
 }: {
   citekey: string;
   onResume: () => void;
   onFetch: () => void;
   fetching: boolean;
   showFetch: boolean;
+  /** An item in the inbox is read through the reading tab; "Lesen beginnen" is for the library. */
+  showResume: boolean;
 }) {
   const { t } = useI18n();
   const position = useReadingPosition(citekey);
@@ -78,11 +81,13 @@ function OverviewActions({
           {fetching ? t("resolve.running") : t("resolve.button")}
         </Button>
       ) : null}
-      <Button size="sm" variant="primary" onClick={onResume}>
-        {position
-          ? t("reading.resume", { page: position.label ?? String(position.page + 1) })
-          : t("reading.start")}
-      </Button>
+      {showResume ? (
+        <Button size="sm" variant="primary" onClick={onResume}>
+          {position
+            ? t("reading.resume", { page: position.label ?? String(position.page + 1) })
+            : t("reading.start")}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -181,7 +186,14 @@ export function ItemView({
                 : t("resolve.unchanged"),
             ...(out.suggestedCitekey ? { suggested: out.suggestedCitekey } : {}),
           }),
-        onError: (err) => setNotice({ text: describeError(err).message, error: true }),
+        onError: (err) => {
+          const offer = mergeOfferOf(err);
+          setNotice({
+            text: describeError(err).message,
+            error: true,
+            ...(offer ? { merge: offer } : {}),
+          });
+        },
       },
     );
   };
@@ -234,10 +246,16 @@ export function ItemView({
         aria-label={t("item.breadcrumb")}
         className="flex min-w-0 items-center gap-2 whitespace-nowrap text-muted"
       >
-        <Link to="/" search={{}} className="hover:text-ink">
-          {t("nav.library")}
-        </Link>
-        {firstProject ? (
+        {fm.inbox ? (
+          <Link to="/inbox" className="hover:text-ink">
+            {t("nav.inbox")}
+          </Link>
+        ) : (
+          <Link to="/" search={{}} className="hover:text-ink">
+            {t("nav.library")}
+          </Link>
+        )}
+        {firstProject && !fm.inbox ? (
           <>
             <span aria-hidden="true">/</span>
             <Link to="/" search={{ project: firstProject }} className="hover:text-ink">
@@ -253,16 +271,18 @@ export function ItemView({
       <span className="flex-1" />
       {retraction ? <RetractionBadge marker={retraction} /> : null}
       <span className="font-mono text-[12px] text-muted">{fm.citekey}</span>
-      <Button
-        size="sm"
-        onClick={() => {
-          void trash(citekey).then((done) => {
-            if (done) void navigate({ to: "/", search: {} });
-          });
-        }}
-      >
-        {t("item.delete")}
-      </Button>
+      {fm.inbox ? null : (
+        <Button
+          size="sm"
+          onClick={() => {
+            void trash(citekey).then((done) => {
+              if (done) void navigate({ to: "/", search: {} });
+            });
+          }}
+        >
+          {t("item.delete")}
+        </Button>
+      )}
     </HeaderSlot>
   );
 
@@ -370,6 +390,7 @@ export function ItemView({
             onFetch={fetchMetadata}
             fetching={resolve.isPending}
             showFetch={!thin}
+            showResume={!fm.inbox}
           />
         </SubBar>
         <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10 pt-11">
@@ -380,14 +401,7 @@ export function ItemView({
                   <RetractionNote marker={retraction} />
                 </div>
               ) : null}
-              {fm.inbox?.why ? (
-                <Provenance
-                  who={fm.inbox.by === "human" ? t("actor.human") : fm.inbox.by}
-                  tail={`: ${fm.inbox.why}`}
-                >
-                  {t("item.suggestedBy")}
-                </Provenance>
-              ) : null}
+              <InboxBanner fm={fm} />
               {notice ? (
                 <div className="mb-1 flex flex-col gap-2">
                   <span
@@ -396,6 +410,13 @@ export function ItemView({
                   >
                     {notice.text}
                   </span>
+                  {notice.merge ? (
+                    <MergeOfferNote
+                      citekey={citekey}
+                      offer={notice.merge}
+                      onMerged={(text) => setNotice({ text })}
+                    />
+                  ) : null}
                   {notice.suggested ? (
                     <RenameOffer
                       citekey={citekey}
@@ -484,7 +505,6 @@ export function ItemView({
                   />
                   {statusLabel(i18n, fm.status)}
                 </Badge>
-                {fm.inbox ? <Badge tone="outline">{t("nav.inbox")}</Badge> : null}
                 <ProjectChips citekey={citekey} projects={fm.projects} />
                 {fm.tags.map((tag) => (
                   <Badge key={tag}>{tag}</Badge>

@@ -375,13 +375,25 @@ describe("duplicates", () => {
     expect(different.duplicateOf).toBeUndefined();
   });
 
-  it("moves an inbox item into the library when a human adds it again", async () => {
+  it("leaves an inbox item in the inbox when a human adds it again, and says so", async () => {
     const e = await env();
     const queued = await add(e, "10.1086/225469", {}, "agent:grok");
     expect(item(e, queued.citekey).inbox).toBeDefined();
-    const again = await e.call<AddOut>("items.add", { identifier: "10.1086/225469" });
+    const again = await e.call<AddOut & { inInbox?: boolean }>("items.add", {
+      identifier: "10.1086/225469",
+    });
     expect(again.duplicateOf).toBe(queued.citekey);
+    expect(again.inInbox).toBe(true);
+    expect(item(e, queued.citekey).inbox).toMatchObject({ by: "agent:grok" });
+    const job = await e.call<Job>("jobs.get", { job: again.job });
+    expect(job.message).toBe(`already in the inbox as ${queued.citekey}`);
+    // only inbox.accept moves it into the library
+    await e.call("inbox.accept", { citekeys: [queued.citekey] });
     expect(item(e, queued.citekey).inbox).toBeUndefined();
+    const third = await e.call<AddOut & { inInbox?: boolean }>("items.add", {
+      identifier: "10.1086/225469",
+    });
+    expect(third.inInbox).toBeUndefined();
   });
 
   it("gives a second item with the same author and year a new citekey", async () => {

@@ -19,6 +19,7 @@ import type { CoreEvent } from "../lib/core";
 import { classifyIdentifier } from "../lib/identifier";
 import { suggestMockCitekey } from "../mock/citekey";
 import type { MockData } from "../mock/fixtures";
+import { mockMergeOffer } from "../mock/inbox";
 import { linkTargets, parseInsights } from "./insights";
 import { childrenOf, normalizeOrder, numberNodes, slugify, subtreeIds } from "./outline";
 
@@ -904,6 +905,14 @@ export function bindPlanningMock(
           throw new Error(
             `INVALID_IDENTIFIER: '${input.identifier}' is not a DOI, arXiv id, ISBN, PMID or URL`,
           );
+        }
+        if (kind === "doi") {
+          const offer = mockMergeOffer(
+            data.items,
+            input.citekey,
+            value.replace(/^.*?(10\.)/i, "$1"),
+          );
+          if (offer) throw offer;
         }
         const before = item.frontmatter;
         const next: Record<string, unknown> = { ...before };

@@ -9,6 +9,7 @@ import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
+import { inboxItemDe } from "./inbox";
 import { libraryViewDe } from "./library-view";
 import { manageDe } from "./manage";
 import { matrixDe } from "./matrix";
@@ -457,6 +458,7 @@ export const de = {
   ...membershipDe,
   ...libraryViewDe,
   ...metadataDe,
+  ...inboxItemDe,
   ...matrixDe,
   ...conceptsDe,
   ...modelsDe,

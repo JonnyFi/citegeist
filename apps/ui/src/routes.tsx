@@ -30,7 +30,8 @@ const STATUSES = ["unread", "reading", "read"] as const;
 function parseFilters(search: Record<string, unknown>): ItemFilters {
   const project = typeof search.project === "string" && search.project ? search.project : undefined;
   const status = STATUSES.find((s) => s === search.status);
-  return { project, status };
+  const inbox = search.inbox === true || search.inbox === "true" ? true : undefined;
+  return { project, status, inbox };
 }
 
 const rootRoute = createRootRoute({ component: Shell });
@@ -42,7 +43,10 @@ function Library() {
     <ItemsScreen
       filters={search}
       onFiltersChange={(next) =>
-        void navigate({ to: "/", search: { project: next.project, status: next.status } })
+        void navigate({
+          to: "/",
+          search: { project: next.project, status: next.status, inbox: next.inbox },
+        })
       }
     />
   );

@@ -8,7 +8,7 @@ import type { Actor } from "@citegeist/schema";
 import { CitegeistError } from "@citegeist/schema";
 import type { Library } from "../library.js";
 import { findDuplicate } from "./dupes.js";
-import { loadItem, problem, saveItem } from "./items.js";
+import { identifierTwinError, loadItem, problem, saveItem } from "./items.js";
 import { suggestCitekey } from "./placeholder.js";
 import type { MetadataLookup } from "./service.js";
 
@@ -204,6 +204,63 @@ export function mergeLookup(
   return { changed, ...(suggestedCitekey ? { suggestedCitekey } : {}) };
 }
 
+/** Keys of an item that describe the work. The others belong to the item itself. */
+const OWN_KEYS = new Set([
+  "id",
+  "citekey",
+  "created",
+  "modified",
+  "sources",
+  "tags",
+  "projects",
+  "status",
+  "inbox",
+  "incomplete",
+  "fulltext",
+  "proposal",
+  "provenance",
+  "ids",
+  "ai_language",
+]);
+
+/**
+ * What `into` takes from `from` when the two are the same work (items.merge). A field the target
+ * lacks is filled. A field the target has stays, unless its provenance names a guess (a file
+ * name, a page, a first page) and the other item has it from a better source. Fields that a
+ * person or an agent edited, or that have no provenance, never change. Returns the patch for the
+ * target, with its provenance and ids, and the names of the changed fields.
+ */
+export function fillFromTwin(
+  into: Fields,
+  from: Fields,
+  today: string,
+): { patch: Fields; changed: string[] } {
+  const intoProv = { ...((into.provenance ?? {}) as Record<string, string>) };
+  const fromProv = (from.provenance ?? {}) as Record<string, string>;
+  const patch: Fields = {};
+  const changed: string[] = [];
+  for (const [key, value] of Object.entries(from)) {
+    if (OWN_KEYS.has(key) || value === undefined) continue;
+    const prov = key === "type" ? (intoProv.type ?? intoProv.title) : intoProv[key];
+    const theirs = key === "type" ? (fromProv.type ?? fromProv.title) : fromProv[key];
+    if (into[key] !== undefined) {
+      const guess = prov !== undefined && WEAK.test(prov);
+      const better = theirs !== undefined && !WEAK.test(theirs);
+      if (!guess || !better || sameValue(into[key], value)) continue;
+    }
+    patch[key] = value;
+    intoProv[key] = theirs ?? `merge@${today}`;
+    changed.push(key);
+  }
+  const ids = { ...((from.ids ?? {}) as object), ...((into.ids ?? {}) as object) };
+  if (!sameValue(into.ids ?? {}, ids)) {
+    patch.ids = ids;
+    changed.push("ids");
+  }
+  if (changed.length > 0) patch.provenance = intoProv;
+  return { patch, changed };
+}
+
 /** A resolver answer in the shape of a lookup. Throws the error for an answer that has no title. */
 function lookupFrom(result: ResolveResult, citekey: string, id: Identifier | undefined): Lookup {
   if (result.status === "unsupported") {
@@ -287,7 +344,7 @@ async function lookupFromAddress(
 }
 
 /** Throws when another item already has an identifier the lookup brought. */
-function refuseTwin(lib: Library, citekey: string, found: Lookup): void {
+function refuseTwin(lib: Library, actor: Actor, citekey: string, found: Lookup): void {
   const doi = found.fields.DOI;
   const isbn = found.fields.ISBN;
   const twin = findDuplicate(lib, {
@@ -298,6 +355,14 @@ function refuseTwin(lib: Library, citekey: string, found: Lookup): void {
     except: citekey,
   });
   if (!twin) return;
+  const err = identifierTwinError(
+    lib,
+    actor,
+    citekey,
+    twin,
+    `the page of ${citekey} names an identifier that`,
+  );
+  if (err.detail.code === "IDENTIFIER_IN_INBOX") throw err;
   throw problem(
     "IDENTIFIER_IN_USE",
     `the page of ${citekey} names an identifier that already belongs to the item ${twin}`,
@@ -359,20 +424,12 @@ export async function resolveItem(
       url: given.kind === "url" ? given.value : undefined,
       except: citekey,
     });
-    if (twin) {
-      throw problem(
-        "IDENTIFIER_IN_USE",
-        `${given.raw.slice(0, 80)} already belongs to the item ${twin}, so it cannot be added to ${citekey} as well`,
-        `Both items are the same work. Keep one: trash ${citekey} with items.trash (an agent may trash its own and incomplete items), or ask the user to remove the one they do not want.`,
-        { citekey, duplicateOf: twin },
-        "ask-human",
-      );
-    }
+    if (twin) throw identifierTwinError(lib, actor, citekey, twin, given.raw.slice(0, 80));
   } else {
     given = undefined;
     const web = await lookupFromAddress(deps, actor, citekey, old);
     if (web && "found" in web) {
-      refuseTwin(lib, citekey, web.found);
+      refuseTwin(lib, actor, citekey, web.found);
       found = web.found;
       byIdentifier = web.byIdentifier;
     } else {

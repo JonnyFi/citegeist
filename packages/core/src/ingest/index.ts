@@ -8,6 +8,7 @@ import {
   itemsAdd,
   itemsAttach,
   itemsFindFulltext,
+  itemsMerge,
   itemsRename,
   itemsResolve,
   itemsRestore,
@@ -73,7 +74,7 @@ function refuseOpenAddress(identifier: string): never {
 }
 
 /**
- * Binds items.add, items.attach, items.update, items.resolve, items.rename, items.trash, inbox.accept, inbox.reject,
+ * Binds items.add, items.attach, items.update, items.resolve, items.merge, items.rename, items.trash, inbox.accept, inbox.reject,
  * documents.read, documents.convert, jobs.get and jobs.list. Returns the service, which owns the
  * job queue and the conversion worker: call `service.close()` when the library closes.
  */
@@ -130,6 +131,7 @@ export function bindIngestOperations(
     .bind(itemsResolve, async (ctx, input) =>
       svc.resolveItem(ctx.actor, input.citekey, input.identifier),
     )
+    .bind(itemsMerge, async (ctx, input) => svc.mergeInboxItem(ctx.actor, input.from, input.into))
     .bind(itemsRename, async (ctx, input) => svc.renameItem(ctx.actor, input.citekey, input.to))
     .bind(itemsTrash, async (ctx, input) => {
       svc.trashItem(ctx.actor, input.citekey);

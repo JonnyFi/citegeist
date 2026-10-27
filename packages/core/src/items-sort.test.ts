@@ -66,7 +66,8 @@ async function setup() {
   }
   const reg = createCoreRegistry(lib);
   const list = async (input: object) =>
-    (await reg.call("items.list", human, input)) as {
+    // these tests sort the whole scope, the inbox item a8 included
+    (await reg.call("items.list", human, { includeInbox: true, ...input })) as {
       items: { citekey: string; added?: string }[];
       next?: string;
     };
@@ -172,6 +173,19 @@ describe("items.list sorting", () => {
     expect(library.out).toEqual(["a4", "a2", "a5", "a7", "a6", "a3", "a1"]);
     expect((await walk({ sort: "added", inbox: true }, 2)).out).toEqual(["a8"]);
     expect((await walk({ sort: "year", status: "read" }, 1)).out).toEqual(["a5", "a1"]);
+  });
+
+  it("leaves the inbox out of a sorted view unless the caller includes it", async () => {
+    const { lib } = await setup();
+    const reg = createCoreRegistry(lib);
+    const keys = async (input: object) =>
+      (
+        (await reg.call("items.list", human, { sort: "added", limit: 50, ...input })) as {
+          items: { citekey: string }[];
+        }
+      ).items.map((i) => i.citekey);
+    expect(await keys({})).not.toContain("a8");
+    expect(await keys({ includeInbox: true })).toContain("a8");
   });
 
   it("continues a sorted view after an item changed between two pages", async () => {

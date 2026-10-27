@@ -49,7 +49,13 @@ export function bindCoreOperations(
   return registry
     .bind(libraryStatus, async () => lib.status())
     .bind(itemsGet, async (_ctx, input) => lib.getItem(input.citekey))
-    .bind(itemsList, async (_ctx, input) => lib.listItems(input))
+    .bind(itemsList, async (_ctx, input) =>
+      lib.listItems({
+        ...input,
+        // accepted items only, unless the caller asks for the inbox
+        inbox: input.inbox ?? (input.includeInbox ? undefined : false),
+      }),
+    )
     .bind(documentsAssets, async (_ctx, input) => documentAssets(lib, input))
     .bind(cardsList, async (_ctx, input) => lib.listCards(input))
     .bind(notesGet, async (_ctx, input) => lib.getNote(input.id))
@@ -71,19 +77,41 @@ export function bindCoreOperations(
       const r = changeProjectItems(lib, ctx.actor, "remove", input.slug, input.citekeys);
       return { removed: r.changed, unchanged: r.unchanged };
     })
-    .bind(searchQuery, async (_ctx, input) => ({
-      hits: await search({
+    .bind(searchQuery, async (ctx, input) => {
+      // A person searches accepted items. An agent also sees the inbox, where its proposals wait.
+      const withInbox = input.includeInbox ?? ctx.actor.startsWith("agent:");
+      const hits = await search({
         q: input.q,
         kinds: input.kinds,
         limit: input.limit,
         project: input.project,
         tags: input.tags,
         status: input.status,
-      }),
-    }));
+        ...(withInbox ? {} : { inbox: false }),
+      });
+      return { hits: markInbox(lib, hits) };
+    });
 }
 
 /** A registry with all handlers of this package bound. */
 export function createCoreRegistry(lib: Library): Registry {
   return bindCoreOperations(new Registry(), lib);
+}
+
+/** Marks the hits that belong to an item in the inbox. */
+function markInbox(lib: Library, hits: SearchHit[]): SearchHit[] {
+  const keys = [...new Set(hits.flatMap((h) => (h.citekey ? [h.citekey] : [])))];
+  if (keys.length === 0) return hits;
+  const waiting = new Set(
+    lib.index
+      .all<{ citekey: string }>(
+        `SELECT citekey FROM items WHERE inbox = 1 AND citekey IN (${keys.map(() => "?").join(",")})`,
+        ...keys,
+      )
+      .map((r) => r.citekey),
+  );
+  if (waiting.size === 0) return hits;
+  return hits.map((h) =>
+    h.citekey && waiting.has(h.citekey) ? { ...h, inbox: true as const } : h,
+  );
 }

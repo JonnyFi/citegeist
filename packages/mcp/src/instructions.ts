@@ -24,6 +24,7 @@ Citekeys
 Adding papers
 - add_item takes a DOI, arXiv ID, ISBN, PMID, URL, BibTeX snippet or local file path.
 - It defaults to the inbox, where the user reviews the paper before it joins the library. Pass target "library" only when the user asked for this paper explicitly.
+- Adding something that waits in the inbox does not accept it. The answer carries inInbox: true; tell the user that the paper waits in the inbox. Only the user accepts. Search finds inbox items and marks the hits with inbox: true.
 - Pass "why" to say why the paper matters. The user sees it next to the inbox item.
 - related_works lists what an item cites (direction "references") or who cites it (direction "citing"), each work marked library, inbox or new. To add a work marked new, pass its DOI or arXiv ID to add_item.
 - add_item returns at once with a citekey and a job id. Metadata and text arrive later. Poll jobs_get until the status is succeeded or failed.

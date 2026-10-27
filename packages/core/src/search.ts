@@ -14,6 +14,8 @@ export interface SearchHit {
   kind: HitKind;
   id: string;
   citekey?: string;
+  /** The hit belongs to an item that waits in the inbox. */
+  inbox?: true;
   title: string;
   snippet: string;
   page?: string;

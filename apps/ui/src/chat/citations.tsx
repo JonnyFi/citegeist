@@ -151,7 +151,7 @@ function inline(parts: TextPart[], known: Known | null): ReactNode[] {
  */
 export function AssistantText({ text }: { text: string }) {
   const hasCites = text.includes("[[");
-  const items = useOp(itemsList, { limit: 500 }, { enabled: hasCites });
+  const items = useOp(itemsList, { includeInbox: true, limit: 500 }, { enabled: hasCites });
   const cards = useOp(cardsList, { limit: 500 }, { enabled: hasCites });
   const known: Known = {
     items: new Set((items.data?.items ?? []).map((i) => i.citekey)),

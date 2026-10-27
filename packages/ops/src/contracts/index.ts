@@ -158,6 +158,11 @@ export const itemsAdd = defineContract({
     duplicateOf: Citekey.optional(),
     /** True when the matched item had no working source and the new file or download repairs it. */
     repaired: z.boolean().optional(),
+    /**
+     * The matched item waits in the inbox. Adding something again does not accept it: say so to
+     * the user and offer inbox.accept.
+     */
+    inInbox: z.boolean().optional(),
     /** Fields of the existing item that the identifier filled or corrected. */
     enriched: z.array(z.string()).optional(),
     /**
@@ -230,10 +235,13 @@ export type ItemSort = (typeof ITEM_SORTS)[number];
 export const itemsList = defineContract({
   name: "items.list",
   summary:
-    "List items in a scope. Without sort the items come in citekey order. With sort the whole scope is ordered (added: date added, newest first unless order says otherwise; title, authors by the first author's family name, year, type; status: unread, reading, read) and the cursor continues that order, so every page belongs to the sorted view. Items without a value for the column come last in both directions.",
+    "List the items of the library in a scope. Items that wait in the inbox are left out unless inbox is true (only those) or includeInbox is true (both). Without sort the items come in citekey order. With sort the whole scope is ordered (added: date added, newest first unless order says otherwise; title, authors by the first author's family name, year, type; status: unread, reading, read) and the cursor continues that order, so every page belongs to the sorted view. Items without a value for the column come last in both directions.",
   access: "read",
   input: Scope.extend({
+    /** True: only the items in the inbox. False: only accepted items. Default: accepted items. */
     inbox: z.boolean().optional(),
+    /** Accepted items and inbox items together. Ignored when inbox is set. */
+    includeInbox: z.boolean().optional(),
     sort: z.enum(ITEM_SORTS).optional(),
     /** Default: desc for added, asc for every other column. */
     order: z.enum(["asc", "desc"]).optional(),
@@ -257,7 +265,7 @@ export const itemsUpdate = defineContract({
 export const itemsResolve = defineContract({
   name: "items.resolve",
   summary:
-    "Look the metadata of an item up again from its DOI, arXiv id, ISBN, PMID or URL (title as a last resort) and merge the answer into the item. With identifier, the item first gets that DOI, ISBN, arXiv id, PMID or URL and is looked up with it; nothing is stored when the lookup fails. Fields that a person or an agent edited are kept; fields from earlier lookups or guesses are replaced. Returns the names of the fields that changed.",
+    "Look the metadata of an item up again from its DOI, arXiv id, ISBN, PMID or URL (title as a last resort) and merge the answer into the item. With identifier, the item first gets that DOI, ISBN, arXiv id, PMID or URL and is looked up with it; nothing is stored when the lookup fails. Fields that a person or an agent edited are kept; fields from earlier lookups or guesses are replaced. Returns the names of the fields that changed. When the identifier belongs to an item on the other side of the inbox boundary, a person gets the error IDENTIFIER_IN_INBOX, whose context names the two items for items.merge.",
   access: "write",
   input: ItemRef.extend({
     /** A DOI, arXiv id, ISBN, PMID or a URL (also one that contains a DOI) to add to the item. */
@@ -268,6 +276,29 @@ export const itemsResolve = defineContract({
     changed: z.array(z.string()),
     /** The citekey was a placeholder and the item now has author and year. See items.update. */
     suggestedCitekey: Citekey.optional(),
+  }),
+});
+export const itemsMerge = defineContract({
+  name: "items.merge",
+  summary:
+    "Merge an inbox item into another item that is the same work: its sources move to the target, empty metadata is filled from it, fields edited on the target stay, tags and projects are united, and the inbox item goes to the trash (items.restore brings it back). Only a person may merge. A job records the merge",
+  access: "write",
+  input: z.object({
+    /** The inbox item to take over. It must wait in the inbox. */
+    from: Citekey,
+    /** The item that stays. */
+    into: Citekey,
+  }),
+  output: z.object({
+    citekey: Citekey,
+    /** The finished job that records the merge. */
+    job: JobId,
+    /** Metadata fields of the target that the inbox item filled or replaced. */
+    filled: z.array(z.string()),
+    /** Hashes of the sources that moved to the target. */
+    moved: z.array(z.string()),
+    /** Conversion of the moved file, when the target had none that works. */
+    convert: JobId.optional(),
   }),
 });
 export const itemsRename = defineContract({
@@ -799,6 +830,11 @@ export const searchQuery = defineContract({
       .array(z.enum(["item", "card", "note", "block"]))
       .default(["item", "card", "note", "block"]),
     limit: z.number().int().positive().max(100).default(20),
+    /**
+     * Search the inbox as well. Default: a person searches accepted items only, an agent sees
+     * its own proposals too. Hits from the inbox are marked with inbox: true.
+     */
+    includeInbox: z.boolean().optional(),
   }),
   output: z.object({
     hits: z.array(
@@ -806,6 +842,8 @@ export const searchQuery = defineContract({
         kind: z.enum(["item", "card", "note", "block"]),
         id: z.string(),
         citekey: Citekey.optional(),
+        /** The hit belongs to an item that waits in the inbox. */
+        inbox: z.literal(true).optional(),
         title: z.string(),
         snippet: z.string(),
         page: z.string().optional(),
@@ -1085,6 +1123,7 @@ export const CONTRACTS: readonly OperationContract[] = [
   itemsList,
   itemsUpdate,
   itemsResolve,
+  itemsMerge,
   itemsRename,
   itemsTrash,
   itemsRestore,

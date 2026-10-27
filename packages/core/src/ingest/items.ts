@@ -18,6 +18,7 @@ import {
 } from "@citegeist/schema";
 import { MarkdownFile } from "../frontmatter.js";
 import type { ChangeEvent, Library } from "../library.js";
+import { findDuplicate } from "./dupes.js";
 import { suggestCitekey } from "./placeholder.js";
 
 export function problem(
@@ -28,6 +29,50 @@ export function problem(
   recovery: "retry" | "fix-and-retry" | "do-first" | "ask-human" = "fix-and-retry",
 ): CitegeistError {
   return new CitegeistError({ code, message, fix, recovery, context });
+}
+
+/** True when the item waits in the inbox. */
+export function isInInbox(lib: Library, citekey: string): boolean {
+  return (
+    lib.index.get<{ inbox: number }>("SELECT inbox FROM items WHERE citekey = ?", citekey)
+      ?.inbox === 1
+  );
+}
+
+/**
+ * The error for an identifier that another item already has. When a person works on one side of
+ * the inbox boundary and the twin sits on the other, the work is the same and the answer is an
+ * offer, not a refusal: IDENTIFIER_IN_INBOX names the two items for items.merge. Everything else
+ * stays IDENTIFIER_IN_USE.
+ */
+export function identifierTwinError(
+  lib: Library,
+  actor: Actor,
+  citekey: string,
+  twin: string,
+  what: string,
+): CitegeistError {
+  const mine = isInInbox(lib, citekey);
+  if (actor === "human" && mine !== isInInbox(lib, twin)) {
+    const from = mine ? citekey : twin;
+    const into = mine ? twin : citekey;
+    return problem(
+      "IDENTIFIER_IN_INBOX",
+      mine
+        ? `${what} already belongs to ${twin} in the library; ${citekey} is the same work and waits in the inbox`
+        : `${what} already belongs to ${twin} in the inbox; it is the same work as ${citekey}`,
+      `Merge the inbox item ${from} into ${into} with items.merge (from: ${from}, into: ${into}).`,
+      { citekey, duplicateOf: twin, inboxItem: from, merge: { from, into } },
+      "ask-human",
+    );
+  }
+  return problem(
+    "IDENTIFIER_IN_USE",
+    `${what} already belongs to the item ${twin}, so it cannot be added to ${citekey} as well`,
+    `Both items are the same work. Keep one: trash ${citekey} with items.trash (an agent may trash its own and incomplete items), or ask the user to remove the one they do not want.`,
+    { citekey, duplicateOf: twin },
+    "ask-human",
+  );
 }
 
 /** An item file read from disk: the parsed pieces plus its root-relative path. */
@@ -139,6 +184,31 @@ function checkedPatch(citekey: string, patch: Record<string, unknown>): Record<s
   return out;
 }
 
+/**
+ * A person who sets a DOI or ISBN that an item on the other side of the inbox boundary already
+ * has gets the offer to merge the two (see identifierTwinError). Other twins are not checked here.
+ */
+function refuseCrossBoundaryTwin(
+  lib: Library,
+  actor: Actor,
+  citekey: string,
+  patch: Record<string, unknown>,
+): void {
+  if (actor !== "human") return;
+  const doi = typeof patch.DOI === "string" ? patch.DOI : undefined;
+  const isbns = typeof patch.ISBN === "string" ? patch.ISBN.split(",").map((t) => t.trim()) : [];
+  const queries = [
+    ...(doi ? [{ what: `DOI ${doi}`, q: { doi } }] : []),
+    ...isbns.map((isbn) => ({ what: `ISBN ${isbn}`, q: { isbn } })),
+  ];
+  for (const { what, q } of queries) {
+    const twin = findDuplicate(lib, { ...q, except: citekey });
+    if (!twin) continue;
+    const err = identifierTwinError(lib, actor, citekey, twin, what);
+    if (err.detail.code === "IDENTIFIER_IN_INBOX") throw err;
+  }
+}
+
 /** `patch` replaces top-level keys; a value of null removes the key. */
 export function updateItem(
   lib: Library,
@@ -148,6 +218,7 @@ export function updateItem(
 ): { frontmatter: ItemFrontmatter; suggestedCitekey?: string } {
   const item = loadItem(lib, citekey);
   const patch = checkedPatch(citekey, rawPatch);
+  refuseCrossBoundaryTwin(lib, actor, citekey, patch);
   for (const k of Object.keys(patch)) {
     if (PROTECTED.has(k)) {
       throw problem(

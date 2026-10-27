@@ -16,6 +16,8 @@ import { EmptyState, ErrorState, Loading } from "./ui/states";
 export interface ItemFilters {
   project?: string | undefined;
   status?: "unread" | "reading" | "read" | undefined;
+  /** Show the items that wait in the inbox as well, marked. */
+  inbox?: boolean | undefined;
 }
 
 /** The library: items outside the inbox, narrowed by project and reading status. */
@@ -30,7 +32,7 @@ export function ItemsScreen({
   const projects = useOp(projectsList, {});
   const [sort, setSort] = useLibrarySort();
   const pages = useItemPages({
-    inbox: false,
+    ...(filters.inbox ? { includeInbox: true } : { inbox: false }),
     limit: 50,
     sort: sort.sort,
     order: sort.order,
@@ -39,7 +41,8 @@ export function ItemsScreen({
   });
 
   const items = pages.data?.pages.flatMap((p) => p.items) ?? [];
-  const filtered = filters.project !== undefined || filters.status !== undefined;
+  const filtered =
+    filters.project !== undefined || filters.status !== undefined || filters.inbox === true;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -106,6 +109,17 @@ export function ItemsScreen({
               ]}
             />
           </div>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              className="size-3.5"
+              checked={filters.inbox === true}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, inbox: e.target.checked ? true : undefined })
+              }
+            />
+            {t("filter.includeInbox")}
+          </label>
         </div>
         {pages.data ? (
           <span className="flex items-center font-mono text-[12px] text-muted">

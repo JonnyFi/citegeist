@@ -68,6 +68,7 @@ import {
   acceptInbox,
   assertMayTrash,
   isCited,
+  isInInbox,
   loadItem,
   problem,
   rejectInbox,
@@ -80,7 +81,13 @@ import {
 import { lookupAddresses, MAX_REDIRECTS, refusePrivateUrl } from "./net-guard.js";
 import { extractPdfText, guessHeader, type PdfTextExtractor, pdfIdentifiers } from "./pdf-text.js";
 import { hasThinMetadata } from "./placeholder.js";
-import { type Lookup, type MergeOutcome, mergeLookup, resolveItem } from "./resolve.js";
+import {
+  fillFromTwin,
+  type Lookup,
+  type MergeOutcome,
+  mergeLookup,
+  resolveItem,
+} from "./resolve.js";
 import type { ConvertParams, ConvertWorker } from "./worker.js";
 
 /** The part of MetadataResolver the pipeline uses. Tests pass a resolver with replayed responses. */
@@ -127,6 +134,10 @@ export interface IngestDeps {
   maxDownloadBytes?: number;
 }
 
+function sourceExt(kind: Source["kind"]): string {
+  return kind === "pdf" ? "pdf" : kind === "epub" ? "epub" : "html";
+}
+
 export interface AddInput {
   identifier: string;
   projects: string[];
@@ -146,6 +157,8 @@ export interface AddResult {
   duplicateOf?: string;
   /** The matched item had no working source; the new file or download was attached to it. */
   repaired?: boolean;
+  /** The matched item waits in the inbox. Adding it again does not accept it. */
+  inInbox?: boolean;
   /** Fields of the existing item that the new identifier filled or corrected. */
   enriched?: string[];
   /** The item has a placeholder citekey and now has what a real one needs. Nothing was renamed. */
@@ -588,11 +601,13 @@ export class IngestService {
     } else {
       return undefined;
     }
-    if (actor === "human") {
-      const item = loadItem(this.lib, citekey);
-      if (item.fm.inbox) saveItem(this.lib, actor, item, { inbox: undefined });
-    }
-    return { citekey, job: jobId, duplicateOf: citekey, repaired: true };
+    return {
+      citekey,
+      job: jobId,
+      duplicateOf: citekey,
+      repaired: true,
+      ...(isInInbox(this.lib, citekey) ? { inInbox: true } : {}),
+    };
   }
 
   /**
@@ -617,20 +632,22 @@ export class IngestService {
     saveItem(this.lib, "system", item, { sources: keep });
   }
 
+  /**
+   * The input is a work the library has. An item in the inbox stays there: only inbox.accept
+   * moves it into the library, so the answer says `inInbox` and the caller offers that.
+   */
   private duplicate(actor: Actor, citekey: string): AddResult {
-    // A human who adds something that waits in the inbox accepts it.
-    if (actor === "human") {
-      const item = loadItem(this.lib, citekey);
-      if (item.fm.inbox) saveItem(this.lib, actor, item, { inbox: undefined });
-    }
+    const inInbox = isInInbox(this.lib, citekey);
     const job = this.queue.enqueueFinished({
       kind: "ingest",
       by: actor,
       input: { duplicateOf: citekey },
-      result: { duplicateOf: citekey },
-      message: `already in the library as ${citekey}`,
+      result: { duplicateOf: citekey, ...(inInbox ? { inInbox } : {}) },
+      message: inInbox
+        ? `already in the inbox as ${citekey}`
+        : `already in the library as ${citekey}`,
     });
-    return { citekey, job: job.id, duplicateOf: citekey };
+    return { citekey, job: job.id, duplicateOf: citekey, ...(inInbox ? { inInbox } : {}) };
   }
 
   /** Duplicate check on what the input string already says, before any network call. */
@@ -1862,7 +1879,7 @@ export class IngestService {
   ): Promise<{
     citekey: string;
     renamed?: { from: string; to: string };
-    merged?: { from: string; into: string; job: string };
+    merged?: { from: string; into: string; job: string; inInbox?: boolean };
   }> {
     const actor = ctx.job.by;
     let key = citekey;
@@ -1918,7 +1935,7 @@ export class IngestService {
     actor: Actor,
     from: string,
     into: string,
-  ): { from: string; into: string; job: string } | undefined {
+  ): { from: string; into: string; job: string; inInbox?: boolean } | undefined {
     if (from === into || isCited(this.lib, from)) return undefined;
     const source = loadItem(this.lib, from);
     const target = loadItem(this.lib, into);
@@ -1949,18 +1966,121 @@ export class IngestService {
     const fresh = loadItem(this.lib, into);
     const tags = [...new Set([...target.fm.tags, ...source.fm.tags])];
     const projects = [...new Set([...target.fm.projects, ...source.fm.projects])];
-    saveItem(this.lib, actor, fresh, {
-      tags,
-      projects,
-      ...(actor === "human" && fresh.fm.inbox ? { inbox: undefined } : {}),
-    });
+    saveItem(this.lib, actor, fresh, { tags, projects });
     const job = this.queue.enqueue({
       kind: "convert",
       by: actor,
       input: { citekey: into, source: first, force: true },
     });
     trashItem(this.lib, from, "system");
-    return { from, into, job: job.id };
+    return { from, into, job: job.id, ...(fresh.fm.inbox ? { inInbox: true } : {}) };
+  }
+
+  /**
+   * items.merge: an inbox item is the same work as `into`. The sources of the inbox item move to
+   * the target and are converted there, empty metadata is filled (see fillFromTwin), tags and
+   * projects are united, and the inbox item goes to the trash, where items.restore finds it. A
+   * finished job records the merge. Only a person merges: the target may be in the library.
+   */
+  mergeInboxItem(
+    actor: Actor,
+    from: string,
+    into: string,
+  ): { citekey: string; job: string; filled: string[]; moved: string[]; convert?: string } {
+    if (actor !== "human" && actor !== "system") {
+      throw problem(
+        "MERGE_NOT_ALLOWED",
+        `${actor} may not merge ${from} into ${into}`,
+        "Ask the user to merge the two items in the app.",
+        { from, into },
+        "ask-human",
+      );
+    }
+    if (from === into) {
+      throw problem(
+        "MERGE_SAME_ITEM",
+        `${from} cannot be merged into itself`,
+        "Pass two different citekeys.",
+        { from, into },
+      );
+    }
+    const source = loadItem(this.lib, from);
+    loadItem(this.lib, into);
+    if (!source.fm.inbox) {
+      throw problem(
+        "NOT_IN_INBOX",
+        `item ${from} is in the library, not in the inbox, so it cannot be merged into ${into}`,
+        "Only an item that waits in the inbox merges into another item. Use items.trash to remove an item from the library.",
+        { citekey: from },
+      );
+    }
+    if (isCited(this.lib, from)) {
+      throw problem(
+        "ITEM_REFERENCED",
+        `${from} has quote cards or links that refer to it, so it cannot be merged away`,
+        "Remove the cards or links first, or keep both items.",
+        { citekey: from },
+        "ask-human",
+      );
+    }
+    const files = source.fm.sources.filter((s) =>
+      existsSync(this.lib.paths.sourceFile(from, s.hash, sourceExt(s.kind))),
+    );
+    // A target without a working source gives its broken files up for the new ones.
+    if (files.length > 0 && this.needsRepair(into)) this.dropBrokenSources(into);
+    const moved: string[] = [];
+    for (const s of files) {
+      const have = loadItem(this.lib, into).fm.sources;
+      const role = have.some((h) => h.kind === s.kind && h.role === "main") ? "supplement" : s.role;
+      const added = this.addSource(
+        actor,
+        into,
+        {
+          buf: readFileSync(this.lib.paths.sourceFile(from, s.hash, sourceExt(s.kind))),
+          kind: s.kind,
+          ext: sourceExt(s.kind),
+          filename: s.filename,
+          ...(s.url ? { url: s.url } : {}),
+        },
+        role,
+      );
+      if (added) moved.push(added.hash);
+    }
+    const target = loadItem(this.lib, into);
+    const today = this.lib.stamp(actor).at.slice(0, 10);
+    const { patch, changed } = fillFromTwin(
+      target.fm as unknown as Record<string, unknown>,
+      source.fm as unknown as Record<string, unknown>,
+      today,
+    );
+    saveItem(this.lib, actor, target, {
+      ...patch,
+      tags: [...new Set([...target.fm.tags, ...source.fm.tags])],
+      projects: [...new Set([...target.fm.projects, ...source.fm.projects])],
+    });
+    const first = moved[0];
+    const convert = first
+      ? this.queue.enqueue({
+          kind: "convert",
+          by: actor,
+          input: { citekey: into, source: first, force: true },
+        }).id
+      : undefined;
+    const record = this.queue.enqueueFinished({
+      kind: "ingest",
+      by: actor,
+      input: { merge: { from, into } },
+      result: { citekey: into, merged: { from, into }, filled: changed, moved },
+      message: `merged the inbox item ${from} into ${into}`,
+    });
+    trashItem(this.lib, from, actor);
+    return {
+      citekey: into,
+      job: record.id,
+      filled: changed,
+      moved,
+      ...(convert ? { convert } : {}),
+    };
   }
 
   /** Marks an item incomplete when its ingest or conversion failed and no source works. */
