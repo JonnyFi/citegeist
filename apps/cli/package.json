@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@citegeist/metadata": "workspace:*",
-    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@orpc/server": "^1.16.1",
     "@types/node": "^22.20.5",
     "tsx": "^4.19.0",
