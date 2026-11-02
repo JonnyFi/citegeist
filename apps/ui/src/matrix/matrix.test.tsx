@@ -136,7 +136,8 @@ describe("filling cells", () => {
 
   it("fills all open cells as one job with progress and marks failures", async () => {
     const user = userEvent.setup();
-    const { calls } = await withMatrix();
+    // One cell per second, so a slow CI runner still sees the progress bar while the job runs.
+    const { calls } = await withMatrix(TAB, { aiDelayMs: 5000 });
     await user.click(screen.getByRole("button", { name: "Offene Zellen füllen" }));
     const bar = await screen.findByRole("progressbar", { name: "Zellen werden gefüllt" });
     expect(bar).toBeVisible();

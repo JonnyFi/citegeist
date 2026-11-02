@@ -142,6 +142,14 @@ for (const worker of ["workers/convert", "workers/research"]) {
   )
     .split("\n")
     .filter((l) => /^[A-Za-z0-9]/.test(l))
+    // The worker runs on macOS only. Linux-only wheels (CUDA, triton) are installed on the Linux
+    // CI runner but never on a user's Mac, so they are left out there as well.
+    .filter((l) => {
+      const marker = l.split(";")[1] ?? "";
+      if (!/sys_platform/.test(marker) || /darwin/.test(marker)) return true;
+      skipped++;
+      return false;
+    })
     .map((l) => l.split(/[=;\s]/)[0]);
   if (locked.length === 0) continue;
   const dists = JSON.parse(
@@ -152,7 +160,7 @@ for (const worker of ["workers/convert", "workers/research"]) {
     ),
   );
   for (const d of dists) {
-    // Wheels for other platforms (CUDA, Windows) are locked but never installed on macOS.
+    // Wheels for other platforms (Windows, Intel) are locked but not installed here.
     if (!d.installed) {
       skipped++;
       continue;
@@ -173,5 +181,5 @@ if (problems.length > 0) {
   process.exit(1);
 }
 console.log(
-  `License check passed: ${checked} packages (${skipped} locked packages not installed on this platform).`,
+  `License check passed: ${checked} packages (${skipped} locked packages not installed on this platform or not on macOS).`,
 );

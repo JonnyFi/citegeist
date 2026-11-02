@@ -434,6 +434,9 @@ export class AcpDriver implements AgentDriver {
     sink: (event: DriverEvent) => void,
     signal: AbortSignal,
   ): Promise<{ stopReason: string; usage?: DriverUsage | undefined }> {
+    // Cancelled while the agent was starting: a session/cancel sent now would reach an idle agent,
+    // which ignores it and then runs the whole prompt.
+    if (signal.aborted) return { stopReason: "cancelled" };
     this.sink = sink;
     this.cancelled = false;
     this.turnCost = undefined;
@@ -442,7 +445,6 @@ export class AcpDriver implements AgentDriver {
       this.cancelled = true;
       this.conn.cancel(this.sessionId);
     };
-    if (signal.aborted) onAbort();
     signal.addEventListener("abort", onAbort, { once: true });
     try {
       const res = await this.conn.prompt(this.sessionId, text);

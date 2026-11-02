@@ -63,7 +63,8 @@ describe("Volltext erneut suchen", () => {
 
   it("shows progress while it runs, then 'Kein freier Volltext gefunden' with the hosts tried", async () => {
     const user = userEvent.setup();
-    const { calls } = renderApp(`/items/${KEY}`, withMissingFulltext());
+    // The search takes 2 s, so a slow CI runner still sees the busy state before the answer.
+    const { calls } = renderApp(`/items/${KEY}`, withMissingFulltext(), { aiDelayMs: 2000 });
     await user.click(await screen.findByRole("button", { name: FIND }));
 
     // while the core searches: the button is busy and the sources are named as being checked
