@@ -158,6 +158,16 @@ describe("a chat turn with the fake ACP agent", () => {
     expect(h.view(s.id).turns[1]).toMatchObject({ status: "done" });
   });
 
+  it("stops a turn that is cancelled while the agent is still starting", async () => {
+    const h = await harness();
+    const s = h.service.create({ backend: "fake" });
+    h.service.send(s.id, "@fake say Moment\n@fake wait");
+    h.service.cancel(s.id);
+    await h.service.idle(s.id);
+    expect(h.view(s.id).turns[0]).toMatchObject({ status: "cancelled" });
+    expect(types(h, s.id)).toEqual(["user"]);
+  });
+
   it("reports a missing login with the fix", async () => {
     const h = await harness({ backend: fakeBackend({ FAKE_ACP_AUTH: "1" }) });
     const { session } = await h.chat("hallo");
