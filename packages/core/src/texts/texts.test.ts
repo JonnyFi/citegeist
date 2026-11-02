@@ -23,6 +23,7 @@ import {
   locatePandoc,
   managedPandocPath,
   PINNED_PANDOC,
+  pandocInstallable,
   parsePandocVersion,
 } from "./pandoc.js";
 import {
@@ -32,6 +33,7 @@ import {
   managedTypstPath,
   PINNED_TYPST,
   parseTypstVersion,
+  typstInstallable,
 } from "./typst.js";
 import { createZip } from "./zip.js";
 
@@ -834,7 +836,8 @@ describe("texts.export with a mocked Pandoc", () => {
       detail: {
         code: "PDF_ENGINE_MISSING",
         message: expect.stringContaining("Typst"),
-        fix: expect.stringContaining("typst.setup"),
+        // The pinned download exists for Apple silicon only; elsewhere the fix names brew.
+        fix: expect.stringContaining(typstInstallable() ? "typst.setup" : "brew install typst"),
         recovery: "ask-human",
       },
     });
@@ -907,7 +910,7 @@ describe("texts.export with a mocked Pandoc", () => {
       recovery: "ask-human",
     });
     expect((err as CitegeistError).detail.fix).toContain("brew install pandoc");
-    expect((err as CitegeistError).detail.fix).toContain("pandoc.setup");
+    if (pandocInstallable()) expect((err as CitegeistError).detail.fix).toContain("pandoc.setup");
   });
 
   it("surfaces Pandoc's own error text when the run fails", async () => {
