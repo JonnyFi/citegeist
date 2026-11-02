@@ -754,7 +754,7 @@ export function createMockRegistry(
       if (item.frontmatter.sources.length > 0) {
         return { citekey: input.citekey, found: true, tried: [], alreadyHadFile: true };
       }
-      await new Promise((resolve) => setTimeout(resolve, Math.min(aiDelayMs, 400)));
+      await new Promise((resolve) => setTimeout(resolve, options.aiDelayMs ?? 400));
       const outcome = options.findFulltext ?? "missing";
       if (outcome === "error") {
         throw new Error("FULLTEXT_FAILED: the full text search for the item failed");
