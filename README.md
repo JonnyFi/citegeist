@@ -133,26 +133,6 @@ The folder syncs through iCloud, Dropbox or a git remote, and git keeps a histor
 
 citegeist sends no telemetry. It goes to the network for metadata lookups, for model calls through the backend you chose, for downloads you start and for a daily update check. The [security model](docs/security-model.md#network-egress) lists every destination. API keys live in the macOS Keychain.
 
-## How it works
-
-```mermaid
-flowchart LR
-  app["citegeist.app"] --> core
-  chat["Agent chat<br/>Claude Code, Codex, Cursor"] --> core
-  local["Local agents<br/>cg mcp, cg"] --> core
-  cloud["Cloud agents<br/>tunnel, remote MCP"] --> core
-  core["Core process"] --> lib[("Library folder<br/>Markdown, YAML, PDFs")]
-  core --> index[("Search index")]
-  core --> worker["Python worker<br/>Docling, GROBID, OCR"]
-  worker --> lib
-```
-
-The app, the MCP server and `cg` call the same operations of the core, a TypeScript process on Node that owns the index and the jobs. A Python worker converts PDFs, scans and web pages. [Architecture](docs/architecture.md) explains the parts and the data model.
-
-## The name
-
-The name joins *cite* with the German *Geist*, which means spirit or ghost, as in Zeitgeist. The logo shows two ghosts that form an opening quotation mark.
-
 ## Build from source
 
 Requirements: macOS on Apple Silicon, Node 22 or newer, pnpm 10 and uv.
@@ -165,7 +145,7 @@ pnpm package                                                                    
 pnpm verify                                                                        # biome, typecheck, vitest, pytest
 ```
 
-[Development](docs/development.md) covers the repository layout, tests, evals and releases.
+[Architecture](docs/architecture.md) explains how the parts fit together, and [Development](docs/development.md) covers the repository layout, tests, evals and releases.
 
 ## Contributing
 
