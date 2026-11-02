@@ -11,11 +11,16 @@ targetRules = ["generic-api-key"]
 regexTarget = "match"
 regexes = ['''(?i)cite_?key''', '''libraryKey''']
 
-# Lowercase test ids such as `key: "mock-library-1"` in test files.
+# Lowercase test ids such as `key: "mock-library-1"` or `const KEY = "latour2005reassembling"` in test files.
 [[allowlists]]
 description = "Lowercase identifiers assigned to key in test files"
 condition = "AND"
 targetRules = ["generic-api-key"]
 paths = ['''\.test\.tsx?$''']
 regexTarget = "match"
-regexes = ['''^key\W+"[a-z0-9-]+"$''']
+regexes = ['''(?i)^key\W+"[a-z0-9-]+"$''']
+
+# Build output is ignored by git, but `pnpm secrets` scans the whole working tree.
+[[allowlists]]
+description = "Packaged app and build output"
+paths = ['''(^|/)dist/''', '''(^|/)out/''']
