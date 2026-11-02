@@ -1,5 +1,5 @@
 import type { Creator, ItemFrontmatter } from "@citegeist/schema";
-import { type Creator as BibCreator, parse } from "@retorquere/bibtex-parser";
+import { type Creator as BibCreator, parse } from "@retorquere/bibtex-parser/js";
 import { formatDateValue, fullTitle, type ItemDraft, parseDateValue } from "./csl.js";
 
 export interface BibtexParseResult {
