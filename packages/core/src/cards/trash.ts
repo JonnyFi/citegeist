@@ -23,6 +23,18 @@ interface RemovedLink {
   link: RawLink;
 }
 
+/**
+ * A link that stays but loses its `evidence` because the evidence was the trashed card. `link` is
+ * the entry as it stood, evidence included, so that a restore writes back exactly that.
+ */
+interface ClearedEvidence {
+  /** Id of the note whose frontmatter held the link. */
+  note: string;
+  /** Position in the `links` list of that note (the list does not change in length by this). */
+  index: number;
+  link: RawLink;
+}
+
 /** What `trashed.json` next to a trashed card says. */
 interface TrashedCard {
   id?: string;
@@ -30,6 +42,8 @@ interface TrashedCard {
   path?: string;
   /** Typed links that went with the card and come back with it. */
   removedLinks?: RemovedLink[];
+  /** Links that kept their place but lost the evidence field; a restore sets it again. */
+  clearedEvidence?: ClearedEvidence[];
 }
 
 function readMarker(dir: string): TrashedCard | undefined {
@@ -50,14 +64,25 @@ interface Reach {
   cards: number;
   /** Typed links that point at the card or start at it; a delete removes them. */
   links: RemovedLink[];
+  /**
+   * Links that cite the card as their evidence and are otherwise about other things; a delete drops
+   * the evidence field and keeps the link. Rejected suggestions are in here too, but they are only
+   * a memory in the file and not counted.
+   */
+  evidence: ClearedEvidence[];
   /** Notes and cards that mention the card in their text; the text stays as written. */
   mentions: number;
 }
 
+/** The id a wiki link value (`[[id]]`, `[[id|alias]]`) names, or undefined for anything else. */
+const targetOf = (value: unknown): string | undefined =>
+  typeof value === "string" ? wikiTarget(value) : undefined;
+
 /**
- * Who refers to a card: typed links and wiki links to it, and the links that start at it. The typed
- * links are read from the note files so that a delete can remove them and a restore can put the
- * very same entries back. Wiki links in note text are only counted.
+ * Who refers to a card: typed links and wiki links to it, the links that start at it and the links
+ * that cite it as evidence. The typed links are read from the note files so that a delete can
+ * remove them (or their evidence) and a restore can put the very same entries back. Wiki links in
+ * note text are only counted.
  */
 function reachOf(lib: Library, id: string, cardPath: string): Reach {
   const rows = lib.index.all<{
@@ -65,9 +90,10 @@ function reachOf(lib: Library, id: string, cardPath: string): Reach {
     src_kind: string;
     src_ref: string;
     dst: string;
+    evidence: string | null;
     origin: string;
   }>(
-    `SELECT DISTINCT path, src_kind, src_ref, dst, origin FROM links
+    `SELECT DISTINCT path, src_kind, src_ref, dst, evidence, origin FROM links
      WHERE path <> ?
        AND (dst = ? OR evidence = ? OR (src_kind = 'card' AND src_ref = ? AND origin = 'frontmatter'))`,
     cardPath,
@@ -77,7 +103,8 @@ function reachOf(lib: Library, id: string, cardPath: string): Reach {
   );
   type Row = (typeof rows)[number];
   const typed = (r: Row) =>
-    r.origin === "frontmatter" && (r.dst === id || (r.src_kind === "card" && r.src_ref === id));
+    r.origin === "frontmatter" &&
+    (r.dst === id || r.evidence === id || (r.src_kind === "card" && r.src_ref === id));
   const label = (kind: string, ref: string): string => {
     if (kind === "card") return `card ${ref}`;
     const title = lib.index.get<{ title: string }>(
@@ -97,14 +124,26 @@ function reachOf(lib: Library, id: string, cardPath: string): Reach {
   ];
 
   const links: RemovedLink[] = [];
-  for (const path of new Set(rows.filter(typed).map((r) => r.path))) {
+  const evidence: ClearedEvidence[] = [];
+  // a rejected suggestion is not in the index, so the notes that hold the card id are looked at too
+  const paths = new Set([
+    ...rows.filter(typed).map((r) => r.path),
+    ...lib.index
+      .all<{ path: string }>("SELECT path FROM notes WHERE instr(frontmatter_json, ?) > 0", id)
+      .map((r) => r.path),
+  ]);
+  for (const path of paths) {
     const note = lib.index.get<{ id: string }>("SELECT id FROM notes WHERE path = ?", path);
     if (!note) continue;
     readLinks(lib.paths.abs(path)).links.forEach((link, index) => {
+      const cites = targetOf(link.evidence) === id;
       // a rejected suggestion is kept in the file as a memory, the index does not know it
-      if (link.status === "rejected") return;
-      if (link.from === id || wikiTarget(String(link.to)) === id) {
+      if (link.status === "rejected") {
+        if (cites) evidence.push({ note: note.id, index, link });
+      } else if (link.from === id || targetOf(link.to) === id) {
         links.push({ note: note.id, index, link });
+      } else if (cites) {
+        evidence.push({ note: note.id, index, link });
       }
     });
   }
@@ -120,6 +159,7 @@ function reachOf(lib: Library, id: string, cardPath: string): Reach {
     notes: owners("note").size,
     cards: owners("card").size,
     links,
+    evidence,
     mentions: mentioning.size,
   };
 }
@@ -128,9 +168,10 @@ function reachOf(lib: Library, id: string, cardPath: string): Reach {
  * Moves a card file into <library>/.trash/card-<id>-<stamp>/ with a trashed.json that says who
  * trashed it, when, and where it was. Only a person may delete a card. While a link or a note
  * refers to it the call is refused, and the error names the references and counts them. With
- * `force` the card goes anyway: the typed links that point at it or start at it are removed and
- * kept in trashed.json, so that cards.restore puts them back. Wiki links in note text stay as
- * they are.
+ * `force` the card goes anyway: the typed links that point at it or start at it are removed, and
+ * a link that only cites it as evidence loses its `evidence` field and stays (the schema does not
+ * require evidence). Both are kept in trashed.json, so that cards.restore puts them back. Wiki
+ * links in note text stay as they are.
  */
 export function trashCard(
   lib: Library,
@@ -162,14 +203,14 @@ export function trashCard(
     throw new CitegeistError({
       code: "CARD_REFERENCED",
       message: `the card '${id}' is referenced: ${reach.references.join("; ")} refer to it`,
-      fix: "Ask the user to confirm, then call cards.delete again with force: true. The typed links of the card are removed with it, and cards.restore brings them back.",
+      fix: "Ask the user to confirm, then call cards.delete again with force: true. The typed links of the card are removed with it, links that cite it as evidence lose that evidence, and cards.restore brings both back.",
       recovery: "ask-human",
       context: {
         id,
         references: reach.references,
         notes: reach.notes,
         cards: reach.cards,
-        links: reach.links.length,
+        links: linkCount(reach),
         mentions: reach.mentions,
       },
     });
@@ -187,6 +228,7 @@ export function trashCard(
         id,
         path: row.path,
         ...(reach.links.length > 0 ? { removedLinks: reach.links } : {}),
+        ...(reach.evidence.length > 0 ? { clearedEvidence: reach.evidence } : {}),
         ...lib.stamp(actor),
       },
       null,
@@ -197,8 +239,58 @@ export function trashCard(
   if (result.status === "removed") {
     lib.emit("change", { rel: row.path, status: "removed", external: false } satisfies ChangeEvent);
   }
+  // dropping the evidence keeps every position, so it goes first and the removal can use them
+  clearEvidence(lib, reach.evidence, actor);
   removeLinks(lib, reach.links, actor);
   return { trashedTo: dest };
+}
+
+/** Links a delete touches and the person can see: removed ones and ones that lose their evidence. */
+function linkCount(reach: Reach): number {
+  return reach.links.length + reach.evidence.filter((e) => e.link.status !== "rejected").length;
+}
+
+/** Drops the `evidence` field of the links that cited the trashed card; the links stay in place. */
+function clearEvidence(lib: Library, cleared: ClearedEvidence[], actor: Actor): void {
+  for (const noteId of new Set(cleared.map((c) => c.note))) {
+    const path = lib.index.get<{ path: string }>(
+      "SELECT path FROM notes WHERE id = ?",
+      noteId,
+    )?.path;
+    if (!path) continue;
+    const { file, links } = readLinks(lib.paths.abs(path));
+    let changed = false;
+    for (const c of cleared.filter((x) => x.note === noteId)) {
+      if (!isDeepStrictEqual(links[c.index], c.link)) continue;
+      const { evidence: _gone, ...rest } = c.link;
+      links[c.index] = rest;
+      changed = true;
+    }
+    if (changed) saveLinks(lib, lib.paths.abs(path), file, links, actor);
+  }
+}
+
+/** Gives the links back the evidence that cards.delete dropped, writing the entry as it was. */
+function restoreEvidence(lib: Library, cleared: ClearedEvidence[], actor: Actor): void {
+  for (const noteId of new Set(cleared.map((c) => c.note))) {
+    const path = lib.index.get<{ path: string }>(
+      "SELECT path FROM notes WHERE id = ?",
+      noteId,
+    )?.path;
+    if (!path) continue;
+    const { file, links } = readLinks(lib.paths.abs(path));
+    let changed = false;
+    for (const c of cleared.filter((x) => x.note === noteId)) {
+      const { evidence: _gone, ...rest } = c.link;
+      const bare = (i: number) => isDeepStrictEqual(links[i], rest);
+      const at = bare(c.index) ? c.index : links.findIndex((_, i) => bare(i));
+      // the link was changed or deleted since: its evidence is not brought back by guessing
+      if (at < 0) continue;
+      links[at] = c.link;
+      changed = true;
+    }
+    if (changed) saveLinks(lib, lib.paths.abs(path), file, links, actor);
+  }
 }
 
 /** Takes the entries out of the `links` list of their notes (trashed.json has them by then). */
@@ -243,7 +335,7 @@ function readdLinks(lib: Library, removed: RemovedLink[], actor: Actor): void {
 
 /**
  * cards.restore: moves the newest trashed copy of a card back to its old path and indexes it, and
- * puts back the typed links that cards.delete removed with it.
+ * puts back the typed links that cards.delete removed with it and the evidence it dropped.
  */
 export function restoreCard(lib: Library, id: string, actor: Actor = "human"): void {
   const fail = (code: string, message: string, fix: string) =>
@@ -284,4 +376,5 @@ export function restoreCard(lib: Library, id: string, actor: Actor = "human"): v
   const result = lib.indexer.indexFile(rel);
   lib.emit("change", { ...result, external: false } satisfies ChangeEvent);
   readdLinks(lib, marker?.removedLinks ?? [], actor);
+  restoreEvidence(lib, marker?.clearedEvidence ?? [], actor);
 }

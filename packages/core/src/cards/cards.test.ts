@@ -6,6 +6,7 @@ import type { Actor } from "@citegeist/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { quoteSha256 } from "../hash.js";
 import { Library } from "../library.js";
+import { readLinks, saveLinks } from "../links/card-links.js";
 import { bindCoreOperations } from "../ops.js";
 import { cleanTmpDirs, itemData, itemFile, STAMP, tmpDir, writeRaw } from "../test-helpers.js";
 import { bindCardOperations } from "./ops.js";
@@ -714,6 +715,92 @@ describe("highlights (cards without AI)", () => {
         id,
       ),
     ).toHaveLength(2);
+    expect(trashEntries(lib.root)).toEqual([]);
+  });
+
+  /**
+   * `connected()` plus a link between two other notes that cites the card as its evidence, and a
+   * rejected suggestion that cites it too (a memory in the file that the index does not know).
+   */
+  async function cited() {
+    const ctx = await connected();
+    const { reg, lib, id, other, linked } = ctx;
+    await reg.call("links.create", human, {
+      from: other.frontmatter.id,
+      link: {
+        to: `[[${linked.frontmatter.id}]]`,
+        rel: "related",
+        why: "Beleg",
+        evidence: `[[${id}]]`,
+      },
+    });
+    const path = lib.getNote(linked.frontmatter.id).path;
+    const { file, links } = readLinks(path);
+    links.push({
+      to: `[[${other.frontmatter.id}]]`,
+      rel: "opposes",
+      evidence: `[[${id}|Zitat]]`,
+      by: "agent:test",
+      status: "rejected",
+    });
+    saveLinks(lib, path, file, links, "human");
+    const rawOf = (note: string) => lib.getNote(note).frontmatter.links;
+    return { ...ctx, rawOf };
+  }
+
+  // protects=a link that only cites the card as evidence counts as a link in the refusal, not as a mention, and a rejected suggestion is not counted;
+  // fails_when=the evidence reference is a mention, goes uncounted, or the rejected memory changes the counts; no_claim=what the app shows
+  it("counts links that cite the card as evidence as links", async () => {
+    const { reg, lib, id } = await cited();
+    const err = (await reg.call("cards.delete", human, { id }).catch((e: unknown) => e)) as {
+      detail?: { context: Record<string, unknown> };
+    };
+    expect(err.detail?.context).toMatchObject({ notes: 3, cards: 0, links: 3, mentions: 1 });
+    expect(trashEntries(lib.root)).toEqual([]);
+  });
+
+  // protects=a forced delete drops the evidence of a link that cited the card and keeps the link, also for a rejected suggestion;
+  // fails_when=the link goes with the card, a reference to the missing card stays, or the file changes elsewhere; no_claim=restore
+  it("drops the evidence of links that cite the card and keeps the links", async () => {
+    const { reg, lib, id, other, linked, rawOf } = await cited();
+    await reg.call("cards.delete", human, { id, force: true });
+
+    const kept = rawOf(other.frontmatter.id);
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toMatchObject({
+      to: `[[${linked.frontmatter.id}]]`,
+      rel: "related",
+      why: "Beleg",
+    });
+    expect(kept[0]).not.toHaveProperty("evidence");
+    const rejected = rawOf(linked.frontmatter.id).find((l) => l.status === "rejected");
+    expect(rejected).toMatchObject({ rel: "opposes" });
+    expect(rejected).not.toHaveProperty("evidence");
+    expect(lib.index.all("SELECT 1 FROM links WHERE evidence = ?", id)).toEqual([]);
+    expect(readFileSync(lib.getNote(other.frontmatter.id).path, "utf8")).not.toContain(id);
+
+    const [entry] = trashEntries(lib.root);
+    const marker = JSON.parse(readFileSync(`${lib.root}/.trash/${entry}/trashed.json`, "utf8"));
+    expect(marker.clearedEvidence).toHaveLength(2);
+  });
+
+  // protects=restore writes the evidence back exactly, for a visible link and a rejected suggestion;
+  // fails_when=the evidence stays lost, comes back in another form or on another link; no_claim=links edited while the card was in the trash
+  it("restores the evidence of links that cited the card", async () => {
+    const { reg, lib, id, other, linked, literature, rawOf } = await cited();
+    const before = {
+      other: rawOf(other.frontmatter.id),
+      linked: rawOf(linked.frontmatter.id),
+      literature: rawOf(literature),
+    };
+    await reg.call("cards.delete", human, { id, force: true });
+    await reg.call("cards.restore", human, { id });
+
+    expect(rawOf(other.frontmatter.id)).toEqual(before.other);
+    expect(rawOf(linked.frontmatter.id)).toEqual(before.linked);
+    expect(rawOf(literature)).toEqual(before.literature);
+    // the link of the card itself and the one between two notes
+    expect(lib.index.all("SELECT 1 FROM links WHERE evidence = ?", id)).toHaveLength(2);
     expect(trashEntries(lib.root)).toEqual([]);
   });
 
