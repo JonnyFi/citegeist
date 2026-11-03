@@ -17,6 +17,7 @@ import { membershipDe } from "./membership";
 import { metadataDe } from "./metadata";
 import { modelsDe } from "./models";
 import { readStatusDe } from "./read-status";
+import { readingOrderDe } from "./reading-order";
 import { relatedDe } from "./related";
 
 /**
@@ -459,6 +460,7 @@ export const de = {
   ...membershipDe,
   ...libraryViewDe,
   ...readStatusDe,
+  ...readingOrderDe,
   ...metadataDe,
   ...inboxItemDe,
   ...matrixDe,

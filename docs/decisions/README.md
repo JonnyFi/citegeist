@@ -37,3 +37,4 @@ This folder holds the decisions that shape citegeist, one short record per decis
 | 0031 | [The graph shows a project and its arguments](0031-project-graph.md) | accepted |
 | 0032 | [The inbox is explicit](0032-explicit-inbox.md) | accepted |
 | 0033 | [The reading status is set by people, with one automatic step](0033-reading-status.md) | accepted |
+| 0035 | [The reading list of a project is ordered](0035-ordered-reading-list.md) | accepted |
