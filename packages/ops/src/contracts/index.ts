@@ -916,7 +916,6 @@ export const projectsList = defineContract({
   access: "read",
   input: z.object({}),
   output: z.object({ projects: z.array(ProjectFrontmatter) }),
-  mcp: { tool: "list_projects", readOnly: true, idempotent: true },
 });
 
 // Search and citations ------------------------------------------------------------------------------

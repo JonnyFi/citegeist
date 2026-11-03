@@ -756,7 +756,7 @@ export class Library extends EventEmitter {
       throw new CitegeistError({
         code: "PROJECT_NOT_FOUND",
         message: `no project with slug '${slug}'`,
-        fix: "Call projects.list to see the existing projects, or projects.create to make one.",
+        fix: "Call projects.context without a slug to see the existing projects, or projects.create to make one.",
         recovery: "fix-and-retry",
         context: { slug },
       });

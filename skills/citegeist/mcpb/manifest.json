@@ -49,10 +49,13 @@
       "description": "Move an inbox item or an item an agent added to the trash"
     },
     { "name": "create_project", "description": "Create a project with a brief" },
-    { "name": "list_projects", "description": "List the projects of the library" },
     {
       "name": "get_project",
-      "description": "Read a project with its brief, plans and the outline of a plan with computed numbers"
+      "description": "Without a slug, list the projects. With a slug, read a project with its brief, reading list, plans and the outline of a plan with computed numbers"
+    },
+    {
+      "name": "edit_reading_list",
+      "description": "Move items of a project's reading list, set or clear their notes, or add a library item at a position"
     },
     {
       "name": "related_works",

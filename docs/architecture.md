@@ -391,8 +391,8 @@ Sections of converted documents are embedded together with the path of their hea
 
 | Scope | Tools |
 |---|---|
-| `read` (read-only hint) | `search`, `get_item`, `read_document` (by page, section or block), `list_cards`, `list_projects`, `get_project` (project, plans and outline in one call), `related_works` (cited and citing works of an item, `direction`), `cite`, `jobs_get`, `find_insights` |
-| `write` (all tools) | the `read` tools plus `add_item`, `attach_file` (attach a local file to an existing item and convert it), `trash_item` (inbox items, incomplete items and items an agent added, as long as no card or link refers to them; the trash folder records who deleted), `create_card`, `create_note`, `link`, `create_project`, `edit_outline`, `edit_plan_doc`, `note_insight` |
+| `read` (read-only hint) | `search`, `get_item`, `read_document` (by page, section or block), `list_cards`, `get_project` (without a slug the list of projects; with one the project, its reading list, plans and outline in one call), `related_works` (cited and citing works of an item, `direction`), `cite`, `jobs_get`, `find_insights` |
+| `write` (all tools) | the `read` tools plus `add_item`, `attach_file` (attach a local file to an existing item and convert it), `trash_item` (inbox items, incomplete items and items an agent added, as long as no card or link refers to them; the trash folder records who deleted), `create_card`, `create_note`, `link`, `create_project`, `edit_reading_list`, `edit_outline`, `edit_plan_doc`, `note_insight` |
 | `research` | the `read` tools plus `add_item`, without local files and only for addresses on scholarly hosts |
 
 Every response has a short text plus `structuredContent`, and full texts come as `resource_link`. `admin` operations are never exposed.
