@@ -23,8 +23,9 @@ function typesText(target: EventTarget | null): boolean {
 }
 
 /**
- * Actions for the current text selection: four colour dots that mark the passage at once, without
- * AI (the keys 1 to 4 do the same), and "Zitat", which saves a quote card with the AI paraphrase.
+ * Actions for the current text selection: "Zitat (KI)", which saves a quote card with the AI
+ * paraphrase, and four colour dots that mark the passage at once, without AI (the keys 1 to 4 do
+ * the same).
  */
 export function SelectionActions({
   range,
@@ -96,6 +97,16 @@ export function SelectionActions({
       // keep the text selection alive while a button is pressed
       onMouseDown={(e) => e.preventDefault()}
     >
+      <button
+        type="button"
+        data-testid="selection-quote"
+        disabled={busy}
+        onClick={onQuote}
+        className={`${base} hover:bg-bg/20`}
+      >
+        {t("selection.quote")}
+      </button>
+      <span aria-hidden="true" className="mx-0.5 w-px self-stretch bg-bg/30" />
       {HIGHLIGHT_COLORS.map((color, i) => {
         const label = t("hl.mark", { color: t(`hl.color.${color}`), key: String(i + 1) });
         return (
@@ -117,16 +128,6 @@ export function SelectionActions({
           </button>
         );
       })}
-      <span aria-hidden="true" className="mx-0.5 w-px self-stretch bg-bg/30" />
-      <button
-        type="button"
-        data-testid="selection-quote"
-        disabled={busy}
-        onClick={onQuote}
-        className={`${base} hover:bg-bg/20`}
-      >
-        {t("selection.quote")}
-      </button>
     </div>
   );
 }

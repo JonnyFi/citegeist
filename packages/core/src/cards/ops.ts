@@ -29,11 +29,11 @@ export function bindCardOperations(
       cards.update(ctx.actor, { id: input.id, patch: input.patch as Record<string, unknown> }),
     )
     .bind(cardsDelete, async (ctx, input) => {
-      trashCard(lib, input.id, ctx.actor);
+      trashCard(lib, input.id, ctx.actor, { force: input.force === true });
       return { ok: true as const };
     })
-    .bind(cardsRestore, async (_ctx, input) => {
-      restoreCard(lib, input.id);
+    .bind(cardsRestore, async (ctx, input) => {
+      restoreCard(lib, input.id, ctx.actor);
       return { card: cards.getCard(input.id) };
     })
     .bind(cardsRegenerate, async (ctx, input) => cards.regenerate(ctx.actor, input))

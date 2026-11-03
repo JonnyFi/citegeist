@@ -110,12 +110,12 @@ export function ensureLiteratureNote(lib: Library, actor: OpContext["actor"], ci
   });
 }
 
-function readLinks(path: string): { file: MarkdownFile; links: RawLink[] } {
+export function readLinks(path: string): { file: MarkdownFile; links: RawLink[] } {
   const file = MarkdownFile.parse(readFileSync(path, "utf8"));
   return { file, links: ((file.data?.links as RawLink[] | undefined) ?? []).slice() };
 }
 
-function save(
+export function saveLinks(
   lib: Library,
   path: string,
   file: MarkdownFile,
@@ -167,7 +167,7 @@ export function createCardLink(
     by: ctx.actor,
     status,
   });
-  save(lib, note.path, file, kept, ctx.actor);
+  saveLinks(lib, note.path, file, kept, ctx.actor);
   return lib.getNote(note.frontmatter.id);
 }
 
@@ -196,7 +196,7 @@ export function removeLink(
     l.status !== "rejected" &&
     (input.rel === undefined || l.rel === input.rel);
   if (!links.some(hit)) throw cardLinkErrors.noLink(input.from, input.to);
-  save(
+  saveLinks(
     lib,
     note.path,
     file,

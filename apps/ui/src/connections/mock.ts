@@ -44,7 +44,8 @@ function wikiTargets(note: MockNote): string[] {
   return [...new Set(scanWikiLinks(note.body).map((m) => m.target))];
 }
 
-const typedTarget = (link: Link) => link.to.replace(/^\[\[|\]\]$/g, "").split("|")[0] ?? link.to;
+export const typedTarget = (link: Link) =>
+  link.to.replace(/^\[\[|\]\]$/g, "").split("|")[0] ?? link.to;
 
 /**
  * links.propose, links.decide and graph.neighbors for the mock core. Proposals are made by a

@@ -33,7 +33,7 @@ describe("selection popover", () => {
     const { calls } = await openReader(reflowOnly(), { aiDelayMs: 600 });
     expect(screen.getAllByTestId("panel-card")).toHaveLength(3);
     await select("bpara0002", PASSAGE);
-    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    await user.click(await screen.findByRole("button", { name: "Zitat (KI)" }));
 
     const create = calls.find((c) => c.name === "cards.create");
     expect(create?.input).toMatchObject({
@@ -63,7 +63,7 @@ describe("selection popover", () => {
     const user = userEvent.setup();
     await openReader();
     await select("bpara0003", "Es gibt selbstreferentielle Systeme.");
-    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    await user.click(await screen.findByRole("button", { name: "Zitat (KI)" }));
     const editor = await screen.findByTestId("card-editor");
     expect(within(editor).getByText("S. 58")).toBeVisible();
     // the page is not confirmed yet, which the card says
@@ -341,7 +341,7 @@ describe("AI language dropdown", () => {
     await user.selectOptions(await dropdown(), "en");
     await waitFor(async () => expect((await dropdown()).value).toBe("en"));
     await select("bpara0002", PASSAGE);
-    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    await user.click(await screen.findByRole("button", { name: "Zitat (KI)" }));
     expect(await screen.findByText(/In other words \(en\)/)).toBeVisible();
   });
 });
@@ -391,7 +391,7 @@ describe("a source without pages", () => {
     const user = userEvent.setup();
     const view = await openReader(createWebFixtures());
     await select("bpara0002", PASSAGE);
-    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    await user.click(await screen.findByRole("button", { name: "Zitat (KI)" }));
     const editor = await screen.findByTestId("card-editor");
     // bpara0002 is the second text block of the page, the heading does not count
     expect(within(editor).getByText("Abs. 2")).toBeVisible();
