@@ -22,7 +22,7 @@ pnpm verify
 
 1. **Issue.** Link the issue in which a maintainer agreed on the approach.
 2. **Branch.** Create one branch per topic in your fork, for example `zotero-import-fix`.
-3. **Keep it small.** One topic per pull request. A reviewer reads every line, so a pull request should stay under about 400 changed lines outside tests, fixtures and generated files. Split anything larger, or agree on the size in the issue first.
+3. **One topic.** A pull request covers one topic. Split unrelated changes, and say in the issue how you plan to cut a large feature, so that the review can follow it.
 4. **Pull request.** Open it against `main` and fill in the template. Opening it early as a draft is welcome.
 5. **Review.** The maintainers review every pull request, comment on it and decide product questions.
 6. **Merge.** The maintainers merge after the `verify` check is green. They use merge commits instead of squash, so that stacked branches rebase cleanly.
@@ -52,7 +52,7 @@ AI-assisted contributions are welcome. A coding agent writes code faster than an
 - **A person stands behind every pull request.** You have read the whole diff, run the change yourself and can explain any line in review, whether you or an agent wrote it.
 - **Show that it works.** A bug fix comes with a test that fails without it. A UI change comes with a screenshot or the steps you clicked through.
 - **Two open pull requests at a time.** Open the next one when one of them is merged or closed.
-- **Write issues, comments and review answers yourself.** An agent may help you think, but post only what you have read and mean. Unedited agent output in issues or review threads gets closed.
+- **Issues, comments and review answers engage with the topic.** An agent may write them with you. They show that you looked at the code and the discussion, answer the question that was asked and take a position. Generic text that could stand under any pull request gets closed.
 - **No automated pull requests.** Agent loops, bots and scripts that open pull requests or issues on their own are not allowed. Dependabot is the only exception.
 
 Maintainers close pull requests that do not follow these rules without a detailed review. Fix the point that the closing comment names and open the pull request again.
