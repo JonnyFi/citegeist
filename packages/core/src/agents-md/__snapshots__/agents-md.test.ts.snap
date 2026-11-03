@@ -50,7 +50,7 @@ The folder is a valid Obsidian vault. Files are UTF-8 with LF line endings and Y
 
 ## Changing the library
 
-- Prefer the MCP tools (\`search\`, \`get_item\`, \`read_document\`, \`list_cards\`, \`add_item\`, \`attach_file\`, \`trash_item\`, \`create_card\`, \`create_note\`, \`link\`, \`create_project\`, \`list_projects\`, \`get_project\`, \`cite\`, \`jobs_get\`) or the \`cg\` command. They validate input, write atomically and update the index. Edit files directly only for the text areas listed above.
+- Prefer the MCP tools (\`search\`, \`get_item\`, \`read_document\`, \`list_cards\`, \`add_item\`, \`attach_file\`, \`trash_item\`, \`create_card\`, \`create_note\`, \`link\`, \`create_project\`, \`get_project\`, \`edit_reading_list\`, \`cite\`, \`jobs_get\`) or the \`cg\` command. They validate input, write atomically and update the index. Edit files directly only for the text areas listed above.
 - Add a paper with the MCP tool \`add_item\` or \`cg items add <doi|arxiv-id|isbn|url|path> --why "<reason>"\`. Add \`--json\` when you read the result.
 - New papers from agents land in the inbox, where the user reviews them. Pass \`target: "library"\` (MCP) or \`--target library\` (CLI) only when the user asked for this exact paper.
 - Everything you create carries the provenance \`by: agent:<your-name>\`. Set your name with \`--actor agent:<name>\` or the environment variable \`CITEGEIST_ACTOR\`. MCP clients are named from the client name automatically.

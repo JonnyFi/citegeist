@@ -65,7 +65,7 @@ If the citegeist app is open, `cg` and `cg mcp` hand every call to it, so the ap
 2. An item with `incomplete` in `get_item` (or `incomplete: true` in the item list) failed to convert. Attach a correct file: MCP `attach_file {citekey, path}`, CLI `cg items attach <citekey> --path <file>`. Adding the same file again with `add_item` does the same.
 3. A conversion that works replaces a placeholder title and citekey from the first page, as long as no card or link refers to the item. Read the new citekey from the job result (`renamed`).
 4. To remove an item you or another agent added, or an inbox item: MCP `trash_item {citekey}`, CLI `cg items trash <citekey>`. Items the user added stay; ask the user.
-5. Projects: `list_projects`, `create_project {slug, title, brief?}`, `get_project {slug}`.
+5. Projects: `get_project {}` lists them, `get_project {slug}` reads one (brief, reading list, plans, outline), `create_project {slug, title, brief?}` makes one. CLI: `cg projects context [slug]`.
 
 ## Workflow: add a paper straight to the library
 
@@ -127,6 +127,16 @@ link {"from": "n_01JB8Z3QK7ABCDEFGH", "link": {"to": "[[granovetter1973strength]
    To connect a quote card, pass its id as `from`: `link {from: "c_<ULID>", link: {to: "[[land2012dark]]", rel: "opposes", why: "..."}}`. The link is stored in the literature note of the card's item (created when missing), with the card as `evidence`.
 4. `rel` is one of `supports`, `opposes`, `qualifies`, `addresses`, `extends`, `uses-method-of`, `uses-data-from`, `elaborates`, `related`. Give a `why` for every link.
 5. Read a project before you write notes for it: `get_project {slug}` or `cg projects get <slug> --json`.
+
+## Workflow: order a reading list
+
+The reading list of a project is its accepted items in reading order, each with an optional one-line note. `get_project {slug}` shows `reading` (`total`, `read`, `next` and the first 50 entries). Change it with `edit_reading_list {project, ops}`, several operations per call, checked together before anything changes:
+
+- `{op: "move", item, position}` puts an item at a position (0 is first).
+- `{op: "note", item, note}` sets the note, or clears it with an empty note.
+- `{op: "add", item, position?, note?}` puts a library item into the project, at the end unless a position is given.
+
+An item in the inbox is not on the list until the user accepts it. CLI: `cg projects moveReading`, `cg projects setReadingNote`.
 
 ## Errors
 

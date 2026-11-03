@@ -7,12 +7,12 @@ const readOnly = CONTRACTS.filter((c) => c.mcp?.readOnly);
 
 describe("localizeOperations", () => {
   it("names the MCP tool on MCP and the cg command on the command line", () => {
-    const text = "Call projects.list to see the projects, or projects.create to make one.";
+    const text = "Call projects.context to see the projects, or projects.create to make one.";
     expect(localizeOperations(text, "mcp", CONTRACTS)).toBe(
-      "Call list_projects to see the projects, or create_project to make one.",
+      "Call get_project to see the projects, or create_project to make one.",
     );
     expect(localizeOperations(text, "cli", CONTRACTS)).toBe(
-      "Call cg projects list to see the projects, or cg projects create to make one.",
+      "Call cg projects context to see the projects, or cg projects create to make one.",
     );
   });
 

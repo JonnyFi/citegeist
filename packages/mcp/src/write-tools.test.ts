@@ -290,7 +290,7 @@ describe("write tools over stdio against a real library", () => {
     expect(job.isError).toBe(true);
   });
 
-  it("create_project and list_projects work, and a missing project names these two tools", async () => {
+  it("create_project and get_project without a slug work, and a missing project names these tools", async () => {
     const missing = await client.callTool({
       name: "get_project",
       arguments: { slug: "phd-research" },
@@ -298,9 +298,9 @@ describe("write tools over stdio against a real library", () => {
     expect(missing.isError).toBe(true);
     const missingText = JSON.stringify(missing.content);
     expect(missingText).toContain("PROJECT_NOT_FOUND");
-    expect(missingText).toContain("list_projects");
+    expect(missingText).toContain("get_project");
     expect(missingText).toContain("create_project");
-    expect(missingText).not.toMatch(/projects\.(list|create)/);
+    expect(missingText).not.toMatch(/projects\.(list|context|create)/);
 
     const created = await call<{ frontmatter: { slug: string; title: string } }>("create_project", {
       slug: "phd-research",
@@ -308,7 +308,7 @@ describe("write tools over stdio against a real library", () => {
       brief: "Loneliness and ethics.",
     });
     expect(created.frontmatter.slug).toBe("phd-research");
-    const listed = await call<{ projects: Array<{ slug: string }> }>("list_projects", {});
+    const listed = await call<{ projects: Array<{ slug: string }> }>("get_project", {});
     expect(listed.projects.map((p) => p.slug)).toContain("phd-research");
     const got = await call<{ brief: string }>("get_project", { slug: "phd-research" });
     expect(got.brief).toContain("Loneliness");
@@ -339,6 +339,66 @@ describe("write tools over stdio against a real library", () => {
     expect(got.reading.read).toBe(0);
     expect(got.reading.next?.citekey).toBe(added.citekey);
     expect(got.reading.entries.map((e) => e.citekey)).toEqual([added.citekey]);
+  });
+
+  it("edit_reading_list moves, annotates and adds in one call, and checks everything first", async () => {
+    await call("create_project", { slug: "edit-order", title: "Edit order", brief: "" });
+    const keys: string[] = [];
+    for (const [key, title] of [
+      ["editone", "One"],
+      ["edittwo", "Two"],
+      ["editthree", "Three"],
+    ] as const) {
+      const added = await call<{ citekey: string; job: string }>("add_item", {
+        identifier: `@book{${key}, title={${title}}, author={Nobody, Nina}, year={2004}}`,
+        target: "library",
+        projects: key === "editthree" ? [] : ["edit-order"],
+      });
+      await finished(added.job);
+      keys.push(added.citekey);
+    }
+    const [one, two, three] = keys as [string, string, string];
+    type Reading = { reading: { entries: { citekey: string; note?: string }[] }; added: string[] };
+    const order = (r: Reading) => r.reading.entries.map((e) => e.citekey);
+
+    const edited = await call<Reading>("edit_reading_list", {
+      project: "edit-order",
+      ops: [
+        { op: "add", item: three, position: 0, note: "start here" },
+        { op: "move", item: two, position: 0 },
+        { op: "note", item: one, note: "bridge to the classic" },
+      ],
+    });
+    expect(edited.added).toEqual([three]);
+    expect(order(edited)).toEqual([two, three, one]);
+    expect(edited.reading.entries.find((e) => e.citekey === three)?.note).toBe("start here");
+    expect(edited.reading.entries.find((e) => e.citekey === one)?.note).toBe(
+      "bridge to the classic",
+    );
+
+    const cleared = await call<Reading>("edit_reading_list", {
+      project: "edit-order",
+      ops: [{ op: "note", item: three, note: "" }],
+    });
+    expect(cleared.reading.entries.find((e) => e.citekey === three)?.note).toBeUndefined();
+
+    // An invalid operation stops the whole call before anything changes.
+    const refused = await client.callTool({
+      name: "edit_reading_list",
+      arguments: {
+        project: "edit-order",
+        ops: [
+          { op: "move", item: one, position: 0 },
+          { op: "move", item: "nobodyatall", position: 0 },
+        ],
+      },
+    });
+    expect(refused.isError).toBe(true);
+    expect(JSON.stringify(refused.content)).toContain("NOT_IN_READING_LIST");
+    const after = await call<{ reading: { entries: { citekey: string }[] } }>("get_project", {
+      slug: "edit-order",
+    });
+    expect(after.reading.entries.map((e) => e.citekey)).toEqual([two, three, one]);
   });
 
   it("trash_item removes what an agent added, records who did it and refuses the rest", async () => {

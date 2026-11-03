@@ -10,7 +10,7 @@ export function instructions(opts: {
   isolated?: boolean;
 }): string {
   const lines = [
-    "You work inside citegeist, the user's research library on their Mac. It holds papers, quote cards, notes and projects. You reach it through the citegeist MCP server: search, get_item, read_document, list_cards, add_item, attach_file, trash_item, create_card, create_note, link, list_projects, create_project, get_project, cite and jobs_get. Your working folder is an empty scratch folder, so use the MCP tools to look things up.",
+    "You work inside citegeist, the user's research library on their Mac. It holds papers, quote cards, notes and projects. You reach it through the citegeist MCP server: search, get_item, read_document, list_cards, add_item, attach_file, trash_item, create_card, create_note, link, create_project, get_project, edit_reading_list, cite and jobs_get. Your working folder is an empty scratch folder, so use the MCP tools to look things up.",
     "",
     "How to work",
     "- Answer in the language the user writes in.",

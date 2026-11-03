@@ -107,8 +107,8 @@ describe("cg items update and resolve", () => {
 describe("cg errors", () => {
   it("names the cg command in a fix that points to another operation", async () => {
     const r = await cg(["projects", "get", "nope"]);
-    expect(r.err.trimEnd().split("\n").at(-1)).toContain("cg projects list");
-    expect(r.err).not.toMatch(/projects\.list/);
+    expect(r.err.trimEnd().split("\n").at(-1)).toContain("cg projects context");
+    expect(r.err).not.toMatch(/projects\.context/);
   });
 });
 
