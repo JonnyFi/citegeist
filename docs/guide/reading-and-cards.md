@@ -29,7 +29,7 @@ A citation needs the printed page, not the position in the PDF. citegeist reads 
 
 Select a passage in either view. The selection snaps to word boundaries. The popover shows the action "Quote (AI)" first, followed by four colour dots (yellow, green, blue, red).
 
-A click on a dot, or the key 1 to 4 while the text is selected, marks the passage at once. No AI runs and nothing waits. The passage is filled with the colour in both views, and the new card opens in the card column with the cursor in its note field. Change the colour, add tags or write a note there. A second click on the colour that is set removes it. In the "..." menu, "Delete" moves the card to the trash of the library, and "Undo" in the message at the bottom brings it back. A card that a link or a note points at cannot be deleted, and the message names the reference.
+A click on a dot, or the key 1 to 4 while the text is selected, marks the passage at once. No AI runs and nothing waits. The passage is filled with the colour in both views, and the new card opens in the card column with the cursor in its note field. Change the colour, add tags or write a note there. A second click on the colour that is set removes it. In the "..." menu, "Delete" moves the card to the trash of the library, and "Undo" in the message at the bottom brings it back. When a note or a link refers to the card, a warning says how many notes, cards and links are connected to it. "Delete" removes the card together with its links, and "Undo" brings both back. Mentions of the card in the text of a note stay as text.
 
 A highlight is a card without a paraphrase. "Create paraphrase" in the open card asks the AI for one and turns it into a full quote card. Colour, tags and note stay.
 

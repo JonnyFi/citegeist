@@ -76,9 +76,10 @@ import {
   mockConflict,
 } from "../settings/mock";
 import { bindTextsMock } from "../texts/mock";
+import { type MockRemovedLink, mockCardReach, mockReaddLinks, mockRemoveLinks } from "./card-reach";
 import { suggestMockCitekey } from "./citekey";
 import { createFixtures, type MockData } from "./fixtures";
-import { mockMergeOffer } from "./inbox";
+import { mockDetailError, mockMergeOffer } from "./inbox";
 
 export interface MockOptions {
   /** How long the mock AI needs for the paraphrase. The real one takes a few seconds. */
@@ -458,7 +459,11 @@ export function createMockRegistry(
     return [...demo, ...own, ...(importJobs?.list() ?? [])];
   };
 
-  const trashedCards = new Map<string, (typeof data.cards)[number]>();
+  /** Cards moved to the trash with the typed links that went with them. */
+  const trashedCards = new Map<
+    string,
+    { card: (typeof data.cards)[number]; removed: MockRemovedLink[] }
+  >();
 
   const findCard = (id: string) => {
     const card = data.cards.find((c) => c.frontmatter.id === id);
@@ -1108,16 +1113,33 @@ export function createMockRegistry(
     })
     .bind(cardsDelete, async (_ctx, input) => {
       const card = findCard(input.id);
+      const reach = mockCardReach(data, input.id);
+      if (!input.force && (reach.notes > 0 || reach.cards > 0 || reach.links.length > 0)) {
+        throw mockDetailError({
+          code: "CARD_REFERENCED",
+          message: `the card '${input.id}' is referenced`,
+          context: {
+            id: input.id,
+            notes: reach.notes,
+            cards: reach.cards,
+            links: reach.links.length,
+            mentions: reach.mentions,
+          },
+        });
+      }
       data.cards.splice(data.cards.indexOf(card), 1);
-      trashedCards.set(input.id, card);
+      mockRemoveLinks(data, reach.links);
+      trashedCards.set(input.id, { card, removed: reach.links });
       changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
       return { ok: true as const };
     })
     .bind(cardsRestore, async (_ctx, input) => {
-      const card = trashedCards.get(input.id);
-      if (!card) throw new Error(`NOT_IN_TRASH: no trashed card with id '${input.id}'`);
+      const entry = trashedCards.get(input.id);
+      if (!entry) throw new Error(`NOT_IN_TRASH: no trashed card with id '${input.id}'`);
+      const { card, removed } = entry;
       trashedCards.delete(input.id);
       data.cards.push(card);
+      mockReaddLinks(data, removed);
       changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
       return { card };
     })

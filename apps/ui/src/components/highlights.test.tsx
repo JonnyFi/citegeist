@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { MockData } from "../mock/fixtures";
+import { storeFor } from "../notes/mock";
 import { createReflowFixtures, renderApp } from "../test-utils";
 
 const READER = "/items/luhmann1984soziale?tab=read";
@@ -247,6 +248,112 @@ describe("editing a highlight", () => {
     await waitFor(() => expect(rows()).toHaveLength(3));
     expect(calls.some((c) => c.name === "cards.restore")).toBe(true);
     expect(data.cards.some((c) => c.body.quote.startsWith("Doppelte Kontingenz"))).toBe(true);
+  });
+});
+
+describe("deleting a card with connections", () => {
+  const TARGET = "Doppelte Kontingenz";
+
+  /** Notes around the card: one mentions it in its text, one links to it, and the card links out. */
+  function connectedFixtures(): { data: MockData; id: string } {
+    const data = markedFixtures();
+    const id = cardOf(data, TARGET).frontmatter.id;
+    const store = storeFor(data);
+    const stamp = { at: "2026-10-06T09:00:00.000Z", by: "human" } as const;
+    const base = { tags: [], projects: [], created: stamp, modified: stamp };
+    const link = (to: string, from?: string) => ({
+      to: `[[${to}]]`,
+      rel: "supports" as const,
+      by: "human",
+      status: "accepted" as const,
+      ...(from ? { from, evidence: `[[${from}]]` } : {}),
+    });
+    store.set("n_mention", {
+      slug: "erwaehnung",
+      body: `Siehe [[${id}]] für die doppelte Kontingenz.`,
+      frontmatter: { ...base, id: "n_mention", type: "permanent", title: "Erwähnung", links: [] },
+    });
+    store.set("n_linked", {
+      slug: "verknuepft",
+      body: "Kein Wiki-Link im Text.",
+      frontmatter: {
+        ...base,
+        id: "n_linked",
+        type: "permanent",
+        title: "Verknüpft",
+        links: [link(id)],
+      },
+    });
+    store.set("n_lit", {
+      slug: "lit",
+      body: "Item: [[luhmann1984soziale]]",
+      frontmatter: {
+        ...base,
+        id: "n_lit",
+        type: "literature",
+        title: "Lesenotizen",
+        links: [link("luhmann1984soziale", id)],
+      },
+    });
+    return { data, id };
+  }
+
+  async function chooseDelete(user: ReturnType<typeof userEvent.setup>) {
+    const row = rows().find((r) => new RegExp(TARGET).test(r.textContent ?? ""));
+    if (!row) throw new Error("card row not found");
+    await user.click(within(row).getByRole("button", { expanded: false }));
+    const editor = await screen.findByTestId("card-editor");
+    await user.click(within(editor).getByRole("button", { name: "Weitere Aktionen" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Löschen" }));
+  }
+
+  // protects=a card with connections asks first and names what is connected and what goes with it;
+  // fails_when=the card is deleted without a question, or the counts or the note on mentions are wrong; no_claim=the wording in English
+  it("warns with the counts before deleting, and Abbrechen keeps the card", async () => {
+    const user = userEvent.setup();
+    const { data } = connectedFixtures();
+    const { calls } = await openReader(data);
+    await chooseDelete(user);
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Diese Karte ist mit 2 Notizen und 2 Links verbunden.");
+    expect(dialog).toHaveTextContent("Die Verbindungen werden mit entfernt.");
+    expect(dialog).toHaveTextContent("Erwähnungen im Text bleiben als Text stehen.");
+    // the first call was refused, no forced call yet
+    expect(calls.filter((c) => c.name === "cards.delete")).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(rows()).toHaveLength(3);
+    expect(calls.filter((c) => c.name === "cards.delete")).toHaveLength(1);
+    expect(storeFor(data).get("n_linked")?.frontmatter.links).toHaveLength(1);
+  });
+
+  // protects=confirming deletes with force, removes the links and leaves the note text; Rückgängig brings card and links back;
+  // fails_when=force is not sent, a link survives, the text changes, or undo loses a link; no_claim=the core (its own tests cover disk)
+  it("deletes with force after Löschen and restores the links with Rückgängig", async () => {
+    const user = userEvent.setup();
+    const { data, id } = connectedFixtures();
+    const { calls } = await openReader(data);
+    await chooseDelete(user);
+
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Löschen" }));
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(calls.filter((c) => c.name === "cards.delete").map((c) => c.input)).toEqual([
+      { id },
+      { id, force: true },
+    ]);
+    const store = storeFor(data);
+    expect(store.get("n_linked")?.frontmatter.links).toEqual([]);
+    expect(store.get("n_lit")?.frontmatter.links).toEqual([]);
+    expect(store.get("n_mention")?.body).toBe(`Siehe [[${id}]] für die doppelte Kontingenz.`);
+
+    await user.click(await screen.findByRole("button", { name: "Rückgängig" }));
+    await waitFor(() => expect(rows()).toHaveLength(3));
+    expect(store.get("n_linked")?.frontmatter.links).toHaveLength(1);
+    expect(store.get("n_lit")?.frontmatter.links).toHaveLength(1);
   });
 });
 
