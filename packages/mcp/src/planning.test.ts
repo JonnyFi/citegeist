@@ -73,6 +73,8 @@ describe("planning tools over stdio", () => {
     expect(hint("note_insight")).toBe(false);
     expect(hint("edit_outline")).toBe(false);
     expect(hint("edit_plan_doc")).toBe(false);
+    expect(hint("edit_reading_list")).toBe(false);
+    expect(tools.find((t) => t.name === "list_projects")).toBeUndefined();
     expect(hint("find_insights")).toBe(true);
     expect(hint("get_project")).toBe(true);
     expect(tools.find((t) => t.name === "get_outline")).toBeUndefined();

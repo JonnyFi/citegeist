@@ -21,6 +21,7 @@ import {
   type OperationContract,
   outlineGet,
   projectsContext,
+  projectsEditReading,
   projectsGet,
   projectsList,
   Registry,
@@ -218,7 +219,7 @@ export function createFixtureRegistry(): Registry {
       throw new CitegeistError({
         code: "PROJECT_NOT_FOUND",
         message: `No project with slug ${input.slug} exists.`,
-        fix: "List the projects with projects.list and use one of the slugs.",
+        fix: "List the projects with projects.context and use one of the slugs.",
         recovery: "fix-and-retry",
         context: { slug: input.slug },
       });
@@ -289,6 +290,11 @@ export function createFixtureRegistry(): Registry {
     errors: [],
   }));
   reg.bind(projectsContext, async (_ctx, input) => {
+    if (input.slug === undefined) {
+      return (await reg.call("projects.list", { actor: "human" }, {})) as {
+        projects: never[];
+      };
+    }
     const project = await reg.call("projects.get", { actor: "human" }, { slug: input.slug });
     const outline = await reg.call(
       "outline.get",
@@ -303,6 +309,11 @@ export function createFixtureRegistry(): Registry {
       outline: { plan, title, nodes },
     };
   });
+  reg.bind(projectsEditReading, async (_ctx, input) => ({
+    project: input.project,
+    added: input.ops.flatMap((op) => (op.op === "add" ? [op.item] : [])),
+    reading: { total: 0, read: 0, entries: [] },
+  }));
   reg.bind(outlineGet, async (_ctx, input) => ({
     project: input.project,
     plan: input.plan ?? "proposal",

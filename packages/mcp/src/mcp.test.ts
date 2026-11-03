@@ -20,7 +20,6 @@ const READ_ARGS: Record<string, Record<string, unknown>> = {
   read_document: { citekey: FIXTURE_CITEKEY, pages: "31-32" },
   list_cards: { citekey: FIXTURE_CITEKEY },
   get_project: { slug: "systems" },
-  list_projects: {},
   related_works: { citekey: FIXTURE_CITEKEY, direction: "references" },
   cite: { items: [{ citekey: FIXTURE_CITEKEY, locator: "31" }] },
   jobs_get: { job: "j_01JB8Z3QK7ABCDEFGH" },
@@ -151,8 +150,8 @@ describe.each(transports)("MCP over %s", (_label, connect) => {
     const result = await client.callTool({ name: "get_project", arguments: { slug: "nope" } });
     expect(result.isError).toBe(true);
     const fix = textOf(result).split("\n").at(-1) ?? "";
-    expect(fix).toContain("list_projects");
-    expect(fix).not.toMatch(/projects\.list/);
+    expect(fix).toContain("get_project");
+    expect(fix).not.toMatch(/projects\.(list|context)/);
   });
 
   it("defaults add_item to the inbox and stamps the client name as actor", async () => {

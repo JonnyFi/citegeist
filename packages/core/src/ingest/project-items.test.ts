@@ -63,7 +63,7 @@ describe("projects.addItems and projects.removeItems", () => {
     await expect(
       e.call("projects.addItems", { slug: "nope", citekeys: ["b2xx"] }),
     ).rejects.toMatchObject({
-      detail: { code: "PROJECT_NOT_FOUND", fix: expect.stringContaining("projects.list") },
+      detail: { code: "PROJECT_NOT_FOUND", fix: expect.stringContaining("projects.context") },
     });
     await expect(
       e.call("projects.removeItems", { slug: "nope", citekeys: ["b2xx"] }),
