@@ -470,7 +470,7 @@ export const cardsUpdate = defineContract({
 export const cardsDelete = defineContract({
   name: "cards.delete",
   summary:
-    "Move a card to the library trash (cards.restore brings it back). Only a person may delete a card. A card that a typed link or a note refers to is refused with CARD_REFERENCED, which names the references and counts them; with force the card is deleted, the typed links that point at it or start at it are removed, and cards.restore puts them back. Wiki links in note text stay as written",
+    "Move a card to the library trash (cards.restore brings it back). Only a person may delete a card. A card that a typed link or a note refers to is refused with CARD_REFERENCED, which names the references and counts them; with force the card is deleted, the typed links that point at it or start at it are removed, links that cite it as evidence lose that evidence, and cards.restore puts both back. Wiki links in note text stay as written",
   access: "write",
   input: z.object({
     id: CardFrontmatter.shape.id,

@@ -76,7 +76,15 @@ import {
   mockConflict,
 } from "../settings/mock";
 import { bindTextsMock } from "../texts/mock";
-import { type MockRemovedLink, mockCardReach, mockReaddLinks, mockRemoveLinks } from "./card-reach";
+import {
+  type MockClearedEvidence,
+  type MockRemovedLink,
+  mockCardReach,
+  mockClearEvidence,
+  mockReaddLinks,
+  mockRemoveLinks,
+  mockRestoreEvidence,
+} from "./card-reach";
 import { suggestMockCitekey } from "./citekey";
 import { createFixtures, type MockData } from "./fixtures";
 import { mockDetailError, mockMergeOffer } from "./inbox";
@@ -459,10 +467,14 @@ export function createMockRegistry(
     return [...demo, ...own, ...(importJobs?.list() ?? [])];
   };
 
-  /** Cards moved to the trash with the typed links that went with them. */
+  /** Cards moved to the trash with the typed links that went with them and the evidence dropped. */
   const trashedCards = new Map<
     string,
-    { card: (typeof data.cards)[number]; removed: MockRemovedLink[] }
+    {
+      card: (typeof data.cards)[number];
+      removed: MockRemovedLink[];
+      evidence: MockClearedEvidence[];
+    }
   >();
 
   const findCard = (id: string) => {
@@ -1114,7 +1126,8 @@ export function createMockRegistry(
     .bind(cardsDelete, async (_ctx, input) => {
       const card = findCard(input.id);
       const reach = mockCardReach(data, input.id);
-      if (!input.force && (reach.notes > 0 || reach.cards > 0 || reach.links.length > 0)) {
+      const links = reach.links.length + reach.evidence.length;
+      if (!input.force && (reach.notes > 0 || reach.cards > 0 || links > 0)) {
         throw mockDetailError({
           code: "CARD_REFERENCED",
           message: `the card '${input.id}' is referenced`,
@@ -1122,24 +1135,26 @@ export function createMockRegistry(
             id: input.id,
             notes: reach.notes,
             cards: reach.cards,
-            links: reach.links.length,
+            links,
             mentions: reach.mentions,
           },
         });
       }
       data.cards.splice(data.cards.indexOf(card), 1);
+      mockClearEvidence(data, reach.evidence);
       mockRemoveLinks(data, reach.links);
-      trashedCards.set(input.id, { card, removed: reach.links });
+      trashedCards.set(input.id, { card, removed: reach.links, evidence: reach.evidence });
       changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
       return { ok: true as const };
     })
     .bind(cardsRestore, async (_ctx, input) => {
       const entry = trashedCards.get(input.id);
       if (!entry) throw new Error(`NOT_IN_TRASH: no trashed card with id '${input.id}'`);
-      const { card, removed } = entry;
+      const { card, removed, evidence } = entry;
       trashedCards.delete(input.id);
       data.cards.push(card);
       mockReaddLinks(data, removed);
+      mockRestoreEvidence(data, evidence);
       changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
       return { card };
     })

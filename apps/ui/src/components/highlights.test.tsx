@@ -254,7 +254,10 @@ describe("editing a highlight", () => {
 describe("deleting a card with connections", () => {
   const TARGET = "Doppelte Kontingenz";
 
-  /** Notes around the card: one mentions it in its text, one links to it, and the card links out. */
+  /**
+   * Notes around the card: one mentions it in its text, one links to it, one cites it as evidence
+   * for a link to something else, and the card links out.
+   */
   function connectedFixtures(): { data: MockData; id: string } {
     const data = markedFixtures();
     const id = cardOf(data, TARGET).frontmatter.id;
@@ -282,6 +285,17 @@ describe("deleting a card with connections", () => {
         type: "permanent",
         title: "Verknüpft",
         links: [link(id)],
+      },
+    });
+    store.set("n_evidence", {
+      slug: "beleg",
+      body: "Kein Wiki-Link im Text.",
+      frontmatter: {
+        ...base,
+        id: "n_evidence",
+        type: "permanent",
+        title: "Beleg",
+        links: [{ ...link("luhmann1984soziale"), evidence: `[[${id}]]` }],
       },
     });
     store.set("n_lit", {
@@ -316,8 +330,9 @@ describe("deleting a card with connections", () => {
     await chooseDelete(user);
 
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Diese Karte ist mit 2 Notizen und 2 Links verbunden.");
+    expect(dialog).toHaveTextContent("Diese Karte ist mit 3 Notizen und 3 Links verbunden.");
     expect(dialog).toHaveTextContent("Die Verbindungen werden mit entfernt.");
+    // the evidence reference counts as a link, only the note that names the card in text is a mention
     expect(dialog).toHaveTextContent("Erwähnungen im Text bleiben als Text stehen.");
     // the first call was refused, no forced call yet
     expect(calls.filter((c) => c.name === "cards.delete")).toHaveLength(1);
@@ -348,12 +363,17 @@ describe("deleting a card with connections", () => {
     const store = storeFor(data);
     expect(store.get("n_linked")?.frontmatter.links).toEqual([]);
     expect(store.get("n_lit")?.frontmatter.links).toEqual([]);
+    // the link that only cited the card stays, without the evidence
+    const kept = store.get("n_evidence")?.frontmatter.links ?? [];
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).not.toHaveProperty("evidence");
     expect(store.get("n_mention")?.body).toBe(`Siehe [[${id}]] für die doppelte Kontingenz.`);
 
     await user.click(await screen.findByRole("button", { name: "Rückgängig" }));
     await waitFor(() => expect(rows()).toHaveLength(3));
     expect(store.get("n_linked")?.frontmatter.links).toHaveLength(1);
     expect(store.get("n_lit")?.frontmatter.links).toHaveLength(1);
+    expect(store.get("n_evidence")?.frontmatter.links[0]?.evidence).toBe(`[[${id}]]`);
   });
 });
 
