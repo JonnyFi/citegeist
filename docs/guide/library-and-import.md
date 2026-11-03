@@ -13,7 +13,9 @@ The field at the top of the library screen takes:
 - a DOI, an arXiv ID or link, an ISBN, a PubMed ID,
 - a URL,
 - a BibTeX snippet,
-- a PDF, dropped into the window or chosen with "Choose PDF".
+- one or more files (PDF, EPUB or HTML), dropped onto the area that opens under the field or chosen with "Choose file".
+
+Dropping several files adds each of them and ends with a summary line such as "2 added, 1 already there, 1 not supported (notes.docx)". With a project filter active, the new papers join that project. A file dropped anywhere else in the window is ignored.
 
 `cg items add <identifier>` does the same from a shell.
 
@@ -57,7 +59,7 @@ When you add an identifier (a DOI, an ISBN, an arXiv id) to an item and an item 
 |---|---|
 | Zotero (database copy) | Choose `zotero.sqlite` or the Zotero data folder. citegeist copies the database first and never opens the original. |
 | Zotero (running now) | Zotero must be running. citegeist reads its local API, by default on port 23119. |
-| BibTeX, RIS, CSL-JSON | Drop the file or type its path. A folder with PDFs is optional. |
+| BibTeX, RIS, CSL-JSON | Drop the file onto the area under the path field, choose it with "Choose file" or type its path. A folder with PDFs is optional; drop it onto its area or type its path. |
 
 Collections can become projects, tags or nothing. Duplicates are skipped or merged. Attachments, notes and PDF annotations (as cards) are optional. "Preview" runs the whole import as a dry run and shows the counts, duplicates and problems. Nothing is written until you start the import, and each imported item carries a provenance tag. `cg import preview` and `cg import run` are the shell equivalents.
 

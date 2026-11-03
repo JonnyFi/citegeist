@@ -20,6 +20,9 @@ describe("classifyIdentifier", () => {
     ["/Users/alex/Papers/luhmann.pdf", "path"],
     ["~/Papers/luhmann.pdf", "path"],
     ["luhmann.pdf", "path"],
+    ["buch.epub", "path"],
+    ["seite.html", "path"],
+    ["https://example.org/seite.html", "url"],
     ["irgendein Text", "unknown"],
     ["", "unknown"],
   ] as const)("reads %s as %s", (input, kind) => {

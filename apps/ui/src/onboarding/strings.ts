@@ -38,7 +38,7 @@ export const onboardingDe = {
   "first.intro": "Drei Dinge zum Einstieg.",
   "first.add.title": "Ein Paper hinzufügen",
   "first.add.desc":
-    "Ziehe ein PDF ins Fenster oder gib oben eine DOI, eine arXiv-ID oder einen Link ein.",
+    "Klicke oben ins Feld und ziehe ein PDF auf die Fläche darunter, oder gib eine DOI, eine arXiv-ID oder einen Link ein.",
   "first.highlight.title": "Eine Stelle markieren",
   "first.highlight.desc":
     "Öffne ein Paper, markiere eine Passage und wähle „Zitat“. So entsteht eine Karte.",
@@ -86,7 +86,7 @@ export const onboardingEn: Record<keyof typeof onboardingDe, string> = {
   "first.intro": "Three things to try first.",
   "first.add.title": "Add a paper",
   "first.add.desc":
-    "Drop a PDF into the window, or enter a DOI, an arXiv id or a link in the field above.",
+    "Click the field above and drop a PDF onto the area below it, or enter a DOI, an arXiv id or a link.",
   "first.highlight.title": "Highlight a passage",
   "first.highlight.desc": "Open a paper, select a passage and choose “Quote”. That creates a card.",
   "first.chat.title": "Open the chat",

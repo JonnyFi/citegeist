@@ -93,53 +93,6 @@ describe("add field", () => {
     await user.type(await addField(), "irgendein Text{Enter}");
     expect(await screen.findByRole("alert")).toHaveTextContent("UNRECOGNIZED_IDENTIFIER");
   });
-
-  it("adds a PDF dropped onto the window", async () => {
-    const { calls } = renderApp("/");
-    await addField();
-    const file = new File(["%PDF-1.4"], "habermas.pdf", { type: "application/pdf" });
-    const transfer = { types: ["Files"], files: [file] };
-    fireEvent.dragEnter(window, { dataTransfer: transfer });
-    expect(await screen.findByTestId("drop-overlay")).toBeInTheDocument();
-    fireEvent.drop(window, { dataTransfer: transfer });
-
-    await waitFor(() => expect(screen.queryByTestId("drop-overlay")).toBeNull());
-    expect(await screen.findByRole("link", { name: "pathhabermas" })).toBeVisible();
-    expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
-      identifier: "habermas.pdf",
-      target: "library",
-    });
-  });
-
-  it("refuses a dropped file that is no PDF", async () => {
-    const { calls } = renderApp("/");
-    await addField();
-    const file = new File(["x"], "notizen.txt", { type: "text/plain" });
-    fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [file] } });
-    expect(await screen.findByRole("alert")).toHaveTextContent("notizen.txt ist kein PDF.");
-    expect(calls.some((c) => c.name === "items.add")).toBe(false);
-  });
-
-  it("uses the path the desktop app reports for a dropped file", async () => {
-    window.citegeist = {
-      pathForFile: () => "/Users/alex/Papers/latour.pdf",
-      onNavigate: () => () => {},
-      platform: "test",
-    } as never;
-    try {
-      const { calls } = renderApp("/");
-      await addField();
-      const file = new File(["%PDF-1.4"], "latour.pdf", { type: "application/pdf" });
-      fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [file] } });
-      await waitFor(() =>
-        expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
-          identifier: "/Users/alex/Papers/latour.pdf",
-        }),
-      );
-    } finally {
-      delete window.citegeist;
-    }
-  });
 });
 
 describe("add menu and native file picker", () => {
@@ -148,11 +101,11 @@ describe("add menu and native file picker", () => {
     await user.click(screen.getByRole("button", { name: "+ Hinzufügen" }));
   };
 
-  it("offers PDF wählen and a typed identifier in the menu", async () => {
+  it("offers Datei wählen and a typed identifier in the menu", async () => {
     const user = userEvent.setup();
     renderApp("/");
     await openMenu(user);
-    expect(await screen.findByRole("menuitem", { name: "PDF wählen" })).toBeVisible();
+    expect(await screen.findByRole("menuitem", { name: "Datei wählen" })).toBeVisible();
     await user.click(screen.getByRole("menuitem", { name: "DOI, arXiv, ISBN oder URL eingeben" }));
     await waitFor(async () => expect(await addField()).toHaveFocus());
   });
@@ -161,7 +114,7 @@ describe("add menu and native file picker", () => {
     const user = userEvent.setup();
     const { calls } = renderApp("/");
     await openMenu(user);
-    await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Datei wählen" }));
     const file = new File(["%PDF-1.4"], "latour.pdf", { type: "application/pdf" });
     await user.upload(screen.getByTestId("pdf-file-input"), file);
     await waitFor(() =>
@@ -178,9 +131,13 @@ describe("add menu and native file picker", () => {
     try {
       const { calls } = renderApp("/");
       await openMenu(user);
-      await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Datei wählen" }));
       expect(pickPaths).toHaveBeenCalledWith(
-        expect.objectContaining({ kind: "file", multiple: true, extensions: ["pdf"] }),
+        expect.objectContaining({
+          kind: "file",
+          multiple: true,
+          extensions: ["pdf", "epub", "html", "htm"],
+        }),
       );
       await waitFor(() =>
         expect(calls.find((c) => c.name === "items.add")?.input).toMatchObject({
@@ -202,7 +159,7 @@ describe("add menu and native file picker", () => {
     try {
       const { calls } = renderApp("/");
       await openMenu(user);
-      await user.click(await screen.findByRole("menuitem", { name: "PDF wählen" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Datei wählen" }));
       expect(calls.some((c) => c.name === "items.add")).toBe(false);
     } finally {
       delete window.citegeist;
