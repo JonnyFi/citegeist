@@ -313,6 +313,11 @@ const screens = [
       }
       await page.getByRole("button", { name: tx("createMatrix") }).click();
       await page.getByRole("table", { name: tx("matrixTable") }).waitFor();
+      // Latour has no converted text in the mock library, so its cells would fail. The README
+      // shows a matrix where every cell is filled.
+      const latour = page.getByRole("button", { name: /^(Zeile entfernen|Remove row): Reassembling/ });
+      await latour.click();
+      await latour.waitFor({ state: "detached" });
       await page.getByRole("button", { name: tx("fillOpen") }).click();
       const fill = page.getByRole("progressbar", { name: tx("filling") });
       await fill.waitFor();

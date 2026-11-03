@@ -78,7 +78,7 @@ Notes are Markdown files with wiki links, and the library folder opens as an Obs
 A project holds research questions, a reading list, cards and research plans with an outline. The literature matrix compares sources against your questions. The AI fills each cell from passages of that source and names the card or passage it rests on, and citegeist checks every evidence quote against the stored text.
 
 <p align="center">
-  <img src="docs/design/screens/project-matrix.png" alt="A literature matrix with three sources as rows and the columns Research question, Method and Result. Each filled cell names the card or passage it rests on, and a source without converted text shows failed cells with a Try again button." width="900">
+  <img src="docs/design/screens/project-matrix.png" alt="A literature matrix with two sources as rows and the columns Research question, Method and Result. Each filled cell names the card or passage it rests on." width="900">
 </p>
 
 ## Writing and export
