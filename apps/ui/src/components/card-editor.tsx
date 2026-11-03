@@ -176,7 +176,7 @@ export function QuoteCard({
   const insertTarget = useInsertTarget();
   const update = useOpMutation(cardsUpdate);
   const regenerate = useOpMutation(cardsRegenerate);
-  const trashCard = useTrashCard();
+  const { trash: trashCard, dialog: trashDialog } = useTrashCard();
   const [regenLanguage, setRegenLanguage] = useState(defaultLanguage);
   const [tags, setTags] = useState(fm.tags.join(", "));
   const [copy, setCopy] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -524,6 +524,7 @@ export function QuoteCard({
           ) : null}
         </>
       )}
+      {trashDialog}
     </article>
   );
 }

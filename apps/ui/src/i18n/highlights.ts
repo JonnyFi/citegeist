@@ -1,4 +1,4 @@
-/** Strings for highlights in the reader: colours, filters and deleting a card. Spread into `de.ts` and `en.ts`. */
+/** Strings for highlights in the reader: colours, filters, deleting a card and the warning before it. Spread into `de.ts` and `en.ts`. */
 export const highlightsDe = {
   "hl.color.yellow": "Gelb",
   "hl.color.green": "Grün",
@@ -18,6 +18,16 @@ export const highlightsDe = {
   "hl.deleted": "Karte gelöscht.",
   "hl.restored": "Karte wiederhergestellt.",
   "hl.deleteFailed": "Die Karte ließ sich nicht löschen: {message}",
+  "hl.confirm.title": "Karte löschen?",
+  "hl.confirm.connected": "Diese Karte ist mit {what} verbunden.",
+  "hl.confirm.notes.one": "{n} Notiz",
+  "hl.confirm.notes.other": "{n} Notizen",
+  "hl.confirm.cards.one": "{n} Karte",
+  "hl.confirm.cards.other": "{n} Karten",
+  "hl.confirm.links.one": "{n} Link",
+  "hl.confirm.links.other": "{n} Links",
+  "hl.confirm.linksGo": "Die Verbindungen werden mit entfernt.",
+  "hl.confirm.mentionsStay": "Erwähnungen im Text bleiben als Text stehen.",
 } as const;
 
 export const highlightsEn: Record<keyof typeof highlightsDe, string> = {
@@ -39,4 +49,14 @@ export const highlightsEn: Record<keyof typeof highlightsDe, string> = {
   "hl.deleted": "Card deleted.",
   "hl.restored": "Card restored.",
   "hl.deleteFailed": "The card could not be deleted: {message}",
+  "hl.confirm.title": "Delete card?",
+  "hl.confirm.connected": "This card is connected to {what}.",
+  "hl.confirm.notes.one": "{n} note",
+  "hl.confirm.notes.other": "{n} notes",
+  "hl.confirm.cards.one": "{n} card",
+  "hl.confirm.cards.other": "{n} cards",
+  "hl.confirm.links.one": "{n} link",
+  "hl.confirm.links.other": "{n} links",
+  "hl.confirm.linksGo": "The connections are removed with it.",
+  "hl.confirm.mentionsStay": "Mentions in text stay as text.",
 };

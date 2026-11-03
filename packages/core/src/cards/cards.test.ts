@@ -607,21 +607,124 @@ describe("highlights (cards without AI)", () => {
     await expect(reg.call("cards.restore", human, { id })).rejects.toThrow(/CARD_EXISTS/);
   });
 
-  // protects=a card that a note links to is not deleted and the error names the note;
-  // fails_when=the card goes to the trash anyway or the error hides the reference; no_claim=typed links from cards
-  it("refuses to delete a card that a note links to, and names the note", async () => {
-    const { reg, lib, id } = await highlight();
-    lib.createNote("human", {
+  /** A card with a note that mentions it, a note with a typed link to it, and a link that starts at it. */
+  async function connected() {
+    const ctx = await highlight({ color: "green" });
+    const { reg, lib, id } = ctx;
+    const mention = lib.createNote("human", {
       title: "Systemtheorie",
       body: `Siehe [[${id}]] fuer die Operation.`,
       type: "permanent",
       projects: [],
     });
-    const err = await reg.call("cards.delete", human, { id }).catch((e: unknown) => e);
+    const other = lib.createNote("human", {
+      title: "Autopoiesis",
+      body: "Ein anderer Gedanke.",
+      type: "permanent",
+      projects: [],
+    });
+    const linked = lib.createNote("human", {
+      title: "Beobachtung",
+      body: "Ohne Wiki-Link im Text.",
+      type: "permanent",
+      projects: [],
+    });
+    const rel = (note: string, to: string, relation: string) =>
+      reg.call("links.create", human, { from: note, link: { to: `[[${to}]]`, rel: relation } });
+    // the first link of the note does not touch the card, so its place before the others shows
+    await rel(linked.frontmatter.id, other.frontmatter.id, "related");
+    await rel(linked.frontmatter.id, id, "supports");
+    await rel(id, other.frontmatter.id, "extends");
+    const linksOf = (note: string) =>
+      lib.getNote(note).frontmatter.links.map((l) => `${l.from ?? note}>${l.to}`);
+    const literature = (
+      lib.index.get<{ id: string }>("SELECT id FROM notes WHERE type = 'literature'") as {
+        id: string;
+      }
+    ).id;
+    return { ...ctx, mention, other, linked, literature, linksOf };
+  }
+
+  // protects=a card that a note or link refers to is not deleted without the flag, and the error names the note and counts what is connected;
+  // fails_when=the card goes to the trash anyway, the error hides the reference or the counts are wrong; no_claim=what the app shows
+  it("refuses to delete a referenced card without force and counts the references", async () => {
+    const { reg, lib, id, mention, linked, literature } = await connected();
+    const err = (await reg.call("cards.delete", human, { id }).catch((e: unknown) => e)) as {
+      detail?: { code: string; context: Record<string, unknown> };
+    };
     expect(String(err)).toMatch(/CARD_REFERENCED/);
     expect(String(err)).toContain("Systemtheorie");
+    expect(err.detail?.context).toMatchObject({
+      id,
+      notes: 2,
+      cards: 0,
+      links: 2,
+      mentions: 1,
+    });
     expect(existsSync(lib.paths.cardFile(CITEKEY, id))).toBe(true);
     expect(trashEntries(lib.root)).toEqual([]);
+    expect(lib.getNote(mention.frontmatter.id).body).toContain(`[[${id}]]`);
+    expect(lib.getNote(linked.frontmatter.id).frontmatter.links).toHaveLength(2);
+    expect(lib.getNote(literature).frontmatter.links).toHaveLength(1);
+  });
+
+  // protects=force deletes a referenced card, removes the typed links that point at it or start at it and leaves the note text alone;
+  // fails_when=a link to the card survives, an unrelated link goes, or a wiki link in a note body is rewritten; no_claim=restore
+  it("deletes a referenced card with force and removes its typed links", async () => {
+    const { reg, lib, id, mention, other, linked, literature, linksOf } = await connected();
+    expect(await reg.call("cards.delete", human, { id, force: true })).toEqual({ ok: true });
+    expect(existsSync(lib.paths.cardFile(CITEKEY, id))).toBe(false);
+    expect(trashEntries(lib.root)).toHaveLength(1);
+
+    // only the link between the notes is left
+    expect(linksOf(linked.frontmatter.id)).toEqual([
+      `${linked.frontmatter.id}>[[${other.frontmatter.id}]]`,
+    ]);
+    expect(linksOf(literature)).toEqual([]);
+    expect(
+      lib.index.all(
+        "SELECT 1 FROM links WHERE origin = 'frontmatter' AND (dst = ? OR src_ref = ?)",
+        id,
+        id,
+      ),
+    ).toEqual([]);
+    // the text of a note stays as written
+    expect(lib.getNote(mention.frontmatter.id).body).toBe(`Siehe [[${id}]] fuer die Operation.`);
+  });
+
+  // protects=restore brings the card back with the typed links that went with it, in their old places;
+  // fails_when=a removed link stays lost, lands in another place or is written twice; no_claim=links added while the card was in the trash
+  it("restores the removed links with the card", async () => {
+    const { reg, lib, id, other, linked, literature, linksOf } = await connected();
+    const before = { linked: linksOf(linked.frontmatter.id), literature: linksOf(literature) };
+    const rawBefore = lib.getNote(linked.frontmatter.id).frontmatter.links;
+    await reg.call("cards.delete", human, { id, force: true });
+
+    const back = (await reg.call("cards.restore", human, { id })) as { card: CardFile };
+    expect(back.card.frontmatter.id).toBe(id);
+    expect(linksOf(linked.frontmatter.id)).toEqual(before.linked);
+    expect(linksOf(literature)).toEqual(before.literature);
+    expect(lib.getNote(linked.frontmatter.id).frontmatter.links).toEqual(rawBefore);
+    expect(linksOf(literature)).toEqual([`${id}>[[${other.frontmatter.id}]]`]);
+    // the index sees them again
+    expect(
+      lib.index.all(
+        "SELECT 1 FROM links WHERE origin = 'frontmatter' AND (dst = ? OR src_ref = ?)",
+        id,
+        id,
+      ),
+    ).toHaveLength(2);
+    expect(trashEntries(lib.root)).toEqual([]);
+  });
+
+  // protects=a card without references is deleted without the flag and without a record of links;
+  // fails_when=an unreferenced delete asks for force or writes removedLinks; no_claim=the UI
+  it("deletes an unreferenced card as before", async () => {
+    const { reg, lib, id } = await highlight();
+    await reg.call("cards.delete", human, { id });
+    const [entry] = trashEntries(lib.root);
+    const marker = JSON.parse(readFileSync(`${lib.root}/.trash/${entry}/trashed.json`, "utf8"));
+    expect(marker.removedLinks).toBeUndefined();
   });
 
   // protects=only a person deletes a card; fails_when=an agent can trash a card; no_claim=MCP exposes no delete tool
@@ -631,6 +734,9 @@ describe("highlights (cards without AI)", () => {
       reg.call("cards.delete", { actor: "agent:test" as Actor }, { id }),
     ).rejects.toThrow(/TRASH_NOT_ALLOWED/);
     expect(existsSync(lib.paths.cardFile(CITEKEY, id))).toBe(true);
+    await expect(
+      reg.call("cards.delete", { actor: "agent:test" as Actor }, { id, force: true }),
+    ).rejects.toThrow(/TRASH_NOT_ALLOWED/);
     await expect(reg.call("cards.delete", human, { id: "c_01JB8Z3QK7ZZZZZZZZ" })).rejects.toThrow(
       /CARD_NOT_FOUND/,
     );

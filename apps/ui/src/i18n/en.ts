@@ -171,7 +171,7 @@ export const en: Record<MessageKey, string> = {
   "aiLang.it": "Italiano",
 
   "selection.label": "Actions for the selection",
-  "selection.quote": "Quote",
+  "selection.quote": "Quote (AI)",
 
   "panel.title": "Cards",
   "panel.emptyTitle": "No cards yet",

@@ -175,7 +175,7 @@ export const de = {
   "aiLang.it": "Italiano",
 
   "selection.label": "Aktionen für die Auswahl",
-  "selection.quote": "Zitat",
+  "selection.quote": "Zitat (KI)",
 
   "panel.title": "Karten",
   "panel.emptyTitle": "Noch keine Karten",
