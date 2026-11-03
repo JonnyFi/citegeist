@@ -13,6 +13,7 @@ import { exportCards } from "@citegeist/cite";
 import {
   type Actor,
   type CardBody,
+  CardColor,
   CardFrontmatter,
   CardKind,
   type ItemFrontmatter,
@@ -57,6 +58,8 @@ export interface CreateCardInput {
   language?: string | undefined;
   projects?: string[] | undefined;
   tags?: string[] | undefined;
+  color?: CardColor | undefined;
+  note?: string | undefined;
 }
 
 export interface CardFile {
@@ -72,7 +75,7 @@ export interface ExportCardsInput {
   locale?: string | undefined;
 }
 
-const PATCH_KEYS = new Set(["note", "paraphrase", "extra", "kind", "tags", "locator"]);
+const PATCH_KEYS = new Set(["note", "paraphrase", "extra", "kind", "color", "tags", "locator"]);
 
 /** Card operations of the core: create, update, regenerate, export and page label confirmation. */
 export class CardService {
@@ -112,7 +115,10 @@ export class CardService {
 
   // Create ---------------------------------------------------------------------------------------
 
-  /** Writes the card file at once. Paraphrase and kind follow from a background job. */
+  /**
+   * Writes the card file at once. Paraphrase and kind follow from a background job. With `ai: false`
+   * the card stays a plain highlight (colour, tags and note only) until cards.regenerate.
+   */
   create(actor: Actor, input: CreateCardInput): { card: CardFile; job?: string } {
     const item = this.lib.getItem(input.citekey).frontmatter;
     const quote = normalizeNewlines(input.quote).trim();
@@ -130,6 +136,7 @@ export class CardService {
       item: item.citekey,
       ...(resolved.source ? { source: resolved.source } : {}),
       ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.color ? { color: input.color } : {}),
       ...(resolved.locator ? { locator: resolved.locator } : {}),
       anchor: resolved.anchor,
       quote_sha256: quoteSha256(quote),
@@ -137,7 +144,8 @@ export class CardService {
       projects,
       created,
     });
-    this.lib.writeCard(fm, { quote, extra: [] });
+    const note = input.note?.trim();
+    this.lib.writeCard(fm, { quote, ...(note ? { note } : {}), extra: [] });
     const card = this.getCard(fm.id);
     if (input.ai === false) {
       this.deps.onCardText?.(fm.id);
@@ -347,7 +355,7 @@ export class CardService {
 
   // Update ---------------------------------------------------------------------------------------
 
-  /** Edits note, paraphrase, kind, tags or locator. The quote can never change. */
+  /** Edits note, paraphrase, kind, colour, tags or locator. The quote can never change. */
   update(actor: Actor, input: { id: string; patch: Record<string, unknown> }): { card: CardFile } {
     const { id, patch } = input;
     if ("quote" in patch) throw cardErrors.quoteImmutable(id);
@@ -387,6 +395,11 @@ export class CardService {
     if (patch.kind !== undefined) fm.kind = patch.kind ?? undefined;
     else if (file.data?.kind !== undefined && !CardKind.safeParse(file.data.kind).success) {
       fm.kind = undefined;
+    }
+    // null clears the colour. A free value from an older file is dropped as soon as the card is rewritten.
+    if (patch.color !== undefined) fm.color = patch.color ?? undefined;
+    else if (file.data?.color !== undefined && !CardColor.safeParse(file.data.color).success) {
+      fm.color = undefined;
     }
     if (patch.tags !== undefined) fm.tags = patch.tags;
     if (patch.locator !== undefined) {

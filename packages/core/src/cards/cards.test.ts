@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { AiRouter, MockBackend, mark } from "@citegeist/ai";
 import { exportCards } from "@citegeist/cite";
 import { Registry } from "@citegeist/ops";
@@ -490,6 +490,172 @@ Mein Kommentar.
   });
 });
 
+describe("highlights (cards without AI)", () => {
+  const QUOTE = "Kommunikation ist ihre Operation.";
+
+  async function highlight(opts: Record<string, unknown> = {}) {
+    const ctx = await setup();
+    const out = (await ctx.reg.call("cards.create", human, {
+      citekey: CITEKEY,
+      anchor: pdfAnchor(0),
+      quote: QUOTE,
+      ai: false,
+      ...opts,
+    })) as { card: CardFile; job?: string };
+    return { ...ctx, ...out, id: out.card.frontmatter.id };
+  }
+  const trashEntries = (root: string) => {
+    const dir = `${root}/.trash`;
+    return existsSync(dir) ? readdirSync(dir).filter((n) => n.startsWith("card-")) : [];
+  };
+
+  // protects=a plain highlight costs no AI call and keeps colour, tags and note in the card file after a rebuild;
+  // fails_when=a job or model call is started, or a field exists only in memory; no_claim=the UI sends these fields
+  it("creates a coloured highlight with tags and note, no job, and keeps them on disk", async () => {
+    const { reg, lib, mock, cards, card, job, id } = await highlight({
+      color: "yellow",
+      tags: ["Methode"],
+      note: "  Zentral fuer Kapitel 3  ",
+    });
+    expect(job).toBeUndefined();
+    await cards.detached?.idle();
+    expect(mock.calls).toHaveLength(0);
+    expect(card.frontmatter).toMatchObject({ color: "yellow", tags: ["Methode"] });
+    expect(card.frontmatter.paraphrase).toBeUndefined();
+    expect(card.body.note).toBe("Zentral fuer Kapitel 3");
+
+    const raw = readFileSync(lib.paths.cardFile(CITEKEY, id), "utf8");
+    expect(raw).toMatch(/^color: yellow$/m);
+    expect(raw).toContain("Methode");
+    expect(raw).toMatch(/## Note\s+Zentral fuer Kapitel 3/);
+    lib.indexer.rebuild();
+    const reread = cards.getCard(id);
+    expect(reread.frontmatter).toMatchObject({ color: "yellow", tags: ["Methode"] });
+    expect(reread.body.note).toBe("Zentral fuer Kapitel 3");
+    // the registry rejects a colour outside the palette
+    await expect(
+      reg.call("cards.create", human, {
+        citekey: CITEKEY,
+        anchor: pdfAnchor(0),
+        quote: QUOTE,
+        ai: false,
+        color: "purple",
+      }),
+    ).rejects.toThrow();
+  });
+
+  // protects=colour can be changed and removed through cards.update, and an old free value is dropped on save;
+  // fails_when=null does not clear, or a CSS colour from an older file stays; no_claim=the colour of a kind is unchanged
+  it("changes and clears the colour, and drops an old free value", async () => {
+    const { reg, cards, lib, id } = await highlight({ color: "yellow" });
+    const set = (await reg.call("cards.update", human, { id, patch: { color: "green" } })) as {
+      card: CardFile;
+    };
+    expect(set.card.frontmatter.color).toBe("green");
+    cards.update("human", { id, patch: { color: null } });
+    expect(cards.getCard(id).frontmatter.color).toBeUndefined();
+    expect(readFileSync(lib.paths.cardFile(CITEKEY, id), "utf8")).not.toMatch(/^color:/m);
+    await expect(
+      reg.call("cards.update", human, { id, patch: { color: "pink" } }),
+    ).rejects.toThrow();
+
+    const file = lib.paths.cardFile(CITEKEY, id);
+    writeRaw(
+      lib.root,
+      `items/${CITEKEY}/cards/${id}.md`,
+      readFileSync(file, "utf8").replace("anchor:", "color: '#ffcc00'\nanchor:"),
+    );
+    lib.sync();
+    expect(cards.getCard(id).frontmatter.color).toBeUndefined();
+    cards.update("human", { id, patch: { tags: ["x"] } });
+    expect(readFileSync(file, "utf8")).not.toContain("#ffcc00");
+  });
+
+  // protects=a highlight can become a full quote card and keeps its colour, tags and note;
+  // fails_when=regenerate drops the highlight fields; no_claim=says nothing about paraphrase quality
+  it("turns into a full quote card with cards.regenerate and keeps its fields", async () => {
+    const { reg, cards, id } = await highlight({ color: "blue", tags: ["a"], note: "n" });
+    await reg.call("cards.regenerate", human, { id });
+    await cards.detached?.idle();
+    const done = cards.getCard(id);
+    expect(done.body.paraphrase).toBe("Systeme erzeugen sich selbst.");
+    expect(done.frontmatter).toMatchObject({ color: "blue", tags: ["a"] });
+    expect(done.body.note).toBe("n");
+  });
+
+  // protects=delete moves the file into the library trash, drops it from the index and restore brings it back;
+  // fails_when=the file stays, is lost, or comes back without its fields; no_claim=the UI undo toast
+  it("deletes into the library trash and restores", async () => {
+    const { reg, lib, id } = await highlight({ color: "red", tags: ["t"] });
+    const file = lib.paths.cardFile(CITEKEY, id);
+    expect(await reg.call("cards.delete", human, { id })).toEqual({ ok: true });
+    expect(existsSync(file)).toBe(false);
+    expect(lib.index.get("SELECT id FROM cards WHERE id = ?", id)).toBeUndefined();
+    const [entry] = trashEntries(lib.root);
+    expect(entry).toBeDefined();
+    const marker = JSON.parse(readFileSync(`${lib.root}/.trash/${entry}/trashed.json`, "utf8"));
+    expect(marker).toMatchObject({ id, path: `items/${CITEKEY}/cards/${id}.md` });
+    expect(marker.by).toBe("human");
+    await expect(reg.call("cards.update", human, { id, patch: { note: "x" } })).rejects.toThrow(
+      /CARD_NOT_FOUND/,
+    );
+
+    const back = (await reg.call("cards.restore", human, { id })) as { card: CardFile };
+    expect(back.card.frontmatter).toMatchObject({ id, color: "red", tags: ["t"] });
+    expect(existsSync(file)).toBe(true);
+    expect(trashEntries(lib.root)).toEqual([]);
+    await expect(reg.call("cards.restore", human, { id })).rejects.toThrow(/CARD_EXISTS/);
+  });
+
+  // protects=a card that a note links to is not deleted and the error names the note;
+  // fails_when=the card goes to the trash anyway or the error hides the reference; no_claim=typed links from cards
+  it("refuses to delete a card that a note links to, and names the note", async () => {
+    const { reg, lib, id } = await highlight();
+    lib.createNote("human", {
+      title: "Systemtheorie",
+      body: `Siehe [[${id}]] fuer die Operation.`,
+      type: "permanent",
+      projects: [],
+    });
+    const err = await reg.call("cards.delete", human, { id }).catch((e: unknown) => e);
+    expect(String(err)).toMatch(/CARD_REFERENCED/);
+    expect(String(err)).toContain("Systemtheorie");
+    expect(existsSync(lib.paths.cardFile(CITEKEY, id))).toBe(true);
+    expect(trashEntries(lib.root)).toEqual([]);
+  });
+
+  // protects=only a person deletes a card; fails_when=an agent can trash a card; no_claim=MCP exposes no delete tool
+  it("lets only a person delete a card", async () => {
+    const { reg, lib, id } = await highlight();
+    await expect(
+      reg.call("cards.delete", { actor: "agent:test" as Actor }, { id }),
+    ).rejects.toThrow(/TRASH_NOT_ALLOWED/);
+    expect(existsSync(lib.paths.cardFile(CITEKEY, id))).toBe(true);
+    await expect(reg.call("cards.delete", human, { id: "c_01JB8Z3QK7ZZZZZZZZ" })).rejects.toThrow(
+      /CARD_NOT_FOUND/,
+    );
+  });
+
+  // protects=the tags of a card are found by search.query and the hit carries colour and tags;
+  // fails_when=a tag stays out of the search text or the hit loses colour and tags; no_claim=ranking against other hits
+  it("finds a card by its tag and reports colour and tags on the hit", async () => {
+    const { reg, id } = await highlight({ color: "green", tags: ["Methodenkritik"] });
+    const out = (await reg.call("search.query", human, {
+      q: "Methodenkritik",
+      kinds: ["card"],
+    })) as {
+      hits: Array<{ kind: string; id: string; citekey?: string; color?: string; tags?: string[] }>;
+    };
+    expect(out.hits.map((h) => h.id)).toEqual([id]);
+    expect(out.hits[0]).toMatchObject({
+      kind: "card",
+      citekey: CITEKEY,
+      color: "green",
+      tags: ["Methodenkritik"],
+    });
+  });
+});
+
 describe("cards.export", () => {
   it("matches the cite package for the project export policy", async () => {
     const { reg, cards, lib } = await setup();
@@ -648,6 +814,8 @@ describe("registry", () => {
     for (const n of [
       "cards.create",
       "cards.update",
+      "cards.delete",
+      "cards.restore",
       "cards.regenerate",
       "cards.export",
       "documents.confirmPages",
