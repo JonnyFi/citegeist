@@ -1,4 +1,5 @@
 import {
+  Citekey,
   InsightBlockId,
   NodeStatus,
   OutlineNodeId,
@@ -94,7 +95,7 @@ export const outlineGet = defineContract({
 export const projectsContext = defineContract({
   name: "projects.context",
   summary:
-    "Read a project: brief, research questions, settings, item count and its plans. With a plan (or when the project has exactly one) the outline comes along: nodes with ids, computed numbers like 4.4, purpose, status and document path",
+    "Read a project: brief, research questions, settings, item count, reading list (order, progress, next item) and its plans. With a plan (or when the project has exactly one) the outline comes along: nodes with ids, computed numbers like 4.4, purpose, status and document path",
   access: "read",
   input: z.object({
     slug: ProjectSlug,
@@ -106,6 +107,23 @@ export const projectsContext = defineContract({
     frontmatter: ProjectFrontmatter,
     brief: z.string(),
     items: z.number(),
+    /**
+     * The reading list of the project: counts, the first item still to read and the first 50
+     * entries in reading order (projects.reading has all of them).
+     */
+    reading: z.object({
+      total: z.number().int().nonnegative(),
+      read: z.number().int().nonnegative(),
+      next: z.object({ citekey: Citekey, title: z.string() }).optional(),
+      entries: z.array(
+        z.object({
+          citekey: Citekey,
+          title: z.string(),
+          status: z.string(),
+          note: z.string().optional(),
+        }),
+      ),
+    }),
     plans: z.array(
       z.object({
         plan: PlanSlug,

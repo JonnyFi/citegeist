@@ -820,9 +820,14 @@ export const projectsUpdate = defineContract({
 export const projectsAddItems = defineContract({
   name: "projects.addItems",
   summary:
-    "Add library items to a project in one call (the project is written into each item's frontmatter). Items that are in the project already are left alone, so the call can be repeated. Fails before any change when the project or a citekey does not exist",
+    "Add library items to a project in one call (the project is written into each item's frontmatter). Items that are in the project already are left alone, so the call can be repeated. Fails before any change when the project or a citekey does not exist. The new items join the end of the project's reading order, or stand at position (0 is first) when it is given",
   access: "write",
-  input: z.object({ slug: ProjectSlug, citekeys: z.array(Citekey).min(1).max(500) }),
+  input: z.object({
+    slug: ProjectSlug,
+    citekeys: z.array(Citekey).min(1).max(500),
+    /** Place in the reading order for the items that are added now. Default: the end. */
+    position: z.number().int().nonnegative().optional(),
+  }),
   output: z.object({ added: z.array(Citekey), unchanged: z.array(Citekey) }),
 });
 export const projectsRemoveItems = defineContract({
@@ -832,6 +837,52 @@ export const projectsRemoveItems = defineContract({
   access: "write",
   input: z.object({ slug: ProjectSlug, citekeys: z.array(Citekey).min(1).max(500) }),
   output: z.object({ removed: z.array(Citekey), unchanged: z.array(Citekey) }),
+});
+/** One item in the reading order of a project, with the note on why it stands there. */
+const ReadingItem = z.object({ item: ItemSummary, note: z.string().optional() });
+/**
+ * The reading list of a project (docs/decisions/0035-ordered-reading-list.md): the accepted items
+ * of the project in reading order, with the progress.
+ */
+const ReadingList = z.object({
+  entries: z.array(ReadingItem),
+  total: z.number().int().nonnegative(),
+  /** Entries whose status is read. */
+  read: z.number().int().nonnegative(),
+  /** The first entry that is not read yet. Absent when everything is read or the list is empty. */
+  next: Citekey.optional(),
+});
+export const projectsReading = defineContract({
+  name: "projects.reading",
+  summary:
+    "The reading list of a project: its accepted items in reading order with the note on each, how many are read, and the first one still to read (next). Items that the order does not name come after the named ones, by date added",
+  access: "read",
+  input: z.object({ slug: ProjectSlug }),
+  output: ReadingList,
+});
+export const projectsMoveReading = defineContract({
+  name: "projects.moveReading",
+  summary:
+    "Move one item of a project's reading list to a position (0 is first; a position past the end puts it last). The whole order is stored in the project. Returns the new list",
+  access: "write",
+  input: z.object({
+    slug: ProjectSlug,
+    citekey: Citekey,
+    position: z.number().int().nonnegative(),
+  }),
+  output: ReadingList,
+});
+export const projectsSetReadingNote = defineContract({
+  name: "projects.setReadingNote",
+  summary:
+    "Set the note on why an item stands where it does in a project's reading list (one short line), or clear it with an empty note. Returns the new list",
+  access: "write",
+  input: z.object({
+    slug: ProjectSlug,
+    citekey: Citekey,
+    note: z.string().max(300).default(""),
+  }),
+  output: ReadingList,
 });
 export const projectsList = defineContract({
   name: "projects.list",
@@ -1184,6 +1235,9 @@ export const CONTRACTS: readonly OperationContract[] = [
   projectsUpdate,
   projectsAddItems,
   projectsRemoveItems,
+  projectsReading,
+  projectsMoveReading,
+  projectsSetReadingNote,
   projectsList,
   searchQuery,
   citeFormat,

@@ -1,11 +1,19 @@
 import { z } from "zod";
-import { Language, ProjectSlug, Stamp } from "./common.js";
+import { Citekey, Language, ProjectSlug, Stamp } from "./common.js";
 
 /** What a card export includes for this project. Default: everything with provenance labels. */
 export const ExportPolicy = z.object({
   paraphrase: z.enum(["ai", "own", "own-else-ai", "none"]).default("own-else-ai"),
   labelAi: z.boolean().default(false),
 });
+
+/** One place in the reading order of a project (docs/decisions/0035-ordered-reading-list.md). */
+export const ReadingEntry = z.object({
+  item: Citekey,
+  /** Why the item stands here, e.g. "bridge to X". One short line. */
+  note: z.string().max(300).optional(),
+});
+export type ReadingEntry = z.infer<typeof ReadingEntry>;
 
 /** Frontmatter of projects/<slug>/project.md; the body is the project brief agents read. */
 export const ProjectFrontmatter = z.object({
@@ -21,6 +29,12 @@ export const ProjectFrontmatter = z.object({
   /** Language of AI texts in this project; items may override it. */
   ai_language: Language.optional(),
   export: ExportPolicy.default({ paraphrase: "own-else-ai", labelAi: false }),
+  /**
+   * Reading order of the project's items and the notes on them. Items of the project that are not
+   * listed come after the listed ones, by date added; entries for items that are no longer in the
+   * project are ignored.
+   */
+  reading: z.array(ReadingEntry).default([]),
   created: Stamp,
 });
 export type ProjectFrontmatter = z.infer<typeof ProjectFrontmatter>;

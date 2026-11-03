@@ -1081,6 +1081,24 @@
           }
         }
       },
+      "reading": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "required": ["item"]
+        }
+      },
       "created": {
         "type": "object",
         "properties": {
