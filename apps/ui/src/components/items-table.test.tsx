@@ -297,17 +297,13 @@ describe("library sorting", () => {
     expect(titles).toEqual([...titles].sort(collator.compare));
   });
 
-  it("sorts the reading list of a project with the same choice", async () => {
-    const user = userEvent.setup();
-    const { calls } = renderApp("/projects/rag-evaluation?tab=list", datedFixtures());
+  it("does not sort the reading list of a project: its order is the reading order", async () => {
+    renderApp("/projects/rag-evaluation?tab=list", datedFixtures());
     await screen.findAllByTestId("item-row");
-    await user.click(within(header("Titel")).getByRole("button"));
-    await waitFor(() =>
-      expect(calls.filter((c) => c.name === "items.list").at(-1)?.input).toMatchObject({
-        project: "rag-evaluation",
-        sort: "title",
-        order: "asc",
-      }),
-    );
+    expect(
+      screen
+        .getAllByRole("columnheader", { name: /Titel/ })
+        .some((h) => within(h).queryByRole("button")),
+    ).toBe(false);
   });
 });

@@ -210,6 +210,14 @@ describe("schemas", () => {
     ).toBe("own-else-ai");
   });
 
+  it("gives a project an empty reading order and checks its entries", () => {
+    const base = { slug: "phd-proposal", title: "PhD", created: stamp };
+    expect(ProjectFrontmatter.parse(base).reading).toEqual([]);
+    const reading = [{ item: "luhmann1984soziale", note: "bridge to Gillespie" }, { item: "x1" }];
+    expect(ProjectFrontmatter.parse({ ...base, reading }).reading).toEqual(reading);
+    expect(() => ProjectFrontmatter.parse({ ...base, reading: [{ item: "Not A Key" }] })).toThrow();
+  });
+
   it("builds agent-ready errors and exports JSON Schemas", () => {
     const err = new CitegeistError({
       code: "ITEM_NOT_FOUND",

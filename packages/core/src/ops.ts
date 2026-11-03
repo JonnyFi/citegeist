@@ -16,7 +16,10 @@ import {
   projectsCreate,
   projectsGet,
   projectsList,
+  projectsMoveReading,
+  projectsReading,
   projectsRemoveItems,
+  projectsSetReadingNote,
   projectsUpdate,
   Registry,
   searchQuery,
@@ -29,6 +32,7 @@ import { setItemStatus } from "./item-status.js";
 import type { Library } from "./library.js";
 import { createLink } from "./links.js";
 import { changeProjectItems } from "./project-items.js";
+import { moveReading, placeReading, readingList, setReadingNote } from "./reading-list.js";
 import type { SearchHit, SearchInput } from "./search.js";
 
 export interface CoreOperationOptions {
@@ -77,8 +81,18 @@ export function bindCoreOperations(
     )
     .bind(projectsAddItems, async (ctx, input) => {
       const r = changeProjectItems(lib, ctx.actor, "add", input.slug, input.citekeys);
+      if (input.position !== undefined && r.changed.length > 0) {
+        placeReading(lib, input.slug, r.changed, input.position);
+      }
       return { added: r.changed, unchanged: r.unchanged };
     })
+    .bind(projectsReading, async (_ctx, input) => readingList(lib, input.slug))
+    .bind(projectsMoveReading, async (_ctx, input) =>
+      moveReading(lib, input.slug, input.citekey, input.position),
+    )
+    .bind(projectsSetReadingNote, async (_ctx, input) =>
+      setReadingNote(lib, input.slug, input.citekey, input.note),
+    )
     .bind(projectsRemoveItems, async (ctx, input) => {
       const r = changeProjectItems(lib, ctx.actor, "remove", input.slug, input.citekeys);
       return { removed: r.changed, unchanged: r.unchanged };

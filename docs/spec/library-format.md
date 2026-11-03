@@ -17,7 +17,7 @@ The schemas in `packages/schema/src` are authoritative. This page describes wher
 | `items/<citekey>/cards/<id>.md` | Frontmatter `CardFrontmatter`, body `CardBody` | Core; the "Note" section may be edited freely |
 | `alerts.yaml` | like `projects/<slug>/alerts.yaml`, for alerts without a project | Core, agents, humans |
 | `notes/<slug>.md` | Frontmatter `NoteFrontmatter`, body free. A note of type `literature` with the line `Item: [[citekey]]` is the literature note of that item and holds the links that start at its cards (`from: c_...`) | Core, agents, humans |
-| `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, body is the project brief | Core, agents, humans |
+| `projects/<slug>/project.md` | Frontmatter `ProjectFrontmatter`, body is the project brief. `reading` is the reading order: a list of `{ item: <citekey>, note? }`; items of the project that it does not name come after the named ones, entries for items that are not in the project are ignored ([ADR 0035](../decisions/0035-ordered-reading-list.md)) | Core, agents, humans |
 | `projects/<slug>/alerts.yaml` | `alerts:` with a list of `AlertDef` (name, source, interval, limit, ranking). The last run and the watch list are not stored here but machine-locally in `alerts-state.json` | Core, agents, humans |
 | `projects/<slug>/insights.md` | free Markdown; every insight is a paragraph that ends with a block id `^i-<id>` (`InsightBlockId`) | Core, agents, humans |
 | `projects/<slug>/plans/<plan>/plan.md` | Frontmatter `PlanFrontmatter`, body is the planning document | Core, agents, humans |

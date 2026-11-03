@@ -35,6 +35,7 @@ Adding papers
 
 Projects
 - list_projects shows the projects, create_project makes one (slug, title, brief), get_project reads one with its plans and outline.
+- get_project shows the reading list too. add_item with projects adds to it.
 
 Reading and quoting
 - read_document returns Markdown by printed page range, section or block ids, capped by maxChars. Page numbers are the printed ones, not PDF indexes.

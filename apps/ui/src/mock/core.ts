@@ -7,6 +7,7 @@ import {
   cardsRestore,
   cardsUpdate,
   citeFormat,
+  cleanNote,
   documentsAssets,
   documentsConfirmPages,
   type ItemSort,
@@ -25,11 +26,17 @@ import {
   itemsUpdate,
   jobsGet,
   libraryStatus,
+  moveEntry,
+  nextToRead,
+  orderReading,
   projectsAddItems,
   projectsCreate,
   projectsGet,
   projectsList,
+  projectsMoveReading,
+  projectsReading,
   projectsRemoveItems,
+  projectsSetReadingNote,
   projectsUpdate,
   Registry,
   searchQuery,
@@ -44,6 +51,7 @@ import {
   ProjectFrontmatter,
   paragraphLocator,
   paragraphNumbers,
+  type ReadingEntry,
   statusPatch,
 } from "@citegeist/schema";
 import { bindAlertsMock, createAlertsMockState } from "../alerts/mock";
@@ -350,6 +358,44 @@ export function createMockRegistry(
       changed(`items/${key}/${key}.md`);
     }
     return out;
+  };
+  /** The reading list of a project: accepted items in the stored order, then by date added. */
+  const readingOf = (slug: string) => {
+    requireProject(slug);
+    const stored = data.projects.get(slug)?.frontmatter.reading ?? [];
+    const members = [...data.items.values()]
+      .filter((i) => i.frontmatter.projects.includes(slug) && !i.frontmatter.inbox)
+      .map((i) => summary(i.frontmatter));
+    const entries = orderReading(stored, members).map(({ member, note }) => ({
+      item: member,
+      ...(note ? { note } : {}),
+    }));
+    const next = nextToRead(entries.map((e) => ({ ...e, status: e.item.status })));
+    return {
+      entries,
+      total: entries.length,
+      read: entries.filter((e) => e.item.status === "read").length,
+      ...(next ? { next: next.item.citekey } : {}),
+    };
+  };
+  /** Stores the whole order in the project, as the real core does. */
+  const storeReading = (slug: string, order: ReadingEntry[]) => {
+    const project = data.projects.get(slug);
+    if (!project) return;
+    project.frontmatter = { ...project.frontmatter, reading: order };
+    changed(`projects/${slug}/project.md`);
+  };
+  const orderOfReading = (slug: string): ReadingEntry[] =>
+    readingOf(slug).entries.map((e) => ({
+      item: e.item.citekey,
+      ...(e.note ? { note: e.note } : {}),
+    }));
+  const requireOnList = (slug: string, citekey: string) => {
+    if (!readingOf(slug).entries.some((e) => e.item.citekey === citekey)) {
+      throw new Error(
+        `NOT_IN_READING_LIST: item '${citekey}' is not on the reading list of project '${slug}'`,
+      );
+    }
   };
   const trashed: Array<{
     citekey: string;
@@ -879,7 +925,37 @@ export function createMockRegistry(
       changed(`projects/${input.slug}/project.md`);
       return { frontmatter, brief: input.brief };
     })
-    .bind(projectsAddItems, async (_ctx, input) => changeMembers("add", input))
+    .bind(projectsAddItems, async (_ctx, input) => {
+      const out = changeMembers("add", input);
+      if (input.position !== undefined && out.added.length > 0) {
+        const order = orderOfReading(input.slug);
+        const placed = out.added.flatMap((k) => order.filter((e) => e.item === k));
+        const rest = order.filter((e) => !out.added.includes(e.item));
+        rest.splice(Math.min(input.position, rest.length), 0, ...placed);
+        storeReading(input.slug, rest);
+      }
+      return out;
+    })
+    .bind(projectsReading, async (_ctx, input) => readingOf(input.slug))
+    .bind(projectsMoveReading, async (_ctx, input) => {
+      requireOnList(input.slug, input.citekey);
+      storeReading(
+        input.slug,
+        moveEntry(orderOfReading(input.slug), input.citekey, input.position),
+      );
+      return readingOf(input.slug);
+    })
+    .bind(projectsSetReadingNote, async (_ctx, input) => {
+      requireOnList(input.slug, input.citekey);
+      const text = cleanNote(input.note);
+      storeReading(
+        input.slug,
+        orderOfReading(input.slug).map((e) =>
+          e.item === input.citekey ? (text ? { item: e.item, note: text } : { item: e.item }) : e,
+        ),
+      );
+      return readingOf(input.slug);
+    })
     .bind(projectsRemoveItems, async (_ctx, input) => changeMembers("remove", input))
     .bind(projectsUpdate, async (_ctx, input) => {
       const project = data.projects.get(input.slug);

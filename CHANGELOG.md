@@ -14,6 +14,7 @@ All notable changes to citegeist are recorded here. The format follows [Keep a C
 
 ### Added
 
+- **Reading order.** The reading list of a project is ordered. Drag a row by its handle or move it with the arrow keys, add a short note on why it stands there, see "x von y gelesen" and open the next text with "Als Nächstes lesen". The order is stored in the project file, `get_project` shows it to agents and `cg projects moveReading` changes it.
 - **Connections from cards.** A quote card can start a typed connection, for example "widerspricht" to another source. The card menu offers "Verbinden" and "An den Agent", the agent can connect a card with the `link` tool, and a card whose text names a source of the library shows one suggestion that you accept or dismiss.
 
 ## [0.1.0] - not yet released

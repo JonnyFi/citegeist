@@ -314,6 +314,33 @@ describe("write tools over stdio against a real library", () => {
     expect(got.brief).toContain("Loneliness");
   });
 
+  it("get_project shows the reading list of the project, and add_item puts papers on it", async () => {
+    await call("create_project", { slug: "reading-order", title: "Reading order", brief: "" });
+    const empty = await call<{ reading: { total: number; entries: unknown[] } }>("get_project", {
+      slug: "reading-order",
+    });
+    expect(empty.reading).toEqual({ total: 0, read: 0, entries: [] });
+
+    const added = await call<{ citekey: string; job: string }>("add_item", {
+      identifier: "@book{readfirst, title={Read first}, author={Nobody, Nina}, year={2003}}",
+      target: "library",
+      projects: ["reading-order"],
+    });
+    await finished(added.job);
+    const got = await call<{
+      reading: {
+        total: number;
+        read: number;
+        next?: { citekey: string; title: string };
+        entries: { citekey: string; status: string }[];
+      };
+    }>("get_project", { slug: "reading-order" });
+    expect(got.reading.total).toBe(1);
+    expect(got.reading.read).toBe(0);
+    expect(got.reading.next?.citekey).toBe(added.citekey);
+    expect(got.reading.entries.map((e) => e.citekey)).toEqual([added.citekey]);
+  });
+
   it("trash_item removes what an agent added, records who did it and refuses the rest", async () => {
     const added = await call<{ citekey: string; job: string }>("add_item", {
       identifier: "@book{trashme, title={Trash me}, author={Nobody, Nina}, year={2001}}",

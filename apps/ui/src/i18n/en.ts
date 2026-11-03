@@ -20,6 +20,7 @@ import { membershipEn } from "./membership";
 import { metadataEn } from "./metadata";
 import { modelsEn } from "./models";
 import { readStatusEn } from "./read-status";
+import { readingOrderEn } from "./reading-order";
 import { relatedEn } from "./related";
 
 /** English strings. Every key of `de.ts` needs a translation here. */
@@ -453,6 +454,7 @@ export const en: Record<MessageKey, string> = {
   ...libraryViewEn,
   ...readStatusEn,
   ...highlightsEn,
+  ...readingOrderEn,
   ...metadataEn,
   ...inboxItemEn,
   ...matrixEn,

@@ -4,10 +4,11 @@
 
 A project groups sources, cards, notes, plans and texts around one goal, for example a thesis proposal. A source can belong to several projects. The project is stored in `projects/<slug>/`, and `project.md` holds the settings and the brief.
 
-The project page has these tabs: overview, "Cards", "Planning", "Matrix", "Texts" and "Settings".
+The project page has these tabs: overview, "Reading list", "Cards", "Planning", "Matrix", "Texts" and "Settings".
 
 - **Overview.** The brief is Markdown. It states the research questions and the scope, and agents read it before every project task. The research questions have IDs ("RQ 1"). The overview also lists the sources of the project and its alerts.
 - **Settings.** The status (active, paused, done), the citation style, the language of the AI texts and the export of the bibliography as `.bib` or CSL-JSON. citegeist keeps `exports/<slug>.bib` and `exports/<slug>.json` up to date.
+- **Reading list.** The sources of the project in the order you want to read them. Drag a row by its handle, or focus the handle and press the arrow keys, to move it; the row menu has "Nach oben" and "Nach unten" too. A line under the title holds a short note on why the source stands there ("Brücke zu Luhmann"); the row menu adds or changes it. The status chip is the reading status of the source. Above the table, "x von y gelesen" counts the progress and "Als Nächstes lesen" opens the first source that is not read yet. Sources that have no place in the order yet come last, oldest first. The order belongs to the project, so a source in two projects can stand at a different place in each; use one project per topic for several lists. The order is stored in `project.md` as `reading`. An agent sees it in `get_project`, and `cg projects moveReading` and `cg projects setReadingNote` change it on the command line.
 - **Cards.** All quote cards of the project, with "Export" to copy several of them as direct or indirect citations.
 
 Selecting a project in the library filter restricts the table to its sources. Alerts can belong to a project. See [literature search and alerts](literature-search-and-alerts.md).

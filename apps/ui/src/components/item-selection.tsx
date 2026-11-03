@@ -3,6 +3,7 @@ import { useI18n } from "../i18n";
 import { useSetStatus } from "../lib/read-status";
 import { type ItemSummary, ItemsTable, type RowSelection, type SortControl } from "./items-table";
 import { ProjectPicker, useProjectMembership } from "./project-membership";
+import type { ReadingControl } from "./reading-rows";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/toast";
 
@@ -110,11 +111,14 @@ export function SelectableItemsTable({
   items,
   project,
   sort,
+  reading,
 }: {
   items: readonly ItemSummary[];
   /** The project the list is filtered by, if any. */
   project?: string | undefined;
   sort?: SortControl | undefined;
+  /** The list is the reading order of the project. */
+  reading?: ReadingControl | undefined;
 }) {
   const { selection, chosen, clear } = useRowSelection(items);
   return (
@@ -122,7 +126,7 @@ export function SelectableItemsTable({
       {chosen.length > 0 ? (
         <SelectionBar citekeys={chosen} project={project} onDone={clear} />
       ) : null}
-      <ItemsTable items={items} selection={selection} sort={sort} />
+      <ItemsTable items={items} selection={selection} sort={sort} reading={reading} />
     </>
   );
 }
