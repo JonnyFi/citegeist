@@ -1,21 +1,35 @@
 import { inboxAccept, itemsAdd, jobsGet } from "@citegeist/ops";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { FileUp } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { type MessageKey, useI18n } from "../i18n";
 import { useCore, useOpMutation } from "../lib/hooks";
 import { classifyIdentifier } from "../lib/identifier";
 import { cn, describeError } from "../lib/utils";
+import { FileDrop, type FileDropResult, useFilePicker } from "./ui/file-drop";
 import { Menu } from "./ui/menu";
 
-type Outcome =
-  | { kind: "added"; citekey: string }
-  | { kind: "duplicate"; citekey: string }
+/** What happened to one thing the person added: a typed identifier or one file. */
+type RowState =
+  | "pending"
+  | "added"
+  | "duplicate"
   /** The work is in the inbox. Adding does not accept it; the person decides. */
-  | { kind: "inbox"; citekey: string }
-  | { kind: "accepted"; citekey: string }
-  | { kind: "error"; message: string };
+  | "inbox"
+  | "accepted"
+  | "unsupported"
+  | "error";
+
+interface Row {
+  key: number;
+  /** What the person gave: the identifier as typed, or the file name. */
+  name: string;
+  state: RowState;
+  citekey?: string;
+  /** The conversion job of an added item, followed until it names the item the file ended up in. */
+  job?: string;
+  message?: string;
+}
 
 const KIND_KEY = {
   doi: "add.kind.doi",
@@ -29,116 +43,129 @@ const KIND_KEY = {
 
 const TERMINAL = ["succeeded", "failed", "cancelled"];
 
+/** The file types the core takes (`FILE_KINDS` in packages/core/src/ingest/service.ts). */
+export const LIBRARY_FILE_TYPES = [".pdf", ".epub", ".html", ".htm"] as const;
+
 /** Files dragged over the window carry "Files" in their data transfer types. */
 function hasFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
 }
 
 /**
+ * A file is sometimes recognised only after its conversion: the job then names the item the file
+ * ended up in, which can differ from the one items.add answered with. Renders nothing.
+ */
+function JobFollower({
+  job,
+  citekey,
+  onResult,
+}: {
+  job: string;
+  citekey: string;
+  onResult: (result: { citekey: string; state: "added" | "duplicate" | "inbox" }) => void;
+}) {
+  const core = useCore();
+  const query = useQuery({
+    queryKey: ["op", jobsGet.name, job],
+    queryFn: () => core.call(jobsGet, { job }),
+    refetchInterval: (q) => (TERMINAL.includes(q.state.data?.status ?? "") ? false : 600),
+  });
+  const data = query.data;
+  useEffect(() => {
+    if (data?.status !== "succeeded") return;
+    const result = data.result as { citekey?: unknown; merged?: { inInbox?: unknown } } | undefined;
+    if (typeof result?.citekey !== "string" || result.citekey === citekey) return;
+    onResult({
+      citekey: result.citekey,
+      state: result.merged ? (result.merged.inInbox ? "inbox" : "duplicate") : "added",
+    });
+  }, [data, citekey, onResult]);
+  return null;
+}
+
+/**
  * The add field of the library bar: a DOI, arXiv id or link, an ISBN or a URL goes into items.add,
- * and so does a PDF dropped anywhere on the window. A person always adds to the library, never to
- * the inbox (docs/decisions/0014-agent-content-goes-to-inbox.md).
+ * and so does a file. Files come in through the drop area under the field, which opens while the
+ * field has focus or a file is dragged over the window, or through the file dialog of the menu. A
+ * person always adds to the library, never to the inbox
+ * (docs/decisions/0014-agent-content-goes-to-inbox.md).
  */
 export function AddField({ project }: { project?: string | undefined }) {
   const { t } = useI18n();
-  const core = useCore();
   const add = useOpMutation(itemsAdd);
   const accept = useOpMutation(inboxAccept);
   const id = useId();
   const [value, setValue] = useState("");
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [focused, setFocused] = useState(false);
   const depth = useRef(0);
+  const nextKey = useRef(0);
   const textField = useRef<HTMLInputElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
-  // A PDF is sometimes recognised only after its conversion: the job then names the item the file
-  // ended up in, which can differ from the one items.add answered with.
-  const [followed, setFollowed] = useState<{ job: string; citekey: string } | null>(null);
-  const followedJob = useQuery({
-    queryKey: ["op", jobsGet.name, followed?.job],
-    enabled: followed !== null,
-    queryFn: () => core.call(jobsGet, { job: followed?.job ?? "" }),
-    refetchInterval: (q) => (TERMINAL.includes(q.state.data?.status ?? "") ? false : 600),
-  });
-  const followedResult = followedJob.data;
-  useEffect(() => {
-    if (!followed || followedResult?.status !== "succeeded") return;
-    const result = followedResult.result as
-      | { citekey?: unknown; merged?: { inInbox?: unknown } }
-      | undefined;
-    setFollowed(null);
-    if (typeof result?.citekey !== "string" || result.citekey === followed.citekey) return;
-    const citekey = result.citekey;
-    setOutcome((current) =>
-      current?.kind === "added" && current.citekey === followed.citekey
-        ? {
-            kind: result.merged ? (result.merged.inInbox ? "inbox" : "duplicate") : "added",
-            citekey,
-          }
-        : current,
-    );
-  }, [followed, followedResult]);
-
+  const busy = rows.some((r) => r.state === "pending");
   const detected = classifyIdentifier(value);
   const hint =
     detected.kind in KIND_KEY ? t(KIND_KEY[detected.kind as keyof typeof KIND_KEY]) : null;
 
+  // the answer goes away by itself; the summary of several files stays a little longer
   useEffect(() => {
-    if (!outcome) return;
-    const timer = setTimeout(() => setOutcome(null), 8000);
+    if (rows.length === 0 || busy) return;
+    const timer = setTimeout(() => setRows([]), rows.length > 1 ? 15000 : 8000);
     return () => clearTimeout(timer);
-  }, [outcome]);
+  }, [rows, busy]);
 
-  const submit = (identifier: string) =>
-    add.mutate(
-      { identifier, target: "library", ...(project ? { projects: [project] } : {}) },
-      {
-        onSuccess: (out) => {
-          setOutcome(
-            out.duplicateOf
-              ? { kind: out.inInbox ? "inbox" : "duplicate", citekey: out.duplicateOf }
-              : { kind: "added", citekey: out.citekey },
-          );
-          if (!out.duplicateOf) setFollowed({ job: out.job, citekey: out.citekey });
-        },
-        onError: (err) => setOutcome({ kind: "error", message: describeError(err).message }),
-      },
-    );
+  const patch = (key: number, change: Partial<Row>) =>
+    setRows((current) => current.map((r) => (r.key === key ? { ...r, ...change } : r)));
 
-  const dropFiles = (files: File[]) => {
-    for (const file of files) {
-      if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
-        setOutcome({ kind: "error", message: t("add.notPdf", { name: file.name }) });
-        continue;
-      }
-      // the desktop app tells the path of a dropped file; the browser preview only has the name
-      const path = window.citegeist?.pathForFile?.(file) ?? (core.isMock ? file.name : undefined);
-      if (!path) {
-        setOutcome({ kind: "error", message: t("add.noPath", { name: file.name }) });
-        continue;
-      }
-      submit(path);
+  const submit = async (key: number, identifier: string) => {
+    try {
+      const out = await add.mutateAsync({
+        identifier,
+        target: "library",
+        ...(project ? { projects: [project] } : {}),
+      });
+      patch(
+        key,
+        out.duplicateOf
+          ? { state: out.inInbox ? "inbox" : "duplicate", citekey: out.duplicateOf }
+          : { state: "added", citekey: out.citekey, job: out.job },
+      );
+    } catch (err) {
+      patch(key, { state: "error", message: describeError(err).message });
     }
   };
 
-  // the desktop app opens the native file dialog; the browser preview uses a plain file input
-  const pickFiles = () => {
-    const pick = window.citegeist?.pickPaths;
-    if (!pick) {
-      fileInput.current?.click();
-      return;
-    }
-    void pick({
-      kind: "file",
-      multiple: true,
-      extensions: ["pdf"],
-      title: t("add.pick.title"),
-    }).then((paths) => {
-      setOutcome(null);
-      for (const path of paths) submit(path);
-    });
+  const newRow = (name: string, state: RowState, message?: string): Row => ({
+    key: nextKey.current++,
+    name,
+    state,
+    ...(message ? { message } : {}),
+  });
+
+  // Files go in one after the other. Each gets its row, so that the summary tells what became of
+  // every file, and a file the core cannot take does not hold up the others.
+  const addFiles = ({ files, rejected, unreadable }: FileDropResult) => {
+    const queued = files.map((f) => ({ path: f.path, row: newRow(f.name, "pending") }));
+    const next = [
+      ...queued.map((q) => q.row),
+      ...rejected.map((name) => newRow(name, "unsupported")),
+      ...unreadable.map((name) => newRow(name, "error", t("add.noPath", { name }))),
+    ];
+    if (next.length === 0) return;
+    setRows(next);
+    void (async () => {
+      for (const q of queued) await submit(q.row.key, q.path);
+    })();
   };
+
+  const picker = useFilePicker({
+    accept: LIBRARY_FILE_TYPES,
+    multiple: true,
+    title: t("add.pick.title"),
+    onFiles: addFiles,
+    inputTestId: "pdf-file-input",
+  });
 
   useEffect(() => {
     const over = (e: DragEvent) => {
@@ -154,12 +181,13 @@ export function AddField({ project }: { project?: string | undefined }) {
       depth.current = Math.max(0, depth.current - 1);
       if (depth.current === 0) setDragging(false);
     };
+    // A file dropped anywhere but on the drop area does nothing. Cancelling the event keeps the
+    // window from opening the file.
     const drop = (e: DragEvent) => {
       if (!hasFiles(e)) return;
       e.preventDefault();
       depth.current = 0;
       setDragging(false);
-      dropFiles(Array.from(e.dataTransfer?.files ?? []));
     };
     window.addEventListener("dragover", over);
     window.addEventListener("dragenter", enter);
@@ -171,16 +199,20 @@ export function AddField({ project }: { project?: string | undefined }) {
       window.removeEventListener("dragleave", leave);
       window.removeEventListener("drop", drop);
     };
-  });
+  }, []);
+
+  const showDrop = focused || dragging;
+  const followed = rows.filter((r) => r.state === "added" && r.job && r.citekey);
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         const identifier = value.trim();
-        if (!identifier || add.isPending) return;
-        setOutcome(null);
-        submit(identifier);
+        if (!identifier || busy) return;
+        const row = newRow(identifier, "pending");
+        setRows([row]);
+        void submit(row.key, identifier);
         setValue("");
       }}
       className="relative flex min-w-0 items-center gap-3"
@@ -190,7 +222,7 @@ export function AddField({ project }: { project?: string | undefined }) {
         trigger={t("add.menu")}
         className="inline-flex h-[26px] shrink-0 items-center border border-ink px-2.5 text-[12px] font-medium hover:bg-sunken"
         entries={[
-          { label: t("add.pick"), onSelect: pickFiles },
+          { label: t("add.pick"), onSelect: picker.choose },
           {
             label: t("add.menu.type"),
             onSelect: () => setTimeout(() => textField.current?.focus(), 0),
@@ -204,97 +236,173 @@ export function AddField({ project }: { project?: string | undefined }) {
         aria-label={t("add.label")}
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder={t("add.placeholder")}
         autoComplete="off"
         className="h-[30px] w-[420px] min-w-0 max-w-full border-0 border-b border-line bg-transparent px-0 text-[13px] placeholder:text-muted"
       />
       <button type="submit" hidden tabIndex={-1} aria-hidden="true" />
-      <input
-        ref={fileInput}
-        type="file"
-        accept="application/pdf,.pdf"
-        multiple
-        hidden
-        data-testid="pdf-file-input"
-        onChange={(e) => {
-          setOutcome(null);
-          dropFiles(Array.from(e.target.files ?? []));
-          e.target.value = "";
-        }}
-      />
+      {picker.input}
       {hint ? (
         <span className="shrink-0 font-mono text-[11px] text-muted" aria-live="polite">
           {hint}
         </span>
       ) : null}
-      {add.isPending ? (
+      {busy ? (
         <span role="status" className="shrink-0 text-[12px] text-muted">
           {t("add.running")}
         </span>
       ) : null}
-      {outcome ? (
+      {followed.map((r) => (
+        <JobFollower
+          key={r.key}
+          job={r.job ?? ""}
+          citekey={r.citekey ?? ""}
+          onResult={(result) => patch(r.key, result)}
+        />
+      ))}
+      {showDrop || rows.length > 0 ? (
+        // A press on the panel must not take the focus from the field, or the drop area closes
+        // before the click on its button arrives.
+        // biome-ignore lint/a11y/noStaticElementInteractions: only keeps the focus where it is
         <div
-          role={outcome.kind === "error" ? "alert" : "status"}
-          className={cn(
-            "absolute right-0 top-[calc(100%+4px)] z-20 max-w-[480px] border bg-bg px-3 py-2 text-[12px]",
-            outcome.kind === "error" ? "border-danger text-danger" : "border-line",
-          )}
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute right-0 top-[calc(100%+4px)] z-20 flex w-[480px] max-w-[calc(100vw-2rem)] flex-col gap-2 border border-line bg-bg p-2"
         >
-          {outcome.kind === "error" ? (
-            outcome.message
-          ) : (
-            <>
-              {outcome.kind === "added"
-                ? t("add.added")
-                : outcome.kind === "inbox"
-                  ? t("add.inInbox")
-                  : outcome.kind === "accepted"
-                    ? t("add.accepted")
-                    : t("add.duplicate")}{" "}
-              <Link
-                to="/items/$citekey"
-                params={{ citekey: outcome.citekey }}
-                className="font-mono underline"
-              >
-                {outcome.citekey}
-              </Link>
-              {outcome.kind === "inbox" ? (
-                <>
-                  {" "}
-                  <button
-                    type="button"
-                    className="underline"
-                    disabled={accept.isPending}
-                    onClick={() =>
-                      accept.mutate(
-                        { citekeys: [outcome.citekey] },
-                        {
-                          onSuccess: () =>
-                            setOutcome({ kind: "accepted", citekey: outcome.citekey }),
-                        },
-                      )
-                    }
-                  >
-                    {t("add.accept")}
-                  </button>
-                </>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
-      {dragging ? (
-        <div
-          aria-hidden="true"
-          data-testid="drop-overlay"
-          className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center border-2 border-ink bg-bg/85"
-        >
-          <span className="flex items-center gap-3 font-serif text-[22px] font-medium">
-            <FileUp className="size-6" />
-            {t("add.drop")}
-          </span>
+          {showDrop ? (
+            <FileDrop
+              accept={LIBRARY_FILE_TYPES}
+              multiple
+              label={t("add.drop.label")}
+              title={t("add.pick.title")}
+              onFiles={addFiles}
+            />
+          ) : null}
+          {rows.length > 0 ? (
+            <Answer
+              rows={rows}
+              acceptPending={accept.isPending}
+              onAccept={(row) =>
+                accept.mutate(
+                  { citekeys: [row.citekey ?? ""] },
+                  { onSuccess: () => patch(row.key, { state: "accepted" }) },
+                )
+              }
+            />
+          ) : null}
         </div>
       ) : null}
     </form>
+  );
+}
+
+const STATE_KEY = {
+  added: "add.added",
+  inbox: "add.inInbox",
+  accepted: "add.accepted",
+  duplicate: "add.duplicate",
+} as const satisfies Record<string, MessageKey>;
+
+/** The link to the item a row ended up in, with the button that accepts an inbox item. */
+function RowResult({
+  row,
+  acceptPending,
+  onAccept,
+}: {
+  row: Row;
+  acceptPending: boolean;
+  onAccept: (row: Row) => void;
+}) {
+  const { t } = useI18n();
+  if (row.state === "error") return <>{row.message}</>;
+  if (row.state === "unsupported") return <>{t("add.row.unsupported")}</>;
+  if (row.state === "pending") return <>{t("add.row.pending")}</>;
+  return (
+    <>
+      {t(STATE_KEY[row.state])}{" "}
+      <Link
+        to="/items/$citekey"
+        params={{ citekey: row.citekey ?? "" }}
+        className="font-mono underline"
+      >
+        {row.citekey}
+      </Link>
+      {row.state === "inbox" ? (
+        <>
+          {" "}
+          <button
+            type="button"
+            className="underline"
+            disabled={acceptPending}
+            onClick={() => onAccept(row)}
+          >
+            {t("add.accept")}
+          </button>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * What became of the things just added. One thing gets one sentence; several get a summary line
+ * with the counts and a line for each file.
+ */
+function Answer({
+  rows,
+  acceptPending,
+  onAccept,
+}: {
+  rows: readonly Row[];
+  acceptPending: boolean;
+  onAccept: (row: Row) => void;
+}) {
+  const { t } = useI18n();
+  const [only] = rows;
+  if (rows.length === 1 && only) {
+    if (only.state === "pending") return null;
+    const failed = only.state === "error";
+    return (
+      <div
+        role={failed ? "alert" : "status"}
+        className={cn("text-[12px]", failed && "text-danger")}
+      >
+        {only.state === "unsupported" ? (
+          t("add.unsupported", { name: only.name })
+        ) : (
+          <RowResult row={only} acceptPending={acceptPending} onAccept={onAccept} />
+        )}
+      </div>
+    );
+  }
+  const count = (...states: RowState[]) => rows.filter((r) => states.includes(r.state)).length;
+  const unsupported = rows.filter((r) => r.state === "unsupported").map((r) => r.name);
+  const parts = [
+    count("pending") ? t("add.sum.pending", { n: count("pending") }) : "",
+    count("added", "accepted") ? t("add.sum.added", { n: count("added", "accepted") }) : "",
+    count("duplicate") ? t("add.sum.duplicate", { n: count("duplicate") }) : "",
+    count("inbox") ? t("add.sum.inbox", { n: count("inbox") }) : "",
+    count("error") ? t("add.sum.failed", { n: count("error") }) : "",
+    unsupported.length
+      ? t("add.sum.unsupported", { n: unsupported.length, names: unsupported.join(", ") })
+      : "",
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-col gap-1.5 text-[12px]">
+      <p role="status">{parts.join(", ")}</p>
+      <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto border-t border-line-soft pt-1.5">
+        {rows.map((row) => (
+          <li key={row.key} className={cn("flex gap-2", row.state === "error" && "text-danger")}>
+            <span className="min-w-0 max-w-[45%] shrink-0 truncate text-muted" title={row.name}>
+              {row.name}
+            </span>
+            <span className="min-w-0 flex-1">
+              <RowResult row={row} acceptPending={acceptPending} onAccept={onAccept} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

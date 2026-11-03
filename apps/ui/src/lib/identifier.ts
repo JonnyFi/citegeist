@@ -25,7 +25,7 @@ export function classifyIdentifier(raw: string): { kind: IdentifierKind; value: 
   if (/^@\w+\s*\{/.test(value)) return { kind: "bibtex", value };
   if (
     /^(?:\/|~\/|[a-z]:\\|file:\/\/)/i.test(value) ||
-    (/\.pdf$/i.test(value) && !/^https?:/i.test(value))
+    (/\.(?:pdf|epub|html?)$/i.test(value) && !/^https?:/i.test(value))
   ) {
     return { kind: "path", value };
   }

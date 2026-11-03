@@ -514,7 +514,7 @@ export function createMockRegistry(
       const stem = value
         .split(/[\\/]/)
         .pop()
-        ?.replace(/\.pdf$/i, "")
+        ?.replace(/\.(?:pdf|epub|html?)$/i, "")
         .replace(/[^a-z0-9]+/gi, "")
         .toLowerCase();
       let citekey = `${kind}${(doi ?? stem ?? "").replace(/[^a-z0-9]+/g, "").slice(-12)}`;

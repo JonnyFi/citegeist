@@ -46,7 +46,7 @@ One click copies a card as a verbatim or an indirect citation. Quick insert open
 
 ## Library and import
 
-Paste a DOI, arXiv link, ISBN or URL, or drop a PDF into the window. citegeist looks up the metadata at Crossref, OpenAlex, arXiv, DNB and K10plus, fetches an open-access PDF when one exists and converts it into text blocks with page references. Scans go through local OCR. Imports from Zotero, BibTeX, RIS and CSL-JSON bring an existing collection along, and the Zotero Connector saves straight from the browser. Saved literature searches run as alerts and put new papers into the inbox.
+Paste a DOI, arXiv link, ISBN or URL, or drop a PDF onto the drop area under the field. citegeist looks up the metadata at Crossref, OpenAlex, arXiv, DNB and K10plus, fetches an open-access PDF when one exists and converts it into text blocks with page references. Scans go through local OCR. Imports from Zotero, BibTeX, RIS and CSL-JSON bring an existing collection along, and the Zotero Connector saves straight from the browser. Saved literature searches run as alerts and put new papers into the inbox.
 
 ## The agent chat
 
