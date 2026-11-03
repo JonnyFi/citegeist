@@ -159,6 +159,7 @@ export function CardPanel({
   defaultLanguage,
   orphaned,
   noteFocusId,
+  onNoteFocused,
 }: {
   cards: readonly CardData[];
   selectedId: string | undefined;
@@ -170,6 +171,8 @@ export function CardPanel({
   orphaned: ReadonlySet<string>;
   /** The card just marked with a colour: its note field takes the cursor when it opens. */
   noteFocusId?: string | undefined;
+  /** The note field of `noteFocusId` has taken the cursor: the request is used up. */
+  onNoteFocused?: () => void;
 }) {
   const { t } = useI18n();
   const [chosen, setFilters] = useState<CardFilters>(NO_FILTERS);
@@ -226,6 +229,7 @@ export function CardPanel({
                 defaultLanguage={defaultLanguage}
                 orphaned={orphaned.has(id)}
                 focusNote={id === noteFocusId}
+                {...(onNoteFocused ? { onNoteFocused } : {})}
               />
             </li>
           );

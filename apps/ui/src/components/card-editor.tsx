@@ -43,6 +43,7 @@ function SavedField({
   rows = 2,
   variant,
   autoFocus = false,
+  onFocused,
 }: {
   label: string;
   value: string;
@@ -51,6 +52,8 @@ function SavedField({
   variant: "line" | "box";
   /** Put the cursor into the field when it appears. */
   autoFocus?: boolean;
+  /** Called once the cursor has been put into the field by `autoFocus`. */
+  onFocused?: () => void;
 }) {
   const id = useId();
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -58,7 +61,9 @@ function SavedField({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the first appearance takes the cursor
   useEffect(() => {
-    if (autoFocus) ref.current?.focus({ preventScroll: true });
+    if (!autoFocus) return;
+    ref.current?.focus({ preventScroll: true });
+    onFocused?.();
   }, []);
 
   // follow outside changes (another window, an agent) unless the reader is typing here
@@ -148,6 +153,7 @@ export function QuoteCard({
   defaultLanguage = "de",
   orphaned = false,
   focusNote = false,
+  onNoteFocused,
 }: {
   card: CardData;
   mode: "list" | "panel";
@@ -160,6 +166,8 @@ export function QuoteCard({
   orphaned?: boolean;
   /** A card just marked in the reader: the cursor goes into its note field when it opens. */
   focusNote?: boolean;
+  /** Called once the note field has taken the cursor, so that the request is used up. */
+  onNoteFocused?: () => void;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -376,6 +384,7 @@ export function QuoteCard({
                 variant="line"
                 rows={3}
                 autoFocus={focusNote}
+                {...(onNoteFocused ? { onFocused: onNoteFocused } : {})}
                 onSave={(next) => patch({ note: next })}
               />
               <div className="flex flex-wrap items-end gap-3">

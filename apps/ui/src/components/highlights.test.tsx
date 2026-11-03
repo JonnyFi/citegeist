@@ -97,6 +97,44 @@ describe("selection popover colours", () => {
     );
   });
 
+  // protects=the note takes the cursor once, right after marking, and not again when the card is opened later;
+  // fails_when=reopening the highlighted card moves the cursor into its note again; no_claim=focus after other ways of opening a card
+  it("focuses the note only right after marking, not when the card is reopened", async () => {
+    const user = userEvent.setup();
+    await openReader();
+    await select("bpara0002", PASSAGE);
+    await user.click(await screen.findByTestId("selection-color-blue"));
+    const editor = await screen.findByTestId("card-editor");
+    await waitFor(() =>
+      expect(within(editor).getByRole("textbox", { name: "Notiz" })).toHaveFocus(),
+    );
+
+    const rowOf = (text: RegExp) => {
+      const row = rows().find((r) => text.test(r.textContent ?? ""));
+      if (!row) throw new Error(`card row ${text} not found`);
+      return row;
+    };
+    // open another card: the highlighted one closes
+    await user.click(within(rowOf(/Doppelte Kontingenz/)).getByRole("button", { expanded: false }));
+    await waitFor(() =>
+      expect(
+        within(rowOf(/Doppelte Kontingenz/)).getByRole("textbox", { name: "Notiz" }),
+      ).toBeVisible(),
+    );
+    expect(
+      within(rowOf(new RegExp(PASSAGE.slice(0, 20)))).queryByRole("textbox", { name: "Notiz" }),
+    ).toBeNull();
+
+    // open the highlighted card again: its note field appears, without the cursor
+    await user.click(
+      within(rowOf(new RegExp(PASSAGE.slice(0, 20)))).getByRole("button", { expanded: false }),
+    );
+    const again = await within(rowOf(new RegExp(PASSAGE.slice(0, 20)))).findByRole("textbox", {
+      name: "Notiz",
+    });
+    expect(again).not.toHaveFocus();
+  });
+
   // protects=the keys 1 to 4 choose the colour while text is selected; fails_when=a digit typed into a text field marks a passage;
   // no_claim=other keys
   it("takes the keys 1 to 4 while text is selected, but not inside a text field", async () => {

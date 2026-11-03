@@ -409,6 +409,7 @@ function ReaderLoaded({
           defaultLanguage={language.value}
           orphaned={orphaned}
           noteFocusId={noteFocusId}
+          onNoteFocused={() => setNoteFocusId(undefined)}
         />,
         cards.length,
       )}
