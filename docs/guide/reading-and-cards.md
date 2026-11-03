@@ -27,7 +27,7 @@ A citation needs the printed page, not the position in the PDF. citegeist reads 
 
 ## Highlighting a passage
 
-Select a passage in either view. The selection snaps to word boundaries. The popover shows four colour dots (yellow, green, blue, red) and the action "Quote".
+Select a passage in either view. The selection snaps to word boundaries. The popover shows the action "Quote (AI)" first, followed by four colour dots (yellow, green, blue, red).
 
 A click on a dot, or the key 1 to 4 while the text is selected, marks the passage at once. No AI runs and nothing waits. The passage is filled with the colour in both views, and the new card opens in the card column with the cursor in its note field. Change the colour, add tags or write a note there. A second click on the colour that is set removes it. In the "..." menu, "Delete" moves the card to the trash of the library, and "Undo" in the message at the bottom brings it back. A card that a link or a note points at cannot be deleted, and the message names the reference.
 
@@ -37,7 +37,7 @@ Once some cards have a colour or a tag, a bar above the card column filters them
 
 ## Creating a quote card
 
-"Quote" in the popover saves a card and asks the AI for a paraphrase and a kind.
+"Quote (AI)" in the popover saves a card and asks the AI for a paraphrase and a kind.
 
 A card is a Markdown file in `items/<citekey>/cards/`. It stores:
 

@@ -55,7 +55,7 @@ citegeist resolves the metadata, downloads an open-access PDF when one exists an
 
 1. Open the item and switch to the "Read" tab.
 2. Choose the PDF view or the text view. Both show the same highlights.
-3. Select a passage and choose "Quote".
+3. Select a passage and choose "Quote (AI)".
 
 The card appears in the right column right away, with the exact wording and the page. The AI paraphrase and the card kind follow a few seconds later. If the printed page number of the PDF is not confirmed, a bar above the reader asks you to confirm it once, and every card of that PDF follows. See [reading and cards](guide/reading-and-cards.md).
 

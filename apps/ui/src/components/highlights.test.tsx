@@ -49,9 +49,9 @@ function markedFixtures(): MockData {
 const rows = () => screen.getAllByTestId("panel-card");
 
 describe("selection popover colours", () => {
-  // protects=the popover is one row of four colour dots plus Zitat; fails_when=a dot is missing or an inactive placeholder returns;
+  // protects=the popover is one row with Zitat (KI) first, then four colour dots; fails_when=a dot is missing or an inactive placeholder returns;
   // no_claim=says nothing about the look of the dots
-  it("offers four colour dots and Zitat, nothing else", async () => {
+  it("offers Zitat (KI) first and four colour dots, nothing else", async () => {
     await openReader();
     await select("bpara0002", PASSAGE);
     const bar = await screen.findByRole("toolbar", { name: "Aktionen für die Auswahl" });
@@ -60,11 +60,11 @@ describe("selection popover colours", () => {
         .getAllByRole("button")
         .map((b) => b.getAttribute("aria-label") ?? b.textContent),
     ).toEqual([
+      "Zitat (KI)",
       "Gelb markieren (Taste 1)",
       "Grün markieren (Taste 2)",
       "Blau markieren (Taste 3)",
       "Rot markieren (Taste 4)",
-      "Zitat",
     ]);
   });
 
@@ -164,7 +164,7 @@ describe("selection popover colours", () => {
     const user = userEvent.setup();
     const { calls, data } = await openReader();
     await select("bpara0002", PASSAGE);
-    await user.click(await screen.findByRole("button", { name: "Zitat" }));
+    await user.click(await screen.findByRole("button", { name: "Zitat (KI)" }));
     const create = calls.find((c) => c.name === "cards.create");
     expect(create?.input).not.toHaveProperty("color");
     expect(create?.input).not.toHaveProperty("ai");
