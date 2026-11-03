@@ -20,7 +20,9 @@ A new dependency goes into the `package.json` of the package that uses it. The c
 
 ## Review and merge
 
-A maintainer reviews every pull request (`.github/CODEOWNERS`). The merge happens after `pnpm verify` is green, either in CI or locally. CI runs on Linux runners while GitHub Actions minutes last. When they are used up, the local run of `pnpm verify` (the pre-push hook) is the gate, and the pull request body quotes its result. Merges use merge commits instead of squash, so that stacked branches rebase cleanly.
+A maintainer reviews every pull request (`.github/CODEOWNERS`). `main` is protected: the `verify` check of CI must be green on a branch that is up to date with `main`, and force pushes and deletion are blocked. Only collaborators can push branches; everyone else works from a fork, and CI on a fork pull request starts after a maintainer approves the run. Merged branches are deleted automatically. Merges use merge commits instead of squash, so that stacked branches rebase cleanly.
+
+A pull request that breaks the rules in [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assisted-contributions) is closed with a comment that names the rule. If a flood of issues or pull requests comes in, Settings, Moderation options, Interaction limits restricts them to prior contributors or collaborators for up to six months.
 
 ## gstack
 
@@ -40,13 +42,4 @@ Decisions are recorded in [decisions/](decisions/README.md). A decision is never
 
 ## Going public
 
-The repository is private until the open-source release. These steps happen on the day it becomes public, in this order:
-
-1. Run `pnpm secrets` and `pnpm verify` on `main`.
-2. Switch the repository to public (Settings, General, Danger Zone).
-3. Turn on Private Vulnerability Reporting (Settings, Security, Private vulnerability reporting). `SECURITY.md` points reporters there.
-4. Turn on Dependabot alerts and security updates (Settings, Security). `.github/dependabot.yml` already exists for version updates.
-5. Make the `ci` workflow a required status check for `main` (Settings, Branches). Public repositories get Actions minutes on standard runners for free, including macOS.
-6. Review the open Dependabot pull requests for the GitHub Actions now that CI runs on them.
-7. Set the description, topics and the social preview image (the app icon).
-8. Bump the version in `apps/desktop/package.json`, run `pnpm release`, and check `curl -fsSL https://raw.githubusercontent.com/JonnyFi/citegeist/main/install.sh | sh` on a Mac that has never had citegeist.
+citegeist became public on 2026-11-02 with release v0.1.0. On that day `pnpm secrets` scanned the whole git history, Private Vulnerability Reporting, Dependabot alerts and security updates and secret scanning with push protection were turned on, and `verify` became a required check for `main`.

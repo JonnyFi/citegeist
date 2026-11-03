@@ -1,7 +1,6 @@
 name: CI
 
-# Linux runners cost a tenth of macOS minutes. When the Actions minutes are used up,
-# the local pre-push hook (pnpm verify) is the gate.
+# The verify job is the required status check for main.
 on:
   push:
     branches: [main]

@@ -1,13 +1,15 @@
 ## What changes
 
-<!-- One to three sentences: what changes and why. Link the issue (Fixes #n). -->
+<!-- One to three sentences: what changes and why. Link the issue in which a maintainer agreed on the approach (Fixes #n). -->
 
 ## How it was checked
 
 - [ ] `pnpm verify` is green locally (paste the last lines below)
 - [ ] For UI changes: a screenshot or a short walkthrough
 - [ ] For new operations: a contract in `packages/ops/src/contracts` and a test
-- [ ] I reviewed the whole diff and understand it, including parts an agent wrote
+- [ ] For bug fixes: a test that fails without the change
+- [ ] I ran the change myself, reviewed the whole diff and understand it, including parts an agent wrote
+- [ ] An agent wrote part of this change: yes / no
 
 ```
 <last lines of pnpm verify>

@@ -96,7 +96,7 @@ If neither line finds gstack, stop and tell the user to install it for their too
 2. Build against fixtures and mocks, and run `pnpm verify` until green.
 3. `/review` checks the diff before landing.
 4. `/qa` exercises the running app or CLI.
-5. `/ship` creates the PR. CI runs on Linux runners while Actions minutes last. When they are used up, the local `pnpm verify` (pre-push hook) is the gate and the PR body quotes its result.
+5. `/ship` creates the PR. CI runs `verify` on every PR, and `main` accepts only PRs on which it is green. Read the rules for AI-assisted contributions in [CONTRIBUTING.md](CONTRIBUTING.md#ai-assisted-contributions) before opening one.
 
 ## Docs
 
