@@ -96,7 +96,7 @@ export function ReflowView({
         st[h.id] = "orphaned";
         continue;
       }
-      out.push({ id: h.id, color: h.color, boxes });
+      out.push({ id: h.id, color: h.color, fill: h.fill, boxes });
       st[h.id] = "text";
     }
     return { placed: out, status: st };

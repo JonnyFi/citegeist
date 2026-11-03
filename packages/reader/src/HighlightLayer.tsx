@@ -10,6 +10,7 @@ export interface HighlightBox {
 export interface PlacedHighlight {
   id: string;
   color?: string | undefined;
+  fill?: boolean | undefined;
   boxes: HighlightBox[];
 }
 
@@ -24,6 +25,7 @@ export function HighlightLayer({ highlights }: { highlights: PlacedHighlight[] }
             key={`${h.id}:${i}`}
             className="cg-hl"
             data-highlight-id={h.id}
+            {...(h.fill ? { "data-fill": "" } : {})}
             style={
               {
                 left: b.left,

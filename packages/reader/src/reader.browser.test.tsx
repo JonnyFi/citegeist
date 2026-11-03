@@ -219,6 +219,26 @@ describe("PdfView", () => {
     await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-quads": "pdf" });
   });
 
+  // protects=a plain highlight is drawn as a marker in its own color in the PDF view;
+  // fails_when=fill or color is dropped on the way to the highlight layer; no_claim=says nothing about the theme tokens
+  it("draws a filled highlight with its color in the PDF view", async () => {
+    const hl: ReaderHighlight = {
+      id: "h-fill-pdf",
+      color: "rgb(1, 2, 3)",
+      fill: true,
+      anchor: { pdf: { page: 0, quads: [[72, 595, 200, 609]], file: FIXTURE_SOURCE } },
+    };
+    await render(
+      <Frame>
+        <PdfView data={pdfData} source={FIXTURE_SOURCE} highlights={[hl]} />
+      </Frame>,
+    );
+    await expect.poll(() => box("h-fill-pdf").length, POLL).toBe(1);
+    const el = document.querySelector<HTMLElement>('[data-highlight-id="h-fill-pdf"]');
+    expect(el?.hasAttribute("data-fill")).toBe(true);
+    expect(el?.style.getPropertyValue("--cg-hl-color")).toBe("rgb(1, 2, 3)");
+  });
+
   it("re-finds a highlight without pdf anchor through the text anchor", async () => {
     const text: TextAnchorRecord = {
       block: "bpara0004",
@@ -410,6 +430,34 @@ describe("ReflowView", () => {
       expect(r.bottom).toBeLessThanOrEqual((blockRect?.bottom ?? 0) + 1);
     }
     await expect.poll(() => onResolved.mock.lastCall?.[0], POLL).toEqual({ "h-reflow": "text" });
+  });
+
+  // protects=a plain highlight is drawn as a marker in its own color in the reflow view, a kind highlight is not;
+  // fails_when=data-fill is missing or set for a highlight without fill; no_claim=says nothing about the theme tokens
+  it("marks only filled highlights in the reflow view", async () => {
+    const anchor = (exact: string) => ({
+      text: { block: "bpara0003", exact, prefix: "", suffix: "" },
+    });
+    const hls: ReaderHighlight[] = [
+      {
+        id: "h-fill",
+        color: "rgb(4, 5, 6)",
+        fill: true,
+        anchor: anchor("Every actualisation of meaning"),
+      },
+      { id: "h-line", anchor: anchor("that remain accessible") },
+    ];
+    await render(
+      <Frame>
+        <ReflowView html={html} highlights={hls} />
+      </Frame>,
+    );
+    await expect.poll(() => box("h-fill").length, POLL).toBeGreaterThan(0);
+    await expect.poll(() => box("h-line").length, POLL).toBeGreaterThan(0);
+    const el = (id: string) => document.querySelector<HTMLElement>(`[data-highlight-id="${id}"]`);
+    expect(el("h-fill")?.hasAttribute("data-fill")).toBe(true);
+    expect(el("h-fill")?.style.getPropertyValue("--cg-hl-color")).toBe("rgb(4, 5, 6)");
+    expect(el("h-line")?.hasAttribute("data-fill")).toBe(false);
   });
 
   it("re-finds a highlight after re-conversion changed a word", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   Actor,
+  CardColor,
   CardFrontmatter,
   CardKind,
   CitegeistError,
@@ -158,6 +159,33 @@ describe("schemas", () => {
         core: { by: "claude-code/haiku", at: "2026-10-23T11:02:00Z" },
       });
       expect(fm.core?.by).toBe("claude-code/haiku");
+    });
+  });
+
+  describe("card colour", () => {
+    const base = {
+      id: "c_01JB8Z3QK7ABCDEFGH",
+      item: "luhmann1984soziale",
+      anchor: { text: { exact: "Kommunikation" } },
+      quote_sha256: "a".repeat(64),
+      created: stamp,
+    };
+    const colorOf = (color: unknown) => CardFrontmatter.parse({ ...base, color }).color;
+
+    // protects=the four highlight colours survive a read; fails_when=a palette value is dropped or renamed;
+    // no_claim=says nothing about how the colour is drawn
+    it("keeps the four palette colours", () => {
+      expect(CardColor.options).toEqual(["yellow", "green", "blue", "red"]);
+      for (const color of CardColor.options) expect(colorOf(color)).toBe(color);
+    });
+
+    // protects=a card with an old free colour still opens; fails_when=the old value throws or is kept;
+    // no_claim=does not say the old value is rewritten on disk before the card is saved
+    it("reads an old free colour value as no colour and stays JSON Schema representable", () => {
+      expect(colorOf("#ffcc00")).toBeUndefined();
+      expect(colorOf("orange")).toBeUndefined();
+      expect(colorOf(undefined)).toBeUndefined();
+      expect(JSON.stringify(toJsonSchemas().card)).toContain('"yellow"');
     });
   });
 

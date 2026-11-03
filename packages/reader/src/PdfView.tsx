@@ -151,6 +151,7 @@ export function PdfView({
           add(pdf.page, {
             id: h.id,
             color: h.color,
+            fill: h.fill,
             boxes: pdf.quads.map((q) => pdfRectToBox(q, v)),
           });
           status[h.id] = "pdf";
@@ -168,7 +169,7 @@ export function PdfView({
             const v = vp(page.index);
             if (b <= a || !v) continue;
             const boxes = textRangeToRects(page, a, b).map((q) => pdfRectToBox(q, v));
-            perPage.set(page.index, { id: h.id, color: h.color, boxes });
+            perPage.set(page.index, { id: h.id, color: h.color, fill: h.fill, boxes });
           }
           if (perPage.size > 0) {
             for (const [p, ph] of perPage) add(p, ph);

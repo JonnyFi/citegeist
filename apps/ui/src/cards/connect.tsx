@@ -224,9 +224,12 @@ export function CardMenu({
   card,
   className,
   onCiteOnly,
+  onDelete,
 }: {
   card: CardData;
   className?: string;
+  /** Deletes the card (to the library trash, with undo). Only the open card of the reader offers it. */
+  onDelete?: () => void;
   /** Puts the citation alone (no quote, no paraphrase) into the open text or on the clipboard. */
   onCiteOnly?: () => void;
 }) {
@@ -282,6 +285,11 @@ export function CardMenu({
               <Menu.Item className={entry} onClick={toAgent}>
                 {t("cardLink.toAgent")}
               </Menu.Item>
+              {onDelete ? (
+                <Menu.Item className={entry} onClick={onDelete}>
+                  {t("hl.delete")}
+                </Menu.Item>
+              ) : null}
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
