@@ -298,6 +298,7 @@ export function createFixtureRegistry(): Registry {
     const { nodes, plan, title } = outline as { nodes: never[]; plan: string; title: string };
     return {
       ...(project as { frontmatter: never; brief: string; items: number }),
+      reading: { total: 0, read: 0, entries: [] },
       plans: [{ plan, title, nodes: nodes.length }],
       outline: { plan, title, nodes },
     };
