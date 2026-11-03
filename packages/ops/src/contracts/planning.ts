@@ -92,51 +92,95 @@ export const outlineGet = defineContract({
   }),
 });
 
+/**
+ * The reading list of a project as agents see it: counts, the first item still to read and the
+ * first 50 entries in reading order (projects.reading has all of them).
+ */
+export const ReadingSummary = z.object({
+  total: z.number().int().nonnegative(),
+  read: z.number().int().nonnegative(),
+  next: z.object({ citekey: Citekey, title: z.string() }).optional(),
+  entries: z.array(
+    z.object({
+      citekey: Citekey,
+      title: z.string(),
+      status: z.string(),
+      note: z.string().optional(),
+    }),
+  ),
+});
+export type ReadingSummary = z.infer<typeof ReadingSummary>;
+
 export const projectsContext = defineContract({
   name: "projects.context",
   summary:
-    "Read a project: brief, research questions, settings, item count, reading list (order, progress, next item) and its plans. With a plan (or when the project has exactly one) the outline comes along: nodes with ids, computed numbers like 4.4, purpose, status and document path",
+    "Without slug: list the projects of the library (slug, title, status, questions, settings). With slug: read one project: brief, research questions, settings, item count, reading list (order, progress, next item) and its plans. With a plan (or when the project has exactly one) the outline comes along: nodes with ids, computed numbers like 4.4, purpose, status and document path",
   access: "read",
   input: z.object({
-    slug: ProjectSlug,
+    slug: ProjectSlug.optional().describe("project slug; without it the call lists the projects"),
     plan: PlanSlug.optional().describe(
       "plan slug for the outline; may be left out when the project has one plan",
     ),
   }),
   output: z.object({
-    frontmatter: ProjectFrontmatter,
-    brief: z.string(),
-    items: z.number(),
-    /**
-     * The reading list of the project: counts, the first item still to read and the first 50
-     * entries in reading order (projects.reading has all of them).
-     */
-    reading: z.object({
-      total: z.number().int().nonnegative(),
-      read: z.number().int().nonnegative(),
-      next: z.object({ citekey: Citekey, title: z.string() }).optional(),
-      entries: z.array(
+    /** Without a slug: the projects of the library. Absent with a slug. */
+    projects: z.array(ProjectFrontmatter).optional(),
+    /** With a slug: the fields below. Absent without one. */
+    frontmatter: ProjectFrontmatter.optional(),
+    brief: z.string().optional(),
+    items: z.number().optional(),
+    reading: ReadingSummary.optional(),
+    plans: z
+      .array(
         z.object({
-          citekey: Citekey,
+          plan: PlanSlug,
           title: z.string(),
-          status: z.string(),
-          note: z.string().optional(),
+          template: PlanTemplate.optional(),
+          nodes: z.number().int().nonnegative(),
         }),
-      ),
-    }),
-    plans: z.array(
-      z.object({
-        plan: PlanSlug,
-        title: z.string(),
-        template: PlanTemplate.optional(),
-        nodes: z.number().int().nonnegative(),
-      }),
-    ),
+      )
+      .optional(),
     outline: z
       .object({ plan: PlanSlug, title: z.string(), nodes: z.array(NumberedNode) })
       .optional(),
   }),
+  cliPositional: "slug",
   mcp: { tool: "get_project", readOnly: true, idempotent: true },
+});
+
+const ReadingOp = z.discriminatedUnion("op", [
+  z.object({
+    op: z.literal("move"),
+    item: Citekey,
+    position: z.number().int().nonnegative().describe("0 is first, past the end puts it last"),
+  }),
+  z.object({
+    op: z.literal("note"),
+    item: Citekey,
+    note: z.string().max(300).describe("one short line on why the item stands there, empty clears"),
+  }),
+  z.object({
+    op: z.literal("add"),
+    item: Citekey.describe("an item of the library that is not in the project yet"),
+    position: z.number().int().nonnegative().optional().describe("default: the end"),
+    note: z.string().max(300).optional(),
+  }),
+]);
+export type ReadingOp = z.infer<typeof ReadingOp>;
+
+export const projectsEditReading = defineContract({
+  name: "projects.editReading",
+  summary:
+    "Edit the reading list of a project in one call: move an item to a position (0 is first), set or clear the note of an entry, or add a library item to the project at a position. Operations run in order, so a later one sees the effect of an earlier one. All are checked first, and nothing changes when one is invalid. Returns the new list",
+  access: "write",
+  input: z.object({ project: ProjectSlug, ops: z.array(ReadingOp).min(1).max(50) }),
+  output: z.object({
+    project: ProjectSlug,
+    /** Citekeys that joined the project through an add operation. */
+    added: z.array(Citekey),
+    reading: ReadingSummary,
+  }),
+  mcp: { tool: "edit_reading_list", readOnly: false },
 });
 
 const OutlineOp = z.discriminatedUnion("op", [
@@ -294,6 +338,7 @@ export const PLANNING_CONTRACTS: readonly OperationContract[] = [
   plansList,
   outlineGet,
   projectsContext,
+  projectsEditReading,
   outlineApply,
   planDocsGet,
   planDocsUpdate,
