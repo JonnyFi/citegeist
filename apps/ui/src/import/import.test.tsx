@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pollConfig } from "../onboarding/parts";
@@ -67,6 +67,9 @@ describe("import screen", () => {
     expect(screen.getByText("Prüfe zuerst die Vorschau mit diesen Einstellungen.")).toBeVisible();
   });
 
+  // protects=the native dialog fills the path field and is asked for the right kind of thing
+  // fails_when=the dialog gets other extensions than the format needs, a folder field asks for files, or the path is lost
+  // no_claim=that Electron filters what the dialog shows
   it("fills the path from the native picker and keeps typed paths in the browser", async () => {
     const user = userEvent.setup();
     const pickPaths = vi.fn(async () => ["/Users/me/lit.bib"]);
@@ -74,24 +77,142 @@ describe("import screen", () => {
     try {
       renderApp("/import");
       await user.click(await screen.findByRole("button", { name: "BibTeX" }));
-      await user.click(screen.getByRole("button", { name: "Wählen: Pfad zur Datei" }));
+      await user.click(screen.getByRole("button", { name: "Datei auswählen: Pfad zur Datei" }));
       expect(pickPaths).toHaveBeenCalledWith(
         expect.objectContaining({ kind: "file", extensions: ["bib", "bibtex"] }),
       );
       await waitFor(() =>
         expect(screen.getByLabelText("Pfad zur Datei")).toHaveValue("/Users/me/lit.bib"),
       );
-      await user.click(screen.getByRole("button", { name: "Wählen: Ordner mit PDFs (optional)" }));
+      await user.click(
+        screen.getByRole("button", { name: "Ordner auswählen: Ordner mit PDFs (optional)" }),
+      );
       expect(pickPaths).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "folder" }));
     } finally {
       delete window.citegeist;
     }
   });
 
-  it("has no picker buttons in the browser preview", async () => {
+  // protects=every path field shows a drop area, and in the browser a file button where files are meant
+  // fails_when=a file field has no area or button, or the folder field offers a file input that cannot choose a folder
+  // no_claim=nothing about the native folder dialog
+  it("shows a drop area at each path field and a file button where files are meant", async () => {
+    const user = userEvent.setup();
     renderApp("/import");
     await screen.findByLabelText("Pfad zu zotero.sqlite oder zum Zotero-Ordner");
-    expect(screen.queryByRole("button", { name: /^Wählen/ })).toBeNull();
+    expect(screen.getAllByTestId("file-drop")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", {
+        name: "Auswählen: Pfad zu zotero.sqlite oder zum Zotero-Ordner",
+      }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Ordner auswählen/ })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "RIS" }));
+    expect(screen.getAllByTestId("file-drop")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Datei auswählen: Pfad zur Datei" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Ordner mit PDFs/ })).toBeNull();
+  });
+
+  // protects=a file dropped on the area of a format fills the path field and the preview then reads it
+  // fails_when=the drop does not fill the field, fills it with the name instead of the path, or the preview ignores it
+  // no_claim=that the file is a valid BibTeX file; the preview of the core decides
+  it("fills the path field from a dropped file and previews it", async () => {
+    window.citegeist = {
+      pathForFile: (f: File) => `/Users/me/${f.name}`,
+      onNavigate: () => () => {},
+      platform: "test",
+    } as never;
+    try {
+      const user = userEvent.setup();
+      const { calls } = renderApp("/import");
+      await user.click(await screen.findByRole("button", { name: "BibTeX" }));
+      const zone = screen.getByRole("region", { name: "Datei hierher ziehen oder" });
+      fireEvent.drop(zone, {
+        dataTransfer: { types: ["Files"], files: [new File(["@book{}"], "lit.bib")], items: [] },
+      });
+      await waitFor(() =>
+        expect(screen.getByLabelText("Pfad zur Datei")).toHaveValue("/Users/me/lit.bib"),
+      );
+      await user.click(preview());
+      expect(await screen.findByTestId("import-report")).toBeVisible();
+      expect(calls.find((c) => c.name === "import.preview")?.input).toMatchObject({
+        source: { kind: "bibtex", path: "/Users/me/lit.bib" },
+      });
+    } finally {
+      delete window.citegeist;
+    }
+  });
+
+  // protects=a file picked with the file input of the browser preview fills the path field
+  // fails_when=the input offers other extensions than the format, or the chosen name is lost
+  // no_claim=nothing about the native dialog
+  it("fills the path field from the file input in the browser", async () => {
+    const user = userEvent.setup();
+    renderApp("/import");
+    await user.click(await screen.findByRole("button", { name: "RIS" }));
+    const input = screen.getByTestId("file-drop-input");
+    expect(input).toHaveAttribute("accept", ".ris");
+    await user.upload(input, new File(["TY  - BOOK"], "lit.ris"));
+    await waitFor(() => expect(screen.getByLabelText("Pfad zur Datei")).toHaveValue("lit.ris"));
+  });
+
+  // protects=a file of the wrong format is named and does not replace the path
+  // fails_when=a .docx fills a BibTeX field, or no message says why nothing happened
+  // no_claim=nothing about files with the right extension and wrong content
+  it("names a dropped file of the wrong format and keeps the path", async () => {
+    const user = userEvent.setup();
+    renderApp("/import");
+    await fillFile(user, "BibTeX", "/Users/me/lit.bib");
+    const zone = screen.getByRole("region", { name: "Datei hierher ziehen oder" });
+    fireEvent.drop(zone, {
+      dataTransfer: { types: ["Files"], files: [new File(["x"], "notizen.docx")], items: [] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "notizen.docx passt hier nicht. Erwartet wird .bib, .bibtex.",
+    );
+    expect(screen.getByLabelText("Pfad zur Datei")).toHaveValue("/Users/me/lit.bib");
+  });
+
+  // protects=a dropped folder fills the folder field and a dropped file does not
+  // fails_when=a PDF file is taken for the PDF folder, or a folder is turned away
+  // no_claim=that Electron's drop items mark every folder
+  it("takes a dropped folder for the PDF folder and turns a file away", async () => {
+    window.citegeist = {
+      pathForFile: (f: File) => `/Users/me/${f.name}`,
+      onNavigate: () => () => {},
+      platform: "test",
+    } as never;
+    try {
+      const user = userEvent.setup();
+      renderApp("/import");
+      await user.click(await screen.findByRole("button", { name: "BibTeX" }));
+      const zone = screen.getByRole("region", { name: "Ordner hierher ziehen oder" });
+      const folder = new File([], "pdfs");
+      fireEvent.drop(zone, {
+        dataTransfer: {
+          types: ["Files"],
+          files: [folder],
+          items: [
+            {
+              kind: "file",
+              getAsFile: () => folder,
+              webkitGetAsEntry: () => ({ isDirectory: true }),
+            },
+          ],
+        },
+      });
+      await waitFor(() =>
+        expect(screen.getByLabelText("Ordner mit PDFs (optional)")).toHaveValue("/Users/me/pdfs"),
+      );
+      fireEvent.drop(zone, {
+        dataTransfer: { types: ["Files"], files: [new File(["x"], "a.pdf")], items: [] },
+      });
+      expect(await screen.findByText("a.pdf ist kein Ordner.")).toBeVisible();
+      expect(screen.getByLabelText("Ordner mit PDFs (optional)")).toHaveValue("/Users/me/pdfs");
+    } finally {
+      delete window.citegeist;
+    }
   });
 
   it("previews a BibTeX file with a PDF folder: counts, duplicates and problems", async () => {

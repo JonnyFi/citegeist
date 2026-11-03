@@ -8,7 +8,7 @@ import {
   ReflowView,
   type SelectionAnchors,
 } from "@citegeist/reader";
-import type { ItemFrontmatter } from "@citegeist/schema";
+import type { CardColor, ItemFrontmatter } from "@citegeist/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileX, X } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,7 +17,12 @@ import { publishChatSelection } from "../chat";
 import { useI18n } from "../i18n";
 import { AI_LANGUAGES, effectiveAiLanguage } from "../lib/ai-language";
 import { useCardJobs } from "../lib/card-jobs";
-import { anchorFromSelection, type CardsListOutput, itemCardsInput, kindColor } from "../lib/cards";
+import {
+  anchorFromSelection,
+  type CardsListOutput,
+  itemCardsInput,
+  readerHighlight,
+} from "../lib/cards";
 import { useCore, useOp, useOpMutation } from "../lib/hooks";
 import { useSetStatus } from "../lib/read-status";
 import {
@@ -200,12 +205,7 @@ function ReaderLoaded({
   }, [resume, host, view]);
 
   const highlights = useMemo<ReaderHighlight[]>(
-    () =>
-      cards.map((c) => ({
-        id: c.frontmatter.id,
-        anchor: { pdf: c.frontmatter.anchor.pdf, text: c.frontmatter.anchor.text },
-        color: kindColor(c.frontmatter.kind),
-      })),
+    () => cards.map((c) => readerHighlight(c.frontmatter)),
     [cards],
   );
   const orphaned = useMemo(
@@ -237,14 +237,19 @@ function ReaderLoaded({
     }));
   }, [language.value, t]);
 
+  // a card just marked with a colour opens in the panel with the cursor in its note field
+  const [noteFocusId, setNoteFocusId] = useState<string | undefined>(undefined);
+
+  // "Zitat" asks the AI for a paraphrase. A colour marks the passage at once and starts no job.
   const create = useMutation({
-    mutationFn: (anchors: SelectionAnchors) =>
+    mutationFn: ({ anchors, color }: { anchors: SelectionAnchors; color?: CardColor }) =>
       core.call(cardsCreate, {
         citekey: fm.citekey,
         anchor: anchorFromSelection(anchors),
         quote: anchors.quote,
+        ...(color ? { color, ai: false } : {}),
       }),
-    onSuccess: ({ card, job }) => {
+    onSuccess: ({ card, job }, { color }) => {
       // the card shows up at once; the AI texts follow when the job is done
       queryClient.setQueryData<CardsListOutput>(
         ["op", cardsList.name, itemCardsInput(fm.citekey)],
@@ -257,6 +262,7 @@ function ReaderLoaded({
             : old,
       );
       if (job) track(card.frontmatter.id, job);
+      setNoteFocusId(color ? card.frontmatter.id : undefined);
       onSelect(card.frontmatter.id);
       setSelection(null);
       window.getSelection()?.removeAllRanges();
@@ -314,7 +320,7 @@ function ReaderLoaded({
     <div className="flex h-full min-h-0">
       {/* the card of the open selection gets a soft fill behind its underline */}
       {selectedId ? (
-        <style>{`[data-highlight-id="${selectedId}"]{background-color:var(--line-soft);box-shadow:0 0 0 2px var(--line-soft)}`}</style>
+        <style>{`[data-highlight-id="${selectedId}"]{background-color:var(--line-soft);box-shadow:0 0 0 2px var(--line-soft)}[data-highlight-id="${selectedId}"][data-fill]{box-shadow:0 0 0 2px var(--ink)}`}</style>
       ) : null}
       <div className="flex min-w-0 flex-1 flex-col">
         <ReaderToolbar
@@ -402,6 +408,8 @@ function ReaderLoaded({
           onJob={track}
           defaultLanguage={language.value}
           orphaned={orphaned}
+          noteFocusId={noteFocusId}
+          onNoteFocused={() => setNoteFocusId(undefined)}
         />,
         cards.length,
       )}
@@ -409,7 +417,8 @@ function ReaderLoaded({
         <SelectionActions
           range={selection.range}
           busy={create.isPending}
-          onQuote={() => create.mutate(selection.anchors)}
+          onQuote={() => create.mutate({ anchors: selection.anchors })}
+          onColor={(color) => create.mutate({ anchors: selection.anchors, color })}
         />
       ) : null}
       {create.error ? (

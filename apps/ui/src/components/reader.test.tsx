@@ -28,15 +28,6 @@ async function openReader(data = reflowOnly(), options = {}) {
 }
 
 describe("selection popover", () => {
-  it("offers Zitat, Erklären and Mit Notiz verknüpfen, the last two as disabled placeholders", async () => {
-    await openReader();
-    await select("bpara0002", PASSAGE);
-    const bar = await screen.findByRole("toolbar", { name: "Aktionen für die Auswahl" });
-    expect(within(bar).getByRole("button", { name: "Zitat" })).toBeEnabled();
-    expect(within(bar).getByRole("button", { name: "Erklären" })).toBeDisabled();
-    expect(within(bar).getByRole("button", { name: "Mit Notiz verknüpfen" })).toBeDisabled();
-  });
-
   it("creates a card with the anchor of the selection and shows it at once in a pending state", async () => {
     const user = userEvent.setup();
     const { calls } = await openReader(reflowOnly(), { aiDelayMs: 600 });

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useI18n } from "../i18n";
+import { highlightColor } from "../lib/cards";
 import { useOp } from "../lib/hooks";
 import { FOCUS_SEARCH_EVENT } from "../lib/search-focus";
 import { SubBar } from "./layout";
@@ -85,6 +86,16 @@ export function SearchScreen({ q }: { q: string }) {
                 >
                   <div className="mb-1 flex items-center gap-2">
                     <Badge>{t(`search.kind.${hit.kind}`)}</Badge>
+                    {hit.color ? (
+                      <span className="flex items-center gap-1.5 text-[12px] text-muted">
+                        <span
+                          aria-hidden="true"
+                          className="size-2.5"
+                          style={{ background: highlightColor(hit.color) }}
+                        />
+                        {t(`hl.color.${hit.color}`)}
+                      </span>
+                    ) : null}
                     {hit.page ? (
                       <span className="font-mono text-[12px] text-muted">
                         {t("search.page", { page: hit.page })}
@@ -95,6 +106,10 @@ export function SearchScreen({ q }: { q: string }) {
                     <Link
                       to="/items/$citekey"
                       params={{ citekey: hit.citekey }}
+                      // a card opens in the reader at its passage
+                      {...(hit.kind === "card"
+                        ? { search: { tab: "read" as const, card: hit.id } }
+                        : {})}
                       className="font-serif text-[18px] font-medium hover:underline"
                     >
                       {hit.title}
@@ -103,6 +118,11 @@ export function SearchScreen({ q }: { q: string }) {
                     <span className="font-serif text-[18px] font-medium">{hit.title}</span>
                   )}
                   <p className="mt-1 text-muted">{hit.snippet}</p>
+                  {hit.tags ? (
+                    <p className="mt-1 font-mono text-[12px] text-muted">
+                      {hit.tags.map((tag) => `#${tag}`).join(" ")}
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>

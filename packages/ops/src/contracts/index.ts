@@ -1,6 +1,7 @@
 import {
   Block,
   CardBody,
+  CardColor,
   CardFrontmatter,
   CardId,
   CardKind,
@@ -427,7 +428,7 @@ export const documentsAssets = defineContract({
 export const cardsCreate = defineContract({
   name: "cards.create",
   summary:
-    "Create a quote card from an anchored selection; the AI paraphrase and kind follow asynchronously",
+    "Create a quote card from an anchored selection; the AI paraphrase and kind follow asynchronously. With ai false the card is a plain highlight: no job runs, it can carry a colour (yellow, green, blue, red), tags and a note, and a later cards.regenerate turns it into a full quote card",
   access: "write",
   input: z.object({
     citekey: Citekey,
@@ -438,13 +439,16 @@ export const cardsCreate = defineContract({
     language: Language.optional(),
     projects: z.array(ProjectSlug).default([]),
     tags: z.array(z.string()).default([]),
+    color: CardColor.optional(),
+    /** The reader's own note, stored in the Note section of the card. */
+    note: z.string().optional(),
   }),
   output: z.object({ card: Card, job: JobId.optional() }),
   mcp: { tool: "create_card", readOnly: false },
 });
 export const cardsUpdate = defineContract({
   name: "cards.update",
-  summary: "Edit note, paraphrase, kind, tags or locator of a card (never the quote)",
+  summary: "Edit note, paraphrase, kind, colour, tags or locator of a card (never the quote)",
   access: "write",
   input: z.object({
     id: CardFrontmatter.shape.id,
@@ -454,11 +458,29 @@ export const cardsUpdate = defineContract({
       .extend({
         /** null clears the kind. */
         kind: CardKind.nullable().optional(),
+        /** null clears the colour. */
+        color: CardColor.nullable().optional(),
         tags: z.array(z.string()).optional(),
         locator: Locator.partial().optional(),
       })
       .loose(),
   }),
+  output: z.object({ card: Card }),
+});
+export const cardsDelete = defineContract({
+  name: "cards.delete",
+  summary:
+    "Move a card to the library trash (cards.restore brings it back). Only a person may delete a card. Refused, with the references named, while a typed link or a note points at the card",
+  access: "write",
+  input: z.object({ id: CardFrontmatter.shape.id }),
+  output: Ok,
+});
+export const cardsRestore = defineContract({
+  name: "cards.restore",
+  summary:
+    "Put the most recently trashed card with this id back where it was, for example right after cards.delete. Fails when its file name is in use again",
+  access: "write",
+  input: z.object({ id: CardFrontmatter.shape.id }),
   output: z.object({ card: Card }),
 });
 export const cardsList = defineContract({
@@ -922,6 +944,10 @@ export const searchQuery = defineContract({
         title: z.string(),
         snippet: z.string(),
         page: z.string().optional(),
+        /** Card: its highlight colour, when it has one. */
+        color: CardColor.optional(),
+        /** Card: its tags, when it has any. */
+        tags: z.array(z.string()).optional(),
         score: z.number(),
       }),
     ),
@@ -1211,6 +1237,8 @@ export const CONTRACTS: readonly OperationContract[] = [
   documentsAssets,
   cardsCreate,
   cardsUpdate,
+  cardsDelete,
+  cardsRestore,
   cardsList,
   cardsRegenerate,
   cardsExport,

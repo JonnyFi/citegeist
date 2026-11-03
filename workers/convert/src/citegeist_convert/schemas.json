@@ -681,7 +681,8 @@
         }
       },
       "color": {
-        "type": "string"
+        "type": "string",
+        "enum": ["yellow", "green", "blue", "red"]
       },
       "created": {
         "type": "object",

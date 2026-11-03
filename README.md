@@ -36,7 +36,7 @@ The script installs `citegeist.app`, links the `cg` command to `~/.local/bin/cg`
 
 ## Reading and quote cards
 
-Select a passage in the PDF or text view and choose "Quote". citegeist saves a quote card with the exact wording and the printed page number, and an AI paraphrase appears a few seconds later. When the page numbers of a PDF are uncertain, citegeist asks you once, and every card of that PDF follows your answer.
+Select a passage in the PDF or text view and click a colour to mark it at once, with no AI involved, or choose "Quote". For a quote, citegeist saves a quote card with the exact wording and the printed page number, and an AI paraphrase appears a few seconds later. When the page numbers of a PDF are uncertain, citegeist asks you once, and every card of that PDF follows your answer.
 
 One click copies a card as a verbatim or an indirect citation. Quick insert opens a card search with a global hotkey and pastes the citation into the app you are writing in.
 
@@ -46,7 +46,7 @@ One click copies a card as a verbatim or an indirect citation. Quick insert open
 
 ## Library and import
 
-Paste a DOI, arXiv link, ISBN or URL, or drop a PDF into the window. citegeist looks up the metadata at Crossref, OpenAlex, arXiv, DNB and K10plus, fetches an open-access PDF when one exists and converts it into text blocks with page references. Scans go through local OCR. Imports from Zotero, BibTeX, RIS and CSL-JSON bring an existing collection along, and the Zotero Connector saves straight from the browser. Saved literature searches run as alerts and put new papers into the inbox.
+Paste a DOI, arXiv link, ISBN or URL, or drop a PDF onto the drop area under the field. citegeist looks up the metadata at Crossref, OpenAlex, arXiv, DNB and K10plus, fetches an open-access PDF when one exists and converts it into text blocks with page references. Scans go through local OCR. Imports from Zotero, BibTeX, RIS and CSL-JSON bring an existing collection along, and the Zotero Connector saves straight from the browser. Saved literature searches run as alerts and put new papers into the inbox.
 
 ## The agent chat
 

@@ -47,7 +47,7 @@ Four features are off until you turn them on in the settings:
 
 An empty library shows three first actions (add a paper, highlight a passage, open the chat) and a button that adds a sample paper, the Docling Technical Report (CC-BY 4.0), which citegeist downloads from arXiv.
 
-Use the field at the top of the library screen. It accepts a DOI, an arXiv link or ID, an ISBN, a PubMed ID, a URL or a BibTeX snippet. You can also drop a PDF into the window, or use "Choose PDF".
+Use the field at the top of the library screen. It accepts a DOI, an arXiv link or ID, an ISBN, a PubMed ID, a URL or a BibTeX snippet. Click into the field and an area opens under it: drop PDFs there, or use "Choose file". Several files at once are fine.
 
 citegeist resolves the metadata, downloads an open-access PDF when one exists and converts it in the background. The status bar at the top right shows the running jobs. A paper that arrives through an agent or an alert goes to the inbox first. See [library and import](guide/library-and-import.md).
 

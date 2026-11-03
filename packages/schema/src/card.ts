@@ -24,6 +24,19 @@ export type CardKind = z.infer<typeof CardKind>;
  */
 export const CardKindField = CardKind.optional().catch(undefined);
 
+/**
+ * Highlight colour of a card (docs/decisions/0034-highlights-without-ai.md). Four fixed values so that the colour means
+ * the same on every screen, in light and dark. A card without a colour takes the colour of its kind.
+ */
+export const CardColor = z.enum(["yellow", "green", "blue", "red"]);
+export type CardColor = z.infer<typeof CardColor>;
+
+/**
+ * The `color` field of a card file. Older files may hold a free value (a CSS colour); it reads as
+ * no colour, like a retired kind. A `catch` keeps the schema representable as JSON Schema.
+ */
+export const CardColorField = CardColor.optional().catch(undefined);
+
 /** CSL locator: label is a CSL locator term ("page", "chapter", "section", "paragraph", ...). */
 export const Locator = z.object({
   label: z.string().default("page"),
@@ -69,7 +82,7 @@ export const CardFrontmatter = z.object({
   core: ModelStamp.optional(),
   tags: z.array(z.string()).default([]),
   projects: z.array(ProjectSlug).default([]),
-  color: z.string().optional(),
+  color: CardColorField,
   created: Stamp,
   modified: Stamp.optional(),
 });

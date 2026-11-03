@@ -1,3 +1,4 @@
+import type { CardColor } from "@citegeist/schema";
 import type { Index, Scope } from "./index-db.js";
 import { scopeClauses } from "./index-db.js";
 import { snippet, trigramQuery, wordsQuery } from "./text.js";
@@ -19,6 +20,10 @@ export interface SearchHit {
   title: string;
   snippet: string;
   page?: string;
+  /** Card: the highlight colour, when it has one. Filled in by the search operation. */
+  color?: CardColor;
+  /** Card: its tags, when it has any. Filled in by the search operation. */
+  tags?: string[];
   score: number;
 }
 

@@ -25,9 +25,19 @@ Every item is "Unread", "Reading" or "Read".
 
 A citation needs the printed page, not the position in the PDF. citegeist reads page labels from the PDF, from running headers and footers, and from the page range in the metadata. When it is not sure, a bar above the reader asks which printed number a PDF page carries. Confirm it once, and every card of that PDF follows. Cards on a PDF page that is not confirmed carry a "Page unchecked" mark.
 
-## Creating a card
+## Highlighting a passage
 
-Select a passage in either view. The selection snaps to word boundaries. The popover offers "Quote", which saves a card. "Explain" and "Link to note" are visible but disabled.
+Select a passage in either view. The selection snaps to word boundaries. The popover shows four colour dots (yellow, green, blue, red) and the action "Quote".
+
+A click on a dot, or the key 1 to 4 while the text is selected, marks the passage at once. No AI runs and nothing waits. The passage is filled with the colour in both views, and the new card opens in the card column with the cursor in its note field. Change the colour, add tags or write a note there. A second click on the colour that is set removes it. In the "..." menu, "Delete" moves the card to the trash of the library, and "Undo" in the message at the bottom brings it back. A card that a link or a note points at cannot be deleted, and the message names the reference.
+
+A highlight is a card without a paraphrase. "Create paraphrase" in the open card asks the AI for one and turns it into a full quote card. Colour, tags and note stay.
+
+Once some cards have a colour or a tag, a bar above the card column filters them: a chip for each colour in use and a menu with the tags of the item. The filters combine, and "Reset filters" shows all cards again. The search finds a card by its wording, note and tags; the hit shows the colour and the tags and opens the reader at the card.
+
+## Creating a quote card
+
+"Quote" in the popover saves a card and asks the AI for a paraphrase and a kind.
 
 A card is a Markdown file in `items/<citekey>/cards/`. It stores:
 
@@ -35,7 +45,7 @@ A card is a Markdown file in `items/<citekey>/cards/`. It stores:
 - the locator (printed page) and two anchors, one in the PDF and one in the text.
 - a **paraphrase** of one to three sentences. The AI writes it in the background, and the card shows "AI writing" until it arrives. The paraphrase records which model wrote it.
 - a **kind**: thesis, finding, method, definition, example or critique. The AI proposes it together with the paraphrase. You can change it at any time, and a kind you set is never overwritten.
-- your own **note**, a free text field, and tags.
+- your own **note**, a free text field, tags and an optional highlight **colour**.
 
 Cards appear in the right column ("Cards") of the item and in the project. "Show in reader" jumps to the passage. If the passage can no longer be found after a new conversion, the card shows "Highlight not found". The card file stays and remains valid.
 

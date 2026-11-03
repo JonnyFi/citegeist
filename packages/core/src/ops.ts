@@ -24,6 +24,7 @@ import {
   Registry,
   searchQuery,
 } from "@citegeist/ops";
+import { CardColor } from "@citegeist/schema";
 import { documentAssets } from "./assets.js";
 import { formatCitations } from "./cite-ops.js";
 import { neighbors, projectGraph } from "./graph.js";
@@ -108,13 +109,38 @@ export function bindCoreOperations(
         status: input.status,
         ...(withInbox ? {} : { inbox: false }),
       });
-      return { hits: markInbox(lib, hits) };
+      return { hits: markCards(lib, markInbox(lib, hits)) };
     });
 }
 
 /** A registry with all handlers of this package bound. */
 export function createCoreRegistry(lib: Library): Registry {
   return bindCoreOperations(new Registry(), lib);
+}
+
+/** Adds the highlight colour and the tags to the card hits, so that a result can show them. */
+function markCards(lib: Library, hits: SearchHit[]): SearchHit[] {
+  const ids = hits.filter((h) => h.kind === "card").map((h) => h.id);
+  if (ids.length === 0) return hits;
+  const rows = new Map(
+    lib.index
+      .all<{ id: string; frontmatter_json: string }>(
+        `SELECT id, frontmatter_json FROM cards WHERE id IN (${ids.map(() => "?").join(",")})`,
+        ...ids,
+      )
+      .map((r) => [r.id, JSON.parse(r.frontmatter_json) as { color?: unknown; tags?: unknown }]),
+  );
+  return hits.map((h) => {
+    const fm = h.kind === "card" ? rows.get(h.id) : undefined;
+    if (!fm) return h;
+    const color = CardColor.safeParse(fm.color);
+    const tags = Array.isArray(fm.tags) ? (fm.tags as string[]) : [];
+    return {
+      ...h,
+      ...(color.success ? { color: color.data } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
+    };
+  });
 }
 
 /** Marks the hits that belong to an item in the inbox. */

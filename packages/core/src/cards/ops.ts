@@ -1,16 +1,20 @@
 import {
   cardsCreate,
+  cardsDelete,
   cardsExport,
   cardsRegenerate,
+  cardsRestore,
   cardsUpdate,
   documentsConfirmPages,
   type Registry,
 } from "@citegeist/ops";
 import type { Library } from "../library.js";
 import { type CardDeps, CardService } from "./service.js";
+import { restoreCard, trashCard } from "./trash.js";
 
 /**
- * Binds cards.create, cards.update, cards.regenerate, cards.export and documents.confirmPages.
+ * Binds cards.create, cards.update, cards.delete, cards.restore, cards.regenerate, cards.export and
+ * documents.confirmPages.
  * Returns the registry and the service (tests and the app use the service to wait for jobs).
  */
 export function bindCardOperations(
@@ -24,6 +28,14 @@ export function bindCardOperations(
     .bind(cardsUpdate, async (ctx, input) =>
       cards.update(ctx.actor, { id: input.id, patch: input.patch as Record<string, unknown> }),
     )
+    .bind(cardsDelete, async (ctx, input) => {
+      trashCard(lib, input.id, ctx.actor);
+      return { ok: true as const };
+    })
+    .bind(cardsRestore, async (_ctx, input) => {
+      restoreCard(lib, input.id);
+      return { card: cards.getCard(input.id) };
+    })
     .bind(cardsRegenerate, async (ctx, input) => cards.regenerate(ctx.actor, input))
     .bind(cardsExport, async (_ctx, input) => cards.export(input))
     .bind(documentsConfirmPages, async (ctx, input) => cards.confirmPages(ctx.actor, input));

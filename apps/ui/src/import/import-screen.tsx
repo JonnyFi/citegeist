@@ -7,10 +7,10 @@ import {
 } from "@citegeist/ops";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type DragEvent, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { z } from "zod";
-import type { PickPathsOptions } from "../bridge";
 import { Button } from "../components/ui/button";
+import { FileDrop } from "../components/ui/file-drop";
 import { Input } from "../components/ui/input";
 import { Segmented } from "../components/ui/segmented";
 import { type MessageKey, useI18n } from "../i18n";
@@ -57,9 +57,9 @@ const INITIAL: Form = {
 };
 
 const FILE_EXTENSIONS: Partial<Record<SourceKind, readonly string[]>> = {
-  bibtex: ["bib", "bibtex"],
-  ris: ["ris"],
-  "csl-json": ["json"],
+  bibtex: [".bib", ".bibtex"],
+  ris: [".ris"],
+  "csl-json": [".json"],
 };
 
 const isZotero = (kind: SourceKind) => kind === "zotero-sqlite" || kind === "zotero-api";
@@ -94,53 +94,67 @@ export function buildInput(form: Form): PreviewInput | undefined {
   return { ...options, source: { kind, path, ...(pdfFolder ? { pdfFolder } : {}) } };
 }
 
-/** Text field for a path. A file or folder dropped onto it fills in its path where the app can read it. */
+/**
+ * Text field for a path with a drop area under it. A file chosen in the dialog or dropped on the
+ * area fills in its path; the path can still be typed. With `folders` the area also takes a
+ * folder, where the app can read its path.
+ */
 function PathField({
   label,
   value,
   onChange,
-  pick,
+  accept,
+  folders = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  /** What the native picker offers; without it, or in the browser preview, the path is typed. */
-  pick: PickPathsOptions;
+  /** Extensions with the dot that a file must have. Without them the field is for folders. */
+  accept?: readonly string[];
+  folders?: boolean;
 }) {
   const { t } = useI18n();
   const id = useId();
-  const drop = (e: DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    const path = file ? window.citegeist?.pathForFile?.(file) : undefined;
-    if (path) onChange(path);
-  };
+  const [refused, setRefused] = useState<string>();
+  const kind = !accept ? "folder" : folders ? "any" : "file";
+  const choose = t(
+    kind === "folder"
+      ? "filedrop.chooseFolder"
+      : kind === "any"
+        ? "filedrop.chooseAny"
+        : "filedrop.choose",
+  );
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <div className="flex gap-2">
-        <Input
-          id={id}
-          value={value}
-          placeholder={t("import.path.placeholder")}
-          onChange={(e) => onChange(e.target.value)}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={drop}
-          className="min-w-0 flex-1 font-mono"
-        />
-        {window.citegeist?.pickPaths ? (
-          <Button
-            aria-label={`${t("import.pick")}: ${label}`}
-            onClick={() => {
-              void window.citegeist?.pickPaths?.({ ...pick, title: label }).then((paths) => {
-                if (paths[0]) onChange(paths[0]);
-              });
-            }}
-          >
-            {t("import.pick")}
-          </Button>
-        ) : null}
-      </div>
+      <Input
+        id={id}
+        value={value}
+        placeholder={t("import.path.placeholder")}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-w-0 font-mono"
+      />
+      <FileDrop
+        {...(accept ? { accept } : {})}
+        folders={folders || !accept}
+        title={label}
+        label={t(`import.drop.${kind}` as MessageKey)}
+        chooseLabel={choose}
+        chooseName={`${choose}: ${label}`}
+        onFiles={({ files, rejected }) => {
+          const [first] = files;
+          if (first) onChange(first.path);
+          const [refused] = rejected;
+          setRefused(first || refused === undefined ? undefined : refused);
+        }}
+      />
+      {refused ? (
+        <p role="alert" className="text-sm text-danger">
+          {kind === "folder"
+            ? t("import.drop.refusedFolder", { name: refused })
+            : t("import.drop.refusedType", { name: refused, types: accept?.join(", ") ?? "" })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -282,13 +296,13 @@ export function ImportScreen() {
               label={t("import.path.sqlite")}
               value={form.path}
               onChange={(v) => set("path", v)}
-              pick={{ kind: "any" }}
+              accept={[".sqlite"]}
+              folders
             />
             <PathField
               label={t("import.path.storage")}
               value={form.storage}
               onChange={(v) => set("storage", v)}
-              pick={{ kind: "folder" }}
             />
           </>
         ) : form.kind === "zotero-api" ? (
@@ -309,13 +323,12 @@ export function ImportScreen() {
               label={t("import.path.file")}
               value={form.path}
               onChange={(v) => set("path", v)}
-              pick={{ kind: "file", extensions: FILE_EXTENSIONS[form.kind] ?? [] }}
+              accept={FILE_EXTENSIONS[form.kind] ?? []}
             />
             <PathField
               label={t("import.path.pdfFolder")}
               value={form.pdfFolder}
               onChange={(v) => set("pdfFolder", v)}
-              pick={{ kind: "folder" }}
             />
           </>
         )}
