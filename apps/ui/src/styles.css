@@ -32,6 +32,15 @@
   --card-example: #7a5c00;
   --card-critique: #141414;
   --agent: #2f5fa8;
+  /* Highlight colours (ADR 0034): a solid swatch for dots and card tabs, a translucent fill for the marker */
+  --hl-yellow: #d9a800;
+  --hl-green: #2e9244;
+  --hl-blue: #2f6fd0;
+  --hl-red: #cf3b36;
+  --hl-yellow-fill: rgba(255, 214, 0, 0.45);
+  --hl-green-fill: rgba(76, 200, 100, 0.38);
+  --hl-blue-fill: rgba(80, 150, 255, 0.3);
+  --hl-red-fill: rgba(255, 90, 90, 0.3);
   color-scheme: light;
 }
 
@@ -56,6 +65,14 @@
   --card-example: #e0b84a;
   --card-critique: #ececea;
   --agent: #86b4ff;
+  --hl-yellow: #e0b84a;
+  --hl-green: #6fcf86;
+  --hl-blue: #86b4ff;
+  --hl-red: #ff8a98;
+  --hl-yellow-fill: rgba(224, 184, 74, 0.36);
+  --hl-green-fill: rgba(111, 207, 134, 0.3);
+  --hl-blue-fill: rgba(134, 180, 255, 0.34);
+  --hl-red-fill: rgba(255, 138, 152, 0.32);
   color-scheme: dark;
 }
 
@@ -336,6 +353,11 @@ body .cg-hl {
     linear-gradient(var(--cg-hl-color, var(--card-none)), var(--cg-hl-color, var(--card-none)))
     no-repeat 0 100% / 100% 2px;
   transform: translateY(3px);
+}
+/* A highlight with its own colour is a marker: the box is filled, without the underline of a kind. */
+body .cg-hl[data-fill] {
+  background: var(--cg-hl-color);
+  transform: none;
 }
 body .cg-page {
   box-shadow: none;

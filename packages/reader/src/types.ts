@@ -21,6 +21,8 @@ export interface ReaderHighlight {
   anchor: HighlightAnchor;
   /** any CSS color; defaults to a yellow */
   color?: string | undefined;
+  /** The color is a marker fill (a plain highlight) and not the color of an underline. */
+  fill?: boolean | undefined;
 }
 
 /** Emitted when the user confirms the selection popover. */

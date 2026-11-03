@@ -1,5 +1,7 @@
+import type { CardColor } from "@citegeist/schema";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "../i18n";
+import { HIGHLIGHT_COLORS, highlightColor } from "../lib/cards";
 
 // The reader draws its own popover with a single action. citegeist needs three, so the app draws
 // the popover itself from the selection the reader reports, and hides the built-in one.
@@ -12,18 +14,28 @@ export function hideReaderPopover(): void {
   document.head.append(el);
 }
 
+/** True for a key press that goes into a text field, where the digit keys must stay text. */
+function typesText(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}
+
 /**
- * Actions for the current text selection. "Zitat" saves a card. "Erklären" and "Mit Notiz
- * verknüpfen" are placeholders until v0.2 and stay disabled.
+ * Actions for the current text selection: four colour dots that mark the passage at once, without
+ * AI (the keys 1 to 4 do the same), and "Zitat", which saves a quote card with the AI paraphrase.
  */
 export function SelectionActions({
   range,
   busy,
   onQuote,
+  onColor,
 }: {
   range: Range;
   busy: boolean;
   onQuote: () => void;
+  onColor: (color: CardColor) => void;
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
@@ -51,6 +63,21 @@ export function SelectionActions({
     };
   }, [range]);
 
+  // keys 1 to 4 choose the colour while text is selected; the latest props stay in a ref
+  const latest = useRef({ busy, onColor });
+  latest.current = { busy, onColor };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || typesText(e.target)) return;
+      const color = HIGHLIGHT_COLORS[Number(e.key) - 1];
+      if (!color || latest.current.busy) return;
+      e.preventDefault();
+      latest.current.onColor(color);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const base =
     "h-7 px-2.5 text-[12px] font-medium text-bg disabled:cursor-not-allowed disabled:opacity-45";
   return (
@@ -69,6 +96,28 @@ export function SelectionActions({
       // keep the text selection alive while a button is pressed
       onMouseDown={(e) => e.preventDefault()}
     >
+      {HIGHLIGHT_COLORS.map((color, i) => {
+        const label = t("hl.mark", { color: t(`hl.color.${color}`), key: String(i + 1) });
+        return (
+          <button
+            key={color}
+            type="button"
+            data-testid={`selection-color-${color}`}
+            aria-label={label}
+            title={label}
+            disabled={busy}
+            onClick={() => onColor(color)}
+            className="inline-flex size-7 items-center justify-center hover:bg-bg/20 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <span
+              aria-hidden="true"
+              className="size-3.5"
+              style={{ background: highlightColor(color) }}
+            />
+          </button>
+        );
+      })}
+      <span aria-hidden="true" className="mx-0.5 w-px self-stretch bg-bg/30" />
       <button
         type="button"
         data-testid="selection-quote"
@@ -77,12 +126,6 @@ export function SelectionActions({
         className={`${base} hover:bg-bg/20`}
       >
         {t("selection.quote")}
-      </button>
-      <button type="button" disabled title={t("selection.soon")} className={base}>
-        {t("selection.explain")}
-      </button>
-      <button type="button" disabled title={t("selection.soon")} className={base}>
-        {t("selection.linkNote")}
       </button>
     </div>
   );

@@ -10,6 +10,7 @@ import { settingsEn } from "../settings/strings";
 import { textsEn } from "../texts/strings";
 import { conceptsEn } from "./concepts";
 import type { MessageKey } from "./de";
+import { highlightsEn } from "./highlights";
 import { inboxItemEn } from "./inbox";
 import { libraryViewEn } from "./library-view";
 import { manageEn } from "./manage";
@@ -169,13 +170,10 @@ export const en: Record<MessageKey, string> = {
 
   "selection.label": "Actions for the selection",
   "selection.quote": "Quote",
-  "selection.explain": "Explain",
-  "selection.linkNote": "Link to note",
-  "selection.soon": "Coming in v0.2",
 
   "panel.title": "Cards",
   "panel.emptyTitle": "No cards yet",
-  "panel.emptyDescription": "Select a passage and choose “Quote”.",
+  "panel.emptyDescription": "Select a passage and choose a color or “Quote”.",
 
   "kind.thesis": "Thesis",
   "kind.finding": "Finding",
@@ -452,6 +450,7 @@ export const en: Record<MessageKey, string> = {
   ...membershipEn,
   ...libraryViewEn,
   ...readStatusEn,
+  ...highlightsEn,
   ...metadataEn,
   ...inboxItemEn,
   ...matrixEn,

@@ -9,6 +9,7 @@ import { planningDe } from "../planning/strings";
 import { settingsDe } from "../settings/strings";
 import { textsDe } from "../texts/strings";
 import { conceptsDe } from "./concepts";
+import { highlightsDe } from "./highlights";
 import { inboxItemDe } from "./inbox";
 import { libraryViewDe } from "./library-view";
 import { manageDe } from "./manage";
@@ -173,13 +174,10 @@ export const de = {
 
   "selection.label": "Aktionen für die Auswahl",
   "selection.quote": "Zitat",
-  "selection.explain": "Erklären",
-  "selection.linkNote": "Mit Notiz verknüpfen",
-  "selection.soon": "Kommt in v0.2",
 
   "panel.title": "Karten",
   "panel.emptyTitle": "Noch keine Karten",
-  "panel.emptyDescription": "Markiere eine Passage und wähle „Zitat“.",
+  "panel.emptyDescription": "Markiere eine Passage und wähle eine Farbe oder „Zitat“.",
 
   "kind.thesis": "These",
   "kind.finding": "Befund",
@@ -459,6 +457,7 @@ export const de = {
   ...membershipDe,
   ...libraryViewDe,
   ...readStatusDe,
+  ...highlightsDe,
   ...metadataDe,
   ...inboxItemDe,
   ...matrixDe,

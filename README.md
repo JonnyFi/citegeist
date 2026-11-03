@@ -36,7 +36,7 @@ The script installs `citegeist.app`, links the `cg` command to `~/.local/bin/cg`
 
 ## Reading and quote cards
 
-Select a passage in the PDF or text view and choose "Quote". citegeist saves a quote card with the exact wording and the printed page number, and an AI paraphrase appears a few seconds later. When the page numbers of a PDF are uncertain, citegeist asks you once, and every card of that PDF follows your answer.
+Select a passage in the PDF or text view and click a colour to mark it at once, with no AI involved, or choose "Quote". For a quote, citegeist saves a quote card with the exact wording and the printed page number, and an AI paraphrase appears a few seconds later. When the page numbers of a PDF are uncertain, citegeist asks you once, and every card of that PDF follows your answer.
 
 One click copies a card as a verbatim or an indirect citation. Quick insert opens a card search with a global hotkey and pastes the citation into the app you are writing in.
 

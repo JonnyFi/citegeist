@@ -1,17 +1,18 @@
 import { cardsRegenerate, cardsUpdate } from "@citegeist/ops";
 import type { ModelStamp } from "@citegeist/schema";
-import { CardKind } from "@citegeist/schema";
+import { CardColor, CardKind } from "@citegeist/schema";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { CardConnections, CardMenu } from "../cards/connect";
 import { CardConcepts } from "../concepts/card-concepts";
 import { type I18n, useI18n } from "../i18n";
 import { AI_LANGUAGES } from "../lib/ai-language";
 import { type CardJob, isPending } from "../lib/card-jobs";
-import { kindColor } from "../lib/cards";
+import { cardColor, HIGHLIGHT_COLORS, highlightColor } from "../lib/cards";
 import { type CitationKind, renderCitation } from "../lib/citation-insert";
 import { copyRich } from "../lib/clipboard";
 import { locatorText } from "../lib/format";
 import { useCore, useOpMutation } from "../lib/hooks";
+import { useTrashCard } from "../lib/trash-card";
 import { cn, describeError } from "../lib/utils";
 import { insertIntoText, useInsertTarget } from "../texts/active";
 import type { CardData } from "./card-list";
@@ -41,16 +42,24 @@ function SavedField({
   onSave,
   rows = 2,
   variant,
+  autoFocus = false,
 }: {
   label: string;
   value: string;
   onSave: (next: string) => void;
   rows?: number;
   variant: "line" | "box";
+  /** Put the cursor into the field when it appears. */
+  autoFocus?: boolean;
 }) {
   const id = useId();
   const ref = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState(value);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first appearance takes the cursor
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus({ preventScroll: true });
+  }, []);
 
   // follow outside changes (another window, an agent) unless the reader is typing here
   useEffect(() => {
@@ -72,6 +81,10 @@ function SavedField({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
           if (draft !== value) onSave(draft);
+        }}
+        onKeyDown={(e) => {
+          // Escape leaves the field, which saves the text, and gives the keys back to the reader
+          if (e.key === "Escape") e.currentTarget.blur();
         }}
         className="resize-none leading-[1.5]"
       />
@@ -134,6 +147,7 @@ export function QuoteCard({
   onJob,
   defaultLanguage = "de",
   orphaned = false,
+  focusNote = false,
 }: {
   card: CardData;
   mode: "list" | "panel";
@@ -144,6 +158,8 @@ export function QuoteCard({
   onJob?: (cardId: string, jobId: string, baseline?: string) => void;
   defaultLanguage?: string;
   orphaned?: boolean;
+  /** A card just marked in the reader: the cursor goes into its note field when it opens. */
+  focusNote?: boolean;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -152,6 +168,7 @@ export function QuoteCard({
   const insertTarget = useInsertTarget();
   const update = useOpMutation(cardsUpdate);
   const regenerate = useOpMutation(cardsRegenerate);
+  const trashCard = useTrashCard();
   const [regenLanguage, setRegenLanguage] = useState(defaultLanguage);
   const [tags, setTags] = useState(fm.tags.join(", "));
   const [copy, setCopy] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -166,7 +183,7 @@ export function QuoteCard({
   const pending = isPending(job, fm.paraphrase);
   const failed = job?.state === "failed";
   const editing = mode === "panel" && open;
-  const color = kindColor(fm.kind);
+  const color = cardColor(fm);
   const locator = locatorText(i18n, fm.locator);
   const unconfirmed = fm.locator !== undefined && !fm.locator.confirmed;
   const failure = update.error ?? regenerate.error;
@@ -228,7 +245,7 @@ export function QuoteCard({
       <span aria-hidden="true" className="w-1.5 shrink-0" style={{ background: color }} />
       <span className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3">
         <span className="text-label font-semibold uppercase tracking-[0.1em]" style={{ color }}>
-          {fm.kind ? t(`kind.${fm.kind}`) : null}
+          {fm.kind ? t(`kind.${fm.kind}`) : fm.color ? t(`hl.color.${fm.color}`) : null}
         </span>
         <span className="flex min-w-0 items-center gap-2">
           {locator ? <span className="font-mono text-[12px]">{locator}</span> : null}
@@ -258,7 +275,7 @@ export function QuoteCard({
         onClick={() => rewrite(regenLanguage)}
         className="h-5 border border-line px-1.5 text-[11px] hover:bg-bg disabled:opacity-50"
       >
-        {t("card.regenerate")}
+        {body.paraphrase ? t("card.regenerate") : t("hl.generate")}
       </button>
     </span>
   ) : null;
@@ -358,6 +375,7 @@ export function QuoteCard({
                 value={note}
                 variant="line"
                 rows={3}
+                autoFocus={focusNote}
                 onSave={(next) => patch({ note: next })}
               />
               <div className="flex flex-wrap items-end gap-3">
@@ -371,6 +389,35 @@ export function QuoteCard({
                   ]}
                   className="min-w-32"
                 />
+                <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
+                  <legend className="mb-1 p-0 text-[11px] text-muted">{t("hl.colorLabel")}</legend>
+                  <div className="flex h-[26px] gap-0.5">
+                    {HIGHLIGHT_COLORS.map((c) => {
+                      const on = fm.color === c;
+                      const name = t(`hl.color.${c}`);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          aria-pressed={on}
+                          aria-label={t("hl.setColor", { color: name })}
+                          title={on ? t("hl.noColor") : name}
+                          onClick={() => patch({ color: on ? null : CardColor.parse(c) })}
+                          className={cn(
+                            "inline-flex size-[26px] items-center justify-center border hover:bg-sunken",
+                            on ? "border-ink" : "border-transparent",
+                          )}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="size-3.5"
+                            style={{ background: highlightColor(c) }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
                 <div className="flex min-w-40 flex-1 flex-col gap-1">
                   <label htmlFor={`${fm.id}-tags`} className="text-[11px] text-muted">
                     {t("card.tags")}
@@ -447,6 +494,7 @@ export function QuoteCard({
                 card={card}
                 className="border-l border-line"
                 onCiteOnly={() => void copyAs("cite")}
+                onDelete={() => void trashCard(fm.id).then((done) => done && onToggle?.())}
               />
             </div>
           ) : onOpenInReader ? (

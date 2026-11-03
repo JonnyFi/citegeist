@@ -1,8 +1,10 @@
 import {
   cardsCreate,
+  cardsDelete,
   cardsExport,
   cardsList,
   cardsRegenerate,
+  cardsRestore,
   cardsUpdate,
   citeFormat,
   documentsAssets,
@@ -409,6 +411,8 @@ export function createMockRegistry(
     }));
     return [...demo, ...own, ...(importJobs?.list() ?? [])];
   };
+
+  const trashedCards = new Map<string, (typeof data.cards)[number]>();
 
   const findCard = (id: string) => {
     const card = data.cards.find((c) => c.frontmatter.id === id);
@@ -967,6 +971,7 @@ export function createMockRegistry(
         item: input.citekey,
         ...(doc ? { source: doc.source } : {}),
         ...(input.kind ? { kind: input.kind } : {}),
+        ...(input.color ? { color: input.color } : {}),
         ...(paragraph
           ? { locator: paragraph }
           : label
@@ -978,7 +983,8 @@ export function createMockRegistry(
         projects: input.projects,
         created: { at: new Date().toISOString(), by: "human" },
       });
-      const card = { frontmatter, body: { quote, extra: [] } };
+      const note = input.note?.trim();
+      const card = { frontmatter, body: { quote, ...(note ? { note } : {}), extra: [] } };
       data.cards.push(card);
       changed(`items/${input.citekey}/cards/${frontmatter.id}.md`);
       if (!input.ai) return { card };
@@ -996,12 +1002,13 @@ export function createMockRegistry(
         throw new Error("CARD_QUOTE_IMMUTABLE: the verbatim quote of a card never changes");
       }
       const card = findCard(input.id);
-      const { kind, tags, locator, note, paraphrase } = input.patch;
-      const { kind: oldKind, ...rest } = card.frontmatter;
+      const { kind, color, tags, locator, note, paraphrase } = input.patch;
+      const { kind: oldKind, color: oldColor, ...rest } = card.frontmatter;
       card.frontmatter = {
         ...rest,
-        // null clears the kind, undefined keeps it
+        // null clears the kind and the colour, undefined keeps them
         ...(kind === undefined ? (oldKind ? { kind: oldKind } : {}) : kind ? { kind } : {}),
+        ...(color === undefined ? (oldColor ? { color: oldColor } : {}) : color ? { color } : {}),
         ...(tags ? { tags } : {}),
         ...(locator && card.frontmatter.locator
           ? {
@@ -1021,6 +1028,21 @@ export function createMockRegistry(
         ...(paraphrase !== undefined ? { paraphrase } : {}),
       };
       changed(`items/${card.frontmatter.item}/cards/${card.frontmatter.id}.md`);
+      return { card };
+    })
+    .bind(cardsDelete, async (_ctx, input) => {
+      const card = findCard(input.id);
+      data.cards.splice(data.cards.indexOf(card), 1);
+      trashedCards.set(input.id, card);
+      changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
+      return { ok: true as const };
+    })
+    .bind(cardsRestore, async (_ctx, input) => {
+      const card = trashedCards.get(input.id);
+      if (!card) throw new Error(`NOT_IN_TRASH: no trashed card with id '${input.id}'`);
+      trashedCards.delete(input.id);
+      data.cards.push(card);
+      changed(`items/${card.frontmatter.item}/cards/${input.id}.md`);
       return { card };
     })
     .bind(cardsRegenerate, async (_ctx, input) => {
@@ -1159,6 +1181,8 @@ export function createMockRegistry(
         title: string;
         snippet: string;
         page?: string;
+        color?: NonNullable<CardFrontmatter["color"]>;
+        tags?: string[];
         score: number;
       }> = [];
       const withInbox = input.includeInbox ?? false;
@@ -1180,7 +1204,7 @@ export function createMockRegistry(
         }
       }
       for (const c of data.cards) {
-        const text = `${c.body.quote} ${c.body.paraphrase ?? ""} ${c.body.note ?? ""}`;
+        const text = `${c.body.quote} ${c.body.paraphrase ?? ""} ${c.body.note ?? ""} ${c.frontmatter.tags.join(" ")}`;
         if (!input.kinds.includes("card") || !text.toLowerCase().includes(q)) continue;
         const owner = data.items.get(c.frontmatter.item);
         if (!owner) continue;
@@ -1192,6 +1216,8 @@ export function createMockRegistry(
           title: owner.frontmatter.title,
           snippet: snippetAround(text, q),
           ...(c.frontmatter.locator ? { page: c.frontmatter.locator.start } : {}),
+          ...(c.frontmatter.color ? { color: c.frontmatter.color } : {}),
+          ...(c.frontmatter.tags.length > 0 ? { tags: c.frontmatter.tags } : {}),
           score: 1.5,
         });
       }

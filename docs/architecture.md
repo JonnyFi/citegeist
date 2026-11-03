@@ -213,6 +213,7 @@ id: c_01JB8Z3Q
 item: luhmann1984soziale
 source: 3f9a1c2e7b4d
 kind: definition             # optional: thesis | finding | method | definition | example | critique
+color: yellow                # optional highlight colour: yellow | green | blue | red
 locator: {label: page, start: "31", end: "32"}   # unpaginated sources: {label: paragraph, start: "4"}
 anchor:
   pdf: {page: 42, quads: [[72.0, 310.2, 290.1, 330.0]], file: 3f9a1c2e7b4d}
@@ -232,7 +233,7 @@ created: {at: 2026-10-23T11:01:40Z, by: human}
 …
 ```
 
-The wording sits in the quote block and stays unchanged. Omissions such as "[…]" are explicit edits. The card carries one AI text, the paraphrase of one to three sentences, and the paraphrase carries its provenance. The kind comes from the same request as the paraphrase: the AI assigns a kind when the card is created, the user can change it at any time, and a kind that is set is never overwritten when the paraphrase is regenerated. The section "Note" is a free field of the user. The sections have fixed headings that a strict parser reads, and unknown sections are preserved. A per-project setting decides which parts go into an export. The rule `own-else-ai` takes the note for indirect quotes and the paraphrase otherwise.
+The wording sits in the quote block and stays unchanged. Omissions such as "[…]" are explicit edits. The card carries one AI text, the paraphrase of one to three sentences, and the paraphrase carries its provenance. The kind comes from the same request as the paraphrase: the AI assigns a kind when the card is created, the user can change it at any time, and a kind that is set is never overwritten when the paraphrase is regenerated. The section "Note" is a free field of the user. A highlight is a card without paraphrase that is created with `ai: false`, usually with a `color` ([ADR 0034](decisions/0034-highlights-without-ai.md)); `cards.delete` moves a card to the library trash and `cards.restore` brings it back. The sections have fixed headings that a strict parser reads, and unknown sections are preserved. A per-project setting decides which parts go into an export. The rule `own-else-ai` takes the note for indirect quotes and the paraphrase otherwise.
 
 Cards from earlier versions stay readable. The parser reads the sections "In my words" and "Comment" as the note (own words, blank line, comment) and writes only "Note" on the next save. The kinds `quote` and `comment` count as unset, the other old kinds apply unchanged. A stored section "Core statement" with its stamp `core` survives a rewrite, is shown nowhere in the UI and is not read by search.
 
