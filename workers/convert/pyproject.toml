@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Document conversion worker for citegeist"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "docling==2.145.0",
+  "docling==2.148.0",
   "ocrmac==1.0.1; sys_platform == 'darwin'",
   "pyobjc-framework-Cocoa; sys_platform == 'darwin'",
   "pypdf>=6.2",
