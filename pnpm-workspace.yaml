@@ -4,7 +4,7 @@ packages:
 
 catalog:
   typescript: ^7.0.2
-  vitest: ^4.0.0
+  vitest: ^5.1.0
 
 onlyBuiltDependencies:
   - better-sqlite3
