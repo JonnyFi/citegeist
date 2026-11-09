@@ -23,7 +23,7 @@
     "@citegeist/schema": "workspace:*",
     "@citegeist/webhooks": "workspace:*",
     "@orpc/server": "^1.16.1",
-    "ws": "^8.22.0",
+    "ws": "^8.22.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {
