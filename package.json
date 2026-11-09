@@ -25,7 +25,7 @@
     "secrets": "sh scripts/secrets.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.4",
+    "@biomejs/biome": "^2.6.5",
     "@types/node": "^26.6.6",
     "turbo": "^2.5.0"
   }

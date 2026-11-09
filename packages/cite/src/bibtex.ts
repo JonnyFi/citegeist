@@ -13,6 +13,14 @@ export interface BibtexWriteOptions {
   flavor?: "biblatex" | "bibtex";
 }
 
+/**
+ * Language ids the parser treats as English, whose titles it rewrites in sentence case. No real
+ * langid matches this value, so every title keeps the casing of the source. The parser merges this
+ * list into its own defaults index by index, so `english: []` keeps the defaults and the list has
+ * to be at least as long as the built-in one.
+ */
+const NO_ENGLISH_LANGIDS = Array.from({ length: 128 }, () => "citegeist-keep-title-case");
+
 const BIB_TO_CSL_TYPE: Record<string, string> = {
   article: "article-journal",
   book: "book",
@@ -221,7 +229,11 @@ function creators(value: unknown): Creator[] | undefined {
 
 /** Reads BibTeX or BibLaTeX into item drafts. The entry key becomes `citekey`. */
 export function parseBibtex(input: string): BibtexParseResult {
-  const lib = parse(input, { sentenceCase: false, applyCrossRef: true });
+  const lib = parse(input, {
+    english: NO_ENGLISH_LANGIDS,
+    sentenceCase: { guess: false, subSentence: false, preserveQuoted: false },
+    applyCrossRef: true,
+  });
   const errors = lib.errors.map((e) => String((e as { message?: string }).message ?? e));
   const items: ItemDraft[] = [];
   for (const entry of lib.entries) {
