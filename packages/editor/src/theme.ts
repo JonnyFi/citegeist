@@ -13,13 +13,22 @@ const danger = "var(--danger, #a43a2a)";
 const mono = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
 export const noteTheme = EditorView.theme({
-  "&": { color: ink, backgroundColor: "transparent", fontSize: "16.5px" },
+  // The editor fills the host's min-height, so a click anywhere in the writing area lands in the
+  // text instead of on an empty host element below a short note.
+  "&": {
+    color: ink,
+    backgroundColor: "transparent",
+    fontSize: "16.5px",
+    minHeight: "inherit",
+    cursor: "text",
+  },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": {
     fontFamily: 'ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif',
     lineHeight: "1.7",
+    minHeight: "inherit",
   },
-  ".cm-content": { caretColor: ink, padding: "0.5rem 0", maxWidth: "68ch" },
+  ".cm-content": { caretColor: ink, padding: "0.5rem 0", maxWidth: "68ch", minHeight: "inherit" },
   ".cm-cursor": { borderLeftColor: ink },
   ".cm-line": { padding: "0 2px" },
   ".cm-selectionBackground": { backgroundColor: `${accentSoft} !important` },
