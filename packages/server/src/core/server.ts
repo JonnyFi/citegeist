@@ -149,7 +149,7 @@ type Node = { [segment: string]: Node } | ReturnType<typeof base.handler>;
 /**
  * The actor of one request. The app's own UI sends no header and acts as the human. `cg` and the
  * MCP server send the header. A header that is not a valid Actor yields undefined and the request
- * is refused, so a typo can never give an agent the rights of the user.
+ * is refused (server.test.ts, "refuses a header that is not an actor").
  */
 export function actorOf(req: IncomingMessage): Actor | undefined {
   const raw = req.headers[ACTOR_HEADER];

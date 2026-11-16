@@ -44,8 +44,8 @@ const TEXT_LIMIT = 2000;
 export const TOOLS_LIST_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Contracts that become MCP tools for a scope, sorted by tool name. Admin operations are never
- * exposed.
+ * Contracts that become MCP tools for a scope, sorted by tool name, without admin operations
+ * (tools-list.test.ts).
  *
  * The order is fixed on purpose: the tool list is part of the prompt that agent clients send to
  * the model, and a prompt cache only hits when the prefix is byte-identical. Registration order

@@ -1,7 +1,7 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: parsed JSON of requests and replies
 // The dedicated hooks listener (fixed port, /hooks and /mcp only), the public address setting,
 // the outbound auth header and the MCP endpoint for connectors, through the real core server.
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server as HttpServer, type IncomingMessage, request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -466,11 +466,16 @@ describe("MCP endpoint for connectors", () => {
       mcp: "write",
     });
     const mcp = await mcpClient(s.hooksPort() as number, made.mcpToken);
-    const result = await mcp.callTool({
-      name: "add_item",
-      arguments: { identifier: "/etc/hosts" },
-    });
-    expect(result.isError).toBe(true);
+    const before = (await call(client, "items.list", { limit: 100 })).items.length;
+    // A file that exists, so only the local-files rule can refuse it.
+    const secret = join(tmp, "secret.pdf");
+    writeFileSync(secret, "%PDF-1.4 private notes");
+    for (const identifier of [secret, `file://${secret}`]) {
+      const result = await mcp.callTool({ name: "add_item", arguments: { identifier } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("LOCAL_FILES_FORBIDDEN");
+    }
+    expect((await call(client, "items.list", { limit: 100 })).items).toHaveLength(before);
   });
 
   it("gives a read-scoped connector only the read-only tools", async () => {
