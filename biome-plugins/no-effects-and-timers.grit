@@ -1,8 +1,10 @@
 language js
 
-// Bans effects and timers in UI components (apps/ui, packages/reader).
-// Enabled by the overrides in biome.json and apps/ui/biome.json. Files listed there with "!"
-// predate the rule. Shrink that list, never grow it: put new effects in a named hook under src/hooks/.
+// Bans effects and timers in UI components (apps/ui, packages/reader). This plugin catches
+// effect calls and member calls such as React.useEffect or window.setTimeout. Imports of the
+// effect hooks and bare timer globals, aliases included, are caught by noRestrictedImports and
+// noRestrictedGlobals in the same overrides (biome.json, apps/ui/biome.json). Files listed there
+// with "!" predate the rule. Shrink that list, never grow it: new effects go in src/hooks/.
 
 or {
   or {
@@ -14,9 +16,6 @@ or {
     register_diagnostic(span=$effect, message="Effects are not allowed in UI components. Derive the value during render, move the logic into the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md).", severity="error")
   },
   or {
-    `setTimeout($...)`,
-    `setInterval($...)`,
-    `requestAnimationFrame($...)`,
     `$global.setTimeout($...)`,
     `$global.setInterval($...)`,
     `$global.requestAnimationFrame($...)`

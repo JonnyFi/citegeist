@@ -234,7 +234,7 @@ describe("actor header", () => {
     expect(status).toBe(400);
     // A valid write with a typo in the header must not run as the human either.
     const typo = clientFor(server, server.token, { [ACTOR_HEADER]: "agnet:claude-desktop" });
-    await expect(typo.notes?.create?.(noteInput)).rejects.toBeDefined();
+    await expect(typo.notes?.create?.(noteInput)).rejects.toMatchObject({ status: 400 });
     const listed = (await clientFor(server).notes?.list?.({ query: noteInput.title })) as {
       notes: unknown[];
     };

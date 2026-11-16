@@ -9,11 +9,12 @@
   "overrides": [
     {
       "includes": [
-        "src/**/*.{ts,tsx}",
+        "src/**/*.{js,jsx,ts,tsx,mts,cts}",
         "!src/hooks/**",
         "!**/*.test.{ts,tsx}",
-        "!src/test-*.{ts,tsx}",
-        "!**/mock.ts",
+        "!src/test-setup.ts",
+        "!src/test-utils.tsx",
+        "!src/*/mock.ts",
         "!src/mock/**",
         "!src/alerts/alerts-panel.tsx",
         "!src/app.tsx",
@@ -74,7 +75,34 @@
         "!src/texts/quick-insert-link.tsx",
         "!src/texts/text-view.tsx"
       ],
-      "plugins": ["../../biome-plugins/no-effects-and-timers.grit"]
+      "plugins": ["../../biome-plugins/no-effects-and-timers.grit"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": {
+                    "importNames": ["useEffect", "useLayoutEffect"],
+                    "message": "Effects are not allowed in UI components. Derive the value during render, move the logic into the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md)."
+                  }
+                }
+              }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "setTimeout": "Timers are not allowed in UI components. Drive the change from state or from the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md).",
+                  "setInterval": "Timers are not allowed in UI components. Drive the change from state or from the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md).",
+                  "requestAnimationFrame": "Timers are not allowed in UI components. Drive the change from state or from the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md)."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

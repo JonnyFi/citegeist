@@ -1,4 +1,4 @@
-import { defineContract, Registry } from "@citegeist/ops";
+import { defineContract, type Registry } from "@citegeist/ops";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
