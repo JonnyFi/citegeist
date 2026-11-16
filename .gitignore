@@ -6,3 +6,6 @@ __pycache__
 .pytest_cache
 .DS_Store
 fixtures/**/cache
+
+# Local agent worktrees (Claude Code, Conductor). Never commit them.
+.claude/worktrees/
