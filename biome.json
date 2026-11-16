@@ -35,5 +35,20 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "packages/reader/src/**/*.{ts,tsx}",
+        "!packages/reader/src/hooks/**",
+        "!**/*.test.{ts,tsx}",
+        "!packages/reader/src/testing/**",
+        "!packages/reader/src/PdfView.tsx",
+        "!packages/reader/src/ReflowView.tsx",
+        "!packages/reader/src/SelectionPopover.tsx",
+        "!packages/reader/src/useSelection.ts"
+      ],
+      "plugins": ["./biome-plugins/no-effects-and-timers.grit"]
+    }
+  ]
 }

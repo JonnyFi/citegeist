@@ -71,6 +71,7 @@ cd workers/convert && uv run pytest       run the worker tests
 - Never use em dashes in any text: code, comments, docs, commit messages, chat.
 - TypeScript is strict (`tsconfig.base.json`). Each package has its own `tsconfig.json` extending it.
 - Package names are `@citegeist/<name>`. Packages export TypeScript source from `src/index.ts`.
+- Components in `apps/ui/src` and `packages/reader/src` call no `useEffect`, `useLayoutEffect`, `setTimeout`, `setInterval` or `requestAnimationFrame` (Biome plugin `biome-plugins/no-effects-and-timers.grit`). Derive the value during render or act in the event handler; effects and timers live only in named hooks under `src/hooks/`. Files that predate the rule are listed in the Biome overrides, and that list only shrinks.
 - Tests sit next to the code as `*.test.ts`. Python tests live in `workers/convert/tests`.
 - Stay inside the directories your change needs. Do not edit maintainer-owned files without agreement.
 - Work on your own branch and open a pull request against `main`. See [CONTRIBUTING.md](CONTRIBUTING.md).

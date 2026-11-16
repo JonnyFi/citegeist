@@ -1,0 +1,26 @@
+language js
+
+// Bans effects and timers in UI components (apps/ui, packages/reader).
+// Enabled by the overrides in biome.json and apps/ui/biome.json. Files listed there with "!"
+// predate the rule. Shrink that list, never grow it: put new effects in a named hook under src/hooks/.
+
+or {
+  or {
+    `useEffect($...)`,
+    `useLayoutEffect($...)`,
+    `$react.useEffect($...)`,
+    `$react.useLayoutEffect($...)`
+  } as $effect where {
+    register_diagnostic(span=$effect, message="Effects are not allowed in UI components. Derive the value during render, move the logic into the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md).", severity="error")
+  },
+  or {
+    `setTimeout($...)`,
+    `setInterval($...)`,
+    `requestAnimationFrame($...)`,
+    `$global.setTimeout($...)`,
+    `$global.setInterval($...)`,
+    `$global.requestAnimationFrame($...)`
+  } as $timer where {
+    register_diagnostic(span=$timer, message="Timers are not allowed in UI components. Drive the change from state or from the event handler that causes it, or use a named hook from a src/hooks/ folder (see AGENTS.md).", severity="error")
+  }
+}
