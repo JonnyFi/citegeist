@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import type { PermissionOption, RequestPermissionRequest } from "@agentclientprotocol/sdk";
+import type { PermissionOption, RequestPermissionRequest } from "@agentclientprotocol/sdk/unstable";
 import { isScholarlyUrl } from "@citegeist/ops";
 import { researchFetch } from "./egress.js";
 import { relativeInside } from "./util.js";
