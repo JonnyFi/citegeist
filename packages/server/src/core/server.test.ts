@@ -232,7 +232,13 @@ describe("actor header", () => {
       "POST",
     );
     expect(status).toBe(400);
-    expect(server.library.listItems({ limit: 5 }).items.length).toBeGreaterThan(0);
+    // A valid write with a typo in the header must not run as the human either.
+    const typo = clientFor(server, server.token, { [ACTOR_HEADER]: "agnet:claude-desktop" });
+    await expect(typo.notes?.create?.(noteInput)).rejects.toBeDefined();
+    const listed = (await clientFor(server).notes?.list?.({ query: noteInput.title })) as {
+      notes: unknown[];
+    };
+    expect(listed.notes).toEqual([]);
   });
 
   it("keeps admin operations away from agents", async () => {

@@ -1,6 +1,7 @@
-import type { Registry } from "@citegeist/ops";
+import { defineContract, Registry } from "@citegeist/ops";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { afterAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createFixtureRegistry } from "./fixture.js";
 import { mcpContracts, TOOLS_LIST_TTL_MS } from "./server.js";
 import { type McpHttpHandle, startMcpHttpServer } from "./transports.js";
@@ -63,5 +64,25 @@ describe.each([
   it.runIf(modern)("sets ttlMs and a private cache scope", async () => {
     const { first } = await listOver(modern);
     expect(first).toMatchObject({ ttlMs: TOOLS_LIST_TTL_MS, cacheScope: "private" });
+  });
+});
+
+describe("admin operations", () => {
+  it("never become a tool, even when a contract carries MCP metadata", () => {
+    const registry = createFixtureRegistry();
+    registry.bind(
+      defineContract({
+        name: "test.adminTool",
+        summary: "An admin operation that wrongly declares an MCP tool",
+        access: "admin",
+        input: z.object({}),
+        output: z.object({}),
+        mcp: { tool: "admin_tool", readOnly: true },
+      }),
+      async () => ({}),
+    );
+    for (const scope of ["read", "write", "research"] as const) {
+      expect(names(mcpContracts(registry, scope)), scope).not.toContain("admin_tool");
+    }
   });
 });

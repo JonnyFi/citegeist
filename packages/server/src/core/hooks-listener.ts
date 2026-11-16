@@ -85,7 +85,7 @@ export function manageHooksListener(opts: HooksListenerOptions): HooksListener {
       log(`mcp: request from ${source} refused with 401 (missing or wrong bearer token)`);
       return replyMcpError(res, 401, "UNAUTHORIZED", "Missing or wrong bearer token.");
     }
-    // The agent is on the internet: it may never make the core read a local file.
+    // Remote agents get no local files; see "never reads a local file" in hooks-listener.test.ts.
     await opts.mcp.handle(req, res, { scope: auth.scope, localFiles: false, actor: auth.actor });
   };
 
