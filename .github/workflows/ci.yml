@@ -20,6 +20,15 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.12"
+      - name: No committed gitlinks
+        # A gitlink (mode 160000) is a nested repo or agent worktree staged by accident.
+        run: |
+          links=$(git ls-files -s | awk '$1 == "160000" {print $4}')
+          if [ -n "$links" ]; then
+            echo "::error::Nested repos or agent worktrees are committed. Remove them with git rm --cached:"
+            echo "$links"
+            exit 1
+          fi
       - run: pnpm install --frozen-lockfile
       - run: uv sync
         working-directory: workers/convert
