@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@citegeist/schema": "workspace:*",
-    "approx-string-match": "^2.0.1"
+    "approx-string-match": "^2.0.3"
   },
   "devDependencies": {
     "typescript": "catalog:",

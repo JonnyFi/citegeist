@@ -16,7 +16,7 @@
     "@citegeist/metadata": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
-    "better-sqlite3": "^13.1.1",
+    "better-sqlite3": "^13.2.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
