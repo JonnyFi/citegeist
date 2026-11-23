@@ -17,14 +17,14 @@
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
     "@citegeist/server": "workspace:*",
-    "@orpc/client": "^1.16.2",
+    "@orpc/client": "^1.16.4",
     "commander": "^15.1.0",
     "zod": "^4.2.0"
   },
   "devDependencies": {
     "@citegeist/metadata": "workspace:*",
     "@modelcontextprotocol/client": "^2.4.0",
-    "@orpc/server": "^1.16.2",
+    "@orpc/server": "^1.16.4",
     "@types/node": "^26.6.6",
     "tsx": "^4.19.0",
     "typescript": "catalog:",

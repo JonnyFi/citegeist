@@ -17,22 +17,22 @@
     "package": "pnpm run build && sh ../../scripts/package-mac.sh"
   },
   "dependencies": {
-    "@agentclientprotocol/claude-agent-acp": "0.106.0",
-    "@agentclientprotocol/codex-acp": "2.6.0",
+    "@agentclientprotocol/claude-agent-acp": "0.109.0",
+    "@agentclientprotocol/codex-acp": "2.8.0",
     "@citegeist/core": "workspace:*",
     "@citegeist/ops": "workspace:*",
     "@citegeist/schema": "workspace:*",
     "@citegeist/server": "workspace:*",
     "@huggingface/transformers": "^4.3.2",
     "@parcel/watcher": "^2.6.0",
-    "better-sqlite3": "^13.1.1",
+    "better-sqlite3": "^13.2.0",
     "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@citegeist/ui": "workspace:*",
-    "@orpc/client": "^1.16.2",
-    "@playwright/test": "^1.65.0",
-    "electron": "^45.3.1",
+    "@orpc/client": "^1.16.4",
+    "@playwright/test": "^1.65.1",
+    "electron": "^45.4.1",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "catalog:",
